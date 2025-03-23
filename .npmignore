@@ -1,0 +1,10 @@
+# .npmignore
+/dist
+/public
+/src/assets
+.vscode
+.idea
+index.html
+vite.config.js
+release.*
+README.md
