@@ -1,6 +1,5 @@
 {
   "name": "@wyxos/vue-infinite-masonry",
-  "private": true,
   "version": "1.0.2",
   "main": "index.js",
   "module": "index.js",
