@@ -4,6 +4,14 @@ import {execSync} from "child_process";
 import simpleGit from "simple-git";
 import fs from "fs";
 
+// remove dist build, cross OS support
+function removeDist() {
+    const distPath = "./dist";
+    if (fs.existsSync(distPath)) {
+        fs.rmdirSync(distPath, {recursive: true});
+    }
+}
+
 const git = simpleGit();
 
 const packageJsonPath = "./package.json";
@@ -54,9 +62,7 @@ if (packageJson.scripts.lint) {
 // Check for changes
     const status = await git.status();
     if (status.modified.length > 0) {
-        await git.add(".");
-        // Commit the changes
-        await git.commit("chore: lint fixes");
+        await commitMessage('chore: lint fixes');
     }
 }
 
@@ -80,15 +86,13 @@ const pushChanges = async () => {
 
 const release = async () => {
     try {
+        removeDist();
         await commitFiles();
         await pushChanges();
         console.log(chalk.green(`Successfully released version ${version}`));
         console.log(chalk.green("Publishing to npm..."));
         // execSyncOut("npm login");
         execSyncOut("npm publish --access public --verbose");
-
-        // npx gh-pages -d dist
-        execSyncOut("npx gh-pages -d dist");
 
         console.log(chalk.green("Published to npm"));
     } catch (error) {
