@@ -4,12 +4,62 @@ import {execSync} from "child_process";
 import simpleGit from "simple-git";
 import fs from "fs";
 
+const commitFiles = async () => {
+    await git.add(".");
+    await git.commit(commitMessage);
+};
+
+const pushChanges = async () => {
+    // get current branch
+    const branch = (await git.branch()).current;
+    await git.push("origin", branch);
+    await git.pushTags("origin");
+};
+
+const release = async () => {
+    try {
+        await commitFiles();
+        await pushChanges();
+        console.log(chalk.green(`Successfully released version ${version}`));
+        console.log(chalk.green("Publishing to npm..."));
+        // execSyncOut("npm login");
+        execSyncOut("npm publish --access public --verbose");
+
+        console.log(chalk.green("Published to npm"));
+    } catch (error) {
+        console.error(chalk.red("Release process failed. Error:", error));
+    }
+};
+
 // remove dist build, cross OS support
 function removeDist() {
     const distPath = "./dist";
     if (fs.existsSync(distPath)) {
         fs.rmdirSync(distPath, {recursive: true});
     }
+}
+
+async function lint() {
+    // if script has lint
+    if (packageJson.scripts.lint) {
+// Run linting
+        execSyncOut("npm run lint");
+
+// Check for changes
+        const status = await git.status();
+        if (status.modified.length > 0) {
+            await commitFiles('chore: lint fixes');
+        }
+    }
+}
+
+async function build(){
+    removeDist();
+
+// Build the project
+    execSyncOut("npm run build");
+
+    await commitFiles('chore: build');
 }
 
 const git = simpleGit();
@@ -51,53 +101,13 @@ if (status.files.length > 0) {
     ]);
     await git.add(".");
     await git.commit(commitMessage);
-
 }
 
-// if script has lint
-if (packageJson.scripts.lint) {
-// Run linting
-    execSyncOut("npm run lint");
+await lint();
 
-// Check for changes
-    const status = await git.status();
-    if (status.modified.length > 0) {
-        await commitMessage('chore: lint fixes');
-    }
-}
-
-// Build the project
-execSyncOut("npm run build");
+await build()
 
 // Update the version
 execSyncOut(`npm version ${version} -m "${commitMessage}"`);
 
-const commitFiles = async () => {
-    await git.add(".");
-    await git.commit(commitMessage);
-};
-
-const pushChanges = async () => {
-    // get current branch
-    const branch = (await git.branch()).current;
-    await git.push("origin", branch);
-    await git.pushTags("origin");
-};
-
-const release = async () => {
-    try {
-        removeDist();
-        await commitFiles();
-        await pushChanges();
-        console.log(chalk.green(`Successfully released version ${version}`));
-        console.log(chalk.green("Publishing to npm..."));
-        // execSyncOut("npm login");
-        execSyncOut("npm publish --access public --verbose");
-
-        console.log(chalk.green("Published to npm"));
-    } catch (error) {
-        console.error(chalk.red("Release process failed. Error:", error));
-    }
-};
-
-release();
+await release();
