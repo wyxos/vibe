@@ -43,7 +43,16 @@ const isLoadingNext = ref(false);
 const containerSize = ref(0);
 
 const getContainerClasses = computed(() => {
-  return `grid-cols-${columns.value}`;
+  return {
+    'grid-cols-1': columns.value === 1,
+    'grid-cols-2': columns.value === 2,
+    'grid-cols-3': columns.value === 3,
+    'grid-cols-4': columns.value === 4,
+    'grid-cols-5': columns.value === 5,
+    'grid-cols-6': columns.value === 6,
+    'grid-cols-7': columns.value === 7,
+    'grid-cols-8': columns.value === 8,
+  }
 });
 
 const groupedItems = computed(() => {
