@@ -105,6 +105,9 @@ await lint();
 
 await build()
 
+// write CNAME file to /dist containing vue-infinite-masonry.wyxos.com
+fs.writeFileSync("./dist/CNAME", "vue-infinite-masonry.wyxos.com");
+
 // Update the version
 execSyncOut(`npm version ${version} -m "${commitMessage}"`);
 
