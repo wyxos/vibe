@@ -1,6 +1,6 @@
 {
   "name": "@wyxos/vue-infinite-masonry",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "main": "index.js",
   "module": "index.js",
   "type": "module",
