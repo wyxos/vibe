@@ -54,9 +54,7 @@ async function lint() {
 }
 
 async function build(){
-    removeDist();
-
-// Build the project
+    // Build the project
     execSyncOut("npm run build");
 
     await commitFiles('chore: build');
