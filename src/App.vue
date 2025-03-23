@@ -43,7 +43,12 @@ onMounted(async () => {
 
 <template>
   <div class="flex flex-col items-center p-4 bg-slate-100 min-h-screen">
-    <h1 class="text-2xl font-semibold mb-6">Vue infinite masonry</h1>
+    <h1 class="text-2xl font-semibold mb-6">Vue Infinite Masonry</h1>
+
+    <p class="text-sm text-gray-500 text-center mb-6">
+      🚀 Built by <a href="https://wyxos.com" target="_blank" class="underline hover:text-black">wyxos.com</a> •
+      💾 <a href="https://github.com/wyxos/vue-infinite-masonry" target="_blank" class="underline hover:text-black">Source on GitHub</a>
+    </p>
 
     <infinite-masonry v-model="files" :callbacks="{ load, loadNext}">
       <template #item="{ item, items, column }">

@@ -114,8 +114,11 @@ const observeColumnEnds = () => {
     if (visibleColumnEnds.value.size > 0 && !isLoadingNext.value) {
       isLoadingNext.value = true;
 
-      props.callbacks.loadNext().then(() => {
+      props.callbacks.loadNext().then(async () => {
         isLoadingNext.value = false;
+
+        await nextTick();          // Wait for DOM update
+        observeColumnEnds();       // Reattach observer to new last items
       });
     }
   });
