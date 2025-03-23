@@ -86,6 +86,11 @@ const release = async () => {
         console.log(chalk.green("Publishing to npm..."));
         // execSyncOut("npm login");
         execSyncOut("npm publish --access public --verbose");
+
+        // npx gh-pages -d dist
+        execSyncOut("npx gh-pages -d dist");
+
+        console.log(chalk.green("Published to npm"));
     } catch (error) {
         console.error(chalk.red("Release process failed. Error:", error));
     }
