@@ -72,7 +72,9 @@ const commitFiles = async () => {
 };
 
 const pushChanges = async () => {
-    await git.push("origin", "main");
+    // get current branch
+    const branch = (await git.branch()).current;
+    await git.push("origin", branch);
     await git.pushTags("origin");
 };
 
