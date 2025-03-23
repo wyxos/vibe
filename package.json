@@ -1,22 +1,32 @@
 {
-  "name": "@wyxos/infinite-masonry",
+  "name": "@wyxos/vue-infinite-masonry",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "main": "index.js",
+  "module": "index.js",
   "type": "module",
+  "files": [
+    "src",
+    "index.js"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.0.15",
-    "bricks.js": "^1.8.0",
-    "tailwindcss": "^4.0.15",
     "vue": "^3.5.13"
+  },
+  "peerDependencies": {
+    "vue": "^3.0.0",
+    "@tailwindcss/vite": "^4.0.15",
+    "tailwindcss": "^4.0.15"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.1",
     "uuid": "^11.1.0",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "@tailwindcss/vite": "^4.0.15",
+    "tailwindcss": "^4.0.15"
   }
 }
