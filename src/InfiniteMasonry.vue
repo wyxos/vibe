@@ -94,6 +94,9 @@ const updateContainerSize = () => {
     containerSize.value = newSize;
     columns.value = props.sizes[newSize];
   }
+
+  // Reattach observer to new last items
+  observeColumnEnds();
 };
 
 let observer = null;
@@ -135,16 +138,16 @@ const observeColumnEnds = () => {
 <template>
   <div class="grid w-full gap-4" :class="getContainerClasses">
     <div v-for="column in columns" :key="column" class="flex flex-col gap-4">
-      <div v-for="(item, index) in groupedItems[column - 1]" :key="item.id"
+      <div v-for="(item, index) in groupedItems[column - 1]" :key="`${column}-${index}`"
                 :data-column="column - 1"
-                :data-last="index === groupedItems[column - 1].length - 1">
+                :data-last="index === groupedItems[column - 1].length - 1" class="transition-all duration-700">
         <slot name="item"
               :item="item"
               :index="index"
               :column="column"
               :items="groupedItems[column - 1]">
           <!-- Default / fallback content -->
-          <div class="bg-slate-300 w-full rounded-lg shadow-lg p-4"
+          <div class="bg-slate-300 w-full rounded-lg shadow-lg p-4 transition-all duration-700"
                :style="{ height: `${Math.floor(Math.random() * 200) + 200}px` }">
             {{ `item-${item.index}` }}
           </div>
