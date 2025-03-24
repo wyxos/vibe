@@ -137,22 +137,34 @@ const observeColumnEnds = () => {
 
 <template>
   <div class="grid w-full gap-4" :class="getContainerClasses">
-    <div v-for="column in columns" :key="column" class="flex flex-col gap-4">
+    <TransitionGroup  name="fade" tag="div" v-for="column in columns" :key="column" class="flex flex-col gap-4">
       <div v-for="(item, index) in groupedItems[column - 1]" :key="`${column}-${index}`"
                 :data-column="column - 1"
-                :data-last="index === groupedItems[column - 1].length - 1" class="transition-all duration-700">
+                :data-last="index === groupedItems[column - 1].length - 1" class="transition-[height,opacity,transform] duration-500 ease-in-out">
         <slot name="item"
               :item="item"
               :index="index"
               :column="column"
               :items="groupedItems[column - 1]">
           <!-- Default / fallback content -->
-          <div class="bg-slate-300 w-full rounded-lg shadow-lg p-4 transition-all duration-700"
+          <div class="bg-slate-300 w-full rounded-lg shadow-lg p-4 transition-[height,opacity,transform] duration-500 ease-in-out"
                :style="{ height: `${Math.floor(Math.random() * 200) + 200}px` }">
             {{ `item-${item.index}` }}
           </div>
         </slot>
       </div>
-    </div>
+    </TransitionGroup>
   </div>
 </template>
+
+<style>
+.fade-enter-active,
+.fade-leave-active {
+  transition: all 0.5s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+</style>
