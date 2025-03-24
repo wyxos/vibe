@@ -12,6 +12,7 @@
     "dev": "vite",
     "build": "vite build && node write-cname.js",
     "preview": "vite preview",
+    "watch": "vite build --watch",
     "release": "node release.mjs"
   },
   "dependencies": {
