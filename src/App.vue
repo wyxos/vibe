@@ -1,13 +1,13 @@
 <script setup>
 // create an array of 20 items with unique uuid
 import { v4 as uuidv4 } from 'uuid';
-import {computed, onMounted, ref} from "vue";
+import {computed, onMounted, ref, watchEffect} from "vue";
 
 const columns = ref(7);
 const scrollPosition = ref(0);
 const scrollDirection = ref('down');
 
-const items = Array.from({ length: 500 }, () => {
+const items = Array.from({ length: 50000 }, () => {
   const width = Math.floor(Math.random() * 300) + 200;
   const height = Math.floor(Math.random() * 300) + 200;
 
@@ -85,6 +85,45 @@ const isVisible = (item, index) => {
   return top >= container.value.scrollTop - 1000 && top <= container.value.scrollTop + container.value.offsetHeight + 1000;
 }
 
+const layouts = ref([]); // contains { id, top, left, width, height, src }
+
+watchEffect(() => {
+  if (!container.value) return;
+
+  const containerWidth = container.value.offsetWidth;
+  const colWidth = containerWidth / columns.value;
+  const colHeights = Array(columns.value).fill(0);
+
+  layouts.value = items.map((item, index) => {
+    const columnIndex = index % columns.value;
+    const scaledHeight = (item.height / item.width) * colWidth;
+    const top = colHeights[columnIndex];
+    const left = columnIndex * colWidth;
+
+    colHeights[columnIndex] += scaledHeight;
+
+    return {
+      ...item,
+      width: colWidth,
+      height: scaledHeight,
+      top,
+      left
+    };
+  });
+});
+
+const visibleItems = computed(() => {
+  const scroll = scrollPosition.value;
+  const viewHeight = container.value?.offsetHeight || 0;
+
+  return layouts.value.filter(item => {
+    return (
+        item.top + item.height >= scroll - 200 &&
+        item.top <= scroll + viewHeight + 200
+    );
+  });
+});
+
 onMounted(() => {
   container.value.addEventListener('scroll', () => {
 
@@ -119,10 +158,16 @@ onMounted(() => {
 
     <div ref="container" class="masonry-container overflow-auto flex-1 w-full">
       <div :style="{ height: `${maximumHeight}px` }" class="relative w-full">
-        <template v-for="(item, index) in items" :key="item.id">
-          <div v-if="isVisible(item, index)"
-               class="bg-slate-200 w-full rounded-lg shadow-lg absolute"
-               :style="{ width: columnWidth, ...calculateLayout(item, index) }">
+        <template v-for="item in visibleItems" :key="item.id">
+          <div
+              class="absolute bg-slate-200 rounded-lg shadow-lg"
+              :style="{
+      top: item.top + 'px',
+      left: item.left + 'px',
+      width: item.width + 'px',
+      height: item.height + 'px'
+    }"
+          >
             <img :src="item.src" class="w-full h-auto" />
           </div>
         </template>
