@@ -7,7 +7,7 @@ const columns = ref(7);
 const scrollPosition = ref(0);
 const scrollDirection = ref('down');
 
-const items = ref(Array.from({ length: 5000 }, () => {
+const items = ref(Array.from({ length: 30 }, () => {
   const width = Math.floor(Math.random() * 300) + 200;
   const height = Math.floor(Math.random() * 300) + 200;
 
@@ -36,38 +36,8 @@ const maximumHeight = computed(() => Math.max(...internalColumnHeights.value));
 
 const container = ref(null);
 
-const calculateLayout = (item, index) => {
-  const columnIndex = index % columns.value;
-  const previousIndex = index - columns.value;
-  const containerWidth = container.value?.offsetWidth || 0;
-  const colWidth = containerWidth / columns.value;
-
-  // Correctly scale height based on new column width
-  const scaledHeight = (item.height / item.width) * colWidth;
-  const left = `${columnIndex * colWidth}px`;
-
-  if (previousIndex >= 0) {
-    const previousItem = items.value[previousIndex];
-    const prevScaledHeight = (previousItem.height / previousItem.width) * colWidth;
-
-    let previousTop = calculateLayout(previousItem, previousIndex).top;
-    let top = parseFloat(previousTop) + prevScaledHeight;
-
-    return {
-      top: `${top}px`,
-      left,
-      width: `${colWidth}px`,
-      height: `${scaledHeight}px`,
-    };
-  }
-
-  return {
-    top: '0px',
-    left,
-    width: `${colWidth}px`,
-    height: `${scaledHeight}px`,
-  };
-};
+const gutterX = ref(10); // horizontal gap between columns
+const gutterY = ref(10); // vertical gap between items
 
 const layouts = ref([]); // contains { id, top, left, width, height, src }
 
@@ -75,21 +45,18 @@ watchEffect(() => {
   if (!container.value) return;
 
   const containerWidth = container.value.offsetWidth;
-  const colWidth = containerWidth / columns.value;
+  const totalGutterX = (columns.value - 1) * gutterX.value;
+  const colWidth = Math.floor((containerWidth - totalGutterX) / columns.value);
   const colHeights = Array(columns.value).fill(0);
-
-  // 👇 Touching this makes it reactive
-  const _ = items.value.length;
 
   layouts.value = items.value.map((item, index) => {
     const columnIndex = index % columns.value;
-    const scaledHeight = (item.height / item.width) * colWidth;
+    const scaledHeight = Math.round((item.height / item.width) * colWidth);
     const top = colHeights[columnIndex];
-    const left = columnIndex * colWidth;
+    const left = columnIndex * (colWidth + gutterX.value);
 
-    colHeights[columnIndex] += scaledHeight;
-
-    internalColumnHeights.value = colHeights;
+    // update cumulative column height
+    colHeights[columnIndex] += scaledHeight + gutterY.value;
 
     return {
       ...item,
@@ -99,6 +66,8 @@ watchEffect(() => {
       left
     };
   });
+
+  internalColumnHeights.value = colHeights;
 });
 
 const visibleItems = computed(() => {
@@ -157,21 +126,21 @@ onMounted(() => {
         💾 <a href="https://github.com/wyxos/vue-infinite-masonry" target="_blank" class="underline hover:text-black">Source on GitHub</a>
       </p>
 
-      <div class="flex gap-4">
+      <div class="flex gap-4 items-center">
         <p>Scroll position: {{ scrollPosition }}</p>
         <p>Scroll direction: {{ scrollDirection }}</p>
 
-        <input type="number" v-model="count">
+        <input type="number" v-model="count" class="border-2 border-slate-200 rounded h-full px-2 w-20">
 
-        <button @click="updateItems('add')" type="button" class="bg-blue-950 p-2 text-white rounded cursor-pointer">
+        <button @click="updateItems('add')" type="button" class="bg-blue-950 p-2 text-white rounded cursor-pointer min-w-30">
           Add
         </button>
 
-        <button @click="updateItems('remove')" type="button" class="bg-blue-950 p-2 text-white rounded cursor-pointer">
+        <button @click="updateItems('remove')" type="button" class="bg-blue-950 p-2 text-white rounded cursor-pointer min-w-30">
           Remove
         </button>
 
-        {{ items.length }}
+        <p>Total: {{ items.length }}</p>
       </div>
     </header>
 
