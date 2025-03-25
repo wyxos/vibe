@@ -19,17 +19,6 @@ const items = ref(Array.from({ length: 30 }, () => {
   };
 }));
 
-const columnHeights = computed(() => {
-  const heights = Array(columns.value).fill(0);
-
-  items.value.forEach((item, index) => {
-    const column = index % columns.value;
-    heights[column] += item.height;
-  });
-
-  return heights;
-});
-
 const internalColumnHeights = ref([]);
 
 const maximumHeight = computed(() => Math.max(...internalColumnHeights.value));
@@ -44,7 +33,8 @@ const layouts = ref([]); // contains { id, top, left, width, height, src }
 watchEffect(() => {
   if (!container.value) return;
 
-  const containerWidth = container.value.offsetWidth;
+  const scrollbarWidth = getScrollbarWidth(); // ← add this
+  const containerWidth = container.value.offsetWidth - scrollbarWidth;
   const totalGutterX = (columns.value - 1) * gutterX.value;
   const colWidth = Math.floor((containerWidth - totalGutterX) / columns.value);
   const colHeights = Array(columns.value).fill(0);
@@ -101,6 +91,26 @@ const updateItems = (action) => {
     items.value.splice(-count.value);
   }
 }
+
+const getScrollbarWidth = () => {
+  const outer = document.createElement('div');
+  outer.style.visibility = 'hidden';
+  outer.style.overflow = 'scroll';
+  outer.style.msOverflowStyle = 'scrollbar'; // for IE
+  outer.style.position = 'absolute';
+  outer.style.top = '-9999px';
+  outer.style.width = '100px';
+  document.body.appendChild(outer);
+
+  const inner = document.createElement('div');
+  inner.style.width = '100%';
+  outer.appendChild(inner);
+
+  const scrollbarWidth = outer.offsetWidth - inner.offsetWidth;
+
+  document.body.removeChild(outer);
+  return scrollbarWidth;
+};
 
 onMounted(() => {
   container.value.addEventListener('scroll', () => {
