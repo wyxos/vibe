@@ -94,5 +94,5 @@ Then open [`http://localhost:5173`](http://localhost:5173) in your browser.
 
 ## 📄 License
 
-MIT © [@wyxos](https://github.com/wyxos)
+MIT © [@wyxos](./LICENSE)
 ```
