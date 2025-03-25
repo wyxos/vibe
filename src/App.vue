@@ -30,9 +30,9 @@ const columnHeights = computed(() => {
   return heights;
 });
 
-const maximumHeight = computed(() => {
-  return Math.max(...columnHeights.value);
-});
+const internalColumnHeights = ref([]);
+
+const maximumHeight = computed(() => Math.max(...internalColumnHeights.value));
 
 const container = ref(null);
 
@@ -88,6 +88,8 @@ watchEffect(() => {
     const left = columnIndex * colWidth;
 
     colHeights[columnIndex] += scaledHeight;
+
+    internalColumnHeights.value = colHeights;
 
     return {
       ...item,
