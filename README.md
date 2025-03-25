@@ -4,17 +4,18 @@
 [![License](https://img.shields.io/github/license/wyxos/vue-infinite-masonry)](./LICENSE)
 [![Demo](https://img.shields.io/badge/Demo-Live%20Preview-blue?logo=githubpages)](https://wyxos.github.io/vue-infinite-masonry/)
 
-A responsive, infinite-scrolling masonry layout component built with Vue 3 + Tailwind CSS (v4 compatible).  
-Automatically adjusts columns based on screen size and triggers lazy loading as the user scrolls.
+A lightweight, high-performance, virtualized infinite masonry layout component built with Vue 3 and Tailwind CSS (v4 ready).  
+Efficiently handles large datasets with smooth scroll performance and responsive column layout.
 
 ---
 
 ## ✨ Features
 
-- 📐 Dynamic responsive columns based on screen width
-- ♾️ Infinite scroll via IntersectionObserver
-- 🎯 Simple, flexible slot-based content rendering
-- ⚡ Tailwind CSS v4 ready
+- 📐 Responsive columns with configurable gutters
+- ♾️ Virtual scrolling for performance (renders only visible items)
+- 🚀 Lightweight and fast — no dependencies
+- 🎨 Tailwind v4 compatible (but not required)
+- 🔌 Works with any content — just pass your own array of items
 
 ---
 
@@ -33,34 +34,42 @@ npm install @wyxos/vue-infinite-masonry
 import InfiniteMasonry from '@wyxos/vue-infinite-masonry';
 import { ref } from 'vue';
 
-const items = ref([]);
-const loadItems = async () => { /* initial fetch */ };
-const loadMoreItems = async () => { /* fetch more */ };
+const items = ref([
+  { id: 1, width: 300, height: 250, src: '...' },
+  { id: 2, width: 250, height: 400, src: '...' },
+  // more items
+]);
+
+const onScroll = (scrollTop, direction) => {
+  console.log('Scroll:', scrollTop, direction);
+};
 </script>
 
 <template>
   <InfiniteMasonry
-    v-model="items"
-    :callbacks="{ load: loadItems, loadNext: loadMoreItems }"
-  >
-    <template #item="{ item }">
-      <div class="bg-white rounded shadow p-4">
-        {{ item.name }}
-      </div>
-    </template>
-  </InfiniteMasonry>
+    :items="items"
+    :options="{ columns: 5, gutterX: 16, gutterY: 16 }"
+    @scroll="onScroll"
+  />
 </template>
 ```
 
 ---
 
-## 🧰 Props
+## 🔧 Props
 
-| Prop         | Type     | Required | Description                                  |
-|--------------|----------|----------|----------------------------------------------|
-| `modelValue` | `Array`  | ✅        | Items to display                             |
-| `callbacks`  | `Object` | ✅        | `{ load, loadNext }` async functions         |
-| `sizes`      | `Object` | ❌        | Custom responsive breakpoints (default: 1–8) |
+| Prop       | Type     | Required | Description                                   |
+|------------|----------|----------|-----------------------------------------------|
+| `items`    | `Array`  | ✅        | Array of items (must include width + height)  |
+| `options`  | `Object` | ❌        | Layout config (`columns`, `gutterX`, `gutterY`) |
+
+---
+
+## 📤 Emits
+
+| Event     | Payload                          | Description                    |
+|-----------|----------------------------------|--------------------------------|
+| `scroll`  | `(scrollTop, direction)`         | Emits on scroll position change |
 
 ---
 
@@ -79,7 +88,7 @@ Then open [`http://localhost:5173`](http://localhost:5173) in your browser.
 
 ## 🌐 Live Demo
 
-👉 [View the GitHub Pages Demo](https://wyxos.github.io/vue-infinite-masonry/)
+👉 [View Demo on GitHub Pages](https://wyxos.github.io/vue-infinite-masonry/)
 
 ---
 
