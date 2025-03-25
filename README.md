@@ -1,7 +1,7 @@
 # 🧱 Vue Infinite Masonry
 
 [![npm](https://img.shields.io/npm/v/@wyxos/vue-infinite-masonry?color=%2300c58e&label=npm)](https://www.npmjs.com/package/@wyxos/vue-infinite-masonry)
-[![License](https://img.shields.io/github/license/wyxos/vue-infinite-masonry)](./LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Demo](https://img.shields.io/badge/Demo-Live%20Preview-blue?logo=githubpages)](https://wyxos.github.io/vue-infinite-masonry/)
 
 A lightweight, high-performance, virtualized infinite masonry layout component built with Vue 3 and Tailwind CSS (v4 ready).  
@@ -95,4 +95,3 @@ Then open [`http://localhost:5173`](http://localhost:5173) in your browser.
 ## 📄 License
 
 MIT © [@wyxos](./LICENSE)
-```
