@@ -1,9 +1,8 @@
 <script setup>
-// create an array of 20 items with unique uuid
-import { v4 as uuidv4 } from 'uuid';
-import {computed, onMounted, ref, watchEffect} from "vue";
+import InfiniteMasonry from "./InfiniteMasonry.vue";
+import {ref} from "vue";
+import {v4 as uuidv4} from "uuid";
 
-const columns = ref(7);
 const scrollPosition = ref(0);
 const scrollDirection = ref('down');
 
@@ -18,59 +17,6 @@ const items = ref(Array.from({ length: 30 }, () => {
     src: `https://picsum.photos/${width}/${height}?random=${uuidv4()}`,
   };
 }));
-
-const internalColumnHeights = ref([]);
-
-const maximumHeight = computed(() => Math.max(...internalColumnHeights.value));
-
-const container = ref(null);
-
-const gutterX = ref(10); // horizontal gap between columns
-const gutterY = ref(10); // vertical gap between items
-
-const layouts = ref([]); // contains { id, top, left, width, height, src }
-
-watchEffect(() => {
-  if (!container.value) return;
-
-  const scrollbarWidth = getScrollbarWidth(); // ← add this
-  const containerWidth = container.value.offsetWidth - scrollbarWidth;
-  const totalGutterX = (columns.value - 1) * gutterX.value;
-  const colWidth = Math.floor((containerWidth - totalGutterX) / columns.value);
-  const colHeights = Array(columns.value).fill(0);
-
-  layouts.value = items.value.map((item, index) => {
-    const columnIndex = index % columns.value;
-    const scaledHeight = Math.round((item.height / item.width) * colWidth);
-    const top = colHeights[columnIndex];
-    const left = columnIndex * (colWidth + gutterX.value);
-
-    // update cumulative column height
-    colHeights[columnIndex] += scaledHeight + gutterY.value;
-
-    return {
-      ...item,
-      width: colWidth,
-      height: scaledHeight,
-      top,
-      left
-    };
-  });
-
-  internalColumnHeights.value = colHeights;
-});
-
-const visibleItems = computed(() => {
-  const scroll = scrollPosition.value;
-  const viewHeight = container.value?.offsetHeight || 0;
-
-  return layouts.value.filter(item => {
-    return (
-        item.top + item.height >= scroll - 200 &&
-        item.top <= scroll + viewHeight + 200
-    );
-  });
-});
 
 const count = ref(5);
 
@@ -92,38 +38,10 @@ const updateItems = (action) => {
   }
 }
 
-const getScrollbarWidth = () => {
-  const outer = document.createElement('div');
-  outer.style.visibility = 'hidden';
-  outer.style.overflow = 'scroll';
-  outer.style.msOverflowStyle = 'scrollbar'; // for IE
-  outer.style.position = 'absolute';
-  outer.style.top = '-9999px';
-  outer.style.width = '100px';
-  document.body.appendChild(outer);
-
-  const inner = document.createElement('div');
-  inner.style.width = '100%';
-  outer.appendChild(inner);
-
-  const scrollbarWidth = outer.offsetWidth - inner.offsetWidth;
-
-  document.body.removeChild(outer);
-  return scrollbarWidth;
-};
-
-onMounted(() => {
-  container.value.addEventListener('scroll', () => {
-
-    if (container.value.scrollTop > scrollPosition.value) {
-      scrollDirection.value = 'down';
-    } else {
-      scrollDirection.value = 'up';
-    }
-
-    scrollPosition.value = container.value.scrollTop;
-  });
-})
+const onScroll = (value, direction) => {
+  scrollPosition.value = value;
+  scrollDirection.value = direction;
+}
 </script>
 
 <template>
@@ -155,22 +73,6 @@ onMounted(() => {
     </header>
 
 
-    <div ref="container" class="masonry-container overflow-auto flex-1 w-full">
-      <div :style="{ height: `${maximumHeight}px` }" class="relative w-full">
-        <template v-for="item in visibleItems" :key="item.id">
-          <div
-              class="absolute bg-slate-200 rounded-lg shadow-lg"
-              :style="{
-      top: item.top + 'px',
-      left: item.left + 'px',
-      width: item.width + 'px',
-      height: item.height + 'px'
-    }"
-          >
-            <img :src="item.src" class="w-full h-auto" />
-          </div>
-        </template>
-      </div>
-    </div>
+    <infinite-masonry :items="items" @scroll="onScroll"></infinite-masonry>
   </main>
 </template>

@@ -1,170 +1,129 @@
 <script setup>
+import {computed, onMounted, ref, watchEffect} from "vue";
 
-import {computed, nextTick, onMounted, onUnmounted, ref} from "vue";
+const scrollPosition = ref(0);
+const scrollDirection = ref('down');
 
 const props = defineProps({
-  modelValue: {
+  items: {
     type: Array,
-    default(){
-      return [];
-    }
+    required: true
   },
-  callbacks: {
-    load: {
-      type: Function,
-      required: true
-    },
-    loadNext: {
-      type: Function,
-      required: true
-    },
-  },
-  sizes: {
+  options: {
     type: Object,
-    default(){
-      return {
-        0: 1,
-        640: 2,
-        768: 3,
-        1024: 4,
-        1280: 5,
-        1536: 6,
-        1792: 7,
-        2048: 8,
-      }
-    }
+    default: () => ({
+      columns: 7,
+      gutterX: 10,
+      gutterY: 10,
+
+    })
   }
 })
 
-const columns = ref(6);
-const isLoading = ref(false);
-const isLoadingNext = ref(false);
+const internalColumnHeights = ref([]);
 
-const containerSize = ref(0);
+const maximumHeight = computed(() => Math.max(...internalColumnHeights.value));
 
-const getContainerClasses = computed(() => {
-  return {
-    'grid-cols-1': columns.value === 1,
-    'grid-cols-2': columns.value === 2,
-    'grid-cols-3': columns.value === 3,
-    'grid-cols-4': columns.value === 4,
-    'grid-cols-5': columns.value === 5,
-    'grid-cols-6': columns.value === 6,
-    'grid-cols-7': columns.value === 7,
-    'grid-cols-8': columns.value === 8,
-  }
+const container = ref(null);
+
+const layouts = ref([]); // contains { id, top, left, width, height, src }
+
+watchEffect(() => {
+  if (!container.value) return;
+
+  const scrollbarWidth = getScrollbarWidth(); // ← add this
+  const containerWidth = container.value.offsetWidth - scrollbarWidth;
+  const totalGutterX = (props.options.columns - 1) * props.options.gutterX;
+  const colWidth = Math.floor((containerWidth - totalGutterX) / props.options.columns);
+  const colHeights = Array(props.options.columns).fill(0);
+
+  layouts.value = props.items.map((item, index) => {
+    const columnIndex = index % props.options.columns;
+    const scaledHeight = Math.round((item.height / item.width) * colWidth);
+    const top = colHeights[columnIndex];
+    const left = columnIndex * (colWidth + props.options.gutterX);
+
+    // update cumulative column height
+    colHeights[columnIndex] += scaledHeight + props.options.gutterY;
+
+    return {
+      ...item,
+      width: colWidth,
+      height: scaledHeight,
+      top,
+      left
+    };
+  });
+
+  internalColumnHeights.value = colHeights;
 });
 
-const groupedItems = computed(() => {
-  return props.modelValue.reduce((acc, item, index) => {
-    const n = index % columns.value;
-    if (!acc[n]) {
-      acc[n] = [];
+const visibleItems = computed(() => {
+  const scroll = scrollPosition.value;
+  const viewHeight = container.value?.offsetHeight || 0;
+
+  return layouts.value.filter(item => {
+    return (
+        item.top + item.height >= scroll - 200 &&
+        item.top <= scroll + viewHeight + 200
+    );
+  });
+});
+
+const getScrollbarWidth = () => {
+  const outer = document.createElement('div');
+  outer.style.visibility = 'hidden';
+  outer.style.overflow = 'scroll';
+  outer.style.msOverflowStyle = 'scrollbar'; // for IE
+  outer.style.position = 'absolute';
+  outer.style.top = '-9999px';
+  outer.style.width = '100px';
+  document.body.appendChild(outer);
+
+  const inner = document.createElement('div');
+  inner.style.width = '100%';
+  outer.appendChild(inner);
+
+  const scrollbarWidth = outer.offsetWidth - inner.offsetWidth;
+
+  document.body.removeChild(outer);
+  return scrollbarWidth;
+};
+
+const emit = defineEmits(['scroll']);
+
+onMounted(() => {
+  container.value.addEventListener('scroll', () => {
+
+    if (container.value.scrollTop > scrollPosition.value) {
+      scrollDirection.value = 'down';
+    } else {
+      scrollDirection.value = 'up';
     }
-    acc[n].push(item);
-    return acc;
-  }, [])
+
+    scrollPosition.value = container.value.scrollTop;
+
+    emit('scroll', scrollPosition.value, scrollDirection.value);
+  });
 })
-
-const visibleColumnEnds = ref(new Set());
-
-onMounted(async () => {
-  updateContainerSize();
-  window.addEventListener('resize', updateContainerSize);
-
-  isLoading.value = true;
-  await props.callbacks.load();
-  isLoading.value = false;
-  await nextTick();
-  observeColumnEnds();
-});
-
-onUnmounted(() => {
-  window.removeEventListener('resize', updateContainerSize);
-  if (observer) observer.disconnect();
-});
-
-const updateContainerSize = () => {
-  const width = window.innerWidth;
-  const newSize = Object.keys(props.sizes).reduce((acc, size) => {
-    return width >= Number(size) ? size : acc;
-  }, 0);
-
-  if (newSize !== containerSize.value) {
-    containerSize.value = newSize;
-    columns.value = props.sizes[newSize];
-  }
-
-  // Reattach observer to new last items
-  observeColumnEnds();
-};
-
-let observer = null;
-
-const observeColumnEnds = () => {
-  if (observer) observer.disconnect(); // clear previous one
-
-  observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      const column = Number(entry.target.getAttribute('data-column'));
-      if (entry.isIntersecting) {
-        visibleColumnEnds.value.add(column);
-      } else {
-        visibleColumnEnds.value.delete(column);
-      }
-    });
-
-    if (visibleColumnEnds.value.size > 0 && !isLoadingNext.value) {
-      isLoadingNext.value = true;
-
-      props.callbacks.loadNext().then(async () => {
-        isLoadingNext.value = false;
-
-        await nextTick();          // Wait for DOM update
-        observeColumnEnds();       // Reattach observer to new last items
-      });
-    }
-  });
-
-  groupedItems.value.forEach((group, index) => {
-    const lastItem = document.querySelector(`[data-column="${index}"][data-last="true"]`);
-    if (lastItem) {
-      observer.observe(lastItem);
-    }
-  });
-};
 </script>
 
 <template>
-  <div class="grid w-full gap-4" :class="getContainerClasses">
-    <TransitionGroup  name="fade" tag="div" v-for="column in columns" :key="column" class="flex flex-col gap-4">
-      <div v-for="(item, index) in groupedItems[column - 1]" :key="`${column}-${index}`"
-                :data-column="column - 1"
-                :data-last="index === groupedItems[column - 1].length - 1" class="transition-[height,opacity,transform] duration-500 ease-in-out">
-        <slot name="item"
-              :item="item"
-              :index="index"
-              :column="column"
-              :items="groupedItems[column - 1]">
-          <!-- Default / fallback content -->
-          <div class="bg-slate-300 w-full rounded-lg shadow-lg p-4 transition-[height,opacity,transform] duration-500 ease-in-out"
-               :style="{ height: `${Math.floor(Math.random() * 200) + 200}px` }">
-            {{ `item-${item.index}` }}
-          </div>
-        </slot>
-      </div>
-    </TransitionGroup>
+  <div ref="container" class="masonry-container overflow-auto flex-1 w-full">
+    <div :style="{ height: `${maximumHeight}px` }" class="relative w-full">
+      <template v-for="item in visibleItems" :key="item.id">
+        <div
+            class="absolute bg-slate-200 rounded-lg shadow-lg"
+            :style="{
+      top: item.top + 'px',
+      left: item.left + 'px',
+      width: item.width + 'px',
+      height: item.height + 'px'
+    }"
+        >
+          <img :src="item.src" class="w-full h-auto" />
+        </div>
+      </template>
+    </div>
   </div>
 </template>
-
-<style>
-.fade-enter-active,
-.fade-leave-active {
-  transition: all 0.5s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-  transform: translateY(10px);
-}
-</style>
