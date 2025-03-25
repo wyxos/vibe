@@ -7,7 +7,7 @@ const columns = ref(7);
 const scrollPosition = ref(0);
 const scrollDirection = ref('down');
 
-const items = Array.from({ length: 50000 }, () => {
+const items = ref(Array.from({ length: 5000 }, () => {
   const width = Math.floor(Math.random() * 300) + 200;
   const height = Math.floor(Math.random() * 300) + 200;
 
@@ -17,12 +17,12 @@ const items = Array.from({ length: 50000 }, () => {
     height,
     src: `https://picsum.photos/${width}/${height}?random=${uuidv4()}`,
   };
-});
+}));
 
 const columnHeights = computed(() => {
   const heights = Array(columns.value).fill(0);
 
-  items.forEach((item, index) => {
+  items.value.forEach((item, index) => {
     const column = index % columns.value;
     heights[column] += item.height;
   });
@@ -32,10 +32,6 @@ const columnHeights = computed(() => {
 
 const maximumHeight = computed(() => {
   return Math.max(...columnHeights.value);
-});
-
-const columnWidth = computed(() => {
-  return `calc(100% / ${columns.value})`;
 });
 
 const container = ref(null);
@@ -51,7 +47,7 @@ const calculateLayout = (item, index) => {
   const left = `${columnIndex * colWidth}px`;
 
   if (previousIndex >= 0) {
-    const previousItem = items[previousIndex];
+    const previousItem = items.value[previousIndex];
     const prevScaledHeight = (previousItem.height / previousItem.width) * colWidth;
 
     let previousTop = calculateLayout(previousItem, previousIndex).top;
@@ -73,18 +69,6 @@ const calculateLayout = (item, index) => {
   };
 };
 
-const isVisible = (item, index) => {
-  if(!container.value) {
-    return false;
-  }
-
-  const layout = calculateLayout(item, index);
-
-  const top = Number(layout.top.replace('px', ''));
-
-  return top >= container.value.scrollTop - 1000 && top <= container.value.scrollTop + container.value.offsetHeight + 1000;
-}
-
 const layouts = ref([]); // contains { id, top, left, width, height, src }
 
 watchEffect(() => {
@@ -94,7 +78,10 @@ watchEffect(() => {
   const colWidth = containerWidth / columns.value;
   const colHeights = Array(columns.value).fill(0);
 
-  layouts.value = items.map((item, index) => {
+  // 👇 Touching this makes it reactive
+  const _ = items.value.length;
+
+  layouts.value = items.value.map((item, index) => {
     const columnIndex = index % columns.value;
     const scaledHeight = (item.height / item.width) * colWidth;
     const top = colHeights[columnIndex];
@@ -124,6 +111,26 @@ const visibleItems = computed(() => {
   });
 });
 
+const count = ref(5);
+
+const updateItems = (action) => {
+  if (action === 'add') {
+    items.value.push(...Array.from({ length: count.value }, () => {
+      const width = Math.floor(Math.random() * 300) + 200;
+      const height = Math.floor(Math.random() * 300) + 200;
+
+      return {
+        id: uuidv4(),
+        width,
+        height,
+        src: `https://picsum.photos/${width}/${height}?random=${uuidv4()}`,
+      };
+    }));
+  } else {
+    items.value.splice(-count.value);
+  }
+}
+
 onMounted(() => {
   container.value.addEventListener('scroll', () => {
 
@@ -149,9 +156,20 @@ onMounted(() => {
       </p>
 
       <div class="flex gap-4">
-        {{ columnHeights }}
         <p>Scroll position: {{ scrollPosition }}</p>
         <p>Scroll direction: {{ scrollDirection }}</p>
+
+        <input type="number" v-model="count">
+
+        <button @click="updateItems('add')" type="button" class="bg-blue-950 p-2 text-white rounded cursor-pointer">
+          Add
+        </button>
+
+        <button @click="updateItems('remove')" type="button" class="bg-blue-950 p-2 text-white rounded cursor-pointer">
+          Remove
+        </button>
+
+        {{ items.length }}
       </div>
     </header>
 
