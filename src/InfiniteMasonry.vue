@@ -92,19 +92,32 @@ const getScrollbarWidth = () => {
 
 const emit = defineEmits(['scroll']);
 
-onMounted(() => {
-  container.value.addEventListener('scroll', () => {
+const onScroll = () => {
+  const el = container.value;
+  if (!el) return;
 
-    if (container.value.scrollTop > scrollPosition.value) {
-      scrollDirection.value = 'down';
-    } else {
-      scrollDirection.value = 'up';
-    }
+  const scroll = el.scrollTop;
+  const viewHeight = el.clientHeight;
+  const contentHeight = el.scrollHeight;
 
-    scrollPosition.value = container.value.scrollTop;
+  const threshold = 50; // pixels from bottom (you can tweak this)
 
-    emit('scroll', scrollPosition.value, scrollDirection.value);
+  scrollDirection.value = scroll > scrollPosition.value ? 'down' : 'up';
+  scrollPosition.value = scroll;
+
+  const isEnd = scroll + viewHeight >= contentHeight - threshold;
+  const isStart = scroll <= threshold;
+
+  emit('scroll', {
+    position: scroll,
+    direction: scrollDirection.value,
+    isEnd,
+    isStart,
   });
+};
+
+onMounted(() => {
+  container.value.addEventListener('scroll', onScroll);
 })
 </script>
 

@@ -1,22 +1,14 @@
 <script setup>
 import InfiniteMasonry from "./InfiniteMasonry.vue";
-import {ref} from "vue";
+import {onMounted, ref} from "vue";
 import {v4 as uuidv4} from "uuid";
 
 const scrollPosition = ref(0);
 const scrollDirection = ref('down');
+const scrollEnd = ref(false);
+const scrollStart = ref(true);
 
-const items = ref(Array.from({ length: 30 }, () => {
-  const width = Math.floor(Math.random() * 300) + 200;
-  const height = Math.floor(Math.random() * 300) + 200;
-
-  return {
-    id: uuidv4(),
-    width,
-    height,
-    src: `https://picsum.photos/${width}/${height}?random=${uuidv4()}`,
-  };
-}));
+const items = ref([]);
 
 const count = ref(5);
 
@@ -38,10 +30,28 @@ const updateItems = (action) => {
   }
 }
 
-const onScroll = (value, direction) => {
-  scrollPosition.value = value;
+const onScroll = ({position, direction, isEnd, isStart}) => {
+  scrollPosition.value = position;
   scrollDirection.value = direction;
+  scrollEnd.value = isEnd;
+  scrollStart.value = isStart;
 }
+
+onMounted(() => {
+  setTimeout(() => {
+    items.value = Array.from({ length: 30 }, () => {
+      const width = Math.floor(Math.random() * 300) + 200;
+      const height = Math.floor(Math.random() * 300) + 200;
+
+      return {
+        id: uuidv4(),
+        width,
+        height,
+        src: `https://picsum.photos/${width}/${height}?random=${uuidv4()}`,
+      };
+    })
+  }, 2000)
+})
 </script>
 
 <template>
@@ -57,6 +67,8 @@ const onScroll = (value, direction) => {
       <div class="flex gap-4 items-center">
         <p>Scroll position: {{ scrollPosition }}</p>
         <p>Scroll direction: {{ scrollDirection }}</p>
+        <p>Is end: {{ scrollEnd }}</p>
+        <p>Is start: {{ scrollStart }}</p>
 
         <input type="number" v-model="count" class="border-2 border-slate-200 rounded h-full px-2 w-20">
 
