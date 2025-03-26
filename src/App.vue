@@ -3,14 +3,17 @@ import InfiniteMasonry from "./InfiniteMasonry.vue";
 import {onMounted, ref} from "vue";
 import {v4 as uuidv4} from "uuid";
 
-const scrollPosition = ref(0);
-const scrollDirection = ref('down');
-const scrollEnd = ref(false);
-const scrollStart = ref(true);
+const scrollDetails = ref({
+  position: 0,
+  direction: 'down',
+  isEnd: false,
+  isStart: true,
+  hasShortColumn: false,
+});
 
 const items = ref([]);
 
-const count = ref(5);
+const count = ref(30);
 
 const updateItems = (action) => {
   if (action === 'add') {
@@ -30,12 +33,15 @@ const updateItems = (action) => {
   }
 }
 
-const onScroll = ({position, direction, isEnd, isStart}) => {
-  scrollPosition.value = position;
-  scrollDirection.value = direction;
-  scrollEnd.value = isEnd;
-  scrollStart.value = isStart;
+const onScroll = (attributes) => {
+  scrollDetails.value = attributes
+
+  if (autoLoad.value && attributes.isEnd) {
+    updateItems('add');
+  }
 }
+
+const autoLoad = ref(true);
 
 onMounted(() => {
   setTimeout(() => {
@@ -65,10 +71,8 @@ onMounted(() => {
       </p>
 
       <div class="flex gap-4 items-center">
-        <p>Scroll position: {{ scrollPosition }}</p>
-        <p>Scroll direction: {{ scrollDirection }}</p>
-        <p>Is end: {{ scrollEnd }}</p>
-        <p>Is start: {{ scrollStart }}</p>
+        <p>Scroll {{ scrollDetails }}</p>
+
 
         <input type="number" v-model="count" class="border-2 border-slate-200 rounded h-full px-2 w-20">
 
@@ -81,6 +85,11 @@ onMounted(() => {
         </button>
 
         <p>Total: {{ items.length }}</p>
+
+        <div>
+          <label>Auto load</label>
+          <input type="checkbox" v-model="autoLoad" class="border-2 border-slate-200 rounded h-full px-2 w-20">
+        </div>
       </div>
     </header>
 

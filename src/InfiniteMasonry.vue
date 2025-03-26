@@ -108,11 +108,15 @@ const onScroll = () => {
   const isEnd = scroll + viewHeight >= contentHeight - threshold;
   const isStart = scroll <= threshold;
 
+  const viewportBottom = scroll + viewHeight;
+  const hasShortColumn = internalColumnHeights.value.some(height => height < viewportBottom - 50);
+
   emit('scroll', {
     position: scroll,
     direction: scrollDirection.value,
     isEnd,
     isStart,
+    hasShortColumn
   });
 };
 
