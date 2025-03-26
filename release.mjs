@@ -108,6 +108,9 @@ await build()
 // write CNAME file to /dist containing vue-infinite-masonry.wyxos.com
 fs.writeFileSync("./dist/CNAME", "vue-infinite-masonry.wyxos.com");
 
+// execute  npx gh-pages -d dist
+execSyncOut("npx gh-pages -d dist");
+
 // Update the version
 execSyncOut(`npm version ${version} -m "${commitMessage}"`);
 
