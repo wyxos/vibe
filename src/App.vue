@@ -36,7 +36,7 @@ const updateItems = (action) => {
 const onScroll = (attributes) => {
   scrollDetails.value = attributes
 
-  if (autoLoad.value && attributes.isEnd) {
+  if (autoLoad.value && attributes.hasShortColumn) {
     updateItems('add');
   }
 }
