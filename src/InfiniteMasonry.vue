@@ -1,5 +1,5 @@
 <script setup>
-import {computed, onMounted, ref, watchEffect} from "vue";
+import {computed, onMounted, onUnmounted, ref, watchEffect} from "vue";
 
 const scrollPosition = ref(0);
 const scrollDirection = ref('down');
@@ -20,6 +20,8 @@ const props = defineProps({
   }
 })
 
+const columnsCount = ref(7);
+
 const internalColumnHeights = ref([]);
 
 const maximumHeight = computed(() => Math.max(...internalColumnHeights.value));
@@ -33,12 +35,12 @@ watchEffect(() => {
 
   const scrollbarWidth = getScrollbarWidth(); // ← add this
   const containerWidth = container.value.offsetWidth - scrollbarWidth;
-  const totalGutterX = (props.options.columns - 1) * props.options.gutterX;
-  const colWidth = Math.floor((containerWidth - totalGutterX) / props.options.columns);
-  const colHeights = Array(props.options.columns).fill(0);
+  const totalGutterX = (columnsCount.value - 1) * props.options.gutterX;
+  const colWidth = Math.floor((containerWidth - totalGutterX) / columnsCount.value);
+  const colHeights = Array(columnsCount.value).fill(0);
 
   layouts.value = props.items.map((item, index) => {
-    const columnIndex = index % props.options.columns;
+    const columnIndex = index % columnsCount.value;
     const scaledHeight = Math.round((item.height / item.width) * colWidth);
     const top = colHeights[columnIndex];
     const left = columnIndex * (colWidth + props.options.gutterX);
@@ -120,8 +122,61 @@ const onScroll = () => {
   });
 };
 
+const onResize = () => {
+  const scrollbarWidth = getScrollbarWidth();
+  const containerWidth = container.value.offsetWidth - scrollbarWidth;
+  columnsCount.value = 0;
+
+  const sizes = {
+    1: {
+      min: 0,
+      max: 400
+    },
+    2: {
+      min: 401,
+      max: 800
+    },
+    4: {
+      min: 801,
+      max: 1200
+    },
+    6: {
+      min: 1201,
+      max: 1600
+    },
+    8: {
+      min: 1601,
+      max: 2000
+    },
+    10: {
+      min: 2001,
+      max: 2400
+    },
+  }
+
+  // determine corresponding size matching current container width
+  for (const [columns, { min, max }] of Object.entries(sizes)) {
+    if (containerWidth >= min && containerWidth <= max) {
+      columnsCount.value = Number(columns);
+      break;
+    }
+  }
+};
+
+
 onMounted(() => {
   container.value.addEventListener('scroll', onScroll);
+
+
+  window.addEventListener('resize', onResize);
+})
+
+onUnmounted(() => {
+  if (container.value) {
+    container.value.removeEventListener('scroll', onScroll);
+  }
+
+  window.removeEventListener('resize', onResize);
 })
 </script>
 

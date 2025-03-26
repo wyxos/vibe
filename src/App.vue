@@ -70,7 +70,7 @@ onMounted(() => {
         💾 <a href="https://github.com/wyxos/vue-infinite-masonry" target="_blank" class="underline hover:text-black">Source on GitHub</a>
       </p>
 
-      <div class="flex gap-4 items-center">
+      <div class="flex flex-col md:flex-row gap-4 items-center">
         <p>Scroll {{ scrollDetails }}</p>
 
 
