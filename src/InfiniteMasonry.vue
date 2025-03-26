@@ -4,6 +4,35 @@ import {computed, onMounted, onUnmounted, ref, watchEffect} from "vue";
 const scrollPosition = ref(0);
 const scrollDirection = ref('down');
 
+const defaultOptions = {
+  sizes: {
+    1: { min: 0, max: 400 },
+    2: { min: 401, max: 800 },
+    4: { min: 801, max: 1200 },
+    6: { min: 1201, max: 1600 },
+    8: { min: 1601, max: 2000 },
+    10: { min: 2001, max: 2400 },
+  },
+  gutterX: 10,
+  gutterY: 10,
+  cellPadding: {
+    top:0,
+    bottom: 0,
+    left: 0,
+    right: 0
+  }
+};
+
+const mergedOptions = computed(() => ({
+  ...defaultOptions,
+  ...props.options,
+  sizes: {
+    ...defaultOptions.sizes,
+    ...(props.options?.sizes || {})
+  }
+}));
+
+
 const props = defineProps({
   items: {
     type: Array,
@@ -11,12 +40,7 @@ const props = defineProps({
   },
   options: {
     type: Object,
-    default: () => ({
-      columns: 7,
-      gutterX: 10,
-      gutterY: 10,
-
-    })
+    default: () => ({})
   }
 })
 
@@ -35,18 +59,20 @@ watchEffect(() => {
 
   const scrollbarWidth = getScrollbarWidth(); // ← add this
   const containerWidth = container.value.offsetWidth - scrollbarWidth;
-  const totalGutterX = (columnsCount.value - 1) * props.options.gutterX;
+  const totalGutterX = (columnsCount.value - 1) * mergedOptions.value.gutterX;
   const colWidth = Math.floor((containerWidth - totalGutterX) / columnsCount.value);
   const colHeights = Array(columnsCount.value).fill(0);
 
   layouts.value = props.items.map((item, index) => {
+
+
     const columnIndex = index % columnsCount.value;
     const scaledHeight = Math.round((item.height / item.width) * colWidth);
     const top = colHeights[columnIndex];
-    const left = columnIndex * (colWidth + props.options.gutterX);
+    const left = columnIndex * (colWidth + mergedOptions.value.gutterX);
 
     // update cumulative column height
-    colHeights[columnIndex] += scaledHeight + props.options.gutterY;
+    colHeights[columnIndex] += scaledHeight + mergedOptions.value.gutterY;
 
     return {
       ...item,
@@ -127,35 +153,8 @@ const onResize = () => {
   const containerWidth = container.value.offsetWidth - scrollbarWidth;
   columnsCount.value = 0;
 
-  const sizes = {
-    1: {
-      min: 0,
-      max: 400
-    },
-    2: {
-      min: 401,
-      max: 800
-    },
-    4: {
-      min: 801,
-      max: 1200
-    },
-    6: {
-      min: 1201,
-      max: 1600
-    },
-    8: {
-      min: 1601,
-      max: 2000
-    },
-    10: {
-      min: 2001,
-      max: 2400
-    },
-  }
-
   // determine corresponding size matching current container width
-  for (const [columns, { min, max }] of Object.entries(sizes)) {
+  for (const [columns, { min, max }] of Object.entries(mergedOptions.value.sizes)) {
     if (containerWidth >= min && containerWidth <= max) {
       columnsCount.value = Number(columns);
       break;
@@ -163,6 +162,14 @@ const onResize = () => {
   }
 };
 
+const getCellPosition = (item) => {
+  return {
+    top: item.top + 'px',
+    left: item.left + 'px',
+    width: item.width + 'px',
+    height: item.height + 'px'
+  }
+}
 
 onMounted(() => {
   onResize()
@@ -182,20 +189,17 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="container" class="masonry-container overflow-auto flex-1 w-full">
+  <div ref="container" class="overflow-auto flex-1 h-full w-full">
     <div :style="{ height: `${maximumHeight}px` }" class="relative w-full">
       <template v-for="item in visibleItems" :key="item.id">
-        <div
-            class="absolute bg-slate-200 rounded-lg shadow-lg"
-            :style="{
-      top: item.top + 'px',
-      left: item.left + 'px',
-      width: item.width + 'px',
-      height: item.height + 'px'
-    }"
-        >
-          <img :src="item.src" class="w-full h-auto" />
-        </div>
+        <slot name="cell" :item="item" :get-cell-position="getCellPosition">
+          <div
+              class="absolute bg-slate-200 rounded-lg shadow-lg"
+              :style="getCellPosition(item)"
+          >
+            <img :src="item.src" class="w-full h-auto" />
+          </div>
+        </slot>
       </template>
     </div>
   </div>
