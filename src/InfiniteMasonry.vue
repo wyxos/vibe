@@ -165,8 +165,9 @@ const onResize = () => {
 
 
 onMounted(() => {
-  container.value.addEventListener('scroll', onScroll);
+  onResize()
 
+  container.value.addEventListener('scroll', onScroll);
 
   window.addEventListener('resize', onResize);
 })
