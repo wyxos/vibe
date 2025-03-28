@@ -94,6 +94,6 @@ onMounted(() => {
     </header>
 
 
-    <infinite-masonry :items="items" @scroll="onScroll"></infinite-masonry>
+    <infinite-masonry :items="items" @scroll="onScroll" :options="{ gutterY: 50}"></infinite-masonry>
   </main>
 </template>
