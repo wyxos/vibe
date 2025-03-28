@@ -64,8 +64,6 @@ watchEffect(() => {
   const colHeights = Array(columnsCount.value).fill(0);
 
   layouts.value = props.items.map((item, index) => {
-
-
     const columnIndex = index % columnsCount.value;
     const scaledHeight = Math.round((item.height / item.width) * colWidth);
     const top = colHeights[columnIndex];
@@ -170,6 +168,19 @@ const getCellPosition = (item) => {
     height: item.height + 'px'
   }
 }
+
+const remove = (start, end) => {
+
+}
+
+const restore = (start, end, items) => {
+
+}
+
+defineExpose({
+  remove,
+  restore
+})
 
 onMounted(() => {
   onResize()

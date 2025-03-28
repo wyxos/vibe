@@ -15,6 +15,8 @@ const items = ref([]);
 
 const count = ref(30);
 
+const scroller = ref();
+
 const updateItems = (action) => {
   if (action === 'add') {
     items.value.push(...Array.from({ length: count.value }, () => {
@@ -28,6 +30,12 @@ const updateItems = (action) => {
         src: `https://picsum.photos/${width}/${height}?random=${uuidv4()}`,
       };
     }));
+
+
+    if(items.value.length > 30){
+      scroller.value.remove(0, 5)
+      console.log(scroller.value.remove)
+    }
   } else {
     items.value.splice(-count.value);
   }
@@ -94,6 +102,6 @@ onMounted(() => {
     </header>
 
 
-    <infinite-masonry :items="items" @scroll="onScroll" :options="{ gutterY: 50}"></infinite-masonry>
+    <infinite-masonry ref="scroller" :items="items" @scroll="onScroll" :options="{ gutterY: 50}"></infinite-masonry>
   </main>
 </template>
