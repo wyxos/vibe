@@ -1,7 +1,7 @@
 <script setup>
 import InfiniteMasonry from "./InfiniteMasonry.vue";
 import {onMounted, ref} from "vue";
-import {v4 as uuidv4} from "uuid";
+import pages from './pages.json'
 
 const scrollDetails = ref({
   position: 0,
@@ -17,24 +17,17 @@ const count = ref(30);
 
 const scroller = ref();
 
+const pageIndex = ref(0);
+
 const updateItems = (action) => {
   if (action === 'add') {
-    items.value.push(...Array.from({ length: count.value }, () => {
-      const width = Math.floor(Math.random() * 300) + 200;
-      const height = Math.floor(Math.random() * 300) + 200;
+    items.value.push(...pages[pageIndex.value]);
 
-      return {
-        id: uuidv4(),
-        width,
-        height,
-        src: `https://picsum.photos/${width}/${height}?random=${uuidv4()}`,
-      };
-    }));
+    pageIndex.value = pageIndex.value + 1;
 
 
     if(items.value.length > 30){
       scroller.value.remove(0, 5)
-      console.log(scroller.value.remove)
     }
   } else {
     items.value.splice(-count.value);
@@ -51,19 +44,11 @@ const onScroll = (attributes) => {
 
 const autoLoad = ref(true);
 
-onMounted(() => {
+onMounted(async () => {
   setTimeout(() => {
-    items.value = Array.from({ length: 30 }, () => {
-      const width = Math.floor(Math.random() * 300) + 200;
-      const height = Math.floor(Math.random() * 300) + 200;
+    items.value = pages[pageIndex.value]
 
-      return {
-        id: uuidv4(),
-        width,
-        height,
-        src: `https://picsum.photos/${width}/${height}?random=${uuidv4()}`,
-      };
-    })
+    pageIndex.value = pageIndex.value + 1;
   }, 2000)
 })
 </script>
@@ -83,14 +68,6 @@ onMounted(() => {
 
 
         <input type="number" v-model="count" class="border-2 border-slate-200 rounded h-full px-2 w-20">
-
-        <button @click="updateItems('add')" type="button" class="bg-blue-950 p-2 text-white rounded cursor-pointer min-w-30">
-          Add
-        </button>
-
-        <button @click="updateItems('remove')" type="button" class="bg-blue-950 p-2 text-white rounded cursor-pointer min-w-30">
-          Remove
-        </button>
 
         <p>Total: {{ items.length }}</p>
 
