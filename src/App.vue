@@ -1,5 +1,5 @@
 <script setup>
-import InfiniteMasonry from "./InfiniteMasonry.vue";
+import InfiniteMasonry from "./components/InfiniteMasonry.vue";
 import {onMounted, ref} from "vue";
 import pages from './pages.json'
 
