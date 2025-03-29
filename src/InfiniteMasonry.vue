@@ -6,17 +6,17 @@ const scrollDirection = ref('down');
 
 const defaultOptions = {
   sizes: {
-    1: { min: 0, max: 400 },
-    2: { min: 401, max: 800 },
-    4: { min: 801, max: 1200 },
-    6: { min: 1201, max: 1600 },
-    8: { min: 1601, max: 2000 },
-    10: { min: 2001, max: 2400 },
+    1: {min: 0, max: 400},
+    2: {min: 401, max: 800},
+    4: {min: 801, max: 1200},
+    6: {min: 1201, max: 1600},
+    8: {min: 1601, max: 2000},
+    10: {min: 2001, max: 2400},
   },
   gutterX: 10,
   gutterY: 10,
   cellPadding: {
-    top:0,
+    top: 0,
     bottom: 0,
     left: 0,
     right: 0
@@ -34,7 +34,7 @@ const mergedOptions = computed(() => ({
 
 
 const props = defineProps({
-  items: {
+  modelValue: {
     type: Array,
     required: true
   },
@@ -63,7 +63,8 @@ watchEffect(() => {
   const colWidth = Math.floor((containerWidth - totalGutterX) / columnsCount.value);
   const colHeights = Array(columnsCount.value).fill(0);
 
-  layouts.value = props.items.map((item, index) => {
+  const flatItems = props.modelValue.flatMap(p => p.items);
+  layouts.value = flatItems.map((item, index) => {
     const columnIndex = index % columnsCount.value;
     const scaledHeight = Math.round((item.height / item.width) * colWidth);
     const top = colHeights[columnIndex];
@@ -116,7 +117,7 @@ const getScrollbarWidth = () => {
   return scrollbarWidth;
 };
 
-const emit = defineEmits(['scroll']);
+const emit = defineEmits(['update:modelValue', 'scroll']);
 
 const onScroll = () => {
   const el = container.value;
@@ -152,7 +153,7 @@ const onResize = () => {
   columnsCount.value = 0;
 
   // determine corresponding size matching current container width
-  for (const [columns, { min, max }] of Object.entries(mergedOptions.value.sizes)) {
+  for (const [columns, {min, max}] of Object.entries(mergedOptions.value.sizes)) {
     if (containerWidth >= min && containerWidth <= max) {
       columnsCount.value = Number(columns);
       break;
@@ -169,11 +170,11 @@ const getCellPosition = (item) => {
   }
 }
 
-const remove = (start, end) => {
+const remove = () => {
 
 }
 
-const restore = (start, end, items) => {
+const restore = () => {
 
 }
 
@@ -208,7 +209,7 @@ onUnmounted(() => {
               class="absolute bg-slate-200 rounded-lg shadow-lg"
               :style="getCellPosition(item)"
           >
-            <img :src="item.src" class="w-full h-auto" />
+            <img :src="item.src" class="w-full h-auto"/>
           </div>
         </slot>
       </template>

@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 
 const outputPath = path.join(__dirname, 'src', 'pages.json');
 
-const totalPages = 10;
+const totalPages = 100;
 const itemsPerPage = 30;
 
 const generateRandomItem = (indexOffset) => {
@@ -31,7 +31,10 @@ for (let page = 0; page < totalPages; page++) {
         generateRandomItem(page * itemsPerPage + index)
     );
 
-    pages.push(pageItems);
+    pages.push({
+        page: page + 1,
+        items: pageItems,
+    });
 }
 
 await fs.mkdir(path.dirname(outputPath), { recursive: true });

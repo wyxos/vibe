@@ -19,25 +19,36 @@ const scroller = ref();
 
 const pageIndex = ref(0);
 
+const isLoading = ref(false);
+
 const updateItems = (action) => {
-  if (action === 'add') {
-    items.value.push(...pages[pageIndex.value]);
+  setTimeout(() => {
+    if (action === 'add') {
+      items.value.push(pages[pageIndex.value]);
 
-    pageIndex.value = pageIndex.value + 1;
+      pageIndex.value = pageIndex.value + 1;
 
+      console.log(pageIndex.value)
 
-    if(items.value.length > 30){
-      scroller.value.remove(0, 5)
+      if(items.value.length > 5){
+        scroller.value.remove()
+      }
+
+      isLoading.value = false;
+    } else {
+      items.value.splice(-count.value);
+
+      isLoading.value = false;
     }
-  } else {
-    items.value.splice(-count.value);
-  }
+  }, 200)
 }
 
 const onScroll = (attributes) => {
   scrollDetails.value = attributes
 
-  if (autoLoad.value && attributes.hasShortColumn) {
+  if (autoLoad.value && attributes.hasShortColumn && !isLoading.value) {
+    isLoading.value = true;
+
     updateItems('add');
   }
 }
@@ -46,7 +57,7 @@ const autoLoad = ref(true);
 
 onMounted(async () => {
   setTimeout(() => {
-    items.value = pages[pageIndex.value]
+    items.value = [pages[pageIndex.value]]
 
     pageIndex.value = pageIndex.value + 1;
   }, 2000)
@@ -66,19 +77,19 @@ onMounted(async () => {
       <div class="flex flex-col md:flex-row gap-4 items-center">
         <p>Scroll {{ scrollDetails }}</p>
 
+        <p>Page: {{ pageIndex }}</p>
 
-        <input type="number" v-model="count" class="border-2 border-slate-200 rounded h-full px-2 w-20">
+        <p>Pages in array {{ items.length }}</p>
 
-        <p>Total: {{ items.length }}</p>
-
-        <div>
-          <label>Auto load</label>
-          <input type="checkbox" v-model="autoLoad" class="border-2 border-slate-200 rounded h-full px-2 w-20">
-        </div>
       </div>
     </header>
 
 
-    <infinite-masonry ref="scroller" :items="items" @scroll="onScroll" :options="{ gutterY: 50}"></infinite-masonry>
+    <infinite-masonry
+        ref="scroller"
+        v-model="items"
+        @scroll="onScroll"
+        :options="{ gutterY: 50 }"
+    />
   </main>
 </template>
