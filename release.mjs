@@ -31,14 +31,6 @@ const release = async () => {
     }
 };
 
-// remove dist build, cross OS support
-function removeDist() {
-    const distPath = "./dist";
-    if (fs.existsSync(distPath)) {
-        fs.rmdirSync(distPath, {recursive: true});
-    }
-}
-
 async function lint() {
     // if script has lint
     if (packageJson.scripts.lint) {

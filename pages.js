@@ -12,7 +12,7 @@ const outputPath = path.join(__dirname, 'src', 'pages.json');
 const totalPages = 100;
 const itemsPerPage = 30;
 
-const generateRandomItem = (indexOffset) => {
+const generateRandomItem = (indexOffset, page, index) => {
     const width = Math.floor(Math.random() * 300) + 200;
     const height = Math.floor(Math.random() * 300) + 200;
 
@@ -20,6 +20,8 @@ const generateRandomItem = (indexOffset) => {
         id: uuidv4(),
         width,
         height,
+        page: page + 1,
+        index,
         src: `https://picsum.photos/id/${indexOffset}/${width}/${height}`,
     };
 };
@@ -28,7 +30,7 @@ const pages = [];
 
 for (let page = 0; page < totalPages; page++) {
     const pageItems = Array.from({ length: itemsPerPage }, (_, index) =>
-        generateRandomItem(page * itemsPerPage + index)
+        generateRandomItem(page * itemsPerPage + index, page, index)
     );
 
     pages.push({

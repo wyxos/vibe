@@ -1,17 +1,17 @@
 <script setup>
-import {computed, onMounted, onUnmounted, ref, watchEffect} from "vue";
+import {computed, nextTick, onMounted, onUnmounted, ref, watchEffect} from "vue";
 
 const scrollPosition = ref(0);
 const scrollDirection = ref('down');
 
 const defaultOptions = {
   sizes: {
-    1: {min: 0, max: 400},
-    2: {min: 401, max: 800},
-    4: {min: 801, max: 1200},
-    6: {min: 1201, max: 1600},
-    8: {min: 1601, max: 2000},
-    10: {min: 2001, max: 2400},
+    1: {min: 0,},
+    2: {min: 401,},
+    4: {min: 801,},
+    6: {min: 1201,},
+    8: {min: 1601,},
+    10: {min: 2001,},
   },
   gutterX: 10,
   gutterY: 10,
@@ -26,10 +26,7 @@ const defaultOptions = {
 const mergedOptions = computed(() => ({
   ...defaultOptions,
   ...props.options,
-  sizes: {
-    ...defaultOptions.sizes,
-    ...(props.options?.sizes || {})
-  }
+  sizes: props.options?.sizes ?? defaultOptions.sizes
 }));
 
 
@@ -152,11 +149,15 @@ const onResize = () => {
   const containerWidth = container.value.offsetWidth - scrollbarWidth;
   columnsCount.value = 0;
 
-  // determine corresponding size matching current container width
-  for (const [columns, {min, max}] of Object.entries(mergedOptions.value.sizes)) {
-    if (containerWidth >= min && containerWidth <= max) {
+  const sizes = mergedOptions.value.sizes;
+
+  const sortedSizes = Object.entries(sizes).sort(
+      (a, b) => a[1].min - b[1].min
+  );
+
+  for (const [columns, { min }] of sortedSizes) {
+    if (containerWidth >= min) {
       columnsCount.value = Number(columns);
-      break;
     }
   }
 };
@@ -183,13 +184,12 @@ defineExpose({
   restore
 })
 
-onMounted(() => {
-  onResize()
-
-  container.value.addEventListener('scroll', onScroll);
-
+onMounted(async () => {
+  await nextTick(); // wait for DOM to render and size
+  onResize(); // now has proper width
+  container.value?.addEventListener('scroll', onScroll);
   window.addEventListener('resize', onResize);
-})
+});
 
 onUnmounted(() => {
   if (container.value) {
