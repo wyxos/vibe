@@ -65,6 +65,40 @@ function add(){
   items.value = calculateLayout(items.value, container.value, columns.value, 10, 10)
 }
 
+function onEnter(el, done) {
+  // set top to data-top
+  const top = el.dataset.top
+  requestAnimationFrame(() => {
+    el.style.top = `${top}px`
+    done()
+  })
+}
+
+function onBeforeEnter(el) {
+  // set top to last item + 500
+  const lastItem = items.value[items.value.length - 1]
+  if (lastItem) {
+    const lastTop = lastItem.top + lastItem.columnHeight + 10
+    el.style.top = `${lastTop}px`
+  } else {
+    el.style.top = '0px'
+  }
+}
+
+function onBeforeLeave(el) {
+  // Ensure it's at its current position before animating
+  el.style.transition = 'none'
+  el.style.top = `${el.offsetTop}px`
+  void el.offsetWidth // force reflow to flush style
+  el.style.transition = '' // allow transition to apply again
+}
+
+function onLeave(el, done) {
+  el.style.top = '-300px'
+  el.style.opacity = '0'
+  el.addEventListener('transitionend', done)
+}
+
 </script>
 
 <template>
@@ -76,10 +110,14 @@ function add(){
     </div>
 
     <div class="relative flex-1 overflow-auto" ref="container">
-      <div v-for="item in items" :key="`${item.page}-${item.id}`" class="absolute transition-[top,left] duration-500 ease-in-out" :style="getItemStyle(item)">
-        <img :src="item.src" class="w-full"/>
-        <button class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer" @click="remove(item)">Remove</button>
-      </div>
+      <transition-group :css="false" @enter="onEnter" @before-enter="onBeforeEnter"
+                        @leave="onLeave"
+                        @before-leave="onBeforeLeave">
+        <div v-for="item in items" :key="`${item.page}-${item.id}`" class="bg-slate-200 absolute transition-[top,left,opacity] duration-500 ease-in-out" :style="getItemStyle(item)" :data-top="item.top">
+          <img :src="item.src" class="w-full"/>
+          <button class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer" @click="remove(item)">Remove</button>
+        </div>
+      </transition-group>
     </div>
     <button @click="loadNext()">
       Load next
