@@ -17,6 +17,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "lodash": "^4.17.21",
     "vue": "^3.0.0"
   },
   "peerDependencies": {

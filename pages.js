@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 const outputPath = path.join(__dirname, 'src', 'pages.json');
 
 const totalPages = 100;
-const itemsPerPage = 30;
+const itemsPerPage = 40;
 
 const generateRandomItem = (indexOffset, page, index) => {
     const width = Math.floor(Math.random() * 300) + 200;
