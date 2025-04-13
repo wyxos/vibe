@@ -1,5 +1,5 @@
 <script setup>
-import {computed, nextTick, onMounted, ref} from "vue";
+import {computed, nextTick, onMounted, onUnmounted, ref} from "vue";
 import calculateLayout from "./calculateLayout.js";
 import {debounce} from 'lodash'
 
@@ -16,6 +16,17 @@ const props = defineProps({
   items: {
     type: Array,
     default: () => []
+  },
+  sizes: {
+    type: Object,
+    default: () => ({
+      base: 1,       // mobile-first default
+      sm: 2,         // ≥ 640px
+      md: 3,         // ≥ 768px
+      lg: 4,         // ≥ 1024px
+      xl: 5,         // ≥ 1280px
+      '2xl': 6       // ≥ 1536px
+    })
   }
 })
 
@@ -37,19 +48,23 @@ const nextPage = ref(null)
 
 const isLoading = ref(false)
 
+const containerHeight = ref(0)
+
+const columnHeights = computed(() => {
+  const heights = new Array(columns.value).fill(0)
+  for (let i = 0; i < masonry.value.length; i++) {
+    const item = masonry.value[i]
+    const col = i % columns.value
+    heights[col] = Math.max(heights[col], item.top + item.columnHeight)
+  }
+  return heights
+})
+
 async function onScroll() {
   const {scrollTop, clientHeight} = container.value
   const visibleBottom = scrollTop + clientHeight
 
-  const columnHeights = new Array(columns.value).fill(0)
-
-  for (let i = 0; i < masonry.value.length; i++) {
-    const item = masonry.value[i]
-    const col = i % columns.value
-    columnHeights[col] = Math.max(columnHeights[col], item.top + item.columnHeight)
-  }
-
-  const whitespaceVisible = columnHeights.some(height => height + 200 < visibleBottom - 1)
+  const whitespaceVisible = columnHeights.value.some(height => height + 300 < visibleBottom - 1)
 
   if (whitespaceVisible && !isLoading.value) {
     isLoading.value = true
@@ -64,27 +79,11 @@ async function onScroll() {
       // find all item with this page
       const removedItems = masonry.value.filter(i => i.page !== page)
 
-      // calculate layout again
-      const content = calculateLayout(removedItems, container.value, columns.value, 10, 10);
-
-      // recalculate height
-      containerHeight.value = content.reduce((acc, item) => {
-        return Math.max(acc, item.top + item.columnHeight)
-      }, 0)
-
-      masonry.value = content
+      refreshLayout(removedItems)
 
       await nextTick()
 
-      // identify which column has lowest height
-      const columnHeights = new Array(columns.value).fill(0)
-      for (let i = 0; i < masonry.value.length; i++) {
-        const item = masonry.value[i]
-        const col = i % columns.value
-        columnHeights[col] = Math.max(columnHeights[col], item.top + item.columnHeight)
-      }
-
-      const lowestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights))
+      const lowestColumnIndex = columnHeights.value.indexOf(Math.min(...columnHeights.value))
 
       // find the last item in that column
       const lastItemInColumn = masonry.value.filter((_, index) => index % columns.value === lowestColumnIndex).pop()
@@ -109,7 +108,16 @@ async function onScroll() {
   }
 }
 
-const containerHeight = ref(0)
+function getColumnCount() {
+  const width = window.innerWidth
+
+  if (width >= 1536 && props.sizes['2xl']) return props.sizes['2xl']
+  if (width >= 1280 && props.sizes.xl) return props.sizes.xl
+  if (width >= 1024 && props.sizes.lg) return props.sizes.lg
+  if (width >= 768 && props.sizes.md) return props.sizes.md
+  if (width >= 640 && props.sizes.sm) return props.sizes.sm
+  return props.sizes.base
+}
 
 function calculateHeight(layout) {
   containerHeight.value = layout.reduce((acc, item) => {
@@ -117,27 +125,24 @@ function calculateHeight(layout) {
   }, 0)
 }
 
-onMounted(async () => {
-  currentPage.value = props.loadAtPage
-
-  const response = await props.getNextPage(currentPage.value)
-
-  const layout = calculateLayout(response.items, container.value, columns.value, 10, 10);
+function refreshLayout(items){
+  const layout = calculateLayout(items, container.value, columns.value, 10, 10);
 
   calculateHeight(layout)
 
   masonry.value = layout
+}
 
-  nextPage.value = response.nextPage
+async function getContent(page) {
+  const response = await props.getNextPage(page)
 
-  container.value?.addEventListener('scroll', debounce(onScroll, 200));
-})
+  refreshLayout([...masonry.value, ...response.items])
+
+  return response
+}
 
 async function loadNext() {
-  const response = await props.getNextPage(nextPage.value)
-  const layout = calculateLayout([...masonry.value, ...response.items], container.value, columns.value, 10, 10);
-  calculateHeight(layout)
-  masonry.value = layout
+  const response = await getContent(nextPage.value)
   currentPage.value = nextPage.value
   nextPage.value = response.nextPage
 }
@@ -184,7 +189,7 @@ function onBeforeLeave(el) {
 }
 
 function onLeave(el, done) {
-  el.style.top = '-300px'
+  el.style.top = '-600px'
   el.style.opacity = '0'
   el.addEventListener('transitionend', done)
 }
@@ -196,6 +201,31 @@ function itemAttributes(item) {
     'data-id': `${item.page}-${item.id}`,
   }
 }
+
+function onResize() {
+  columns.value = getColumnCount()
+  refreshLayout(masonry.value)
+}
+
+onMounted(async () => {
+  columns.value = getColumnCount()
+
+  currentPage.value = props.loadAtPage
+
+  const response = await getContent(currentPage.value)
+
+  nextPage.value = response.nextPage
+
+  container.value?.addEventListener('scroll', debounce(onScroll, 200));
+
+  window.addEventListener('resize', debounce(onResize, 200));
+})
+
+onUnmounted(() => {
+  container.value?.removeEventListener('scroll', debounce(onScroll, 200));
+
+  window.removeEventListener('resize', debounce(onResize, 200));
+})
 </script>
 
 <template>
@@ -207,8 +237,11 @@ function itemAttributes(item) {
         <div v-for="item in masonry" :key="`${item.page}-${item.id}`"
              class="bg-slate-200 absolute transition-[top,left,opacity] duration-500 ease-in-out"
              v-bind="itemAttributes(item)">
-          <slot name="item" :item="item" :on-remove="onRemove">
+          <slot name="item" v-bind="{item, onRemove}">
             <img :src="item.src" class="w-full"/>
+            <button class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer" @click="onRemove(item)">
+              <i class="fas fa-trash"></i>
+            </button>
           </slot>
         </div>
       </transition-group>
