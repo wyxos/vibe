@@ -1,4 +1,4 @@
-export default function calculateLayout(items, container, columnCount, gutterX = 0, gutterY = 0) {
+export default function calculateLayout(items, container, columnCount, gutterX = 0, gutterY = 0, header = 0, footer = 0) {
     const scrollbarWidth = container.offsetWidth - container.clientWidth;
     const usableWidth = container.offsetWidth - scrollbarWidth;
     const totalGutterX = gutterX * (columnCount - 1);
