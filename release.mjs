@@ -4,9 +4,9 @@ import {execSync} from "child_process";
 import simpleGit from "simple-git";
 import fs from "fs";
 
-const commitFiles = async () => {
+const commitFiles = async (message) => {
     await git.add(".");
-    await git.commit(commitMessage);
+    await git.commit(message);
 };
 
 const pushChanges = async () => {
@@ -18,7 +18,7 @@ const pushChanges = async () => {
 
 const release = async () => {
     try {
-        await commitFiles();
+        await commitFiles('chore: release');
         await pushChanges();
         console.log(chalk.green(`Successfully released version ${version}`));
         console.log(chalk.green("Publishing to npm..."));
@@ -99,6 +99,8 @@ await build()
 
 // write CNAME file to /dist containing vue-infinite-masonry.wyxos.com
 fs.writeFileSync("./dist/CNAME", "vue-infinite-masonry.wyxos.com");
+
+await commitFiles(`chore: add CNAME file`);
 
 // execute  npx gh-pages -d dist
 execSyncOut("npx gh-pages -d dist");
