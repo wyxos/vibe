@@ -1,28 +1,29 @@
-# 🧱 Vue Infinite Masonry
+# 🔷 VIBE — Vue Infinite Block Engine
 
-[![npm](https://img.shields.io/npm/v/@wyxos/vue-infinite-masonry?color=%2300c58e&label=npm)](https://www.npmjs.com/package/@wyxos/vue-infinite-masonry)
+[![npm](https://img.shields.io/npm/v/@wyxos/vibe?color=%2300c58e&label=npm)](https://www.npmjs.com/package/@wyxos/vibe)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Demo](https://img.shields.io/badge/Demo-Live%20Preview-blue?logo=githubpages)](https://wyxos.github.io/vue-infinite-masonry/)
+[![Demo](https://img.shields.io/badge/Demo-Live%20Preview-blue?logo=githubpages)](https://wyxos.github.io/vibe/)
 
-A lightweight, high-performance, virtualized infinite masonry layout component built with Vue 3 and Tailwind CSS (v4 ready).  
-Efficiently handles large datasets with smooth scroll performance and responsive column layout.
+A responsive, dynamic, infinite-scroll masonry layout engine for Vue 3.  
+Built for performance, flexibility, and pixel-perfect layout control.
 
 ---
 
-## ✨ Features
+## ✅ Features
 
-- 📐 Responsive columns with configurable gutters
-- ♾️ Virtual scrolling for performance (renders only visible items)
-- 🚀 Lightweight and fast — no dependencies
-- 🎨 Tailwind v4 compatible (but not required)
-- 🔌 Works with any content — just pass your own array of items
+- Responsive masonry layout that adapts to screen size
+- Automatically loads more items as you scroll
+- Supports removing and reflowing items with animation
+- Keeps scroll position stable after layout updates
+- Fully customizable item rendering
+- Optimized for large datasets
 
 ---
 
 ## 📦 Installation
 
 ```bash
-npm install @wyxos/vue-infinite-masonry
+npm install @wyxos/vibe
 ```
 
 ---
@@ -31,67 +32,93 @@ npm install @wyxos/vue-infinite-masonry
 
 ```vue
 <script setup>
-import InfiniteMasonry from '@wyxos/vue-infinite-masonry';
-import { ref } from 'vue';
+import Vibe from '@wyxos/vibe'
+import { ref } from 'vue'
+import fixture from './pages.json'
 
-const items = ref([
-  { id: 1, width: 300, height: 250, src: '...' },
-  { id: 2, width: 250, height: 400, src: '...' },
-  // more items
-]);
+const items = ref([])
 
-const onScroll = (scrollTop, direction) => {
-  console.log('Scroll:', scrollTop, direction);
-};
+const getNextPage = async (page) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        items: fixture[page - 1].items,
+        nextPage: page + 1
+      })
+    }, 1000)
+  })
+}
 </script>
 
 <template>
-  <InfiniteMasonry
-    :items="items"
-    :options="{ columns: 5, gutterX: 16, gutterY: 16 }"
-    @scroll="onScroll"
-  />
+  <Vibe v-model:items="items" :get-next-page="getNextPage">
+    <template #item="{ item, onRemove }">
+      <img :src="item.src" class="w-full" />
+      <button
+        class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer"
+        @click="onRemove(item)"
+      >
+        <i class="fas fa-trash"></i>
+      </button>
+    </template>
+  </Vibe>
 </template>
 ```
 
 ---
 
-## 🔧 Props
+## ⚙️ Props
 
-| Prop       | Type     | Required | Description                                   |
-|------------|----------|----------|-----------------------------------------------|
-| `items`    | `Array`  | ✅        | Array of items (must include width + height)  |
-| `options`  | `Object` | ❌        | Layout config (`columns`, `gutterX`, `gutterY`) |
+| Prop         | Type     | Required | Description                                                                 |
+|--------------|----------|----------|-----------------------------------------------------------------------------|
+| `items`      | `Array`  | ✅        | Two-way bound item array (each item must include `width`, `height`, `id`) |
+| `getNextPage`| `Function(page: Number)` | ✅ | Async function to load the next page — returns `{ items, nextPage }`       |
+| `loadAtPage` | `Number` | ❌        | Starting page number (default: `1`)                                        |
+| `sizes`      | `Object` | ❌        | Mobile-first column config (default: Tailwind-style breakpoints)          |
+| `gutterX`    | `Number` | ❌        | Horizontal gutter between items (default: `10`)                            |
+| `gutterY`    | `Number` | ❌        | Vertical gutter between items (default: `10`)                              |
+
+### `sizes` example:
+```js
+{
+  base: 1,
+  sm: 2,
+  md: 3,
+  lg: 4,
+  xl: 5,
+  '2xl': 6
+}
+```
 
 ---
 
-## 📤 Emits
+## 💡 Slots
 
-| Event     | Payload                          | Description                    |
-|-----------|----------------------------------|--------------------------------|
-| `scroll`  | `(scrollTop, direction)`         | Emits on scroll position change |
+| Slot Name | Props                          | Description                       |
+|-----------|--------------------------------|-----------------------------------|
+| `item`    | `{ item, onRemove }`           | Custom rendering for each block   |
 
 ---
 
-## 🧪 Run the Demo Locally
+## 🧪 Run Locally
 
 ```bash
-git clone https://github.com/wyxos/vue-infinite-masonry
-cd vue-infinite-masonry
+git clone https://github.com/wyxos/vibe
+cd vibe
 npm install
 npm run dev
 ```
 
-Then open [`http://localhost:5173`](http://localhost:5173) in your browser.
+Visit [`http://localhost:5173`](http://localhost:5173)
 
 ---
 
 ## 🌐 Live Demo
 
-👉 [View Demo on GitHub Pages](https://wyxos.github.io/vue-infinite-masonry/)
+👉 [View Demo on GitHub Pages](https://wyxos.github.io/vibe/)
 
 ---
 
 ## 📄 License
 
-MIT © [@wyxos](./LICENSE)
+MIT © [@wyxos](https://github.com/wyxos)

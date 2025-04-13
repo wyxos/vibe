@@ -27,6 +27,14 @@ const props = defineProps({
       xl: 5,         // ≥ 1280px
       '2xl': 6       // ≥ 1536px
     })
+  },
+  gutterX: {
+    type: Number,
+    default: 10
+  },
+  gutterY: {
+    type: Number,
+    default: 10
   }
 })
 
@@ -126,7 +134,7 @@ function calculateHeight(layout) {
 }
 
 function refreshLayout(items){
-  const layout = calculateLayout(items, container.value, columns.value, 10, 10);
+  const layout = calculateLayout(items, container.value, columns.value, props.gutterX, props.gutterY);
 
   calculateHeight(layout)
 
@@ -157,7 +165,7 @@ const getItemStyle = (item) => {
 }
 
 function onRemove(item) {
-  masonry.value = calculateLayout(masonry.value.filter(i => i.id !== item.id), container.value, columns.value, 10, 10)
+  refreshLayout(masonry.value.filter(i => i.id !== item.id))
 }
 
 function onEnter(el, done) {
@@ -208,6 +216,8 @@ function onResize() {
 }
 
 onMounted(async () => {
+  isLoading.value = true
+
   columns.value = getColumnCount()
 
   currentPage.value = props.loadAtPage
@@ -215,6 +225,8 @@ onMounted(async () => {
   const response = await getContent(currentPage.value)
 
   nextPage.value = response.nextPage
+
+  isLoading.value = false
 
   container.value?.addEventListener('scroll', debounce(onScroll, 200));
 
