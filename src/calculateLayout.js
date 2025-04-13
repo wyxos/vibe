@@ -1,5 +1,31 @@
+function getScrollbarWidth() {
+    // Create a temporary div
+    const div = document.createElement('div')
+    div.style.visibility = 'hidden'
+    div.style.overflow = 'scroll' // force scrollbar
+    div.style.msOverflowStyle = 'scrollbar' // for IE
+    div.style.width = '100px'
+    div.style.height = '100px'
+
+    // Append to body
+    document.body.appendChild(div)
+
+    // Create inner div and measure difference
+    const inner = document.createElement('div')
+    inner.style.width = '100%'
+    div.appendChild(inner)
+
+    const scrollbarWidth = div.offsetWidth - inner.offsetWidth
+
+    // Clean up
+    document.body.removeChild(div)
+
+    return scrollbarWidth
+}
+
 export default function calculateLayout(items, container, columnCount, gutterX = 0, gutterY = 0, header = 0, footer = 0) {
-    const scrollbarWidth = container.offsetWidth - container.clientWidth;
+    const measuredScrollbarWidth = container.offsetWidth - container.clientWidth;
+    const scrollbarWidth = measuredScrollbarWidth > 0 ? measuredScrollbarWidth + 2 : getScrollbarWidth() + 2;
     const usableWidth = container.offsetWidth - scrollbarWidth;
     const totalGutterX = gutterX * (columnCount - 1);
     const columnWidth = Math.floor((usableWidth - totalGutterX) / columnCount);

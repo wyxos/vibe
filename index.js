@@ -1,4 +1,4 @@
-import InfiniteMasonry from './src/components/InfiniteMasonry.vue';
+import InfiniteMasonry from './src/archive/InfiniteMasonry.vue';
 
 export default {
     install(app) {
