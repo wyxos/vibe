@@ -88,7 +88,9 @@ async function onScroll() {
 
   const whitespaceVisible = columnHeights.value.some(height => height + 300 < visibleBottom - 1)
 
-  if (whitespaceVisible && !isLoading.value) {
+  const reachedContainerBottom = scrollTop + clientHeight >= containerHeight.value - 1
+
+  if ((whitespaceVisible || reachedContainerBottom) && !isLoading.value) {
     isLoading.value = true
 
     if (paginationHistory.value.length > 3) {
