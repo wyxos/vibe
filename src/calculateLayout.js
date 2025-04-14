@@ -23,10 +23,19 @@ function getScrollbarWidth() {
     return scrollbarWidth
 }
 
-export default function calculateLayout(items, container, columnCount, gutterX = 0, gutterY = 0, header = 0, footer = 0) {
+export default function calculateLayout(items, container, columnCount, options = {}) {
+    const {
+        gutterX = 0,
+        gutterY = 0,
+        header = 0,
+        footer = 0,
+        paddingLeft = 0,
+        paddingRight = 0
+    } = options;
+
     const measuredScrollbarWidth = container.offsetWidth - container.clientWidth;
     const scrollbarWidth = measuredScrollbarWidth > 0 ? measuredScrollbarWidth + 2 : getScrollbarWidth() + 2;
-    const usableWidth = container.offsetWidth - scrollbarWidth;
+    const usableWidth = container.offsetWidth - scrollbarWidth - paddingLeft - paddingRight;
     const totalGutterX = gutterX * (columnCount - 1);
     const columnWidth = Math.floor((usableWidth - totalGutterX) / columnCount);
 
@@ -44,7 +53,7 @@ export default function calculateLayout(items, container, columnCount, gutterX =
         newItem.columnWidth = columnWidth;
         newItem.left = col * (columnWidth + gutterX);
         newItem.columnHeight = Math.round((columnWidth * originalHeight) / originalWidth);
-        newItem.top = columnHeights[col];
+        newItem.top = columnHeights[col] + header + footer;
 
         columnHeights[col] += newItem.columnHeight + gutterY;
 

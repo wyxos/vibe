@@ -5,8 +5,9 @@ import fixture from "./pages.json";
 
 const items = ref([])
 
+const masonry = ref(null)
+
 const getPage = async (index) => {
-  console.log('index', index)
   return new Promise((resolve) => {
     setTimeout(() => {
       let output = {
@@ -14,7 +15,6 @@ const getPage = async (index) => {
         nextPage: index + 1
       };
 
-      console.log('output', output)
       resolve(output)
     }, 1000)
   })
@@ -30,8 +30,12 @@ const getPage = async (index) => {
         🚀 Built by <a href="https://wyxos.com" target="_blank" class="underline hover:text-black">wyxos.com</a> •
         💾 <a href="https://github.com/wyxos/vibe" target="_blank" class="underline hover:text-black">Source on GitHub</a>
       </p>
+
+      <div v-if="masonry">
+        <p>Loading: <span class="bg-blue-500 text-white p-2 rounded">{{ masonry.isLoading }}</span></p>
+      </div>
     </header>
-    <masonry v-model:items="items" :get-next-page="getPage">
+    <masonry v-model:items="items" :get-next-page="getPage" ref="masonry">
       <template #item="{item, onRemove}">
         <img :src="item.src" class="w-full"/>
         <button class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer" @click="onRemove(item)">

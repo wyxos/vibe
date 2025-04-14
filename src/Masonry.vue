@@ -35,7 +35,23 @@ const props = defineProps({
   gutterY: {
     type: Number,
     default: 10
-  }
+  },
+  header: {
+    type: Number,
+    default: 0
+  },
+  footer: {
+    type: Number,
+    default: 0
+  },
+  paddingLeft: {
+    type: Number,
+    default: 0
+  },
+  paddingRight: {
+    type: Number,
+    default: 0
+  },
 })
 
 const emits = defineEmits(['update:items'])
@@ -44,7 +60,6 @@ const masonry = computed({
   get: () => props.items,
   set: (val) => emits('update:items', val)
 })
-
 
 const columns = ref(7)
 
@@ -66,6 +81,13 @@ const columnHeights = computed(() => {
     heights[col] = Math.max(heights[col], item.top + item.columnHeight)
   }
   return heights
+})
+
+defineExpose({
+  isLoading,
+  refreshLayout,
+  containerHeight,
+  onRemove,
 })
 
 async function onScroll() {
@@ -95,7 +117,7 @@ async function onScroll() {
 
       // find the last item in that column
       const lastItemInColumn = masonry.value.filter((_, index) => index % columns.value === lowestColumnIndex).pop()
-      const lastItemInColumnTop = lastItemInColumn.top
+      const lastItemInColumnTop = lastItemInColumn.top + lastItemInColumn.columnHeight
       const lastItemInColumnBottom = lastItemInColumnTop + lastItemInColumn.columnHeight
       const containerTop = container.value.scrollTop
       const containerBottom = containerTop + container.value.clientHeight
@@ -133,8 +155,15 @@ function calculateHeight(layout) {
   }, 0)
 }
 
-function refreshLayout(items){
-  const layout = calculateLayout(items, container.value, columns.value, props.gutterX, props.gutterY);
+function refreshLayout(items) {
+  const layout = calculateLayout(items, container.value, columns.value, {
+    gutterX: props.gutterX,
+    gutterY: props.gutterY,
+    header: props.header,
+    footer: props.footer,
+    paddingLeft: props.paddingLeft,
+    paddingRight: props.paddingRight,
+  });
 
   calculateHeight(layout)
 
@@ -251,7 +280,8 @@ onUnmounted(() => {
              v-bind="itemAttributes(item)">
           <slot name="item" v-bind="{item, onRemove}">
             <img :src="item.src" class="w-full"/>
-            <button class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer" @click="onRemove(item)">
+            <button class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer"
+                    @click="onRemove(item)">
               <i class="fas fa-trash"></i>
             </button>
           </slot>

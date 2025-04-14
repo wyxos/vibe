@@ -33,8 +33,6 @@
 
 <!--      pageIndex.value = pageIndex.value + 1;-->
 
-<!--      console.log(pageIndex.value)-->
-
 <!--      await nextTick()-->
 
 <!--      isLoading.value = false;-->
