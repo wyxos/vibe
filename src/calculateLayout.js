@@ -30,7 +30,15 @@ export default function calculateLayout(items, container, columnCount, options =
         header = 0,
         footer = 0,
         paddingLeft = 0,
-        paddingRight = 0
+        paddingRight = 0,
+        sizes = {
+            base: 1,       // mobile-first default
+            sm: 2,         // ≥ 640px
+            md: 3,         // ≥ 768px
+            lg: 4,         // ≥ 1024px
+            xl: 5,         // ≥ 1280px
+            '2xl': 6       // ≥ 1536px
+        }
     } = options;
 
     const measuredScrollbarWidth = container.offsetWidth - container.clientWidth;

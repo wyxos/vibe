@@ -17,41 +17,30 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
-  sizes: {
+  layout: {
     type: Object,
     default: () => ({
-      base: 1,       // mobile-first default
-      sm: 2,         // ≥ 640px
-      md: 3,         // ≥ 768px
-      lg: 4,         // ≥ 1024px
-      xl: 5,         // ≥ 1280px
-      '2xl': 6       // ≥ 1536px
+      sizes: {
+        base: 1,       // mobile-first default
+        sm: 2,         // ≥ 640px
+        md: 3,         // ≥ 768px
+        lg: 4,         // ≥ 1024px
+        xl: 5,         // ≥ 1280px
+        '2xl': 6       // ≥ 1536px
+      },
+      gutterX: 10,
+      gutterY: 10,
+      header: 0,
+      footer: 0,
+      paddingLeft: 0,
+      paddingRight: 0
     })
   },
-  gutterX: {
-    type: Number,
-    default: 10
-  },
-  gutterY: {
-    type: Number,
-    default: 10
-  },
-  header: {
-    type: Number,
-    default: 0
-  },
-  footer: {
-    type: Number,
-    default: 0
-  },
-  paddingLeft: {
-    type: Number,
-    default: 0
-  },
-  paddingRight: {
-    type: Number,
-    default: 0
-  },
+  paginationType: {
+    type: String,
+    default: 'page', // or 'cursor'
+    validator: v => ['page', 'cursor'].includes(v)
+  }
 })
 
 const emits = defineEmits(['update:items'])
@@ -65,7 +54,7 @@ const columns = ref(7)
 
 const container = ref(null)
 
-const currentPage = ref(null)
+const paginationHistory = ref([])
 
 const nextPage = ref(null)
 
@@ -99,7 +88,7 @@ async function onScroll() {
   if (whitespaceVisible && !isLoading.value) {
     isLoading.value = true
 
-    if (currentPage.value > 3) {
+    if (paginationHistory.value > 3) {
       // get first item
       const firstItem = masonry.value[0]
 
@@ -141,12 +130,21 @@ async function onScroll() {
 function getColumnCount() {
   const width = window.innerWidth
 
-  if (width >= 1536 && props.sizes['2xl']) return props.sizes['2xl']
-  if (width >= 1280 && props.sizes.xl) return props.sizes.xl
-  if (width >= 1024 && props.sizes.lg) return props.sizes.lg
-  if (width >= 768 && props.sizes.md) return props.sizes.md
-  if (width >= 640 && props.sizes.sm) return props.sizes.sm
-  return props.sizes.base
+  const sizes = props.layout.sizes || {
+    base: 1,       // mobile-first default
+    sm: 2,         // ≥ 640px
+    md: 3,         // ≥ 768px
+    lg: 4,         // ≥ 1024px
+    xl: 5,         // ≥ 1280px
+    '2xl': 6       // ≥ 1536px
+  }
+
+  if (width >= 1536 && sizes['2xl']) return sizes['2xl']
+  if (width >= 1280 && sizes.xl) return sizes.xl
+  if (width >= 1024 && sizes.lg) return sizes.lg
+  if (width >= 768 && sizes.md) return sizes.md
+  if (width >= 640 && sizes.sm) return sizes.sm
+  return sizes.base
 }
 
 function calculateHeight(layout) {
@@ -156,14 +154,7 @@ function calculateHeight(layout) {
 }
 
 function refreshLayout(items) {
-  const layout = calculateLayout(items, container.value, columns.value, {
-    gutterX: props.gutterX,
-    gutterY: props.gutterY,
-    header: props.header,
-    footer: props.footer,
-    paddingLeft: props.paddingLeft,
-    paddingRight: props.paddingRight,
-  });
+  const layout = calculateLayout(items, container.value, columns.value, props.layout);
 
   calculateHeight(layout)
 
@@ -179,9 +170,8 @@ async function getContent(page) {
 }
 
 async function loadNext() {
-  const response = await getContent(nextPage.value)
-  currentPage.value = nextPage.value
-  nextPage.value = response.nextPage
+  const response = await getContent(paginationHistory.value[paginationHistory.value.length - 1])
+  paginationHistory.value.push(response.nextPage)
 }
 
 const getItemStyle = (item) => {
@@ -249,11 +239,11 @@ onMounted(async () => {
 
   columns.value = getColumnCount()
 
-  currentPage.value = props.loadAtPage
+  paginationHistory.value = [props.loadAtPage]
 
-  const response = await getContent(currentPage.value)
+  const response = await getContent(paginationHistory.value[0])
 
-  nextPage.value = response.nextPage
+  paginationHistory.value.push(response.nextPage)
 
   isLoading.value = false
 
