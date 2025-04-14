@@ -1,7 +1,7 @@
 <script setup>
 import {computed, nextTick, onMounted, onUnmounted, ref} from "vue";
 import calculateLayout from "./calculateLayout.js";
-import {debounce} from 'lodash'
+import { debounce } from 'lodash-es'
 
 const props = defineProps({
   getNextPage: {
