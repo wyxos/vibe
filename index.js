@@ -1,9 +1,10 @@
-import InfiniteMasonry from './src/archive/InfiniteMasonry.vue';
+import Masonry from './src/Masonry.vue';
 
 export default {
     install(app) {
-        app.component('InfiniteMasonry', InfiniteMasonry);
+        app.component('WyxosMasonry', Masonry);
+        app.component('WMasonry', Masonry);
     }
 };
 
-export { InfiniteMasonry };
+export { Masonry };

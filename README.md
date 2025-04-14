@@ -32,36 +32,42 @@ npm install @wyxos/vibe
 
 ```vue
 <script setup>
-import Vibe from '@wyxos/vibe'
-import { ref } from 'vue'
-import fixture from './pages.json'
+  import { ref } from 'vue'
+  import { Masonry } from '@wyxos/vibe' // named export
+  // or if globally registered via `app.use()`, you can skip this import
 
-const items = ref([])
+  const items = ref([])
 
-const getNextPage = async (page) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        items: fixture[page - 1].items,
-        nextPage: page + 1
-      })
-    }, 1000)
-  })
-}
+  async function getNextPage(page) {
+    const response = await fetch(`/api/items?page=${page}`)
+    const data = await response.json()
+    return {
+      items: data.items,
+      nextPage: page + 1
+    }
+  }
 </script>
 
 <template>
-  <Vibe v-model:items="items" :get-next-page="getNextPage">
+  <WyxosMasonry
+      v-model:items="items"
+      :get-next-page="getNextPage"
+      :gutter-x="12"
+      :gutter-y="12"
+      :sizes="{ base: 1, sm: 2, md: 3, lg: 4 }"
+  >
     <template #item="{ item, onRemove }">
-      <img :src="item.src" class="w-full" />
-      <button
-        class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer"
-        @click="onRemove(item)"
-      >
-        <i class="fas fa-trash"></i>
-      </button>
+      <div class="relative">
+        <img :src="item.src" class="w-full" />
+        <button
+            class="absolute bottom-2 right-2 bg-red-600 text-white text-xs p-1 rounded"
+            @click="onRemove(item)"
+        >
+          Remove
+        </button>
+      </div>
     </template>
-  </Vibe>
+  </WyxosMasonry>
 </template>
 ```
 
