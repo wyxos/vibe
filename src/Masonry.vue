@@ -18,23 +18,7 @@ const props = defineProps({
     default: () => []
   },
   layout: {
-    type: Object,
-    default: () => ({
-      sizes: {
-        base: 1,       // mobile-first default
-        sm: 2,         // ≥ 640px
-        md: 3,         // ≥ 768px
-        lg: 4,         // ≥ 1024px
-        xl: 5,         // ≥ 1280px
-        '2xl': 6       // ≥ 1536px
-      },
-      gutterX: 10,
-      gutterY: 10,
-      header: 0,
-      footer: 0,
-      paddingLeft: 0,
-      paddingRight: 0
-    })
+    type: Object
   },
   paginationType: {
     type: String,
@@ -42,6 +26,25 @@ const props = defineProps({
     validator: v => ['page', 'cursor'].includes(v)
   }
 })
+
+const defaultLayout = {
+  sizes: { base: 1, sm: 2, md: 3, lg: 4, xl: 5, '2xl': 6 },
+  gutterX: 10,
+  gutterY: 10,
+  header: 0,
+  footer: 0,
+  paddingLeft: 0,
+  paddingRight: 0
+}
+
+const layout = computed(() => ({
+  ...defaultLayout,
+  ...props.layout,
+  sizes: {
+    ...defaultLayout.sizes,
+    ...(props.layout?.sizes || {})
+  }
+}))
 
 const emits = defineEmits(['update:items'])
 
@@ -130,14 +133,7 @@ async function onScroll() {
 function getColumnCount() {
   const width = window.innerWidth
 
-  const sizes = props.layout.sizes || {
-    base: 1,       // mobile-first default
-    sm: 2,         // ≥ 640px
-    md: 3,         // ≥ 768px
-    lg: 4,         // ≥ 1024px
-    xl: 5,         // ≥ 1280px
-    '2xl': 6       // ≥ 1536px
-  }
+  const sizes = layout.value.sizes
 
   if (width >= 1536 && sizes['2xl']) return sizes['2xl']
   if (width >= 1280 && sizes.xl) return sizes.xl
@@ -147,18 +143,18 @@ function getColumnCount() {
   return sizes.base
 }
 
-function calculateHeight(layout) {
-  containerHeight.value = layout.reduce((acc, item) => {
+function calculateHeight(content) {
+  containerHeight.value = content.reduce((acc, item) => {
     return Math.max(acc, item.top + item.columnHeight)
   }, 0)
 }
 
 function refreshLayout(items) {
-  const layout = calculateLayout(items, container.value, columns.value, props.layout);
+  const content = calculateLayout(items, container.value, columns.value, layout.value);
 
-  calculateHeight(layout)
+  calculateHeight(content)
 
-  masonry.value = layout
+  masonry.value = content
 }
 
 async function getContent(page) {
