@@ -7,12 +7,12 @@ const items = ref([])
 
 const masonry = ref(null)
 
-const getPage = async (index) => {
+const getPage = async (page) => {
   return new Promise((resolve) => {
     setTimeout(() => {
       let output = {
-        items: fixture[index - 1].items,
-        nextPage: index + 1
+        items: fixture[page - 1].items,
+        nextPage: page + 1
       };
 
       resolve(output)

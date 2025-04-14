@@ -91,7 +91,7 @@ async function onScroll() {
   if (whitespaceVisible && !isLoading.value) {
     isLoading.value = true
 
-    if (paginationHistory.value > 3) {
+    if (paginationHistory.value.length > 3) {
       // get first item
       const firstItem = masonry.value[0]
 
