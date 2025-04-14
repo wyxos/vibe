@@ -98,7 +98,7 @@ await lint();
 await build()
 
 // write CNAME file to /dist containing vue-infinite-masonry.wyxos.com
-fs.writeFileSync("./dist/CNAME", "vue-infinite-masonry.wyxos.com");
+fs.writeFileSync("./dist/CNAME", "vibe.wyxos.com");
 
 await commitFiles(`chore: add CNAME file`);
 
