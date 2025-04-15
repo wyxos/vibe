@@ -264,7 +264,7 @@ onUnmounted(() => {
                         @leave="onLeave"
                         @before-leave="onBeforeLeave">
         <div v-for="item in masonry" :key="`${item.page}-${item.id}`"
-             class="bg-slate-200 absolute transition-[top,left,opacity] duration-500 ease-in-out"
+             class="absolute transition-[top,left,opacity] duration-500 ease-in-out"
              v-bind="itemAttributes(item)">
           <slot name="item" v-bind="{item, onRemove}">
             <img :src="item.src" class="w-full"/>
