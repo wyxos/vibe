@@ -35,7 +35,7 @@ const getPage = async (page) => {
         <p>Loading: <span class="bg-blue-500 text-white p-2 rounded">{{ masonry.isLoading }}</span></p>
       </div>
     </header>
-    <masonry v-model:items="items" :get-next-page="getPage" ref="masonry">
+    <masonry class="bg-blue-500 " v-model:items="items" :get-next-page="getPage" ref="masonry">
       <template #item="{item, onRemove}">
         <img :src="item.src" class="w-full"/>
         <button class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer" @click="onRemove(item)">

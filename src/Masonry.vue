@@ -258,7 +258,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="overflow-auto bg-blue-500 w-full flex-1" ref="container">
+  <div class="overflow-auto w-full flex-1" ref="container">
     <div class="relative" :style="{height: `${containerHeight}px`}">
       <transition-group :css="false" @enter="onEnter" @before-enter="onBeforeEnter"
                         @leave="onLeave"
