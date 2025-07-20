@@ -13,12 +13,13 @@ describe('calculateLayout', () => {
         const gutterX = 10
         const gutterY = 10
 
-        const scrollbarWidth = mockContainer.offsetWidth - mockContainer.clientWidth
+        const measuredScrollbarWidth = mockContainer.offsetWidth - mockContainer.clientWidth
+        const scrollbarWidth = measuredScrollbarWidth > 0 ? measuredScrollbarWidth + 2 : measuredScrollbarWidth + 2
         const usableWidth = mockContainer.offsetWidth - scrollbarWidth
         const totalGutterX = gutterX * (columnCount - 1)
         const expectedColumnWidth = Math.floor((usableWidth - totalGutterX) / columnCount)
 
-        const result = calculateLayout(items, mockContainer, columnCount, gutterX, gutterY)
+        const result = calculateLayout(items, mockContainer, columnCount, { gutterX, gutterY })
 
         expect(result.length).toBe(3)
 
@@ -35,7 +36,7 @@ describe('calculateLayout', () => {
 
         // Test top stacking logic: second item in same column should be placed below with gutter
         const secondBatch = fixture[0].items.slice(0, 6)
-        const stacked = calculateLayout(secondBatch, mockContainer, columnCount, gutterX, gutterY)
+        const stacked = calculateLayout(secondBatch, mockContainer, columnCount, { gutterX, gutterY })
         for (let col = 0; col < columnCount; col++) {
             const colItems = stacked.filter((_, i) => i % columnCount === col)
             for (let j = 1; j < colItems.length; j++) {
