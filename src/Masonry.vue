@@ -10,8 +10,8 @@ const props = defineProps({
     }
   },
   loadAtPage: {
-    type: Number,
-    default: 1
+    type: [Number, String],
+    default: null
   },
   items: {
     type: Array,
@@ -237,7 +237,9 @@ onMounted(async () => {
 
   columns.value = getColumnCount()
 
-  paginationHistory.value = [props.loadAtPage]
+  // For cursor-based pagination, loadAtPage can be null for the first request
+  const initialPage = props.loadAtPage
+  paginationHistory.value = [initialPage]
 
   const response = await getContent(paginationHistory.value[0])
 
