@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import calculateLayout from './calculateLayout'
-import fixture from './pages.json'
+import calculateLayout from '../src/calculateLayout'
+import fixture from '../src/pages.json'
 
 describe('calculateLayout', () => {
     it('should calculate correct layout positions for known inputs', () => {

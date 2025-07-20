@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import Masonry from './Masonry.vue'
+import Masonry from '../src/Masonry.vue'
 
 // Mock lodash-es debounce to avoid timing issues in tests
 vi.mock('lodash-es', () => ({
