@@ -84,6 +84,7 @@ defineExpose({
   refreshLayout,
   containerHeight,
   onRemove,
+  loadNext
 })
 
 async function onScroll() {
