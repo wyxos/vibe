@@ -24,6 +24,10 @@ const props = defineProps({
     type: String,
     default: 'page', // or 'cursor'
     validator: v => ['page', 'cursor'].includes(v)
+  },
+  skipInitialLoad: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -241,9 +245,15 @@ onMounted(async () => {
   const initialPage = props.loadAtPage
   paginationHistory.value = [initialPage]
 
-  const response = await getContent(paginationHistory.value[0])
-
-  paginationHistory.value.push(response.nextPage)
+  // Skip initial load if skipInitialLoad prop is true
+  if (!props.skipInitialLoad) {
+    const response = await getContent(paginationHistory.value[0])
+    paginationHistory.value.push(response.nextPage)
+  } else {
+    await nextTick()
+    // Just refresh the layout with any existing items
+    refreshLayout(masonry.value)
+  }
 
   isLoading.value = false
 
