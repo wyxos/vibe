@@ -126,4 +126,50 @@ describe('Masonry.vue', () => {
     expect(wrapper.exists()).toBe(true)
     expect(wrapper.props('items')).toEqual(initialItems)
   })
+
+  it('should mount without errors and handle lifecycle correctly', async () => {
+    // Mock DOM element methods that the component uses
+    const mockContainer = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      offsetWidth: 1000,
+      clientWidth: 980,
+      scrollTop: 0,
+      clientHeight: 600
+    }
+
+    const wrapper = mount(Masonry, {
+      props: {
+        getNextPage: mockGetNextPage,
+        items: [],
+        loadAtPage: 1
+      },
+      global: {
+        stubs: {
+          'transition-group': {
+            template: '<div><slot /></div>'
+          }
+        }
+      }
+    })
+
+    // Verify the component mounted successfully
+    expect(wrapper.exists()).toBe(true)
+    
+    // Verify ref is available
+    const vm = wrapper.vm
+    expect(vm.$refs).toBeDefined()
+    
+    // Verify initial state
+    expect(typeof vm.isLoading).toBe('boolean')
+    expect(typeof vm.containerHeight).toBe('number')
+    
+    // Verify exposed methods exist
+    expect(typeof vm.refreshLayout).toBe('function')
+    expect(typeof vm.onRemove).toBe('function')
+
+    // Component should handle being mounted without throwing errors
+    await wrapper.vm.$nextTick()
+    expect(wrapper.exists()).toBe(true)
+  })
 })
