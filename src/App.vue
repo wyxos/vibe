@@ -10,9 +10,21 @@ const masonry = ref(null)
 const getPage = async (page) => {
   return new Promise((resolve) => {
     setTimeout(() => {
+      // Check if the page exists in the fixture
+      const pageData = fixture[page - 1];
+
+      if (!pageData) {
+        // Return empty items if page doesn't exist
+        resolve({
+          items: [],
+          nextPage: null // null indicates no more pages
+        });
+        return;
+      }
+
       let output = {
-        items: fixture[page - 1].items,
-        nextPage: page + 1
+        items: pageData.items,
+        nextPage: page < fixture.length ? page + 1 : null
       };
 
       resolve(output)
@@ -35,7 +47,7 @@ const getPage = async (page) => {
         <p>Loading: <span class="bg-blue-500 text-white p-2 rounded">{{ masonry.isLoading }}</span></p>
       </div>
     </header>
-    <masonry class="bg-blue-500 " v-model:items="items" :get-next-page="getPage" ref="masonry">
+    <masonry class="bg-blue-500 " v-model:items="items" :get-next-page="getPage" :load-at-page="1" ref="masonry">
       <template #item="{item, onRemove}">
         <img :src="item.src" class="w-full"/>
         <button class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer" @click="onRemove(item)">
