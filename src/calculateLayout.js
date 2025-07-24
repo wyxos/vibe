@@ -56,11 +56,12 @@ export default function calculateLayout(items, container, columnCount, options =
 
         const col = index % columnCount;
         const originalWidth = item.width;
-        const originalHeight = item.height + footer + header;
+        const originalHeight = item.height;
 
         newItem.columnWidth = columnWidth;
         newItem.left = col * (columnWidth + gutterX);
-        newItem.columnHeight = Math.round((columnWidth * originalHeight) / originalWidth);
+        newItem.imageHeight = Math.round((columnWidth * originalHeight) / originalWidth);
+        newItem.columnHeight = newItem.imageHeight + footer + header;
         newItem.top = columnHeights[col];
 
         columnHeights[col] += newItem.columnHeight + gutterY;
