@@ -99,14 +99,31 @@ async function onScroll() {
     isLoading.value = true
 
     if (paginationHistory.value.length > 3) {
-      // get first item
+      // get first item - only proceed if it exists
       const firstItem = masonry.value[0]
+      
+      if (!firstItem) {
+        // Skip removal logic if there are no items
+        await loadNext()
+        await nextTick()
+        isLoading.value = false
+        return
+      }
 
       // get page number
       const page = firstItem.page
 
       // find all item with this page
       const removedItems = masonry.value.filter(i => i.page !== page)
+      
+      // Only proceed with removal if there are actually items to remove
+      if (removedItems.length === masonry.value.length) {
+        // All items belong to the same page, skip removal logic
+        await loadNext()
+        await nextTick()
+        isLoading.value = false
+        return
+      }
 
       refreshLayout(removedItems)
 
@@ -116,16 +133,20 @@ async function onScroll() {
 
       // find the last item in that column
       const lastItemInColumn = masonry.value.filter((_, index) => index % columns.value === lowestColumnIndex).pop()
-      const lastItemInColumnTop = lastItemInColumn.top + lastItemInColumn.columnHeight
-      const lastItemInColumnBottom = lastItemInColumnTop + lastItemInColumn.columnHeight
-      const containerTop = container.value.scrollTop
-      const containerBottom = containerTop + container.value.clientHeight
-      const itemInView = lastItemInColumnTop >= containerTop && lastItemInColumnBottom <= containerBottom
-      if (!itemInView) {
-        container.value.scrollTo({
-          top: lastItemInColumnTop - 10,
-          behavior: 'smooth'
-        })
+      
+      // Only proceed with scroll adjustment if we have a valid item
+      if (lastItemInColumn) {
+        const lastItemInColumnTop = lastItemInColumn.top + lastItemInColumn.columnHeight
+        const lastItemInColumnBottom = lastItemInColumnTop + lastItemInColumn.columnHeight
+        const containerTop = container.value.scrollTop
+        const containerBottom = containerTop + container.value.clientHeight
+        const itemInView = lastItemInColumnTop >= containerTop && lastItemInColumnBottom <= containerBottom
+        if (!itemInView) {
+          container.value.scrollTo({
+            top: lastItemInColumnTop - 10,
+            behavior: 'smooth'
+          })
+        }
       }
     }
 
