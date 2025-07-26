@@ -28,6 +28,10 @@ const props = defineProps({
   skipInitialLoad: {
     type: Boolean,
     default: false
+  },
+  maxItems: {
+    type: Number,
+    default: 100
   }
 })
 
@@ -98,7 +102,7 @@ async function onScroll() {
   if ((whitespaceVisible || reachedContainerBottom) && !isLoading.value) {
     isLoading.value = true
 
-    if (paginationHistory.value.length > 3) {
+    if (masonry.value.length > props.maxItems) {
       // get first item - only proceed if it exists
       const firstItem = masonry.value[0]
       
