@@ -129,14 +129,38 @@ async function getContent(page) {
 }
 
 async function loadPage(page) {
-  const response = await getContent(page)
-  paginationHistory.value.push(response.nextPage)
-  return response
+  if (isLoading.value) return // Prevent concurrent loading
+  
+  isLoading.value = true
+  
+  try {
+    const response = await getContent(page)
+    paginationHistory.value.push(response.nextPage)
+    return response
+  } catch (error) {
+    console.error('Error loading page:', error)
+    throw error
+  } finally {
+    isLoading.value = false
+  }
 }
 
 async function loadNext() {
-  const currentPage = paginationHistory.value[paginationHistory.value.length - 1]
-  return await loadPage(currentPage)
+  if (isLoading.value) return // Prevent concurrent loading
+  
+  isLoading.value = true
+  
+  try {
+    const currentPage = paginationHistory.value[paginationHistory.value.length - 1]
+    const response = await getContent(currentPage)
+    paginationHistory.value.push(response.nextPage)
+    return response
+  } catch (error) {
+    console.error('Error loading next page:', error)
+    throw error
+  } finally {
+    isLoading.value = false
+  }
 }
 
 function onRemove(item) {
@@ -149,24 +173,24 @@ function onResize() {
 }
 
 onMounted(async () => {
-  isLoading.value = true
+  try {
+    columns.value = getColumnCount(layout.value)
 
-  columns.value = getColumnCount(layout.value)
+    // For cursor-based pagination, loadAtPage can be null for the first request
+    const initialPage = props.loadAtPage
+    paginationHistory.value = [initialPage]
 
-  // For cursor-based pagination, loadAtPage can be null for the first request
-  const initialPage = props.loadAtPage
-  paginationHistory.value = [initialPage]
-
-  // Skip initial load if skipInitialLoad prop is true
-  if (!props.skipInitialLoad) {
-    await loadPage(paginationHistory.value[0])
-  } else {
-    await nextTick()
-    // Just refresh the layout with any existing items
-    refreshLayout(masonry.value)
+    // Skip initial load if skipInitialLoad prop is true
+    if (!props.skipInitialLoad) {
+      await loadPage(paginationHistory.value[0]) // loadPage manages its own loading state
+    } else {
+      await nextTick()
+      // Just refresh the layout with any existing items
+      refreshLayout(masonry.value)
+    }
+  } catch (error) {
+    console.error('Error during component initialization:', error)
   }
-
-  isLoading.value = false
 
   container.value?.addEventListener('scroll', debounce(handleScroll, 200));
 

@@ -24,16 +24,17 @@ export function useMasonryScroll({
     const reachedContainerBottom = scrollTop + clientHeight >= containerHeight.value - 1
 
     if ((whitespaceVisible || reachedContainerBottom) && !isLoading.value) {
-      isLoading.value = true
+      try {
+        // Handle cleanup when too many items
+        if (masonry.value.length > maxItems) {
+          await handleItemCleanup(columnHeights)
+        }
 
-      // Handle cleanup when too many items
-      if (masonry.value.length > maxItems) {
-        await handleItemCleanup(columnHeights)
+        await loadNext() // loadNext manages its own loading state
+        await nextTick()
+      } catch (error) {
+        console.error('Error in scroll handler:', error)
       }
-
-      await loadNext()
-      await nextTick()
-      isLoading.value = false
     }
   }
 
@@ -41,9 +42,7 @@ export function useMasonryScroll({
     const firstItem = masonry.value[0]
     
     if (!firstItem) {
-      await loadNext()
-      await nextTick()
-      isLoading.value = false
+      // Don't set isLoading here - let main handleScroll manage it
       return
     }
 
@@ -51,9 +50,7 @@ export function useMasonryScroll({
     const removedItems = masonry.value.filter(i => i.page !== page)
     
     if (removedItems.length === masonry.value.length) {
-      await loadNext()
-      await nextTick()
-      isLoading.value = false
+      // Don't set isLoading here - let main handleScroll manage it  
       return
     }
 
