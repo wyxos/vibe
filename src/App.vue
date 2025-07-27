@@ -43,8 +43,9 @@ const getPage = async (page) => {
         💾 <a href="https://github.com/wyxos/vibe" target="_blank" class="underline hover:text-black">Source on GitHub</a>
       </p>
 
-      <div v-if="masonry">
+      <div v-if="masonry" class="flex gap-4">
         <p>Loading: <span class="bg-blue-500 text-white p-2 rounded">{{ masonry.isLoading }}</span></p>
+        <p>Showing: <span class="bg-blue-500 text-white p-2 rounded">{{ items.length }}</span></p>
       </div>
     </header>
     <masonry class="bg-blue-500 " v-model:items="items" :get-next-page="getPage" :load-at-page="1" ref="masonry">
