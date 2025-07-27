@@ -88,7 +88,8 @@ defineExpose({
   refreshLayout,
   containerHeight,
   onRemove,
-  loadNext
+  loadNext,
+  loadPage
 })
 
 async function onScroll() {
@@ -197,9 +198,15 @@ async function getContent(page) {
   return response
 }
 
-async function loadNext() {
-  const response = await getContent(paginationHistory.value[paginationHistory.value.length - 1])
+async function loadPage(page) {
+  const response = await getContent(page)
   paginationHistory.value.push(response.nextPage)
+  return response
+}
+
+async function loadNext() {
+  const currentPage = paginationHistory.value[paginationHistory.value.length - 1]
+  return await loadPage(currentPage)
 }
 
 const getItemStyle = (item) => {
@@ -273,8 +280,7 @@ onMounted(async () => {
 
   // Skip initial load if skipInitialLoad prop is true
   if (!props.skipInitialLoad) {
-    const response = await getContent(paginationHistory.value[0])
-    paginationHistory.value.push(response.nextPage)
+    await loadPage(paginationHistory.value[0])
   } else {
     await nextTick()
     // Just refresh the layout with any existing items
