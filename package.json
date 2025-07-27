@@ -1,6 +1,6 @@
 {
   "name": "@wyxos/vibe",
-  "version": "1.2.15",
+  "version": "1.2.16",
   "main": "index.js",
   "module": "index.js",
   "type": "module",
