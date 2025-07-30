@@ -11,6 +11,7 @@ export function useMasonryScroll({
   containerHeight,
   isLoading,
   maxItems,
+  pageSize,
   refreshLayout,
   loadNext
 }) {
@@ -39,22 +40,47 @@ export function useMasonryScroll({
   }
 
   async function handleItemCleanup(columnHeights) {
-    const firstItem = masonry.value[0]
-    
-    if (!firstItem) {
-      // Don't set isLoading here - let main handleScroll manage it
+    if (!masonry.value.length) {
       return
     }
 
-    const page = firstItem.page
-    const removedItems = masonry.value.filter(i => i.page !== page)
+    // Group items by page to understand page structure
+    const pageGroups = masonry.value.reduce((acc, item) => {
+      if (!acc[item.page]) {
+        acc[item.page] = []
+      }
+      acc[item.page].push(item)
+      return acc
+    }, {})
+
+    const pages = Object.keys(pageGroups).sort((a, b) => parseInt(a) - parseInt(b))
     
-    if (removedItems.length === masonry.value.length) {
-      // Don't set isLoading here - let main handleScroll manage it  
+    if (pages.length === 0) {
       return
     }
 
-    refreshLayout(removedItems)
+    let totalRemovedItems = 0
+    let pagesToRemove = []
+    
+    // Remove pages cumulatively until we reach at least pageSize items
+    for (const page of pages) {
+      pagesToRemove.push(page)
+      totalRemovedItems += pageGroups[page].length
+      
+      if (totalRemovedItems >= pageSize) {
+        break
+      }
+    }
+
+    // Filter out items from pages to be removed
+    const remainingItems = masonry.value.filter(item => !pagesToRemove.includes(item.page.toString()))
+    
+    if (remainingItems.length === masonry.value.length) {
+      // No items were removed, nothing to do
+      return
+    }
+
+    refreshLayout(remainingItems)
     await nextTick()
     
     await adjustScrollPosition(columnHeights)

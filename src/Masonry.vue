@@ -40,6 +40,10 @@ const props = defineProps({
   maxItems: {
     type: Number,
     default: 100
+  },
+  pageSize: {
+    type: Number,
+    default: 40
   }
 })
 
@@ -116,6 +120,7 @@ const { handleScroll } = useMasonryScroll({
   containerHeight,
   isLoading,
   maxItems: props.maxItems,
+  pageSize: props.pageSize,
   refreshLayout,
   loadNext
 })
