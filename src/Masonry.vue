@@ -81,9 +81,30 @@ const isLoading = ref(false)
 
 const containerHeight = ref(0)
 
-const columnHeights = computed(() => {
-  return calculateColumnHeights(masonry.value, columns.value)
+// Scroll progress tracking
+const scrollProgress = ref({
+  distanceToTrigger: 0,
+  isNearTrigger: false
 })
+
+const updateScrollProgress = () => {
+  if (!container.value) return
+  
+  const { scrollTop, clientHeight } = container.value
+  const visibleBottom = scrollTop + clientHeight
+  
+  const columnHeights = calculateColumnHeights(masonry.value, columns.value)
+  const shortestColumn = Math.min(...columnHeights)
+  const triggerPoint = shortestColumn - 300 // Same threshold as in scroll handler
+  
+  const distanceToTrigger = Math.max(0, triggerPoint - visibleBottom)
+  const isNearTrigger = distanceToTrigger <= 100
+  
+  scrollProgress.value = {
+    distanceToTrigger: Math.round(distanceToTrigger),
+    isNearTrigger
+  }
+}
 
 // Setup composables
 const { onEnter, onBeforeEnter, onBeforeLeave, onLeave } = useMasonryTransitions(masonry)
@@ -172,6 +193,14 @@ function onResize() {
   refreshLayout(masonry.value)
 }
 
+// Create debounced functions with stable references
+const debouncedScrollHandler = debounce(() => {
+  handleScroll()
+  updateScrollProgress()
+}, 200)
+
+const debouncedResizeHandler = debounce(onResize, 200)
+
 onMounted(async () => {
   try {
     columns.value = getColumnCount(layout.value)
@@ -188,19 +217,20 @@ onMounted(async () => {
       // Just refresh the layout with any existing items
       refreshLayout(masonry.value)
     }
+    
+    updateScrollProgress()
+    
   } catch (error) {
     console.error('Error during component initialization:', error)
   }
 
-  container.value?.addEventListener('scroll', debounce(handleScroll, 200));
-
-  window.addEventListener('resize', debounce(onResize, 200));
+  container.value?.addEventListener('scroll', debouncedScrollHandler)
+  window.addEventListener('resize', debouncedResizeHandler)
 })
 
 onUnmounted(() => {
-  container.value?.removeEventListener('scroll', debounce(handleScroll, 200));
-
-  window.removeEventListener('resize', debounce(onResize, 200));
+  container.value?.removeEventListener('scroll', debouncedScrollHandler)
+  window.removeEventListener('resize', debouncedResizeHandler)
 })
 </script>
 
@@ -222,6 +252,15 @@ onUnmounted(() => {
           </slot>
         </div>
       </transition-group>
+      
+      <!-- Scroll Progress Badge -->
+      <div v-if="containerHeight > 0" 
+           class="fixed bottom-4 right-4 bg-gray-800 text-white text-xs rounded-full px-3 py-1.5 shadow-lg z-10 transition-opacity duration-300"
+           :class="{'opacity-50 hover:opacity-100': !scrollProgress.isNearTrigger, 'opacity-100': scrollProgress.isNearTrigger}">
+        <span>{{ masonry.length }} items</span>
+        <span class="mx-2">|</span>
+        <span>{{ scrollProgress.distanceToTrigger }}px to load</span>
+      </div>
     </div>
   </div>
 </template>
