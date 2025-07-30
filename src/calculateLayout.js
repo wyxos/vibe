@@ -32,12 +32,12 @@ export default function calculateLayout(items, container, columnCount, options =
         paddingLeft = 0,
         paddingRight = 0,
         sizes = {
-            base: 1,       // mobile-first default
-            sm: 2,         // ≥ 640px
-            md: 3,         // ≥ 768px
-            lg: 4,         // ≥ 1024px
-            xl: 5,         // ≥ 1280px
-            '2xl': 6       // ≥ 1536px
+            base: 1,
+            sm: 2,
+            md: 3,
+            lg: 4,
+            xl: 5,
+            '2xl': 6
         }
     } = options;
 
@@ -54,17 +54,19 @@ export default function calculateLayout(items, container, columnCount, options =
         const item = items[index];
         const newItem = { ...item };
 
-        const col = index % columnCount;
+        // Find the shortest column
+        const shortestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights));
+        
         const originalWidth = item.width;
         const originalHeight = item.height;
 
         newItem.columnWidth = columnWidth;
-        newItem.left = col * (columnWidth + gutterX);
+        newItem.left = shortestColumnIndex * (columnWidth + gutterX);
         newItem.imageHeight = Math.round((columnWidth * originalHeight) / originalWidth);
         newItem.columnHeight = newItem.imageHeight + footer + header;
-        newItem.top = columnHeights[col];
+        newItem.top = columnHeights[shortestColumnIndex];
 
-        columnHeights[col] += newItem.columnHeight + gutterY;
+        columnHeights[shortestColumnIndex] += newItem.columnHeight + gutterY;
 
         processedItems.push(newItem);
     }
