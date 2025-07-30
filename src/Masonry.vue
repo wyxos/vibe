@@ -131,7 +131,8 @@ defineExpose({
   containerHeight,
   onRemove,
   loadNext,
-  loadPage
+  loadPage,
+  reset
 })
 
 function calculateHeight(content) {
@@ -196,6 +197,31 @@ function onRemove(item) {
 function onResize() {
   columns.value = getColumnCount(layout.value)
   refreshLayout(masonry.value)
+}
+
+function reset() {
+  // Scroll back to top first (while items still exist to scroll through)
+  if (container.value) {
+    container.value.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    })
+  }
+  
+  // Clear all items
+  masonry.value = []
+  
+  // Reset container height
+  containerHeight.value = 0
+  
+  // Reset pagination history to initial state
+  paginationHistory.value = [props.loadAtPage]
+  
+  // Reset scroll progress
+  scrollProgress.value = {
+    distanceToTrigger: 0,
+    isNearTrigger: false
+  }
 }
 
 // Create debounced functions with stable references
