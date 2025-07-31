@@ -15,10 +15,6 @@ export function useMasonryScroll({
   refreshLayout,
   loadNext
 }) {
-  // Animation promise tracking
-  let animationPromise = null
-  let animationPromiseResolve = null
-
   async function handleScroll() {
     const { scrollTop, clientHeight } = container.value
     const visibleBottom = scrollTop + clientHeight
@@ -34,10 +30,6 @@ export function useMasonryScroll({
           await handleItemCleanup(columnHeights)
         }
 
-        // Wait for animation completion before loading next
-        if (animationPromise) {
-          await animationPromise
-        }
 
         await loadNext() // loadNext manages its own loading state
         await nextTick()
@@ -95,19 +87,6 @@ export function useMasonryScroll({
 
     refreshLayout(remainingItems)
     
-    // Create a new promise for animation completion
-    animationPromise = new Promise(resolve => {
-      animationPromiseResolve = resolve
-    })
-
-    // Resolve promise after the animation duration (matches CSS transition duration)
-    setTimeout(() => {
-      if (animationPromiseResolve) {
-        animationPromiseResolve()
-        animationPromise = null
-        animationPromiseResolve = null
-      }
-    }, 500) // Match the 500ms duration from the CSS transition
 
     await nextTick()
 
