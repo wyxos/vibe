@@ -15,7 +15,10 @@ export function useMasonryScroll({
   refreshLayout,
   loadNext
 }) {
-  
+  // Animation promise tracking
+  let animationPromise = null
+  let animationPromiseResolve = null
+
   async function handleScroll() {
     const { scrollTop, clientHeight } = container.value
     const visibleBottom = scrollTop + clientHeight
@@ -31,6 +34,11 @@ export function useMasonryScroll({
           await handleItemCleanup(columnHeights)
         }
 
+        // Wait for animation completion before loading next
+        if (animationPromise) {
+          await animationPromise
+        }
+
         await loadNext() // loadNext manages its own loading state
         await nextTick()
       } catch (error) {
@@ -44,6 +52,11 @@ export function useMasonryScroll({
       return
     }
 
+    if(masonry.value.length <= pageSize) {
+        // If we have fewer items than pageSize, no cleanup needed
+        return
+    }
+
     // Group items by page to understand page structure
     const pageGroups = masonry.value.reduce((acc, item) => {
       if (!acc[item.page]) {
@@ -54,19 +67,19 @@ export function useMasonryScroll({
     }, {})
 
     const pages = Object.keys(pageGroups).sort((a, b) => parseInt(a) - parseInt(b))
-    
+
     if (pages.length === 0) {
       return
     }
 
     let totalRemovedItems = 0
     let pagesToRemove = []
-    
+
     // Remove pages cumulatively until we reach at least pageSize items
     for (const page of pages) {
       pagesToRemove.push(page)
       totalRemovedItems += pageGroups[page].length
-      
+
       if (totalRemovedItems >= pageSize) {
         break
       }
@@ -74,29 +87,44 @@ export function useMasonryScroll({
 
     // Filter out items from pages to be removed
     const remainingItems = masonry.value.filter(item => !pagesToRemove.includes(item.page.toString()))
-    
+
     if (remainingItems.length === masonry.value.length) {
       // No items were removed, nothing to do
       return
     }
 
     refreshLayout(remainingItems)
-    await nextTick()
     
+    // Create a new promise for animation completion
+    animationPromise = new Promise(resolve => {
+      animationPromiseResolve = resolve
+    })
+
+    // Resolve promise after the animation duration (matches CSS transition duration)
+    setTimeout(() => {
+      if (animationPromiseResolve) {
+        animationPromiseResolve()
+        animationPromise = null
+        animationPromiseResolve = null
+      }
+    }, 500) // Match the 500ms duration from the CSS transition
+
+    await nextTick()
+
     await adjustScrollPosition(columnHeights)
   }
 
   async function adjustScrollPosition(columnHeights) {
     const lowestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights))
     const lastItemInColumn = masonry.value.filter((_, index) => index % columns.value === lowestColumnIndex).pop()
-    
+
     if (lastItemInColumn) {
       const lastItemInColumnTop = lastItemInColumn.top + lastItemInColumn.columnHeight
       const lastItemInColumnBottom = lastItemInColumnTop + lastItemInColumn.columnHeight
       const containerTop = container.value.scrollTop
       const containerBottom = containerTop + container.value.clientHeight
       const itemInView = lastItemInColumnTop >= containerTop && lastItemInColumnBottom <= containerBottom
-      
+
       if (!itemInView) {
         container.value.scrollTo({
           top: lastItemInColumnTop - 10,
