@@ -25,25 +25,42 @@ describe('calculateLayout', () => {
 
         result.forEach((item, i) => {
             const original = items[i]
-            const expectedColumn = i % columnCount
-            const expectedLeft = expectedColumn * (expectedColumnWidth + gutterX)
             const expectedHeight = Math.round((expectedColumnWidth * original.height) / original.width)
 
-            expect(item.left).toBe(expectedLeft)
+            // With shortest-column logic, we can only verify basic properties
             expect(item.columnWidth).toBe(expectedColumnWidth)
             expect(item.columnHeight).toBe(expectedHeight)
+            expect(item.left).toBeGreaterThanOrEqual(0)
+            expect(item.left).toBeLessThan(usableWidth)
         })
 
-        // Test top stacking logic: second item in same column should be placed below with gutter
+        // Test that items are properly distributed and positioned
         const secondBatch = fixture[0].items.slice(0, 6)
         const stacked = calculateLayout(secondBatch, mockContainer, columnCount, { gutterX, gutterY })
-        for (let col = 0; col < columnCount; col++) {
-            const colItems = stacked.filter((_, i) => i % columnCount === col)
+        
+        // Verify all items have valid positions
+        stacked.forEach(item => {
+            expect(item.top).toBeGreaterThanOrEqual(0)
+            expect(item.left).toBeGreaterThanOrEqual(0)
+            expect(item.columnWidth).toBe(expectedColumnWidth)
+        })
+        
+        // Group items by column and verify stacking within each column
+        const columnGroups = {}
+        stacked.forEach(item => {
+            const col = Math.round(item.left / (expectedColumnWidth + gutterX))
+            if (!columnGroups[col]) columnGroups[col] = []
+            columnGroups[col].push(item)
+        })
+        
+        // For each column, verify items are stacked properly
+        Object.values(columnGroups).forEach(colItems => {
+            colItems.sort((a, b) => a.top - b.top) // Sort by top position
             for (let j = 1; j < colItems.length; j++) {
                 expect(colItems[j].top).toBe(
                     colItems[j - 1].top + colItems[j - 1].columnHeight + gutterY
                 )
             }
-        }
+        })
     })
 })

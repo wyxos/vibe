@@ -54,7 +54,8 @@ export default function calculateLayout(items, container, columnCount, options =
         const item = items[index];
         const newItem = { ...item };
 
-        const col = index % columnCount;
+        // Find the column with the shortest height for proper masonry layout
+        const col = columnHeights.indexOf(Math.min(...columnHeights));
         const originalWidth = item.width;
         const originalHeight = item.height;
 
