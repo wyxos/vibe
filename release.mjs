@@ -104,9 +104,11 @@ await commitFiles(`chore: add CNAME file`);
 
 // get repository URL for gh-pages
 const remoteUrl = (await git.getRemotes(true))[0].refs.push;
+// Convert SSH URL to HTTPS for gh-pages compatibility
+const httpsUrl = remoteUrl.replace(/^git@github\.com:/, 'https://github.com/').replace(/\.git$/, '.git');
 
 // execute  npx gh-pages -d dist
-execSyncOut(`npx gh-pages -d dist -r ${remoteUrl}`);
+execSyncOut(`npx gh-pages -d dist --repo ${httpsUrl} --dotfiles`);
 
 // Update the version
 execSyncOut(`npm version ${version} -m "${commitMessage}"`);
