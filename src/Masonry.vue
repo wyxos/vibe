@@ -148,11 +148,14 @@ function refreshLayout(items) {
 }
 
 async function getContent(page) {
-  const response = await props.getNextPage(page)
-
-  refreshLayout([...masonry.value, ...response.items])
-
-  return response
+  try {
+    const response = await props.getNextPage(page)
+    refreshLayout([...masonry.value, ...response.items])
+    return response
+  } catch (error) {
+    console.error('Error in getContent:', error)
+    throw error
+  }
 }
 
 async function loadPage(page) {
@@ -253,6 +256,8 @@ onMounted(async () => {
     
   } catch (error) {
     console.error('Error during component initialization:', error)
+    // Ensure loading state is reset if error occurs during initialization
+    isLoading.value = false
   }
 
   container.value?.addEventListener('scroll', debouncedScrollHandler)

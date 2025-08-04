@@ -30,11 +30,11 @@ export function useMasonryScroll({
           await handleItemCleanup(columnHeights)
         }
 
-
-        await loadNext() // loadNext manages its own loading state
+        await loadNext() // loadNext manages its own loading state and error handling
         await nextTick()
       } catch (error) {
         console.error('Error in scroll handler:', error)
+        // loadNext already handles its own loading state, no need to reset here
       }
     }
   }
