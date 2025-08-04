@@ -102,8 +102,11 @@ fs.writeFileSync("./dist/CNAME", "vibe.wyxos.com");
 
 await commitFiles(`chore: add CNAME file`);
 
+// get repository URL for gh-pages
+const remoteUrl = (await git.getRemotes(true))[0].refs.push;
+
 // execute  npx gh-pages -d dist
-execSyncOut("npx gh-pages -d dist");
+execSyncOut(`npx gh-pages -d dist -r ${remoteUrl}`);
 
 // Update the version
 execSyncOut(`npm version ${version} -m "${commitMessage}"`);
