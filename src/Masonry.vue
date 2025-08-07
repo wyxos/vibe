@@ -98,8 +98,9 @@ const updateScrollProgress = () => {
   const visibleBottom = scrollTop + clientHeight
   
   const columnHeights = calculateColumnHeights(masonry.value, columns.value)
-  const shortestColumn = Math.min(...columnHeights)
-  const triggerPoint = shortestColumn - 300 // Same threshold as in scroll handler
+  // Use longest column to match the trigger logic in useMasonryScroll.js
+  const longestColumn = Math.max(...columnHeights)
+  const triggerPoint = longestColumn + 300 // Match: longestColumn + 300 < visibleBottom
   
   const distanceToTrigger = Math.max(0, triggerPoint - visibleBottom)
   const isNearTrigger = distanceToTrigger <= 100
