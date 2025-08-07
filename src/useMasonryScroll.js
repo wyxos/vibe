@@ -20,7 +20,9 @@ export function useMasonryScroll({
     const visibleBottom = scrollTop + clientHeight
 
     const columnHeights = calculateColumnHeights(masonry.value, columns.value)
-    const whitespaceVisible = columnHeights.some(height => height + 300 < visibleBottom - 1)
+    // Use the longest column instead of shortest for better trigger timing
+    const longestColumn = Math.max(...columnHeights)
+    const whitespaceVisible = longestColumn + 300 < visibleBottom - 1
     const reachedContainerBottom = scrollTop + clientHeight >= containerHeight.value - 1
 
     if ((whitespaceVisible || reachedContainerBottom) && !isLoading.value) {

@@ -17,9 +17,12 @@ export function getColumnCount(layout) {
  * Calculate container height based on item positions
  */
 export function calculateContainerHeight(items) {
-  return items.reduce((acc, item) => {
+  const contentHeight = items.reduce((acc, item) => {
     return Math.max(acc, item.top + item.columnHeight)
   }, 0)
+  
+  // Add 500px buffer to the container height
+  return contentHeight + 500
 }
 
 /**
