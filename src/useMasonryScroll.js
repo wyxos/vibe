@@ -41,14 +41,14 @@ export function useMasonryScroll({
     }
   }
 
-  async function handleItemCleanup(columnHeights) {
+  async function handleItemCleanup(columnHeightsBefore) {
     if (!masonry.value.length) {
       return
     }
 
-    if(masonry.value.length <= pageSize) {
-        // If we have fewer items than pageSize, no cleanup needed
-        return
+    if (masonry.value.length <= pageSize) {
+      // If we have fewer items than pageSize, no cleanup needed
+      return
     }
 
     // Group items by page to understand page structure
@@ -89,33 +89,45 @@ export function useMasonryScroll({
 
     refreshLayout(remainingItems)
 
-
     await nextTick()
 
-    await adjustScrollPosition(columnHeights)
+    // After layout updates, maintain viewport anchor near the longest column
+    await maintainAnchorPosition()
   }
 
-  async function adjustScrollPosition(columnHeights) {
-    // Align the anchor column with the trigger logic (longest column)
-    const anchorColumnIndex = columnHeights.indexOf(Math.max(...columnHeights))
-    const lastItemInColumn = masonry.value
-      .filter((_, index) => index % columns.value === anchorColumnIndex)
-      .pop()
+  async function maintainAnchorPosition() {
+    if (!container.value) return
 
-    if (lastItemInColumn) {
-      const itemTop = lastItemInColumn.top
-      const itemBottom = itemTop + lastItemInColumn.columnHeight
-      const containerTop = container.value.scrollTop
-      const containerBottom = containerTop + container.value.clientHeight
-      const itemInView = itemTop >= containerTop && itemBottom <= containerBottom
+    const { scrollTop, clientHeight } = container.value
+    const pivotY = scrollTop + clientHeight * 0.4 // aim to keep ~40% down the viewport stable
 
-      if (!itemInView) {
-        container.value.scrollTo({
-          top: itemTop - 10,
-          behavior: 'smooth'
-        })
+    // Recompute column heights with the new layout
+    const heights = calculateColumnHeights(masonry.value, columns.value)
+    const anchorColumnIndex = heights.indexOf(Math.max(...heights))
+
+    // Find items belonging to the anchor column
+    const itemsInAnchor = masonry.value.filter((_, index) => index % columns.value === anchorColumnIndex)
+    if (itemsInAnchor.length === 0) return
+
+    // Choose the item whose top is the largest <= pivotY (closest above pivot)
+    let pivotItem = itemsInAnchor[0]
+    for (const it of itemsInAnchor) {
+      if (it.top <= pivotY && it.top >= pivotItem.top) {
+        pivotItem = it
       }
     }
+
+    const desiredTop = Math.max(0, pivotItem.top - clientHeight * 0.4)
+
+    // Only adjust if we drifted significantly (> 4px) to avoid tiny corrections
+    if (Math.abs(desiredTop - scrollTop) > 4) {
+      container.value.scrollTo({ top: desiredTop, behavior: 'auto' })
+    }
+  }
+
+  // Legacy function kept for compatibility; prefer maintainAnchorPosition()
+  async function adjustScrollPosition() {
+    await maintainAnchorPosition()
   }
 
   return {
