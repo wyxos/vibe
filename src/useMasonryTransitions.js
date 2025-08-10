@@ -33,7 +33,11 @@ export function useMasonryTransitions(masonry) {
   function onLeave(el, done) {
     el.style.top = '-600px'
     el.style.opacity = '0'
-    el.addEventListener('transitionend', done)
+    const handler = () => {
+      el.removeEventListener('transitionend', handler)
+      done()
+    }
+    el.addEventListener('transitionend', handler)
   }
 
   return {

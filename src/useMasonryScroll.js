@@ -88,7 +88,7 @@ export function useMasonryScroll({
     }
 
     refreshLayout(remainingItems)
-    
+
 
     await nextTick()
 
@@ -96,19 +96,22 @@ export function useMasonryScroll({
   }
 
   async function adjustScrollPosition(columnHeights) {
-    const lowestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights))
-    const lastItemInColumn = masonry.value.filter((_, index) => index % columns.value === lowestColumnIndex).pop()
+    // Align the anchor column with the trigger logic (longest column)
+    const anchorColumnIndex = columnHeights.indexOf(Math.max(...columnHeights))
+    const lastItemInColumn = masonry.value
+      .filter((_, index) => index % columns.value === anchorColumnIndex)
+      .pop()
 
     if (lastItemInColumn) {
-      const lastItemInColumnTop = lastItemInColumn.top + lastItemInColumn.columnHeight
-      const lastItemInColumnBottom = lastItemInColumnTop + lastItemInColumn.columnHeight
+      const itemTop = lastItemInColumn.top
+      const itemBottom = itemTop + lastItemInColumn.columnHeight
       const containerTop = container.value.scrollTop
       const containerBottom = containerTop + container.value.clientHeight
-      const itemInView = lastItemInColumnTop >= containerTop && lastItemInColumnBottom <= containerBottom
+      const itemInView = itemTop >= containerTop && itemBottom <= containerBottom
 
       if (!itemInView) {
         container.value.scrollTo({
-          top: lastItemInColumnTop - 10,
+          top: itemTop - 10,
           behavior: 'smooth'
         })
       }

@@ -2,11 +2,11 @@
 import {computed, nextTick, onMounted, onUnmounted, ref} from "vue";
 import calculateLayout from "./calculateLayout.js";
 import { debounce } from 'lodash-es'
-import { 
-  getColumnCount, 
-  calculateContainerHeight, 
+import {
+  getColumnCount,
+  calculateContainerHeight,
   getItemAttributes,
-  calculateColumnHeights 
+  calculateColumnHeights
 } from './masonryUtils.js'
 import { useMasonryTransitions } from './useMasonryTransitions.js'
 import { useMasonryScroll } from './useMasonryScroll.js'
@@ -93,18 +93,18 @@ const scrollProgress = ref({
 
 const updateScrollProgress = () => {
   if (!container.value) return
-  
+
   const { scrollTop, clientHeight } = container.value
   const visibleBottom = scrollTop + clientHeight
-  
+
   const columnHeights = calculateColumnHeights(masonry.value, columns.value)
   // Use longest column to match the trigger logic in useMasonryScroll.js
   const longestColumn = Math.max(...columnHeights)
   const triggerPoint = longestColumn + 300 // Match: longestColumn + 300 < visibleBottom
-  
+
   const distanceToTrigger = Math.max(0, triggerPoint - visibleBottom)
   const isNearTrigger = distanceToTrigger <= 100
-  
+
   scrollProgress.value = {
     distanceToTrigger: Math.round(distanceToTrigger),
     isNearTrigger
@@ -137,7 +137,14 @@ defineExpose({
 })
 
 function calculateHeight(content) {
-  containerHeight.value = calculateContainerHeight(content)
+  const newHeight = calculateContainerHeight(content)
+  let floor = 0
+  if (container.value) {
+    const { scrollTop, clientHeight } = container.value
+    // Ensure the container never shrinks below the visible viewport bottom + small buffer
+    floor = scrollTop + clientHeight + 100
+  }
+  containerHeight.value = Math.max(newHeight, floor)
 }
 
 function refreshLayout(items) {
@@ -161,9 +168,9 @@ async function getContent(page) {
 
 async function loadPage(page) {
   if (isLoading.value) return // Prevent concurrent loading
-  
+
   isLoading.value = true
-  
+
   try {
     const response = await getContent(page)
     paginationHistory.value.push(response.nextPage)
@@ -178,9 +185,9 @@ async function loadPage(page) {
 
 async function loadNext() {
   if (isLoading.value) return // Prevent concurrent loading
-  
+
   isLoading.value = true
-  
+
   try {
     const currentPage = paginationHistory.value[paginationHistory.value.length - 1]
     const response = await getContent(currentPage)
@@ -211,16 +218,16 @@ function reset() {
       behavior: 'smooth'
     })
   }
-  
+
   // Clear all items
   masonry.value = []
-  
+
   // Reset container height
   containerHeight.value = 0
-  
+
   // Reset pagination history to initial state
   paginationHistory.value = [props.loadAtPage]
-  
+
   // Reset scroll progress
   scrollProgress.value = {
     distanceToTrigger: 0,
@@ -252,9 +259,9 @@ onMounted(async () => {
       // Just refresh the layout with any existing items
       refreshLayout(masonry.value)
     }
-    
+
     updateScrollProgress()
-    
+
   } catch (error) {
     console.error('Error during component initialization:', error)
     // Ensure loading state is reset if error occurs during initialization
@@ -272,9 +279,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="overflow-auto w-full flex-1" ref="container">
+  <div class="overflow-auto w-full flex-1 masonry-container" ref="container">
     <div class="relative" :style="{height: `${containerHeight}px`}">
-      <transition-group :css="false" @enter="onEnter" @before-enter="onBeforeEnter"
+      <transition-group name="masonry" @enter="onEnter" @before-enter="onBeforeEnter"
                         @leave="onLeave"
                         @before-leave="onBeforeLeave">
         <div v-for="item in masonry" :key="`${item.page}-${item.id}`"
@@ -289,9 +296,9 @@ onUnmounted(() => {
           </slot>
         </div>
       </transition-group>
-      
+
       <!-- Scroll Progress Badge -->
-      <div v-if="containerHeight > 0" 
+      <div v-if="containerHeight > 0"
            class="fixed bottom-4 right-4 bg-gray-800 text-white text-xs rounded-full px-3 py-1.5 shadow-lg z-10 transition-opacity duration-300"
            :class="{'opacity-50 hover:opacity-100': !scrollProgress.isNearTrigger, 'opacity-100': scrollProgress.isNearTrigger}">
         <span>{{ masonry.length }} items</span>
@@ -301,3 +308,10 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Prevent browser scroll anchoring from adjusting scroll on content changes */
+.masonry-container {
+  overflow-anchor: none;
+}
+</style>
