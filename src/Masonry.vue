@@ -133,7 +133,8 @@ defineExpose({
   onRemove,
   loadNext,
   loadPage,
-  reset
+  reset,
+  paginationHistory
 })
 
 function calculateHeight(content) {
