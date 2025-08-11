@@ -30,8 +30,11 @@ export function calculateContainerHeight(items) {
  */
 export function getItemStyle(item) {
   return {
-    top: `${item.top}px`,
-    left: `${item.left}px`,
+    // Use transform-based positioning for smooth, compositor-driven movement
+    transform: `translate3d(${item.left}px, ${item.top}px, 0)`,
+    // Keep top/left at 0 so only transform changes between layouts
+    top: '0px',
+    left: '0px',
     width: `${item.columnWidth}px`,
     height: `${item.columnHeight}px`
   }
@@ -44,6 +47,7 @@ export function getItemAttributes(item) {
   return {
     style: getItemStyle(item),
     'data-top': item.top,
+    'data-left': item.left,
     'data-id': `${item.page}-${item.id}`,
   }
 }

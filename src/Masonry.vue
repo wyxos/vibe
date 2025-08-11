@@ -44,6 +44,14 @@ const props = defineProps({
   pageSize: {
     type: Number,
     default: 40
+  },
+  transitionDurationMs: {
+    type: Number,
+    default: 450
+  },
+  transitionEasing: {
+    type: String,
+    default: 'cubic-bezier(.22,.61,.36,1)'
   }
 })
 
@@ -280,13 +288,13 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="overflow-auto w-full flex-1 masonry-container" ref="container">
-    <div class="relative" :style="{height: `${containerHeight}px`}">
+  <div class="overflow-auto w-full flex-1 masonry-container" ref="container"
+>    <div class="relative" :style="{height: `${containerHeight}px`, '--masonry-duration': `${transitionDurationMs}ms`, '--masonry-ease': transitionEasing}"
       <transition-group name="masonry" @enter="onEnter" @before-enter="onBeforeEnter"
                         @leave="onLeave"
                         @before-leave="onBeforeLeave">
         <div v-for="item in masonry" :key="`${item.page}-${item.id}`"
-             class="absolute transition-[top,left,opacity] duration-500 ease-in-out"
+             class="absolute masonry-item"
              v-bind="getItemAttributes(item)">
           <slot name="item" v-bind="{item, onRemove}">
             <img :src="item.src" class="w-full"/>
@@ -314,5 +322,17 @@ onUnmounted(() => {
 /* Prevent browser scroll anchoring from adjusting scroll on content changes */
 .masonry-container {
   overflow-anchor: none;
+}
+
+/* Items animate transform only for smooth, compositor-driven motion */
+.masonry-item {
+  will-change: transform;
+  transition: transform var(--masonry-duration, 450ms) var(--masonry-ease, cubic-bezier(.22,.61,.36,1));
+  backface-visibility: hidden;
+}
+
+/* TransitionGroup move-class for FLIP reordering */
+.masonry-move {
+  transition: transform var(--masonry-duration, 450ms) var(--masonry-ease, cubic-bezier(.22,.61,.36,1));
 }
 </style>
