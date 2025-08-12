@@ -13,10 +13,10 @@ export function useMasonryTransitions(masonry) {
   }
 
   function onBeforeEnter(el) {
-    // Start slightly below its final position for a subtle slide-in
+    // Start further below its final position for a clearer slide-in
     const left = parseInt(el.dataset.left || '0', 10)
     const top = parseInt(el.dataset.top || '0', 10)
-    el.style.transform = `translate3d(${left}px, ${top + 24}px, 0)`
+    el.style.transform = `translate3d(${left}px, ${top + 60}px, 0)`
   }
 
   function onBeforeLeave(el) {

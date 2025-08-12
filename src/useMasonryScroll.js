@@ -13,8 +13,11 @@ export function useMasonryScroll({
   maxItems,
   pageSize,
   refreshLayout,
+  setItemsRaw,
   loadNext
 }) {
+  let cleanupInProgress = false
+
   async function handleScroll() {
     const { scrollTop, clientHeight } = container.value
     const visibleBottom = scrollTop + clientHeight
@@ -25,7 +28,7 @@ export function useMasonryScroll({
     const whitespaceVisible = longestColumn + 300 < visibleBottom - 1
     const reachedContainerBottom = scrollTop + clientHeight >= containerHeight.value - 1
 
-    if ((whitespaceVisible || reachedContainerBottom) && !isLoading.value) {
+    if ((whitespaceVisible || reachedContainerBottom) && !isLoading.value && !cleanupInProgress) {
       try {
         // Handle cleanup when too many items
         if (masonry.value.length > maxItems) {
@@ -79,7 +82,7 @@ export function useMasonryScroll({
       }
     }
 
-    // Filter out items from pages to be removed
+    // Phase 1: remove items (trigger leave) WITHOUT moving remaining items
     const remainingItems = masonry.value.filter(item => !pagesToRemove.includes(item.page.toString()))
 
     if (remainingItems.length === masonry.value.length) {
@@ -87,12 +90,32 @@ export function useMasonryScroll({
       return
     }
 
-    refreshLayout(remainingItems)
+    cleanupInProgress = true
+
+    // Set raw items so TransitionGroup triggers leave on removed items, but remaining items keep their current transforms
+    setItemsRaw(remainingItems)
 
     await nextTick()
+    // Wait for leave transitions to complete; use a conservative timeout
+    await waitFor(msLeaveEstimate())
 
-    // After layout updates, maintain viewport anchor near the longest column
+    // Phase 2: now recompute layout and animate moves for remaining items
+    refreshLayout(remainingItems)
+    await nextTick()
+
+    // Maintain anchor after moves are applied
     await maintainAnchorPosition()
+
+    cleanupInProgress = false
+  }
+
+  function msLeaveEstimate() {
+    // Default estimate in ms; tweak if you change CSS leave timings
+    return 700
+  }
+
+  function waitFor(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms))
   }
 
   async function maintainAnchorPosition() {

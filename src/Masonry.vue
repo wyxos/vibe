@@ -131,6 +131,8 @@ const { handleScroll } = useMasonryScroll({
   maxItems: props.maxItems,
   pageSize: props.pageSize,
   refreshLayout,
+  // Allow scroll composable to set items without recalculating layout (phase-1 cleanup)
+  setItemsRaw: (items) => { masonry.value = items },
   loadNext
 })
 
