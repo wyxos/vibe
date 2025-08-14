@@ -292,12 +292,12 @@ onUnmounted(() => {
 <template>
   <div class="overflow-auto w-full flex-1 masonry-container" ref="container"
 >    <div class="relative" :style="{height: `${containerHeight}px`, '--masonry-duration': `${transitionDurationMs}ms`, '--masonry-ease': transitionEasing}"
-      <transition-group name="masonry" @enter="onEnter" @before-enter="onBeforeEnter"
+      <transition-group name="masonry" :css="false" @enter="onEnter" @before-enter="onBeforeEnter"
                         @leave="onLeave"
                         @before-leave="onBeforeLeave">
-        <div v-for="item in masonry" :key="`${item.page}-${item.id}`"
+        <div v-for="(item, i) in masonry" :key="`${item.page}-${item.id}`"
              class="absolute masonry-item"
-             v-bind="getItemAttributes(item)">
+             v-bind="getItemAttributes(item, i)">
           <slot name="item" v-bind="{item, onRemove}">
             <img :src="item.src" class="w-full"/>
             <button class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer"
@@ -328,8 +328,9 @@ onUnmounted(() => {
 
 /* Items animate transform only for smooth, compositor-driven motion */
 .masonry-item {
-  will-change: transform;
-  transition: transform var(--masonry-duration, 450ms) var(--masonry-ease, cubic-bezier(.22,.61,.36,1));
+  will-change: transform, opacity;
+  transition: transform var(--masonry-duration, 450ms) var(--masonry-ease, cubic-bezier(.22,.61,.36,1)),
+              opacity 200ms linear;
   backface-visibility: hidden;
 }
 
