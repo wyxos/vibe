@@ -3,26 +3,45 @@
  */
 export function useMasonryTransitions(masonry) {
   function onEnter(el, done) {
-    // Animate to its final transform (translate3d(left, top, 0))
+    // Animate to its final transform (translate3d(left, top, 0)) with subtle scale/opacity
     const left = parseInt(el.dataset.left || '0', 10)
     const top = parseInt(el.dataset.top || '0', 10)
+    const index = parseInt(el.dataset.index || '0', 10)
+
+    // Small stagger per item, capped
+    const delay = Math.min(index * 20, 160)
+
+    // Apply delay only for the enter; avoid affecting move transitions
+    const prevDelay = el.style.transitionDelay
+    el.style.transitionDelay = `${delay}ms`
+
     requestAnimationFrame(() => {
-      el.style.transform = `translate3d(${left}px, ${top}px, 0)`
-      done()
+      el.style.opacity = '1'
+      el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1)`
+      const clear = () => {
+        el.style.transitionDelay = prevDelay || '' // restore
+        el.removeEventListener('transitionend', clear)
+        done()
+      }
+      el.addEventListener('transitionend', clear)
     })
   }
 
   function onBeforeEnter(el) {
-    // Start further below its final position for a clearer slide-in
+    // Start slightly below and slightly smaller, faded
     const left = parseInt(el.dataset.left || '0', 10)
     const top = parseInt(el.dataset.top || '0', 10)
-    el.style.transform = `translate3d(${left}px, ${top + 60}px, 0)`
+    el.style.opacity = '0'
+    el.style.transform = `translate3d(${left}px, ${top + 10}px, 0) scale(0.985)`
   }
 
   function onBeforeLeave(el) {
     // Ensure it is at its current transform position before animating
+    const left = parseInt(el.dataset.left || '0', 10)
+    const top = parseInt(el.dataset.top || '0', 10)
     el.style.transition = 'none'
-    // No-op: transform already represents current position
+    el.style.opacity = '1'
+    el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1)`
     void el.offsetWidth // force reflow to flush style
     el.style.transition = '' // allow transition to apply again
   }
@@ -30,12 +49,28 @@ export function useMasonryTransitions(masonry) {
   function onLeave(el, done) {
     const left = parseInt(el.dataset.left || '0', 10)
     const top = parseInt(el.dataset.top || '0', 10)
-    el.style.transform = `translate3d(${left}px, ${top - 600}px, 0)`
-    const handler = () => {
-      el.removeEventListener('transitionend', handler)
-      done()
+
+    // Run on next frame to ensure transition styles are applied
+    const cleanup = () => {
+      el.removeEventListener('transitionend', onEnd)
+      clearTimeout(fallback)
     }
-    el.addEventListener('transitionend', handler)
+    const onEnd = (e) => {
+      if (!e || e.target === el) {
+        cleanup()
+        done()
+      }
+    }
+    const fallback = setTimeout(() => {
+      cleanup()
+      done()
+    }, 800)
+
+    requestAnimationFrame(() => {
+      el.style.opacity = '0'
+      el.style.transform = `translate3d(${left}px, ${top + 10}px, 0) scale(0.985)`
+      el.addEventListener('transitionend', onEnd)
+    })
   }
 
   return {

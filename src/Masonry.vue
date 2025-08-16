@@ -291,7 +291,7 @@ onUnmounted(() => {
 
 <template>
   <div class="overflow-auto w-full flex-1 masonry-container" ref="container"
->    <div class="relative" :style="{height: `${containerHeight}px`, '--masonry-duration': `${transitionDurationMs}ms`, '--masonry-ease': transitionEasing}"
+>    <div class="relative" :style="{height: `${containerHeight}px`, '--masonry-duration': `${transitionDurationMs}ms`, '--masonry-ease': transitionEasing}">
       <transition-group name="masonry" :css="false" @enter="onEnter" @before-enter="onBeforeEnter"
                         @leave="onLeave"
                         @before-leave="onBeforeLeave">

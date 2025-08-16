@@ -43,12 +43,13 @@ export function getItemStyle(item) {
 /**
  * Get item attributes for rendering
  */
-export function getItemAttributes(item) {
+export function getItemAttributes(item, index = 0) {
   return {
     style: getItemStyle(item),
     'data-top': item.top,
     'data-left': item.left,
     'data-id': `${item.page}-${item.id}`,
+    'data-index': index,
   }
 }
 
