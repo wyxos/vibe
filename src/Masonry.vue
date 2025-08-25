@@ -141,6 +141,7 @@ defineExpose({
   refreshLayout,
   containerHeight,
   onRemove,
+  removeMany,
   loadNext,
   loadPage,
   reset,
@@ -214,6 +215,13 @@ async function loadNext() {
 
 function onRemove(item) {
   refreshLayout(masonry.value.filter(i => i.id !== item.id))
+}
+
+function removeMany(items) {
+  if (!items || items.length === 0) return
+  const ids = new Set(items.map(i => i.id))
+  const next = masonry.value.filter(i => !ids.has(i.id))
+  refreshLayout(next)
 }
 
 function onResize() {
