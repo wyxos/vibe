@@ -140,7 +140,7 @@ defineExpose({
   isLoading,
   refreshLayout,
   containerHeight,
-  onRemove,
+  remove,
   removeMany,
   loadNext,
   loadPage,
@@ -213,7 +213,7 @@ async function loadNext() {
   }
 }
 
-function onRemove(item) {
+function remove(item) {
   refreshLayout(masonry.value.filter(i => i.id !== item.id))
 }
 
@@ -306,10 +306,10 @@ onUnmounted(() => {
         <div v-for="(item, i) in masonry" :key="`${item.page}-${item.id}`"
              class="absolute masonry-item"
              v-bind="getItemAttributes(item, i)">
-          <slot name="item" v-bind="{item, onRemove}">
+          <slot name="item" v-bind="{item, remove}">
             <img :src="item.src" class="w-full"/>
             <button class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer"
-                    @click="onRemove(item)">
+                    @click="remove(item)">
               <i class="fas fa-trash"></i>
             </button>
           </slot>
