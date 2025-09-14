@@ -49,10 +49,6 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
-  backfillTarget: {
-    type: Number,
-    default: null // if null, will use pageSize as target
-  },
   backfillDelayMs: {
     type: Number,
     default: 2000
@@ -269,9 +265,10 @@ async function loadPage(page) {
   isLoading.value = true
 
   try {
+    const baseline = masonry.value.length
     const response = await getContent(page)
     paginationHistory.value.push(response.nextPage)
-    await maybeBackfillToTarget()
+    await maybeBackfillToTarget(baseline)
     return response
   } catch (error) {
     console.error('Error loading page:', error)
@@ -287,10 +284,11 @@ async function loadNext() {
   isLoading.value = true
 
   try {
+    const baseline = masonry.value.length
     const currentPage = paginationHistory.value[paginationHistory.value.length - 1]
     const response = await getContent(currentPage)
     paginationHistory.value.push(response.nextPage)
-    await maybeBackfillToTarget()
+    await maybeBackfillToTarget(baseline)
     return response
   } catch (error) {
     console.error('Error loading next page:', error)
@@ -318,26 +316,26 @@ function onResize() {
 
 let backfillActive = false
 
-async function maybeBackfillToTarget() {
+async function maybeBackfillToTarget(baselineCount) {
   if (!props.backfillEnabled) return
   if (backfillActive) return // avoid re-entrancy
 
-  const target = props.backfillTarget != null ? props.backfillTarget : props.pageSize
-  if (!target || target <= 0) return
+  const targetCount = (baselineCount || 0) + (props.pageSize || 0)
+  if (!props.pageSize || props.pageSize <= 0) return
 
-  // Only backfill if we have a next page and current items are below target
+  // Only backfill if we have a next page and current items are below targetCount
   const lastNext = paginationHistory.value[paginationHistory.value.length - 1]
   if (lastNext == null) return
 
-  if (masonry.value.length >= target) return
+  if (masonry.value.length >= targetCount) return
 
   backfillActive = true
   try {
     let calls = 0
-    emits('backfill:start', { target, fetched: masonry.value.length, calls })
+    emits('backfill:start', { target: targetCount, fetched: masonry.value.length, calls })
 
     while (
-      masonry.value.length < target &&
+      masonry.value.length < targetCount &&
       calls < props.backfillMaxCalls &&
       paginationHistory.value[paginationHistory.value.length - 1] != null
     ) {
@@ -345,7 +343,7 @@ async function maybeBackfillToTarget() {
       await waitWithProgress(props.backfillDelayMs, (remaining, total) => {
         emits('backfill:tick', {
           fetched: masonry.value.length,
-          target,
+          target: targetCount,
           calls,
           remainingMs: remaining,
           totalMs: total
