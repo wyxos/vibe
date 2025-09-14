@@ -14,8 +14,7 @@ import { useMasonryScroll } from './useMasonryScroll.js'
 const props = defineProps({
   getNextPage: {
     type: Function,
-    default: () => {
-    }
+    default: () => {}
   },
   loadAtPage: {
     type: [Number, String],
@@ -44,6 +43,36 @@ const props = defineProps({
   pageSize: {
     type: Number,
     default: 40
+  },
+  // Backfill configuration
+  backfillEnabled: {
+    type: Boolean,
+    default: true
+  },
+  backfillTarget: {
+    type: Number,
+    default: null // if null, will use pageSize as target
+  },
+  backfillDelayMs: {
+    type: Number,
+    default: 2000
+  },
+  backfillMaxCalls: {
+    type: Number,
+    default: 10
+  },
+  // Retry configuration
+  retryMaxAttempts: {
+    type: Number,
+    default: 3
+  },
+  retryInitialDelayMs: {
+    type: Number,
+    default: 2000
+  },
+  retryBackoffStepMs: {
+    type: Number,
+    default: 2000
   },
   transitionDurationMs: {
     type: Number,
@@ -74,7 +103,17 @@ const layout = computed(() => ({
   }
 }))
 
-const emits = defineEmits(['update:items'])
+const emits = defineEmits([
+  'update:items',
+  // Backfill lifecycle events
+  'backfill:start',
+  'backfill:tick',
+  'backfill:stop',
+  // Retry lifecycle events
+  'retry:start',
+  'retry:tick',
+  'retry:stop'
+])
 
 const masonry = computed({
   get: () => props.items,
@@ -168,14 +207,59 @@ function refreshLayout(items) {
   masonry.value = content
 }
 
+function waitWithProgress(totalMs, onTick) {
+  return new Promise((resolve) => {
+    const total = Math.max(0, totalMs | 0)
+    const start = Date.now()
+    // initial tick
+    onTick(total, total)
+    const id = setInterval(() => {
+      const elapsed = Date.now() - start
+      const remaining = Math.max(0, total - elapsed)
+      onTick(remaining, total)
+      if (remaining <= 0) {
+        clearInterval(id)
+        resolve()
+      }
+    }, 100)
+  })
+}
+
 async function getContent(page) {
   try {
-    const response = await props.getNextPage(page)
+    const response = await fetchWithRetry(() => props.getNextPage(page))
     refreshLayout([...masonry.value, ...response.items])
     return response
   } catch (error) {
     console.error('Error in getContent:', error)
     throw error
+  }
+}
+
+async function fetchWithRetry(fn) {
+  let attempt = 0
+  const max = props.retryMaxAttempts
+  let delay = props.retryInitialDelayMs
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      const res = await fn()
+      if (attempt > 0) {
+        emits('retry:stop', { attempt, success: true })
+      }
+      return res
+    } catch (err) {
+      attempt++
+      if (attempt > max) {
+        emits('retry:stop', { attempt: attempt - 1, success: false })
+        throw err
+      }
+      emits('retry:start', { attempt, max, totalMs: delay })
+      await waitWithProgress(delay, (remaining, total) => {
+        emits('retry:tick', { attempt, remainingMs: remaining, totalMs: total })
+      })
+      delay += props.retryBackoffStepMs
+    }
   }
 }
 
@@ -187,6 +271,7 @@ async function loadPage(page) {
   try {
     const response = await getContent(page)
     paginationHistory.value.push(response.nextPage)
+    await maybeBackfillToTarget()
     return response
   } catch (error) {
     console.error('Error loading page:', error)
@@ -205,6 +290,7 @@ async function loadNext() {
     const currentPage = paginationHistory.value[paginationHistory.value.length - 1]
     const response = await getContent(currentPage)
     paginationHistory.value.push(response.nextPage)
+    await maybeBackfillToTarget()
     return response
   } catch (error) {
     console.error('Error loading next page:', error)
@@ -228,6 +314,61 @@ function removeMany(items) {
 function onResize() {
   columns.value = getColumnCount(layout.value)
   refreshLayout(masonry.value)
+}
+
+let backfillActive = false
+
+async function maybeBackfillToTarget() {
+  if (!props.backfillEnabled) return
+  if (backfillActive) return // avoid re-entrancy
+
+  const target = props.backfillTarget != null ? props.backfillTarget : props.pageSize
+  if (!target || target <= 0) return
+
+  // Only backfill if we have a next page and current items are below target
+  const lastNext = paginationHistory.value[paginationHistory.value.length - 1]
+  if (lastNext == null) return
+
+  if (masonry.value.length >= target) return
+
+  backfillActive = true
+  try {
+    let calls = 0
+    emits('backfill:start', { target, fetched: masonry.value.length, calls })
+
+    while (
+      masonry.value.length < target &&
+      calls < props.backfillMaxCalls &&
+      paginationHistory.value[paginationHistory.value.length - 1] != null
+    ) {
+      // wait before next fetch
+      await waitWithProgress(props.backfillDelayMs, (remaining, total) => {
+        emits('backfill:tick', {
+          fetched: masonry.value.length,
+          target,
+          calls,
+          remainingMs: remaining,
+          totalMs: total
+        })
+      })
+
+      // fetch next batch (respect isLoading via direct inner call)
+      const currentPage = paginationHistory.value[paginationHistory.value.length - 1]
+      try {
+        isLoading.value = true
+        const response = await getContent(currentPage)
+        paginationHistory.value.push(response.nextPage)
+      } finally {
+        isLoading.value = false
+      }
+
+      calls++
+    }
+
+    emits('backfill:stop', { fetched: masonry.value.length, calls })
+  } finally {
+    backfillActive = false
+  }
 }
 
 function reset() {
