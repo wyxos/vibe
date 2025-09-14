@@ -145,6 +145,7 @@ defineExpose({
   loadNext,
   loadPage,
   reset,
+  init,
   paginationHistory
 })
 
@@ -262,6 +263,16 @@ const debouncedScrollHandler = debounce(() => {
 
 const debouncedResizeHandler = debounce(onResize, 200)
 
+function init(items, page, next){
+  paginationHistory.value = [page]
+
+  paginationHistory.value.push(next)
+
+  refreshLayout([...masonry.value, ...items])
+
+  updateScrollProgress()
+}
+
 onMounted(async () => {
   try {
     columns.value = getColumnCount(layout.value)
@@ -273,10 +284,6 @@ onMounted(async () => {
     // Skip initial load if skipInitialLoad prop is true
     if (!props.skipInitialLoad) {
       await loadPage(paginationHistory.value[0]) // loadPage manages its own loading state
-    } else {
-      await nextTick()
-      // Just refresh the layout with any existing items
-      refreshLayout(masonry.value)
     }
 
     updateScrollProgress()
