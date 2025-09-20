@@ -38,7 +38,9 @@ export default function calculateLayout(items, container, columnCount, options =
             lg: 4,         // ≥ 1024px
             xl: 5,         // ≥ 1280px
             '2xl': 6       // ≥ 1536px
-        }
+        },
+        // Placement strategy: 'masonry' (default) or 'sequential-balanced'
+        placement = 'masonry'
     } = options;
 
     const measuredScrollbarWidth = container.offsetWidth - container.clientWidth;
@@ -47,6 +49,104 @@ export default function calculateLayout(items, container, columnCount, options =
     const totalGutterX = gutterX * (columnCount - 1);
     const columnWidth = Math.floor((usableWidth - totalGutterX) / columnCount);
 
+    // Precompute normalized item heights for the given column width
+    const baseHeights = items.map((item) => {
+        const originalWidth = item.width;
+        const originalHeight = item.height;
+        const imageHeight = Math.round((columnWidth * originalHeight) / originalWidth);
+        // Column height for an item (without inter-item vertical gutter)
+        return imageHeight + footer + header;
+    });
+
+    // If using the order-preserving strategy, partition the sequence into contiguous columns
+    if (placement === 'sequential-balanced') {
+        // Binary search the minimal max column height capacity that allows splitting into columnCount contiguous groups
+        const n = baseHeights.length;
+        if (n === 0) return [];
+
+        const addWithGutter = (currentSum, itemsInGroup, nextHeight) => {
+            return currentSum + (itemsInGroup > 0 ? gutterY : 0) + nextHeight;
+        };
+
+        let low = Math.max(...baseHeights); // at least the tallest item
+        // All items in a single column upper bound (includes gutters between items)
+        let high = baseHeights.reduce((sum, h) => sum + h, 0) + gutterY * Math.max(0, n - 1);
+
+        const canPartition = (cap) => {
+            let groups = 1;
+            let sum = 0;
+            let count = 0;
+            for (let i = 0; i < n; i++) {
+                const h = baseHeights[i];
+                const next = addWithGutter(sum, count, h);
+                if (next <= cap) {
+                    sum = next;
+                    count++;
+                } else {
+                    // start new group
+                    groups++;
+                    sum = h;
+                    count = 1;
+                    if (h > cap) return false; // single item exceeds cap
+                    if (groups > columnCount) return false;
+                }
+            }
+            return groups <= columnCount;
+        };
+
+        while (low < high) {
+            const mid = Math.floor((low + high) / 2);
+            if (canPartition(mid)) high = mid; else low = mid + 1;
+        }
+        const cap = high;
+
+        // Build exact boundaries from the end to guarantee exactly columnCount groups
+        const starts = new Array(columnCount).fill(0);
+        let groupIndex = columnCount - 1;
+        let sum = 0;
+        let count = 0;
+        for (let i = n - 1; i >= 0; i--) {
+            const h = baseHeights[i];
+            const needAtLeast = i < groupIndex; // force split so each remaining group gets >= 1 item
+            const canFit = addWithGutter(sum, count, h) <= cap;
+            if (!canFit || needAtLeast) {
+                starts[groupIndex] = i + 1; // next group starts after i
+                groupIndex--;
+                sum = h;
+                count = 1;
+            } else {
+                sum = addWithGutter(sum, count, h);
+                count++;
+            }
+        }
+        // First group starts at 0
+        starts[0] = 0;
+
+        // Now assign items to columns according to contiguous groups
+        const processedItems = [];
+        const tops = new Array(columnCount).fill(0);
+        for (let col = 0; col < columnCount; col++) {
+            const start = starts[col];
+            const end = col + 1 < columnCount ? starts[col + 1] : n;
+            const left = col * (columnWidth + gutterX);
+            for (let i = start; i < end; i++) {
+                const item = items[i];
+                const newItem = { ...item };
+                newItem.columnWidth = columnWidth;
+                // recompute using precomputed baseHeights for determinism
+                const imageHeight = baseHeights[i] - (footer + header);
+                newItem.imageHeight = imageHeight;
+                newItem.columnHeight = baseHeights[i];
+                newItem.left = left;
+                newItem.top = tops[col];
+                tops[col] += newItem.columnHeight + (i + 1 < end ? gutterY : 0);
+                processedItems.push(newItem);
+            }
+        }
+        return processedItems;
+    }
+
+    // Default: Masonry (shortest-column) placement
     const columnHeights = new Array(columnCount).fill(0);
     const processedItems = [];
 

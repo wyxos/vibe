@@ -87,7 +87,11 @@ const defaultLayout = {
   header: 0,
   footer: 0,
   paddingLeft: 0,
-  paddingRight: 0
+  paddingRight: 0,
+  // Layout placement strategy:
+  // - 'masonry' (default): shortest-column placement for maximum balance, items may shift across columns
+  // - 'sequential-balanced': preserves item order by partitioning the sequence into contiguous columns while balancing heights
+  placement: 'masonry'
 }
 
 const layout = computed(() => ({

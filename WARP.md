@@ -44,14 +44,16 @@ High-level architecture
       - On mount: computes columns from layout.sizes, seeds paginationHistory, triggers initial load (unless skipInitialLoad), sets up debounced scroll/resize listeners
       - On unmount: removes listeners
 
-  - Layout engine: src/calculateLayout.js
-    - Inputs: items, container element (for measurements), columnCount, options (gutterX/Y, header/footer, paddings, sizes)
+- Layout engine: src/calculateLayout.js
+    - Inputs: items, container element (for measurements), columnCount, options (gutterX/Y, header/footer, paddings, sizes, placement)
     - Computes:
       - Scrollbar width (prefers measured container offsetWidth-clientWidth; falls back to DOM probe) to get usableWidth
       - Column width: floor((usableWidth - totalGutterX) / columnCount)
-      - Places each item into the shortest column (true masonry), storing:
-        - top, left, columnWidth, imageHeight, columnHeight
-      - Returns a new array of items augmented with layout fields
+      - Placement strategies (via layout.placement):
+        - 'masonry' (default): shortest-column placement for maximum balance
+        - 'sequential-balanced': preserves source order by partitioning the sequence into k contiguous columns while balancing column heights
+      - Each item stores: top, left, columnWidth, imageHeight, columnHeight
+    - Returns a new array of items augmented with layout fields
 
   - Responsive sizing/utilities: src/masonryUtils.js
     - getColumnCount(layout): maps window.innerWidth to layout.sizes (base, sm, md, lg, xl, 2xl)
