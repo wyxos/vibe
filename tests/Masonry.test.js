@@ -56,7 +56,7 @@ describe('Masonry.vue', () => {
     expect(typeof vm.isLoading).toBe('boolean')
     expect(typeof vm.refreshLayout).toBe('function')
     expect(typeof vm.containerHeight).toBe('number')
-    expect(typeof vm.onRemove).toBe('function')
+    expect(typeof vm.remove).toBe('function')
   })
 
   it('should initialize with default layout configuration', () => {
@@ -166,7 +166,7 @@ describe('Masonry.vue', () => {
     
     // Verify exposed methods exist
     expect(typeof vm.refreshLayout).toBe('function')
-    expect(typeof vm.onRemove).toBe('function')
+    expect(typeof vm.remove).toBe('function')
 
     // Component should handle being mounted without throwing errors
     await wrapper.vm.$nextTick()

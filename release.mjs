@@ -45,6 +45,11 @@ async function lint() {
     }
 }
 
+async function testSuite(){
+    // Run unit tests early to fail fast
+    execSyncOut("npm test -- --run");
+}
+
 async function build(){
     // Build the project
     execSyncOut("npm run build");
@@ -94,6 +99,8 @@ if (status.files.length > 0) {
 }
 
 await lint();
+
+await testSuite()
 
 await build()
 
