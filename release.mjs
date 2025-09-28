@@ -3,6 +3,7 @@ import inquirer from "inquirer";
 import {execSync} from "child_process";
 import simpleGit from "simple-git";
 import fs from "fs";
+import path from "path";
 import ghpages from "gh-pages";
 
 const commitFiles = async (message) => {
@@ -128,18 +129,57 @@ if (!httpsUrl || !/^https?:\/\//.test(httpsUrl)) {
     httpsUrl = 'https://github.com/wyxos/vibe.git';
 }
 
-// Publish demo using gh-pages Node API (more reliable on Windows)
-await new Promise((resolve, reject) => {
-    ghpages.publish('dist', {
-        repo: httpsUrl,
-        branch: 'gh-pages',
-        dotfiles: true,
-        user: {
-            name: 'wyxos',
-            email: 'github@wyxos.com'
-        }
-    }, (err) => err ? reject(err) : resolve());
-});
+async function publishWithWorktree() {
+    const worktreeDir = path.resolve('.gh-pages')
+    // Remove existing worktree if present
+    try { execSyncOut(`git worktree remove ${worktreeDir} -f`) } catch (_) {}
+
+    // Try to add worktree for existing gh-pages branch; if missing, create it
+    try {
+        execSyncOut(`git worktree add ${worktreeDir} gh-pages`)
+    } catch (e) {
+        // Create new branch from current HEAD
+        execSyncOut(`git worktree add ${worktreeDir} -b gh-pages`)
+    }
+
+    // Set committer in worktree
+    execSyncOut(`git -C ${worktreeDir} config user.name "wyxos"`)
+    execSyncOut(`git -C ${worktreeDir} config user.email "github@wyxos.com"`)
+
+    // Clean worktree (leave .git)
+    for (const entry of fs.readdirSync(worktreeDir)) {
+        if (entry === '.git') continue
+        const target = path.join(worktreeDir, entry)
+        fs.rmSync(target, { recursive: true, force: true })
+    }
+
+    // Copy dist to worktree
+    const distDir = path.resolve('dist')
+    fs.cpSync(distDir, worktreeDir, { recursive: true })
+
+    // Commit and push
+    execSyncOut(`git -C ${worktreeDir} add -A`)
+    execSyncOut(`git -C ${worktreeDir} commit -m "deploy: demo ${new Date().toISOString()}" --allow-empty`)
+    execSyncOut(`git -C ${worktreeDir} push origin gh-pages`)
+}
+
+// Publish demo using gh-pages Node API (more reliable on Windows); fallback to worktree on failure
+try {
+    await new Promise((resolve, reject) => {
+        ghpages.publish('dist', {
+            repo: httpsUrl,
+            branch: 'gh-pages',
+            dotfiles: true,
+            user: {
+                name: 'wyxos',
+                email: 'github@wyxos.com'
+            }
+        }, (err) => err ? reject(err) : resolve());
+    });
+} catch (err) {
+    console.warn(chalk.yellow('gh-pages publish failed, falling back to git worktree method...'))
+    await publishWithWorktree()
+}
 
 // Update the version
 execSyncOut(`npm version ${version} -m "${commitMessage}"`);
