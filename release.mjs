@@ -115,7 +115,7 @@ const remoteUrl = (await git.getRemotes(true))[0].refs.push;
 const httpsUrl = remoteUrl.replace(/^git@github\.com:/, 'https://github.com/').replace(/\.git$/, '.git');
 
 // execute  npx gh-pages -d dist
-execSyncOut(`npx gh-pages -d dist --repo ${httpsUrl} --dotfiles`);
+execSyncOut(`npx gh-pages -d dist --repo "${httpsUrl}" --dotfiles`);
 
 // Update the version
 execSyncOut(`npm version ${version} -m "${commitMessage}"`);
