@@ -3,6 +3,7 @@ import inquirer from "inquirer";
 import {execSync} from "child_process";
 import simpleGit from "simple-git";
 import fs from "fs";
+import ghpages from "gh-pages";
 
 const commitFiles = async (message) => {
     await git.add(".");
@@ -114,8 +115,18 @@ const remoteUrl = (await git.getRemotes(true))[0].refs.push;
 // Convert SSH URL to HTTPS for gh-pages compatibility
 const httpsUrl = remoteUrl.replace(/^git@github\.com:/, 'https://github.com/').replace(/\.git$/, '.git');
 
-// execute  npx gh-pages -d dist
-execSyncOut(`npx gh-pages -d dist --repo "${httpsUrl}" --dotfiles`);
+// Publish demo using gh-pages Node API (more reliable on Windows)
+await new Promise((resolve, reject) => {
+    ghpages.publish('dist', {
+        repo: httpsUrl,
+        branch: 'gh-pages',
+        dotfiles: true,
+        user: {
+            name: 'wyxos',
+            email: 'github@wyxos.com'
+        }
+    }, (err) => err ? reject(err) : resolve());
+});
 
 // Update the version
 execSyncOut(`npm version ${version} -m "${commitMessage}"`);
