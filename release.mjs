@@ -147,6 +147,26 @@ async function publishWithWorktree() {
 
 await publishWithWorktree();
 
+// Ensure .gh-pages worktree directory is not tracked, to keep working tree clean
+async function ensureWorktreeIgnored() {
+    try {
+        const listed = execSync('git ls-files .gh-pages', { encoding: 'utf8' }).trim();
+        if (listed) {
+            execSyncOut('git rm --cached -r .gh-pages');
+            const giPath = path.resolve('.gitignore');
+            let gi = '';
+            try { gi = fs.readFileSync(giPath, 'utf8'); } catch (_) {}
+            const lines = gi.split(/\r?\n/);
+            const hasLine = lines.some(l => l.trim() === '.gh-pages');
+            if (!hasLine) {
+                fs.appendFileSync(giPath, (gi.endsWith('\n') || gi === '' ? '' : '\n') + '.gh-pages\n');
+            }
+            await commitFiles('chore: ignore .gh-pages worktree');
+        }
+    } catch (_) {}
+}
+await ensureWorktreeIgnored();
+
 // Update the version
 execSyncOut(`npm version ${version} -m "${commitMessage}"`);
 
