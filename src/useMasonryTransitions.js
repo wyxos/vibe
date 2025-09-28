@@ -50,10 +50,21 @@ export function useMasonryTransitions(masonry) {
     const left = parseInt(el.dataset.left || '0', 10)
     const top = parseInt(el.dataset.top || '0', 10)
 
+    // Read per-container leave duration (falls back to 200ms)
+    const cs = getComputedStyle(el)
+    const varVal = cs.getPropertyValue('--masonry-leave-duration') || ''
+    const parsed = parseFloat(varVal)
+    const leaveMs = Number.isFinite(parsed) && parsed > 0 ? parsed : 200
+
+    // Temporarily shorten transition duration for this leaving element
+    const prevDuration = el.style.transitionDuration
+
     // Run on next frame to ensure transition styles are applied
     const cleanup = () => {
       el.removeEventListener('transitionend', onEnd)
       clearTimeout(fallback)
+      // restore inline duration if we touched it
+      el.style.transitionDuration = prevDuration || ''
     }
     const onEnd = (e) => {
       if (!e || e.target === el) {
@@ -64,9 +75,11 @@ export function useMasonryTransitions(masonry) {
     const fallback = setTimeout(() => {
       cleanup()
       done()
-    }, 800)
+    }, leaveMs + 100)
 
     requestAnimationFrame(() => {
+      // Ensure duration reflects leave speed
+      el.style.transitionDuration = `${leaveMs}ms`
       el.style.opacity = '0'
       el.style.transform = `translate3d(${left}px, ${top + 10}px, 0) scale(0.985)`
       el.addEventListener('transitionend', onEnd)

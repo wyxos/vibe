@@ -74,6 +74,11 @@ const props = defineProps({
     type: Number,
     default: 450
   },
+  // Shorter, snappier duration specifically for item removal (leave)
+  leaveDurationMs: {
+    type: Number,
+    default: 160
+  },
   transitionEasing: {
     type: String,
     default: 'cubic-bezier(.22,.61,.36,1)'
@@ -172,7 +177,9 @@ const { handleScroll } = useMasonryScroll({
   refreshLayout,
   // Allow scroll composable to set items without recalculating layout (phase-1 cleanup)
   setItemsRaw: (items) => { masonry.value = items },
-  loadNext
+  loadNext,
+  // Use a shorter estimate for leave animations to keep cleanup snappy
+  leaveEstimateMs: props.leaveDurationMs
 })
 
 defineExpose({
@@ -302,15 +309,25 @@ async function loadNext() {
   }
 }
 
-function remove(item) {
-  refreshLayout(masonry.value.filter(i => i.id !== item.id))
+async function remove(item) {
+  // Remove the item so leave starts now, then schedule reflow for the next paint
+  const next = masonry.value.filter(i => i.id !== item.id)
+  masonry.value = next
+  await nextTick()
+  requestAnimationFrame(() => {
+    refreshLayout(next)
+  })
 }
 
-function removeMany(items) {
+async function removeMany(items) {
   if (!items || items.length === 0) return
   const ids = new Set(items.map(i => i.id))
   const next = masonry.value.filter(i => !ids.has(i.id))
-  refreshLayout(next)
+  masonry.value = next
+  await nextTick()
+  requestAnimationFrame(() => {
+    refreshLayout(next)
+  })
 }
 
 function onResize() {
@@ -449,7 +466,7 @@ onUnmounted(() => {
 
 <template>
   <div class="overflow-auto w-full flex-1 masonry-container" ref="container"
->    <div class="relative" :style="{height: `${containerHeight}px`, '--masonry-duration': `${transitionDurationMs}ms`, '--masonry-ease': transitionEasing}">
+>    <div class="relative" :style="{height: `${containerHeight}px`, '--masonry-duration': `${transitionDurationMs}ms`, '--masonry-leave-duration': `${leaveDurationMs}ms`, '--masonry-ease': transitionEasing}">
       <transition-group name="masonry" :css="false" @enter="onEnter" @before-enter="onBeforeEnter"
                         @leave="onLeave"
                         @before-leave="onBeforeLeave">
@@ -487,13 +504,22 @@ onUnmounted(() => {
 /* Items animate transform only for smooth, compositor-driven motion */
 .masonry-item {
   will-change: transform, opacity;
+  /* Contain layout/paint to each item to reduce reflow costs during mass updates */
+  contain: layout paint;
   transition: transform var(--masonry-duration, 450ms) var(--masonry-ease, cubic-bezier(.22,.61,.36,1)),
-              opacity 200ms linear;
+              opacity var(--masonry-leave-duration, 160ms) ease-out;
   backface-visibility: hidden;
 }
 
 /* TransitionGroup move-class for FLIP reordering */
 .masonry-move {
   transition: transform var(--masonry-duration, 450ms) var(--masonry-ease, cubic-bezier(.22,.61,.36,1));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .masonry-item,
+  .masonry-move {
+    transition-duration: 1ms !important;
+  }
 }
 </style>

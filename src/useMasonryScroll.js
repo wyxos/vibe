@@ -14,7 +14,9 @@ export function useMasonryScroll({
   pageSize,
   refreshLayout,
   setItemsRaw,
-  loadNext
+  loadNext,
+  // Optional: provide an estimate for how long leave animations take
+  leaveEstimateMs
 }) {
   let cleanupInProgress = false
 
@@ -110,8 +112,9 @@ export function useMasonryScroll({
   }
 
   function msLeaveEstimate() {
-    // Default estimate in ms; tweak if you change CSS leave timings
-    return 700
+    // Estimate based on provided duration (with a small buffer)
+    const base = typeof leaveEstimateMs === 'number' && leaveEstimateMs > 0 ? leaveEstimateMs : 250
+    return base + 50
   }
 
   function waitFor(ms) {
