@@ -92,8 +92,7 @@ export function useMasonryScroll({
 
     setItemsRaw(remainingItems)
     await nextTick()
-    // Allow leave to start, then FLIP survivors concurrently (two RAFs: paint, then apply transforms)
-    await new Promise<void>(r => requestAnimationFrame(() => r()))
+    // Allow leave to start, then FLIP survivors concurrently (single RAF)
     await new Promise<void>(r => requestAnimationFrame(() => r()))
 
     refreshLayout(remainingItems)

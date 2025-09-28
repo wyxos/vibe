@@ -82,6 +82,11 @@ const props = defineProps({
   transitionEasing: {
     type: String,
     default: 'cubic-bezier(.22,.61,.36,1)'
+  },
+  // Force motion even when user has reduced-motion enabled
+  forceMotion: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -295,10 +300,11 @@ async function remove(item: any) {
   const next = (masonry.value as any[]).filter(i => i.id !== item.id)
   masonry.value = next
   await nextTick()
+  // Force a reflow so current transforms are committed
+  void container.value?.offsetHeight
+  // Start FLIP on next frame (single RAF)
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      refreshLayout(next)
-    })
+    refreshLayout(next)
   })
 }
 
@@ -308,10 +314,11 @@ async function removeMany(items: any[]) {
   const next = (masonry.value as any[]).filter(i => !ids.has(i.id))
   masonry.value = next
   await nextTick()
+  // Force a reflow so survivors' current transforms are committed
+  void container.value?.offsetHeight
+  // Start FLIP on next frame (single RAF)
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      refreshLayout(next)
-    })
+    refreshLayout(next)
   })
 }
 
@@ -433,7 +440,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="overflow-auto w-full flex-1 masonry-container" ref="container">
+  <div class="overflow-auto w-full flex-1 masonry-container" :class="{ 'force-motion': props.forceMotion }" ref="container">
     <div class="relative"
          :style="{height: `${containerHeight}px`, '--masonry-duration': `${transitionDurationMs}ms`, '--masonry-leave-duration': `${leaveDurationMs}ms`, '--masonry-ease': transitionEasing}">
       <transition-group name="masonry" :css="false" @enter="onEnter" @before-enter="onBeforeEnter"
@@ -482,8 +489,8 @@ onUnmounted(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .masonry-item,
-  .masonry-move {
+  .masonry-container:not(.force-motion) .masonry-item,
+  .masonry-container:not(.force-motion) .masonry-move {
     transition-duration: 1ms !important;
   }
 }
