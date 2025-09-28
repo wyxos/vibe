@@ -31,6 +31,7 @@ export function useMasonryScroll({
   leaveEstimateMs?: number
 }) {
   let cleanupInProgress = false
+  let lastScrollTop = 0
 
   async function handleScroll() {
     if (!container.value) return
@@ -38,12 +39,16 @@ export function useMasonryScroll({
     const { scrollTop, clientHeight } = container.value
     const visibleBottom = scrollTop + clientHeight
 
+    // Determine scroll direction (down only)
+    const isScrollingDown = scrollTop > lastScrollTop + 1 // tolerate tiny jitter
+    lastScrollTop = scrollTop
+
     const columnHeights = calculateColumnHeights(masonry.value, columns.value)
     const longestColumn = Math.max(...columnHeights)
     const whitespaceVisible = longestColumn + 300 < visibleBottom - 1
     const reachedContainerBottom = scrollTop + clientHeight >= containerHeight.value - 1
 
-    if ((whitespaceVisible || reachedContainerBottom) && !isLoading.value && !cleanupInProgress) {
+    if ((whitespaceVisible || reachedContainerBottom) && isScrollingDown && !isLoading.value && !cleanupInProgress) {
       try {
         if (masonry.value.length > maxItems) {
           await handleItemCleanup(columnHeights)
@@ -87,7 +92,9 @@ export function useMasonryScroll({
 
     setItemsRaw(remainingItems)
     await nextTick()
-    await waitFor(msLeaveEstimate())
+    // Allow leave to start, then FLIP survivors concurrently (two RAFs: paint, then apply transforms)
+    await new Promise<void>(r => requestAnimationFrame(() => r()))
+    await new Promise<void>(r => requestAnimationFrame(() => r()))
 
     refreshLayout(remainingItems)
     await nextTick()
