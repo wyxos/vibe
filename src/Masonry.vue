@@ -1,21 +1,20 @@
-<script setup>
-import {computed, nextTick, onMounted, onUnmounted, ref} from "vue";
-import calculateLayout from "./calculateLayout.js";
-import {debounce} from 'lodash-es'
+<script setup lang="ts">
+import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
+import calculateLayout from "./calculateLayout";
+import { debounce } from 'lodash-es'
 import {
   getColumnCount,
   calculateContainerHeight,
   getItemAttributes,
   calculateColumnHeights
-} from './masonryUtils.js'
-import {useMasonryTransitions} from './useMasonryTransitions.js'
-import {useMasonryScroll} from './useMasonryScroll.js'
+} from './masonryUtils'
+import { useMasonryTransitions } from './useMasonryTransitions'
+import { useMasonryScroll } from './useMasonryScroll'
 
 const props = defineProps({
   getNextPage: {
     type: Function,
-    default: () => {
-    }
+    default: () => {}
   },
   loadAtPage: {
     type: [Number, String],
@@ -31,7 +30,7 @@ const props = defineProps({
   paginationType: {
     type: String,
     default: 'page', // or 'cursor'
-    validator: v => ['page', 'cursor'].includes(v)
+    validator: (v: string) => ['page', 'cursor'].includes(v)
   },
   skipInitialLoad: {
     type: Boolean,
@@ -94,9 +93,6 @@ const defaultLayout = {
   footer: 0,
   paddingLeft: 0,
   paddingRight: 0,
-  // Layout placement strategy:
-  // - 'masonry' (default): shortest-column placement for maximum balance, items may shift across columns
-  // - 'sequential-balanced': preserves item order by partitioning the sequence into contiguous columns while balancing heights
   placement: 'masonry'
 }
 
@@ -111,35 +107,28 @@ const layout = computed(() => ({
 
 const emits = defineEmits([
   'update:items',
-  // Backfill lifecycle events
   'backfill:start',
   'backfill:tick',
   'backfill:stop',
-  // Retry lifecycle events
   'retry:start',
   'retry:tick',
   'retry:stop'
 ])
 
-const masonry = computed({
+const masonry = computed<any>({
   get: () => props.items,
   set: (val) => emits('update:items', val)
 })
 
-const columns = ref(7)
-
-const container = ref(null)
-
-const paginationHistory = ref([])
-
-const nextPage = ref(null)
-
-const isLoading = ref(false)
-
-const containerHeight = ref(0)
+const columns = ref<number>(7)
+const container = ref<HTMLElement | null>(null)
+const paginationHistory = ref<any[]>([])
+const nextPage = ref<number | null>(null)
+const isLoading = ref<boolean>(false)
+const containerHeight = ref<number>(0)
 
 // Scroll progress tracking
-const scrollProgress = ref({
+const scrollProgress = ref<{ distanceToTrigger: number; isNearTrigger: boolean }>({
   distanceToTrigger: 0,
   isNearTrigger: false
 })
@@ -150,10 +139,9 @@ const updateScrollProgress = () => {
   const {scrollTop, clientHeight} = container.value
   const visibleBottom = scrollTop + clientHeight
 
-  const columnHeights = calculateColumnHeights(masonry.value, columns.value)
-  // Use longest column to match the trigger logic in useMasonryScroll.js
+  const columnHeights = calculateColumnHeights(masonry.value as any, columns.value)
   const longestColumn = Math.max(...columnHeights)
-  const triggerPoint = longestColumn + 300 // Match: longestColumn + 300 < visibleBottom
+  const triggerPoint = longestColumn + 300
 
   const distanceToTrigger = Math.max(0, triggerPoint - visibleBottom)
   const isNearTrigger = distanceToTrigger <= 100
@@ -169,19 +157,17 @@ const {onEnter, onBeforeEnter, onBeforeLeave, onLeave} = useMasonryTransitions(m
 
 const {handleScroll} = useMasonryScroll({
   container,
-  masonry,
+  masonry: masonry as any,
   columns,
   containerHeight,
   isLoading,
   maxItems: props.maxItems,
   pageSize: props.pageSize,
   refreshLayout,
-  // Allow scroll composable to set items without recalculating layout (phase-1 cleanup)
-  setItemsRaw: (items) => {
+  setItemsRaw: (items: any[]) => {
     masonry.value = items
   },
   loadNext,
-  // Use a shorter estimate for leave animations to keep cleanup snappy
   leaveEstimateMs: props.leaveDurationMs
 })
 
@@ -198,30 +184,27 @@ defineExpose({
   paginationHistory
 })
 
-function calculateHeight(content) {
-  const newHeight = calculateContainerHeight(content)
+function calculateHeight(content: any[]) {
+  const newHeight = calculateContainerHeight(content as any)
   let floor = 0
   if (container.value) {
     const {scrollTop, clientHeight} = container.value
-    // Ensure the container never shrinks below the visible viewport bottom + small buffer
     floor = scrollTop + clientHeight + 100
   }
   containerHeight.value = Math.max(newHeight, floor)
 }
 
-function refreshLayout(items) {
-  const content = calculateLayout(items, container.value, columns.value, layout.value);
-
-  calculateHeight(content)
-
+function refreshLayout(items: any[]) {
+  if (!container.value) return
+  const content = calculateLayout(items as any, container.value as HTMLElement, columns.value, layout.value as any)
+  calculateHeight(content as any)
   masonry.value = content
 }
 
-function waitWithProgress(totalMs, onTick) {
-  return new Promise((resolve) => {
+function waitWithProgress(totalMs: number, onTick: (remaining: number, total: number) => void) {
+  return new Promise<void>((resolve) => {
     const total = Math.max(0, totalMs | 0)
     const start = Date.now()
-    // initial tick
     onTick(total, total)
     const id = setInterval(() => {
       const elapsed = Date.now() - start
@@ -235,10 +218,10 @@ function waitWithProgress(totalMs, onTick) {
   })
 }
 
-async function getContent(page) {
+async function getContent(page: number) {
   try {
     const response = await fetchWithRetry(() => props.getNextPage(page))
-    refreshLayout([...masonry.value, ...response.items])
+    refreshLayout([...(masonry.value as any[]), ...response.items])
     return response
   } catch (error) {
     console.error('Error in getContent:', error)
@@ -246,7 +229,7 @@ async function getContent(page) {
   }
 }
 
-async function fetchWithRetry(fn) {
+async function fetchWithRetry<T = any>(fn: () => Promise<T>): Promise<T> {
   let attempt = 0
   const max = props.retryMaxAttempts
   let delay = props.retryInitialDelayMs
@@ -273,13 +256,11 @@ async function fetchWithRetry(fn) {
   }
 }
 
-async function loadPage(page) {
-  if (isLoading.value) return // Prevent concurrent loading
-
+async function loadPage(page: number) {
+  if (isLoading.value) return
   isLoading.value = true
-
   try {
-    const baseline = masonry.value.length
+    const baseline = (masonry.value as any[]).length
     const response = await getContent(page)
     paginationHistory.value.push(response.nextPage)
     await maybeBackfillToTarget(baseline)
@@ -293,12 +274,10 @@ async function loadPage(page) {
 }
 
 async function loadNext() {
-  if (isLoading.value) return // Prevent concurrent loading
-
+  if (isLoading.value) return
   isLoading.value = true
-
   try {
-    const baseline = masonry.value.length
+    const baseline = (masonry.value as any[]).length
     const currentPage = paginationHistory.value[paginationHistory.value.length - 1]
     const response = await getContent(currentPage)
     paginationHistory.value.push(response.nextPage)
@@ -312,27 +291,23 @@ async function loadNext() {
   }
 }
 
-async function remove(item) {
-  // Remove the item so leave starts now, then schedule reflow just after first paint
-  const next = masonry.value.filter(i => i.id !== item.id)
+async function remove(item: any) {
+  const next = (masonry.value as any[]).filter(i => i.id !== item.id)
   masonry.value = next
   await nextTick()
-  // Frame N: Vue attaches leave hooks and applies styles; allow it to paint first.
   requestAnimationFrame(() => {
-    // Frame N+1: compute and apply new positions so the rest move smoothly.
     requestAnimationFrame(() => {
       refreshLayout(next)
     })
   })
 }
 
-async function removeMany(items) {
+async function removeMany(items: any[]) {
   if (!items || items.length === 0) return
   const ids = new Set(items.map(i => i.id))
-  const next = masonry.value.filter(i => !ids.has(i.id))
+  const next = (masonry.value as any[]).filter(i => !ids.has(i.id))
   masonry.value = next
   await nextTick()
-  // Same scheduling as single remove: leave first paint, then moves.
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       refreshLayout(next)
@@ -341,39 +316,37 @@ async function removeMany(items) {
 }
 
 function onResize() {
-  columns.value = getColumnCount(layout.value)
-  refreshLayout(masonry.value)
+  columns.value = getColumnCount(layout.value as any)
+  refreshLayout(masonry.value as any)
 }
 
 let backfillActive = false
 
-async function maybeBackfillToTarget(baselineCount) {
+async function maybeBackfillToTarget(baselineCount: number) {
   if (!props.backfillEnabled) return
-  if (backfillActive) return // avoid re-entrancy
+  if (backfillActive) return
 
   const targetCount = (baselineCount || 0) + (props.pageSize || 0)
   if (!props.pageSize || props.pageSize <= 0) return
 
-  // Only backfill if we have a next page and current items are below targetCount
   const lastNext = paginationHistory.value[paginationHistory.value.length - 1]
   if (lastNext == null) return
 
-  if (masonry.value.length >= targetCount) return
+  if ((masonry.value as any[]).length >= targetCount) return
 
   backfillActive = true
   try {
     let calls = 0
-    emits('backfill:start', {target: targetCount, fetched: masonry.value.length, calls})
+    emits('backfill:start', {target: targetCount, fetched: (masonry.value as any[]).length, calls})
 
     while (
-        masonry.value.length < targetCount &&
-        calls < props.backfillMaxCalls &&
-        paginationHistory.value[paginationHistory.value.length - 1] != null
-        ) {
-      // wait before next fetch
+      (masonry.value as any[]).length < targetCount &&
+      calls < props.backfillMaxCalls &&
+      paginationHistory.value[paginationHistory.value.length - 1] != null
+    ) {
       await waitWithProgress(props.backfillDelayMs, (remaining, total) => {
         emits('backfill:tick', {
-          fetched: masonry.value.length,
+          fetched: (masonry.value as any[]).length,
           target: targetCount,
           calls,
           remainingMs: remaining,
@@ -381,7 +354,6 @@ async function maybeBackfillToTarget(baselineCount) {
         })
       })
 
-      // fetch next batch (respect isLoading via direct inner call)
       const currentPage = paginationHistory.value[paginationHistory.value.length - 1]
       try {
         isLoading.value = true
@@ -394,14 +366,13 @@ async function maybeBackfillToTarget(baselineCount) {
       calls++
     }
 
-    emits('backfill:stop', {fetched: masonry.value.length, calls})
+    emits('backfill:stop', {fetched: (masonry.value as any[]).length, calls})
   } finally {
     backfillActive = false
   }
 }
 
 function reset() {
-  // Scroll back to top first (while items still exist to scroll through)
   if (container.value) {
     container.value.scrollTo({
       top: 0,
@@ -409,23 +380,16 @@ function reset() {
     })
   }
 
-  // Clear all items
   masonry.value = []
-
-  // Reset container height
   containerHeight.value = 0
-
-  // Reset pagination history to initial state
   paginationHistory.value = [props.loadAtPage]
 
-  // Reset scroll progress
   scrollProgress.value = {
     distanceToTrigger: 0,
     isNearTrigger: false
   }
 }
 
-// Create debounced functions with stable references
 const debouncedScrollHandler = debounce(() => {
   handleScroll()
   updateScrollProgress()
@@ -433,34 +397,28 @@ const debouncedScrollHandler = debounce(() => {
 
 const debouncedResizeHandler = debounce(onResize, 200)
 
-function init(items, page, next) {
+function init(items: any[], page: any, next: any) {
   paginationHistory.value = [page]
-
   paginationHistory.value.push(next)
-
-  refreshLayout([...masonry.value, ...items])
-
+  refreshLayout([...(masonry.value as any[]), ...items])
   updateScrollProgress()
 }
 
 onMounted(async () => {
   try {
-    columns.value = getColumnCount(layout.value)
+    columns.value = getColumnCount(layout.value as any)
 
-    // For cursor-based pagination, loadAtPage can be null for the first request
-    const initialPage = props.loadAtPage
+    const initialPage = props.loadAtPage as any
     paginationHistory.value = [initialPage]
 
-    // Skip initial load if skipInitialLoad prop is true
     if (!props.skipInitialLoad) {
-      await loadPage(paginationHistory.value[0]) // loadPage manages its own loading state
+      await loadPage(paginationHistory.value[0] as any)
     }
 
     updateScrollProgress()
 
   } catch (error) {
     console.error('Error during component initialization:', error)
-    // Ensure loading state is reset if error occurs during initialization
     isLoading.value = false
   }
 
@@ -475,8 +433,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="overflow-auto w-full flex-1 masonry-container" ref="container"
-  >
+  <div class="overflow-auto w-full flex-1 masonry-container" ref="container">
     <div class="relative"
          :style="{height: `${containerHeight}px`, '--masonry-duration': `${transitionDurationMs}ms`, '--masonry-leave-duration': `${leaveDurationMs}ms`, '--masonry-ease': transitionEasing}">
       <transition-group name="masonry" :css="false" @enter="onEnter" @before-enter="onBeforeEnter"
@@ -508,22 +465,18 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* Prevent browser scroll anchoring from adjusting scroll on content changes */
 .masonry-container {
   overflow-anchor: none;
 }
 
-/* Items animate transform only for smooth, compositor-driven motion */
 .masonry-item {
   will-change: transform, opacity;
-  /* Contain layout/paint to each item to reduce reflow costs during mass updates */
   contain: layout paint;
   transition: transform var(--masonry-duration, 450ms) var(--masonry-ease, cubic-bezier(.22, .61, .36, 1)),
   opacity var(--masonry-leave-duration, 160ms) ease-out var(--masonry-opacity-delay, 0ms);
   backface-visibility: hidden;
 }
 
-/* TransitionGroup move-class for FLIP reordering */
 .masonry-move {
   transition: transform var(--masonry-duration, 450ms) var(--masonry-ease, cubic-bezier(.22, .61, .36, 1));
 }

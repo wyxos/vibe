@@ -1,17 +1,18 @@
-<script setup>
+<script setup lang="ts">
 import Masonry from "./Masonry.vue";
-import {ref} from "vue";
+import { ref } from "vue";
 import fixture from "./pages.json";
+import type { MasonryItem, GetPageResult } from "./types";
 
-const items = ref([])
+const items = ref<MasonryItem[]>([]);
 
-const masonry = ref(null)
+const masonry = ref<InstanceType<typeof Masonry> | null>(null);
 
-const getPage = async (page) => {
+const getPage = async (page: number): Promise<GetPageResult> => {
   return new Promise((resolve) => {
     setTimeout(() => {
       // Check if the page exists in the fixture
-      const pageData = fixture[page - 1];
+      const pageData = (fixture as any[])[page - 1] as { items: MasonryItem[] } | undefined;
 
       if (!pageData) {
         // Return empty items if page doesn't exist
@@ -22,15 +23,15 @@ const getPage = async (page) => {
         return;
       }
 
-      let output = {
+      const output: GetPageResult = {
         items: pageData.items,
-        nextPage: page < fixture.length ? page + 1 : null
+        nextPage: page < (fixture as any[]).length ? page + 1 : null
       };
 
-      resolve(output)
-    }, 1000)
-  })
-}
+      resolve(output);
+    }, 1000);
+  });
+};
 </script>
 <template>
   <main class="flex flex-col items-center p-4 bg-slate-100 h-screen overflow-hidden">
@@ -49,16 +50,12 @@ const getPage = async (page) => {
       </div>
     </header>
     <masonry class="bg-blue-500 " v-model:items="items" :get-next-page="getPage" :load-at-page="1" ref="masonry">
-      <template #item="{item, onRemove}">
+      <template #item="{item, remove}">
         <img :src="item.src" class="w-full"/>
-        <button class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer" @click="onRemove(item)">
+        <button class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer" @click="remove(item)">
           <i class="fas fa-trash"></i>
         </button>
       </template>
     </masonry>
   </main>
 </template>
-
-
-
-

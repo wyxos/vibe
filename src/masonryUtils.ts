@@ -1,7 +1,9 @@
+import type { LayoutOptions, ProcessedMasonryItem } from './types'
+
 /**
  * Get responsive column count based on window width and layout sizes
  */
-export function getColumnCount(layout) {
+export function getColumnCount(layout: Pick<LayoutOptions, 'sizes'> & { sizes: Required<NonNullable<LayoutOptions['sizes']>> }): number {
   const width = window.innerWidth
   const sizes = layout.sizes
 
@@ -16,23 +18,19 @@ export function getColumnCount(layout) {
 /**
  * Calculate container height based on item positions
  */
-export function calculateContainerHeight(items) {
+export function calculateContainerHeight(items: ProcessedMasonryItem[]): number {
   const contentHeight = items.reduce((acc, item) => {
     return Math.max(acc, item.top + item.columnHeight)
   }, 0)
-  
-  // Add 500px buffer to the container height
   return contentHeight + 500
 }
 
 /**
  * Get style object for masonry item positioning
  */
-export function getItemStyle(item) {
+export function getItemStyle(item: ProcessedMasonryItem): Record<string, string> {
   return {
-    // Use transform-based positioning for smooth, compositor-driven movement
-    transform: `translate3d(${item.left}px, ${item.top}px, 0)`,
-    // Keep top/left at 0 so only transform changes between layouts
+    transform: `translate3d(${item.left}px, ${item.top}px, 0)` ,
     top: '0px',
     left: '0px',
     width: `${item.columnWidth}px`,
@@ -43,12 +41,12 @@ export function getItemStyle(item) {
 /**
  * Get item attributes for rendering
  */
-export function getItemAttributes(item, index = 0) {
+export function getItemAttributes(item: ProcessedMasonryItem, index: number = 0): Record<string, any> {
   return {
     style: getItemStyle(item),
     'data-top': item.top,
     'data-left': item.left,
-    'data-id': `${item.page}-${item.id}`,
+    'data-id': `${(item as any).page}-${(item as any).id}`,
     'data-index': index,
   }
 }
@@ -56,8 +54,8 @@ export function getItemAttributes(item, index = 0) {
 /**
  * Calculate column heights for masonry layout
  */
-export function calculateColumnHeights(items, columnCount) {
-  const heights = new Array(columnCount).fill(0)
+export function calculateColumnHeights(items: ProcessedMasonryItem[], columnCount: number): number[] {
+  const heights = new Array<number>(columnCount).fill(0)
   for (let i = 0; i < items.length; i++) {
     const item = items[i]
     const col = i % columnCount
