@@ -4,7 +4,6 @@ import {execSync} from "child_process";
 import simpleGit from "simple-git";
 import fs from "fs";
 import path from "path";
-import ghpages from "gh-pages";
 
 const commitFiles = async (message) => {
     await git.add(".");
@@ -69,13 +68,17 @@ let defaultVersion = currentVersion.split(".");
 defaultVersion[defaultVersion.length - 1] = Number(defaultVersion[defaultVersion.length - 1]) + 1;
 defaultVersion = defaultVersion.join(".");
 
-const {version} = await inquirer.prompt([
-    {
-        name: "version",
-        message: `Enter the version to publish (current ${currentVersion})`,
-        default: defaultVersion
-    }
-]);
+let version = process.env.RELEASE_VERSION;
+if (!version) {
+    const answer = await inquirer.prompt([
+        {
+            name: "version",
+            message: `Enter the version to publish (current ${currentVersion})`,
+            default: defaultVersion
+        }
+    ]);
+    version = answer.version;
+}
 
 const tagVersion = `v${version}`;
 const commitMessage = `feat: release ${tagVersion}`;
@@ -87,17 +90,23 @@ const execSyncOut = (command) => {
 // check if directory clean
 const status = await git.status();
 if (status.files.length > 0) {
-    // list files and ask for commit message
-    console.log(chalk.red("You have uncommitted changes"));
-    console.log(status.files);
-    const {commitMessage} = await inquirer.prompt([
-        {
-            name: "commitMessage",
-            message: "Enter the commit message"
-        }
-    ]);
-    await git.add(".");
-    await git.commit(commitMessage);
+    if (process.env.RELEASE_VERSION) {
+        // Non-interactive mode: auto-commit
+        await git.add(".");
+        await git.commit('chore: pre-release housekeeping');
+    } else {
+        // list files and ask for commit message
+        console.log(chalk.red("You have uncommitted changes"));
+        console.log(status.files);
+        const {commitMessage} = await inquirer.prompt([
+            {
+                name: "commitMessage",
+                message: "Enter the commit message"
+            }
+        ]);
+        await git.add(".");
+        await git.commit(commitMessage);
+    }
 }
 
 await lint();
@@ -111,75 +120,32 @@ fs.writeFileSync("./dist/CNAME", "vibe.wyxos.com");
 
 await commitFiles(`chore: add CNAME file`);
 
-// get repository URL for gh-pages
-let httpsUrl = undefined;
-try {
-    const remotes = await git.getRemotes(true);
-    const remote = remotes.find(r => r.name === 'origin') || remotes[0];
-    const remoteUrl = remote && remote.refs && (remote.refs.push || remote.refs.fetch);
-    if (remoteUrl && typeof remoteUrl === 'string') {
-        // Convert SSH URL to HTTPS for gh-pages compatibility
-        httpsUrl = remoteUrl.replace(/^git@github\.com:/, 'https://github.com/').replace(/\.git$/, '.git');
-    }
-} catch (_) {
-    // ignore and use fallback
-}
-// Fallback to explicit repo if detection fails
-if (!httpsUrl || !/^https?:\/\//.test(httpsUrl)) {
-    httpsUrl = 'https://github.com/wyxos/vibe.git';
-}
-
 async function publishWithWorktree() {
-    const worktreeDir = path.resolve('.gh-pages')
-    // Remove existing worktree if present
-    try { execSyncOut(`git worktree remove ${worktreeDir} -f`) } catch (_) {}
-
-    // Try to add worktree for existing gh-pages branch; if missing, create it
+    const worktreeDir = path.resolve('.gh-pages');
+    try { execSyncOut(`git worktree remove "${worktreeDir}" -f`); } catch (_) {}
     try {
-        execSyncOut(`git worktree add ${worktreeDir} gh-pages`)
+        execSyncOut(`git worktree add "${worktreeDir}" gh-pages`);
     } catch (e) {
-        // Create new branch from current HEAD
-        execSyncOut(`git worktree add ${worktreeDir} -b gh-pages`)
+        execSyncOut(`git worktree add "${worktreeDir}" -b gh-pages`);
     }
+    execSyncOut(`git -C "${worktreeDir}" config user.name "wyxos"`);
+    execSyncOut(`git -C "${worktreeDir}" config user.email "github@wyxos.com"`);
 
-    // Set committer in worktree
-    execSyncOut(`git -C ${worktreeDir} config user.name "wyxos"`)
-    execSyncOut(`git -C ${worktreeDir} config user.email "github@wyxos.com"`)
-
-    // Clean worktree (leave .git)
     for (const entry of fs.readdirSync(worktreeDir)) {
-        if (entry === '.git') continue
-        const target = path.join(worktreeDir, entry)
-        fs.rmSync(target, { recursive: true, force: true })
+        if (entry === '.git') continue;
+        const target = path.join(worktreeDir, entry);
+        fs.rmSync(target, { recursive: true, force: true });
     }
 
-    // Copy dist to worktree
-    const distDir = path.resolve('dist')
-    fs.cpSync(distDir, worktreeDir, { recursive: true })
+    const distDir = path.resolve('dist');
+    fs.cpSync(distDir, worktreeDir, { recursive: true });
 
-    // Commit and push
-    execSyncOut(`git -C ${worktreeDir} add -A`)
-    execSyncOut(`git -C ${worktreeDir} commit -m "deploy: demo ${new Date().toISOString()}" --allow-empty`)
-    execSyncOut(`git -C ${worktreeDir} push origin gh-pages`)
+    execSyncOut(`git -C "${worktreeDir}" add -A`);
+    execSyncOut(`git -C "${worktreeDir}" commit -m "deploy: demo ${new Date().toISOString()}" --allow-empty`);
+    execSyncOut(`git -C "${worktreeDir}" push origin gh-pages`);
 }
 
-// Publish demo using gh-pages Node API (more reliable on Windows); fallback to worktree on failure
-try {
-    await new Promise((resolve, reject) => {
-        ghpages.publish('dist', {
-            repo: httpsUrl,
-            branch: 'gh-pages',
-            dotfiles: true,
-            user: {
-                name: 'wyxos',
-                email: 'github@wyxos.com'
-            }
-        }, (err) => err ? reject(err) : resolve());
-    });
-} catch (err) {
-    console.warn(chalk.yellow('gh-pages publish failed, falling back to git worktree method...'))
-    await publishWithWorktree()
-}
+await publishWithWorktree();
 
 // Update the version
 execSyncOut(`npm version ${version} -m "${commitMessage}"`);
