@@ -8,18 +8,20 @@ export function useMasonryTransitions(masonry) {
     const top = parseInt(el.dataset.top || '0', 10)
     const index = parseInt(el.dataset.index || '0', 10)
 
-    // Small stagger per item, capped
+    // Small stagger per item, capped — apply only to opacity via CSS var so transform moves stay interruptible
     const delay = Math.min(index * 20, 160)
-
-    // Apply delay only for the enter; avoid affecting move transitions
-    const prevDelay = el.style.transitionDelay
-    el.style.transitionDelay = `${delay}ms`
+    const prevOpacityDelay = el.style.getPropertyValue('--masonry-opacity-delay')
+    el.style.setProperty('--masonry-opacity-delay', `${delay}ms`)
 
     requestAnimationFrame(() => {
       el.style.opacity = '1'
       el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1)`
       const clear = () => {
-        el.style.transitionDelay = prevDelay || '' // restore
+        if (prevOpacityDelay) {
+          el.style.setProperty('--masonry-opacity-delay', prevOpacityDelay)
+        } else {
+          el.style.removeProperty('--masonry-opacity-delay')
+        }
         el.removeEventListener('transitionend', clear)
         done()
       }
@@ -42,6 +44,8 @@ export function useMasonryTransitions(masonry) {
     el.style.transition = 'none'
     el.style.opacity = '1'
     el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1)`
+    // Clear any leftover enter stagger so leave isn’t delayed
+    el.style.removeProperty('--masonry-opacity-delay')
     void el.offsetWidth // force reflow to flush style
     el.style.transition = '' // allow transition to apply again
   }

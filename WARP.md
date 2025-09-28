@@ -49,6 +49,7 @@ High-level architecture
     - Computes:
       - Scrollbar width (prefers measured container offsetWidth-clientWidth; falls back to DOM probe) to get usableWidth
       - Column width: floor((usableWidth - totalGutterX) / columnCount)
+      - Auto-respects container CSS paddings: reads computed padding-left/right from the container and subtracts them in addition to any layout.paddingLeft/Right you pass
       - Placement strategies (via layout.placement):
         - 'masonry' (default): shortest-column placement for maximum balance
         - 'sequential-balanced': preserves source order by partitioning the sequence into k contiguous columns while balancing column heights

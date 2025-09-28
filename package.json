@@ -35,6 +35,7 @@
     "tailwindcss": "^4.0.15",
     "uuid": "^11.1.0",
     "vite": "^6.2.0",
+    "vite-plugin-vue-mcp": "^0.3.2",
     "vitest": "^3.0.9"
   }
 }

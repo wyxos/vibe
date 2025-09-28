@@ -43,9 +43,26 @@ export default function calculateLayout(items, container, columnCount, options =
         placement = 'masonry'
     } = options;
 
+    // Read actual CSS paddings from the container when possible
+    let cssPaddingLeft = 0;
+    let cssPaddingRight = 0;
+    try {
+        if (container && container.nodeType === 1 && typeof window !== 'undefined' && window.getComputedStyle) {
+            const styles = window.getComputedStyle(container);
+            cssPaddingLeft = parseFloat(styles.paddingLeft) || 0;
+            cssPaddingRight = parseFloat(styles.paddingRight) || 0;
+        }
+    } catch (_) { /* noop: fall back to provided options */ }
+
+    const effectivePaddingLeft = (paddingLeft || 0) + cssPaddingLeft;
+    const effectivePaddingRight = (paddingRight || 0) + cssPaddingRight;
+
+    // Measure border+scrollbar via offsetWidth - clientWidth
     const measuredScrollbarWidth = container.offsetWidth - container.clientWidth;
     const scrollbarWidth = measuredScrollbarWidth > 0 ? measuredScrollbarWidth + 2 : getScrollbarWidth() + 2;
-    const usableWidth = container.offsetWidth - scrollbarWidth - paddingLeft - paddingRight;
+
+    // Compute usable content width: offset - (border+scrollbar) - paddings
+    const usableWidth = container.offsetWidth - scrollbarWidth - effectivePaddingLeft - effectivePaddingRight;
     const totalGutterX = gutterX * (columnCount - 1);
     const columnWidth = Math.floor((usableWidth - totalGutterX) / columnCount);
 

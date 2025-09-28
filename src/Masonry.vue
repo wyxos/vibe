@@ -1,20 +1,21 @@
 <script setup>
 import {computed, nextTick, onMounted, onUnmounted, ref} from "vue";
 import calculateLayout from "./calculateLayout.js";
-import { debounce } from 'lodash-es'
+import {debounce} from 'lodash-es'
 import {
   getColumnCount,
   calculateContainerHeight,
   getItemAttributes,
   calculateColumnHeights
 } from './masonryUtils.js'
-import { useMasonryTransitions } from './useMasonryTransitions.js'
-import { useMasonryScroll } from './useMasonryScroll.js'
+import {useMasonryTransitions} from './useMasonryTransitions.js'
+import {useMasonryScroll} from './useMasonryScroll.js'
 
 const props = defineProps({
   getNextPage: {
     type: Function,
-    default: () => {}
+    default: () => {
+    }
   },
   loadAtPage: {
     type: [Number, String],
@@ -86,7 +87,7 @@ const props = defineProps({
 })
 
 const defaultLayout = {
-  sizes: { base: 1, sm: 2, md: 3, lg: 4, xl: 5, '2xl': 6 },
+  sizes: {base: 1, sm: 2, md: 3, lg: 4, xl: 5, '2xl': 6},
   gutterX: 10,
   gutterY: 10,
   header: 0,
@@ -146,7 +147,7 @@ const scrollProgress = ref({
 const updateScrollProgress = () => {
   if (!container.value) return
 
-  const { scrollTop, clientHeight } = container.value
+  const {scrollTop, clientHeight} = container.value
   const visibleBottom = scrollTop + clientHeight
 
   const columnHeights = calculateColumnHeights(masonry.value, columns.value)
@@ -164,9 +165,9 @@ const updateScrollProgress = () => {
 }
 
 // Setup composables
-const { onEnter, onBeforeEnter, onBeforeLeave, onLeave } = useMasonryTransitions(masonry)
+const {onEnter, onBeforeEnter, onBeforeLeave, onLeave} = useMasonryTransitions(masonry)
 
-const { handleScroll } = useMasonryScroll({
+const {handleScroll} = useMasonryScroll({
   container,
   masonry,
   columns,
@@ -176,7 +177,9 @@ const { handleScroll } = useMasonryScroll({
   pageSize: props.pageSize,
   refreshLayout,
   // Allow scroll composable to set items without recalculating layout (phase-1 cleanup)
-  setItemsRaw: (items) => { masonry.value = items },
+  setItemsRaw: (items) => {
+    masonry.value = items
+  },
   loadNext,
   // Use a shorter estimate for leave animations to keep cleanup snappy
   leaveEstimateMs: props.leaveDurationMs
@@ -199,7 +202,7 @@ function calculateHeight(content) {
   const newHeight = calculateContainerHeight(content)
   let floor = 0
   if (container.value) {
-    const { scrollTop, clientHeight } = container.value
+    const {scrollTop, clientHeight} = container.value
     // Ensure the container never shrinks below the visible viewport bottom + small buffer
     floor = scrollTop + clientHeight + 100
   }
@@ -252,18 +255,18 @@ async function fetchWithRetry(fn) {
     try {
       const res = await fn()
       if (attempt > 0) {
-        emits('retry:stop', { attempt, success: true })
+        emits('retry:stop', {attempt, success: true})
       }
       return res
     } catch (err) {
       attempt++
       if (attempt > max) {
-        emits('retry:stop', { attempt: attempt - 1, success: false })
+        emits('retry:stop', {attempt: attempt - 1, success: false})
         throw err
       }
-      emits('retry:start', { attempt, max, totalMs: delay })
+      emits('retry:start', {attempt, max, totalMs: delay})
       await waitWithProgress(delay, (remaining, total) => {
-        emits('retry:tick', { attempt, remainingMs: remaining, totalMs: total })
+        emits('retry:tick', {attempt, remainingMs: remaining, totalMs: total})
       })
       delay += props.retryBackoffStepMs
     }
@@ -310,12 +313,16 @@ async function loadNext() {
 }
 
 async function remove(item) {
-  // Remove the item so leave starts now, then schedule reflow for the next paint
+  // Remove the item so leave starts now, then schedule reflow just after first paint
   const next = masonry.value.filter(i => i.id !== item.id)
   masonry.value = next
   await nextTick()
+  // Frame N: Vue attaches leave hooks and applies styles; allow it to paint first.
   requestAnimationFrame(() => {
-    refreshLayout(next)
+    // Frame N+1: compute and apply new positions so the rest move smoothly.
+    requestAnimationFrame(() => {
+      refreshLayout(next)
+    })
   })
 }
 
@@ -325,8 +332,11 @@ async function removeMany(items) {
   const next = masonry.value.filter(i => !ids.has(i.id))
   masonry.value = next
   await nextTick()
+  // Same scheduling as single remove: leave first paint, then moves.
   requestAnimationFrame(() => {
-    refreshLayout(next)
+    requestAnimationFrame(() => {
+      refreshLayout(next)
+    })
   })
 }
 
@@ -353,13 +363,13 @@ async function maybeBackfillToTarget(baselineCount) {
   backfillActive = true
   try {
     let calls = 0
-    emits('backfill:start', { target: targetCount, fetched: masonry.value.length, calls })
+    emits('backfill:start', {target: targetCount, fetched: masonry.value.length, calls})
 
     while (
-      masonry.value.length < targetCount &&
-      calls < props.backfillMaxCalls &&
-      paginationHistory.value[paginationHistory.value.length - 1] != null
-    ) {
+        masonry.value.length < targetCount &&
+        calls < props.backfillMaxCalls &&
+        paginationHistory.value[paginationHistory.value.length - 1] != null
+        ) {
       // wait before next fetch
       await waitWithProgress(props.backfillDelayMs, (remaining, total) => {
         emits('backfill:tick', {
@@ -384,7 +394,7 @@ async function maybeBackfillToTarget(baselineCount) {
       calls++
     }
 
-    emits('backfill:stop', { fetched: masonry.value.length, calls })
+    emits('backfill:stop', {fetched: masonry.value.length, calls})
   } finally {
     backfillActive = false
   }
@@ -423,7 +433,7 @@ const debouncedScrollHandler = debounce(() => {
 
 const debouncedResizeHandler = debounce(onResize, 200)
 
-function init(items, page, next){
+function init(items, page, next) {
   paginationHistory.value = [page]
 
   paginationHistory.value.push(next)
@@ -466,7 +476,9 @@ onUnmounted(() => {
 
 <template>
   <div class="overflow-auto w-full flex-1 masonry-container" ref="container"
->    <div class="relative" :style="{height: `${containerHeight}px`, '--masonry-duration': `${transitionDurationMs}ms`, '--masonry-leave-duration': `${leaveDurationMs}ms`, '--masonry-ease': transitionEasing}">
+  >
+    <div class="relative"
+         :style="{height: `${containerHeight}px`, '--masonry-duration': `${transitionDurationMs}ms`, '--masonry-leave-duration': `${leaveDurationMs}ms`, '--masonry-ease': transitionEasing}">
       <transition-group name="masonry" :css="false" @enter="onEnter" @before-enter="onBeforeEnter"
                         @leave="onLeave"
                         @before-leave="onBeforeLeave">
@@ -506,14 +518,14 @@ onUnmounted(() => {
   will-change: transform, opacity;
   /* Contain layout/paint to each item to reduce reflow costs during mass updates */
   contain: layout paint;
-  transition: transform var(--masonry-duration, 450ms) var(--masonry-ease, cubic-bezier(.22,.61,.36,1)),
-              opacity var(--masonry-leave-duration, 160ms) ease-out;
+  transition: transform var(--masonry-duration, 450ms) var(--masonry-ease, cubic-bezier(.22, .61, .36, 1)),
+  opacity var(--masonry-leave-duration, 160ms) ease-out var(--masonry-opacity-delay, 0ms);
   backface-visibility: hidden;
 }
 
 /* TransitionGroup move-class for FLIP reordering */
 .masonry-move {
-  transition: transform var(--masonry-duration, 450ms) var(--masonry-ease, cubic-bezier(.22,.61,.36,1));
+  transition: transform var(--masonry-duration, 450ms) var(--masonry-ease, cubic-bezier(.22, .61, .36, 1));
 }
 
 @media (prefers-reduced-motion: reduce) {
