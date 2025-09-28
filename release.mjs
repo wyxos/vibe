@@ -142,7 +142,7 @@ async function publishWithWorktree() {
 
     execSyncOut(`git -C "${worktreeDir}" add -A`);
     execSyncOut(`git -C "${worktreeDir}" commit -m "deploy: demo ${new Date().toISOString()}" --allow-empty`);
-    execSyncOut(`git -C "${worktreeDir}" push origin gh-pages`);
+    execSyncOut(`git -C "${worktreeDir}" push -f origin gh-pages`);
 }
 
 await publishWithWorktree();
