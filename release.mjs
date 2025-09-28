@@ -111,9 +111,22 @@ fs.writeFileSync("./dist/CNAME", "vibe.wyxos.com");
 await commitFiles(`chore: add CNAME file`);
 
 // get repository URL for gh-pages
-const remoteUrl = (await git.getRemotes(true))[0].refs.push;
-// Convert SSH URL to HTTPS for gh-pages compatibility
-const httpsUrl = remoteUrl.replace(/^git@github\.com:/, 'https://github.com/').replace(/\.git$/, '.git');
+let httpsUrl = undefined;
+try {
+    const remotes = await git.getRemotes(true);
+    const remote = remotes.find(r => r.name === 'origin') || remotes[0];
+    const remoteUrl = remote && remote.refs && (remote.refs.push || remote.refs.fetch);
+    if (remoteUrl && typeof remoteUrl === 'string') {
+        // Convert SSH URL to HTTPS for gh-pages compatibility
+        httpsUrl = remoteUrl.replace(/^git@github\.com:/, 'https://github.com/').replace(/\.git$/, '.git');
+    }
+} catch (_) {
+    // ignore and use fallback
+}
+// Fallback to explicit repo if detection fails
+if (!httpsUrl || !/^https?:\/\//.test(httpsUrl)) {
+    httpsUrl = 'https://github.com/wyxos/vibe.git';
+}
 
 // Publish demo using gh-pages Node API (more reliable on Windows)
 await new Promise((resolve, reject) => {
