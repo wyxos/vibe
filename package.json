@@ -9,12 +9,16 @@
       "import": "./lib/index.js",
       "types": "./lib/index.d.ts"
     },
+    "./vibe.css": "./lib/vibe.css",
     "./package.json": "./package.json"
   },
   "type": "module",
   "files": [
     "lib",
     "src"
+  ],
+  "sideEffects": [
+    "./lib/vibe.css"
   ],
   "scripts": {
     "dev": "vite",
