@@ -1,6 +1,8 @@
 import type { LayoutOptions, MasonryItem, ProcessedMasonryItem } from './types'
 
+let __cachedScrollbarWidth: number | null = null
 function getScrollbarWidth(): number {
+  if (__cachedScrollbarWidth != null) return __cachedScrollbarWidth
   const div = document.createElement('div')
   div.style.visibility = 'hidden'
   div.style.overflow = 'scroll'
@@ -15,6 +17,7 @@ function getScrollbarWidth(): number {
 
   const scrollbarWidth = div.offsetWidth - inner.offsetWidth
   document.body.removeChild(div)
+  __cachedScrollbarWidth = scrollbarWidth
   return scrollbarWidth
 }
 

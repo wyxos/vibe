@@ -41,8 +41,10 @@ export function useMasonryTransitions(masonry: any) {
     el.style.opacity = '1'
     el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1)`
     el.style.removeProperty('--masonry-opacity-delay')
-    void el.offsetWidth
-    el.style.transition = ''
+    // Avoid forced reflow: re-enable transition on the next frame
+    requestAnimationFrame(() => {
+      el.style.transition = ''
+    })
   }
 
   function onLeave(el: HTMLElement, done: () => void) {

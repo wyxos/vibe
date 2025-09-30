@@ -300,9 +300,9 @@ async function remove(item: any) {
   const next = (masonry.value as any[]).filter(i => i.id !== item.id)
   masonry.value = next
   await nextTick()
-  // Force a reflow so current transforms are committed
-  void container.value?.offsetHeight
-  // Start FLIP on next frame (single RAF)
+  // Commit DOM updates without forcing sync reflow
+  await new Promise<void>(r => requestAnimationFrame(() => r()))
+  // Start FLIP on next frame
   requestAnimationFrame(() => {
     refreshLayout(next)
   })
@@ -314,9 +314,9 @@ async function removeMany(items: any[]) {
   const next = (masonry.value as any[]).filter(i => !ids.has(i.id))
   masonry.value = next
   await nextTick()
-  // Force a reflow so survivors' current transforms are committed
-  void container.value?.offsetHeight
-  // Start FLIP on next frame (single RAF)
+  // Commit DOM updates without forcing sync reflow
+  await new Promise<void>(r => requestAnimationFrame(() => r()))
+  // Start FLIP on next frame
   requestAnimationFrame(() => {
     refreshLayout(next)
   })
@@ -429,7 +429,7 @@ onMounted(async () => {
     isLoading.value = false
   }
 
-  container.value?.addEventListener('scroll', debouncedScrollHandler)
+  container.value?.addEventListener('scroll', debouncedScrollHandler, { passive: true })
   window.addEventListener('resize', debouncedResizeHandler)
 })
 
