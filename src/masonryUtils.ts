@@ -55,11 +55,24 @@ export function getItemAttributes(item: ProcessedMasonryItem, index: number = 0)
  * Calculate column heights for masonry layout
  */
 export function calculateColumnHeights(items: ProcessedMasonryItem[], columnCount: number): number[] {
-  const heights = new Array<number>(columnCount).fill(0)
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i]
-    const col = i % columnCount
-    heights[col] = Math.max(heights[col], item.top + item.columnHeight)
+  // Derive columns by actual left positions to reflect shortest-column placement
+  if (!items.length || columnCount <= 0) {
+    return new Array<number>(Math.max(1, columnCount)).fill(0)
   }
+  // Unique lefts (sorted) represent the columns in visual order
+  const uniqueLefts = Array.from(new Set(items.map(i => i.left))).sort((a, b) => a - b)
+  const limitedLefts = uniqueLefts.slice(0, columnCount)
+  const leftIndexMap = new Map<number, number>()
+  for (let idx = 0; idx < limitedLefts.length; idx++) leftIndexMap.set(limitedLefts[idx], idx)
+
+  const heights = new Array<number>(limitedLefts.length).fill(0)
+  for (const it of items) {
+    const col = leftIndexMap.get(it.left)
+    if (col != null) {
+      heights[col] = Math.max(heights[col], it.top + it.columnHeight)
+    }
+  }
+  // Pad if some columns haven't been populated yet (e.g., initial render)
+  while (heights.length < columnCount) heights.push(0)
   return heights
 }

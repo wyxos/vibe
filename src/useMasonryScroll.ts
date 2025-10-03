@@ -33,7 +33,7 @@ export function useMasonryScroll({
   let cleanupInProgress = false
   let lastScrollTop = 0
 
-  async function handleScroll() {
+  async function handleScroll(precomputedHeights?: number[]) {
     if (!container.value) return
 
     const { scrollTop, clientHeight } = container.value
@@ -43,7 +43,7 @@ export function useMasonryScroll({
     const isScrollingDown = scrollTop > lastScrollTop + 1 // tolerate tiny jitter
     lastScrollTop = scrollTop
 
-    const columnHeights = calculateColumnHeights(masonry.value, columns.value)
+    const columnHeights = precomputedHeights ?? calculateColumnHeights(masonry.value, columns.value)
     const longestColumn = Math.max(...columnHeights)
     const whitespaceVisible = longestColumn + 300 < visibleBottom - 1
     const reachedContainerBottom = scrollTop + clientHeight >= containerHeight.value - 1

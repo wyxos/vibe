@@ -1,7 +1,7 @@
 /**
  * Composable for handling masonry item transitions (typed)
  */
-export function useMasonryTransitions(masonry: any) {
+export function useMasonryTransitions(masonry: any, opts?: { leaveDurationMs?: number }) {
   function onEnter(el: HTMLElement, done: () => void) {
     const left = parseInt(el.dataset.left || '0', 10)
     const top = parseInt(el.dataset.top || '0', 10)
@@ -51,10 +51,15 @@ export function useMasonryTransitions(masonry: any) {
     const left = parseInt(el.dataset.left || '0', 10)
     const top = parseInt(el.dataset.top || '0', 10)
 
-    const cs = getComputedStyle(el)
-    const varVal = cs.getPropertyValue('--masonry-leave-duration') || ''
-    const parsed = parseFloat(varVal)
-    const leaveMs = Number.isFinite(parsed) && parsed > 0 ? parsed : 200
+    // Prefer explicit option, fallback to CSS variable for safety
+    const fromOpts = typeof opts?.leaveDurationMs === 'number' ? opts!.leaveDurationMs : NaN
+    let leaveMs = Number.isFinite(fromOpts) && fromOpts > 0 ? fromOpts : NaN
+    if (!Number.isFinite(leaveMs)) {
+      const cs = getComputedStyle(el)
+      const varVal = cs.getPropertyValue('--masonry-leave-duration') || ''
+      const parsed = parseFloat(varVal)
+      leaveMs = Number.isFinite(parsed) && parsed > 0 ? parsed : 200
+    }
 
     const prevDuration = el.style.transitionDuration
 

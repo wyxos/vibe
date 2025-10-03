@@ -138,13 +138,13 @@ const scrollProgress = ref<{ distanceToTrigger: number; isNearTrigger: boolean }
   isNearTrigger: false
 })
 
-const updateScrollProgress = () => {
+const updateScrollProgress = (precomputedHeights?: number[]) => {
   if (!container.value) return
 
   const {scrollTop, clientHeight} = container.value
   const visibleBottom = scrollTop + clientHeight
 
-  const columnHeights = calculateColumnHeights(masonry.value as any, columns.value)
+  const columnHeights = precomputedHeights ?? calculateColumnHeights(masonry.value as any, columns.value)
   const longestColumn = Math.max(...columnHeights)
   const triggerPoint = longestColumn + 300
 
@@ -158,7 +158,7 @@ const updateScrollProgress = () => {
 }
 
 // Setup composables
-const {onEnter, onBeforeEnter, onBeforeLeave, onLeave} = useMasonryTransitions(masonry)
+const {onEnter, onBeforeEnter, onBeforeLeave, onLeave} = useMasonryTransitions(masonry, { leaveDurationMs: props.leaveDurationMs })
 
 const {handleScroll} = useMasonryScroll({
   container,
@@ -398,8 +398,9 @@ function reset() {
 }
 
 const debouncedScrollHandler = debounce(() => {
-  handleScroll()
-  updateScrollProgress()
+  const heights = calculateColumnHeights(masonry.value as any, columns.value)
+  handleScroll(heights as any)
+  updateScrollProgress(heights)
 }, 200)
 
 const debouncedResizeHandler = debounce(onResize, 200)
@@ -450,7 +451,7 @@ onUnmounted(() => {
              class="absolute masonry-item"
              v-bind="getItemAttributes(item, i)">
           <slot name="item" v-bind="{item, remove}">
-            <img :src="item.src" class="w-full"/>
+            <img :src="item.src" class="w-full" loading="lazy" decoding="async"/>
             <button class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer"
                     @click="remove(item)">
               <i class="fas fa-trash"></i>
