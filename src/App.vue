@@ -8,6 +8,8 @@ const items = ref<MasonryItem[]>([]);
 
 const masonry = ref<InstanceType<typeof Masonry> | null>(null);
 
+const layout = { sizes: { base: 1, sm: 2, md: 3, lg: 4, xl: 5, '2xl': 10 }, header: 40, footer: 40 };
+
 const getPage = async (page: number): Promise<GetPageResult> => {
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -49,7 +51,7 @@ const getPage = async (page: number): Promise<GetPageResult> => {
         <p>Showing: <span class="bg-blue-500 text-white p-2 rounded">{{ items.length }}</span></p>
       </div>
     </header>
-    <masonry class="bg-blue-500 " v-model:items="items" :get-next-page="getPage" :load-at-page="1" ref="masonry">
+    <masonry class="bg-blue-500 " v-model:items="items" :get-next-page="getPage" :load-at-page="1" :layout="layout" ref="masonry">
       <template #item="{item, remove}">
         <img :src="item.src" class="w-full"/>
         <button class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer" @click="remove(item)">
