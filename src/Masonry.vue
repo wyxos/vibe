@@ -171,8 +171,7 @@ const {handleScroll} = useMasonryScroll({
   setItemsRaw: (items: any[]) => {
     masonry.value = items
   },
-  loadNext,
-  leaveEstimateMs: props.leaveDurationMs
+  loadNext
 })
 
 defineExpose({
