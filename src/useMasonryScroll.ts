@@ -15,8 +15,7 @@ export function useMasonryScroll({
   pageSize,
   refreshLayout,
   setItemsRaw,
-  loadNext,
-  leaveEstimateMs
+  loadNext
 }: {
   container: Ref<HTMLElement | null>
   masonry: Ref<ProcessedMasonryItem[]>
@@ -28,7 +27,6 @@ export function useMasonryScroll({
   refreshLayout: (items: ProcessedMasonryItem[]) => void
   setItemsRaw: (items: ProcessedMasonryItem[]) => void
   loadNext: () => Promise<any>
-  leaveEstimateMs?: number
 }) {
   let cleanupInProgress = false
   let lastScrollTop = 0
@@ -103,15 +101,6 @@ export function useMasonryScroll({
     cleanupInProgress = false
   }
 
-  function msLeaveEstimate() {
-    const base = typeof leaveEstimateMs === 'number' && leaveEstimateMs > 0 ? leaveEstimateMs : 250
-    return base + 50
-  }
-
-  function waitFor(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms))
-  }
-
   async function maintainAnchorPosition() {
     if (!container.value) return
 
@@ -136,10 +125,6 @@ export function useMasonryScroll({
     if (Math.abs(desiredTop - scrollTop) > 4) {
       container.value.scrollTo({ top: desiredTop, behavior: 'auto' })
     }
-  }
-
-  async function adjustScrollPosition() {
-    await maintainAnchorPosition()
   }
 
   return {

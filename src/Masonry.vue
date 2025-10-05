@@ -128,7 +128,6 @@ const masonry = computed<any>({
 const columns = ref<number>(7)
 const container = ref<HTMLElement | null>(null)
 const paginationHistory = ref<any[]>([])
-const nextPage = ref<number | null>(null)
 const isLoading = ref<boolean>(false)
 const containerHeight = ref<number>(0)
 
