@@ -15,7 +15,8 @@ export function useMasonryScroll({
   pageSize,
   refreshLayout,
   setItemsRaw,
-  loadNext
+  loadNext,
+  loadThresholdPx
 }: {
   container: Ref<HTMLElement | null>
   masonry: Ref<ProcessedMasonryItem[]>
@@ -27,6 +28,7 @@ export function useMasonryScroll({
   refreshLayout: (items: ProcessedMasonryItem[]) => void
   setItemsRaw: (items: ProcessedMasonryItem[]) => void
   loadNext: () => Promise<any>
+  loadThresholdPx?: number
 }) {
   let cleanupInProgress = false
   let lastScrollTop = 0
@@ -34,30 +36,20 @@ export function useMasonryScroll({
   async function handleScroll(precomputedHeights?: number[]) {
     if (!container.value) return
 
-    const shortestColumnHeight = Math.min(...calculateColumnHeights(masonry.value, columns.value))
+    const columnHeights = precomputedHeights ?? calculateColumnHeights(masonry.value, columns.value)
+    const tallest = columnHeights.length ? Math.max(...columnHeights) : 0
     const scrollerBottom = container.value.scrollTop + container.value.clientHeight
 
     const isScrollingDown = container.value.scrollTop > lastScrollTop + 1 // tolerate tiny jitter
-    const whitespaceVisible = shortestColumnHeight < scrollerBottom + 300
-
     lastScrollTop = container.value.scrollTop
 
-    if (whitespaceVisible && isScrollingDown && !isLoading.value) {
-        // items count
-        const currentCount = masonry.value.length
+    const threshold = typeof loadThresholdPx === 'number' ? loadThresholdPx : 200
+    const nearBottom = scrollerBottom >= Math.max(0, tallest - threshold)
 
-        if(currentCount > maxItems){
-
-        }
-
-
-        await loadNext()
-
-        await nextTick()
-
-        isLoading.value = false
-
-        return;
+    if (nearBottom && isScrollingDown && !isLoading.value) {
+      await loadNext()
+      await nextTick()
+      return
     }
   }
 

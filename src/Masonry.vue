@@ -87,6 +87,14 @@ const props = defineProps({
   forceMotion: {
     type: Boolean,
     default: false
+  },
+  virtualBufferPx: {
+    type: Number,
+    default: 600
+  },
+  loadThresholdPx: {
+    type: Number,
+    default: 200
   }
 })
 
@@ -131,6 +139,14 @@ const paginationHistory = ref<any[]>([])
 const isLoading = ref<boolean>(false)
 const containerHeight = ref<number>(0)
 
+// Virtualization viewport state
+const viewportTop = ref(0)
+const viewportHeight = ref(0)
+const VIRTUAL_BUFFER_PX = props.virtualBufferPx
+
+// Gate transitions during virtualization-only DOM churn
+const virtualizing = ref(false)
+
 // Scroll progress tracking
 const scrollProgress = ref<{ distanceToTrigger: number; isNearTrigger: boolean }>({
   distanceToTrigger: 0,
@@ -144,8 +160,8 @@ const updateScrollProgress = (precomputedHeights?: number[]) => {
   const visibleBottom = scrollTop + clientHeight
 
   const columnHeights = precomputedHeights ?? calculateColumnHeights(masonry.value as any, columns.value)
-  const longestColumn = Math.max(...columnHeights)
-  const triggerPoint = longestColumn + 300
+  const tallest = columnHeights.length ? Math.max(...columnHeights) : 0
+const triggerPoint = Math.max(0, tallest - props.loadThresholdPx)
 
   const distanceToTrigger = Math.max(0, triggerPoint - visibleBottom)
   const isNearTrigger = distanceToTrigger <= 100
@@ -159,6 +175,64 @@ const updateScrollProgress = (precomputedHeights?: number[]) => {
 // Setup composables
 const {onEnter, onBeforeEnter, onBeforeLeave, onLeave} = useMasonryTransitions(masonry, { leaveDurationMs: props.leaveDurationMs })
 
+// Transition wrappers that skip animation during virtualization
+function enter(el: HTMLElement, done: () => void) {
+  if (virtualizing.value) {
+    const left = parseInt(el.dataset.left || '0', 10)
+    const top = parseInt(el.dataset.top || '0', 10)
+    el.style.transition = 'none'
+    el.style.opacity = '1'
+    el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1)`
+    el.style.removeProperty('--masonry-opacity-delay')
+    requestAnimationFrame(() => {
+      el.style.transition = ''
+      done()
+    })
+  } else {
+    onEnter(el, done)
+  }
+}
+function beforeEnter(el: HTMLElement) {
+  if (virtualizing.value) {
+    const left = parseInt(el.dataset.left || '0', 10)
+    const top = parseInt(el.dataset.top || '0', 10)
+    el.style.transition = 'none'
+    el.style.opacity = '1'
+    el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1)`
+    el.style.removeProperty('--masonry-opacity-delay')
+  } else {
+    onBeforeEnter(el)
+  }
+}
+function beforeLeave(el: HTMLElement) {
+  if (virtualizing.value) {
+    // no-op; removal will be immediate in leave
+  } else {
+    onBeforeLeave(el)
+  }
+}
+function leave(el: HTMLElement, done: () => void) {
+  if (virtualizing.value) {
+    // Skip animation during virtualization
+    done()
+  } else {
+    onLeave(el, done)
+  }
+}
+
+// Visible window of items (virtualization)
+const visibleMasonry = computed(() => {
+  const top = viewportTop.value - VIRTUAL_BUFFER_PX
+  const bottom = viewportTop.value + viewportHeight.value + VIRTUAL_BUFFER_PX
+  const items = masonry.value as any[]
+  if (!items || items.length === 0) return [] as any[]
+  return items.filter((it: any) => {
+    const itemTop = it.top
+    const itemBottom = it.top + it.columnHeight
+    return itemBottom >= top && itemTop <= bottom
+  })
+})
+
 const {handleScroll} = useMasonryScroll({
   container,
   masonry: masonry as any,
@@ -171,7 +245,8 @@ const {handleScroll} = useMasonryScroll({
   setItemsRaw: (items: any[]) => {
     masonry.value = items
   },
-  loadNext
+  loadNext,
+  loadThresholdPx: props.loadThresholdPx
 })
 
 defineExpose({
@@ -323,6 +398,10 @@ async function removeMany(items: any[]) {
 function onResize() {
   columns.value = getColumnCount(layout.value as any)
   refreshLayout(masonry.value as any)
+  if (container.value) {
+    viewportTop.value = container.value.scrollTop
+    viewportHeight.value = container.value.clientHeight
+  }
 }
 
 let backfillActive = false
@@ -395,7 +474,17 @@ function reset() {
   }
 }
 
-const debouncedScrollHandler = debounce(() => {
+const debouncedScrollHandler = debounce(async () => {
+  if (container.value) {
+    viewportTop.value = container.value.scrollTop
+    viewportHeight.value = container.value.clientHeight
+  }
+  // Gate transitions for virtualization-only DOM changes
+  virtualizing.value = true
+  await nextTick()
+  await new Promise<void>(r => requestAnimationFrame(() => r()))
+  virtualizing.value = false
+
   const heights = calculateColumnHeights(masonry.value as any, columns.value)
   handleScroll(heights as any)
   updateScrollProgress(heights)
@@ -413,6 +502,10 @@ function init(items: any[], page: any, next: any) {
 onMounted(async () => {
   try {
     columns.value = getColumnCount(layout.value as any)
+    if (container.value) {
+      viewportTop.value = container.value.scrollTop
+      viewportHeight.value = container.value.clientHeight
+    }
 
     const initialPage = props.loadAtPage as any
     paginationHistory.value = [initialPage]
@@ -442,10 +535,10 @@ onUnmounted(() => {
   <div class="overflow-auto w-full flex-1 masonry-container" :class="{ 'force-motion': props.forceMotion }" ref="container">
     <div class="relative"
          :style="{height: `${containerHeight}px`, '--masonry-duration': `${transitionDurationMs}ms`, '--masonry-leave-duration': `${leaveDurationMs}ms`, '--masonry-ease': transitionEasing}">
-      <transition-group name="masonry" :css="false" @enter="onEnter" @before-enter="onBeforeEnter"
-                        @leave="onLeave"
-                        @before-leave="onBeforeLeave">
-        <div v-for="(item, i) in masonry" :key="`${item.page}-${item.id}`"
+      <transition-group name="masonry" :css="false" @enter="enter" @before-enter="beforeEnter"
+                        @leave="leave"
+                        @before-leave="beforeLeave">
+        <div v-for="(item, i) in visibleMasonry" :key="`${item.page}-${item.id}`"
              class="absolute masonry-item"
              v-bind="getItemAttributes(item, i)">
           <slot name="item" v-bind="{item, remove}">
