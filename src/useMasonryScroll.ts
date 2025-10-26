@@ -11,7 +11,6 @@ export function useMasonryScroll({
   columns,
   containerHeight,
   isLoading,
-  maxItems,
   pageSize,
   refreshLayout,
   setItemsRaw,
@@ -23,7 +22,6 @@ export function useMasonryScroll({
   columns: Ref<number>
   containerHeight: Ref<number>
   isLoading: Ref<boolean>
-  maxItems: number
   pageSize: number
   refreshLayout: (items: ProcessedMasonryItem[]) => void
   setItemsRaw: (items: ProcessedMasonryItem[]) => void
@@ -44,7 +42,10 @@ export function useMasonryScroll({
     lastScrollTop = container.value.scrollTop
 
     const threshold = typeof loadThresholdPx === 'number' ? loadThresholdPx : 200
-    const nearBottom = scrollerBottom >= Math.max(0, tallest - threshold)
+    const triggerPoint = threshold >= 0
+      ? Math.max(0, tallest - threshold)
+      : Math.max(0, tallest + threshold)
+    const nearBottom = scrollerBottom >= triggerPoint
 
     if (nearBottom && isScrollingDown && !isLoading.value) {
       await loadNext()

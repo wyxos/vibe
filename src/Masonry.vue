@@ -36,10 +36,6 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  maxItems: {
-    type: Number,
-    default: 100
-  },
   pageSize: {
     type: Number,
     default: 40
@@ -139,6 +135,43 @@ const paginationHistory = ref<any[]>([])
 const isLoading = ref<boolean>(false)
 const containerHeight = ref<number>(0)
 
+// Diagnostics: track items missing width/height to help developers
+const invalidDimensionIds = ref<Set<number | string>>(new Set())
+function isPositiveNumber(value: unknown): boolean {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+}
+function checkItemDimensions(items: any[], context: string) {
+  try {
+    if (!Array.isArray(items) || items.length === 0) return
+    const missing = items.filter((item) => !isPositiveNumber(item?.width) || !isPositiveNumber(item?.height))
+    if (missing.length === 0) return
+
+    const newIds: Array<number | string> = []
+    for (const item of missing) {
+      const id = (item?.id as number | string | undefined) ?? `idx:${items.indexOf(item)}`
+      if (!invalidDimensionIds.value.has(id)) {
+        invalidDimensionIds.value.add(id)
+        newIds.push(id)
+      }
+    }
+    if (newIds.length > 0) {
+      const sample = newIds.slice(0, 10)
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[Masonry] Items missing width/height detected:',
+        {
+          context,
+          count: newIds.length,
+          sampleIds: sample,
+          hint: 'Ensure each item has positive width and height. Consider providing fallbacks (e.g., 512x512) at the data layer.'
+        }
+      )
+    }
+  } catch {
+    // best-effort diagnostics only
+  }
+}
+
 // Virtualization viewport state
 const viewportTop = ref(0)
 const viewportHeight = ref(0)
@@ -161,7 +194,10 @@ const updateScrollProgress = (precomputedHeights?: number[]) => {
 
   const columnHeights = precomputedHeights ?? calculateColumnHeights(masonry.value as any, columns.value)
   const tallest = columnHeights.length ? Math.max(...columnHeights) : 0
-const triggerPoint = Math.max(0, tallest - props.loadThresholdPx)
+  const threshold = typeof props.loadThresholdPx === 'number' ? props.loadThresholdPx : 200
+  const triggerPoint = threshold >= 0
+    ? Math.max(0, tallest - threshold)
+    : Math.max(0, tallest + threshold)
 
   const distanceToTrigger = Math.max(0, triggerPoint - visibleBottom)
   const isNearTrigger = distanceToTrigger <= 100
@@ -239,7 +275,6 @@ const {handleScroll} = useMasonryScroll({
   columns,
   containerHeight,
   isLoading,
-  maxItems: props.maxItems,
   pageSize: props.pageSize,
   refreshLayout,
   setItemsRaw: (items: any[]) => {
@@ -259,7 +294,9 @@ defineExpose({
   loadPage,
   reset,
   init,
-  paginationHistory
+  paginationHistory,
+  cancelLoad,
+  totalItems: computed(() => (masonry.value as any[]).length)
 })
 
 function calculateHeight(content: any[]) {
@@ -274,6 +311,8 @@ function calculateHeight(content: any[]) {
 
 function refreshLayout(items: any[]) {
   if (!container.value) return
+  // Developer diagnostics: warn when dimensions are invalid
+  checkItemDimensions(items as any[], 'refreshLayout')
   const content = calculateLayout(items as any, container.value as HTMLElement, columns.value, layout.value as any)
   calculateHeight(content as any)
   masonry.value = content
@@ -335,11 +374,14 @@ async function fetchWithRetry<T = any>(fn: () => Promise<T>): Promise<T> {
 }
 
 async function loadPage(page: number) {
-  if (isLoading.value) return
+  if (isLoading.value || cancelRequested.value) return
   isLoading.value = true
+  cancelRequested.value = false
   try {
     const baseline = (masonry.value as any[]).length
+    if (cancelRequested.value) return
     const response = await getContent(page)
+    if (cancelRequested.value) return
     paginationHistory.value.push(response.nextPage)
     await maybeBackfillToTarget(baseline)
     return response
@@ -352,12 +394,15 @@ async function loadPage(page: number) {
 }
 
 async function loadNext() {
-  if (isLoading.value) return
+  if (isLoading.value || cancelRequested.value) return
   isLoading.value = true
+  cancelRequested.value = false
   try {
     const baseline = (masonry.value as any[]).length
+    if (cancelRequested.value) return
     const currentPage = paginationHistory.value[paginationHistory.value.length - 1]
     const response = await getContent(currentPage)
+    if (cancelRequested.value) return
     paginationHistory.value.push(response.nextPage)
     await maybeBackfillToTarget(baseline)
     return response
@@ -405,10 +450,12 @@ function onResize() {
 }
 
 let backfillActive = false
+const cancelRequested = ref(false)
 
 async function maybeBackfillToTarget(baselineCount: number) {
   if (!props.backfillEnabled) return
   if (backfillActive) return
+  if (cancelRequested.value) return
 
   const targetCount = (baselineCount || 0) + (props.pageSize || 0)
   if (!props.pageSize || props.pageSize <= 0) return
@@ -426,7 +473,8 @@ async function maybeBackfillToTarget(baselineCount: number) {
     while (
       (masonry.value as any[]).length < targetCount &&
       calls < props.backfillMaxCalls &&
-      paginationHistory.value[paginationHistory.value.length - 1] != null
+      paginationHistory.value[paginationHistory.value.length - 1] != null &&
+      !cancelRequested.value
     ) {
       await waitWithProgress(props.backfillDelayMs, (remaining, total) => {
         emits('backfill:tick', {
@@ -438,10 +486,13 @@ async function maybeBackfillToTarget(baselineCount: number) {
         })
       })
 
+      if (cancelRequested.value) break
+
       const currentPage = paginationHistory.value[paginationHistory.value.length - 1]
       try {
         isLoading.value = true
         const response = await getContent(currentPage)
+        if (cancelRequested.value) break
         paginationHistory.value.push(response.nextPage)
       } finally {
         isLoading.value = false
@@ -456,7 +507,14 @@ async function maybeBackfillToTarget(baselineCount: number) {
   }
 }
 
+function cancelLoad() {
+  cancelRequested.value = true
+  isLoading.value = false
+  backfillActive = false
+}
+
 function reset() {
+  cancelLoad()
   if (container.value) {
     container.value.scrollTo({
       top: 0,
@@ -495,6 +553,8 @@ const debouncedResizeHandler = debounce(onResize, 200)
 function init(items: any[], page: any, next: any) {
   paginationHistory.value = [page]
   paginationHistory.value.push(next)
+  // Diagnostics: check incoming initial items
+  checkItemDimensions(items as any[], 'init')
   refreshLayout([...(masonry.value as any[]), ...items])
   updateScrollProgress()
 }
