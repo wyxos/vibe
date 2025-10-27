@@ -121,7 +121,8 @@ const emits = defineEmits([
   'backfill:stop',
   'retry:start',
   'retry:tick',
-  'retry:stop'
+  'retry:stop',
+  'remove-all:complete'
 ])
 
 const masonry = computed<any>({
@@ -290,12 +291,14 @@ defineExpose({
   containerHeight,
   remove,
   removeMany,
+  removeAll,
   loadNext,
   loadPage,
   reset,
   init,
   paginationHistory,
   cancelLoad,
+  scrollToTop,
   totalItems: computed(() => (masonry.value as any[]).length)
 })
 
@@ -324,6 +327,12 @@ function waitWithProgress(totalMs: number, onTick: (remaining: number, total: nu
     const start = Date.now()
     onTick(total, total)
     const id = setInterval(() => {
+      // Check for cancellation
+      if (cancelRequested.value) {
+        clearInterval(id)
+        resolve()
+        return
+      }
       const elapsed = Date.now() - start
       const remaining = Math.max(0, total - elapsed)
       onTick(remaining, total)
@@ -349,7 +358,7 @@ async function getContent(page: number) {
 async function fetchWithRetry<T = any>(fn: () => Promise<T>): Promise<T> {
   let attempt = 0
   const max = props.retryMaxAttempts
-  let delay = props.retryInitialDelayMs
+  let delay = props.
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
@@ -438,6 +447,32 @@ async function removeMany(items: any[]) {
   requestAnimationFrame(() => {
     refreshLayout(next)
   })
+}
+
+function scrollToTop(options?: ScrollToOptions) {
+  if (container.value) {
+    container.value.scrollTo({
+      top: 0,
+      behavior: options?.behavior ?? 'smooth',
+      ...options
+    })
+  }
+}
+
+async function removeAll() {
+  // Scroll to top first for better UX
+  scrollToTop({ behavior: 'smooth' })
+  
+  // Clear all items
+  masonry.value = []
+  
+  // Recalculate height to 0
+  containerHeight.value = 0
+  
+  await nextTick()
+  
+  // Emit completion event
+  emits('remove-all:complete')
 }
 
 function onResize() {
