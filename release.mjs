@@ -29,8 +29,7 @@ function runCommand(command, args, { cwd = ROOT, capture = false } = {}) {
   return new Promise((resolve, reject) => {
     const spawnOptions = {
       cwd,
-      stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
-      shell: true
+      stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit'
     }
 
     const child = spawn(command, args, spawnOptions)
