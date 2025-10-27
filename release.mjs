@@ -27,13 +27,24 @@ function logWarning(message) {
 
 function runCommand(command, args, { cwd = ROOT, capture = false } = {}) {
   return new Promise((resolve, reject) => {
+    // On Windows, use shell but properly escape arguments
+    const isWindows = process.platform === 'win32'
     const spawnOptions = {
       cwd,
       stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
-      shell: process.platform === 'win32'
+      shell: isWindows
     }
 
-    const child = spawn(command, args, spawnOptions)
+    // For Windows shell, we need to properly quote arguments with spaces or special chars
+    const escapedArgs = isWindows ? args.map(arg => {
+      // Quote arguments that contain spaces or special characters
+      if (arg.includes(' ') || arg.includes('\n') || arg.includes('"')) {
+        return `"${arg.replace(/"/g, '\\"')}"`
+      }
+      return arg
+    }) : args
+
+    const child = spawn(command, escapedArgs, spawnOptions)
     let stdout = ''
     let stderr = ''
 
