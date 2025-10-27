@@ -358,7 +358,7 @@ async function getContent(page: number) {
 async function fetchWithRetry<T = any>(fn: () => Promise<T>): Promise<T> {
   let attempt = 0
   const max = props.retryMaxAttempts
-  let delay = props.
+  let delay = props.retryInitialDelayMs
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
