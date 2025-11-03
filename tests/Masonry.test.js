@@ -283,4 +283,101 @@ describe('Masonry.vue', () => {
     expect(wrapper.props('paginationType')).toBe('cursor')
     expect(wrapper.exists()).toBe(true)
   })
+
+  it('should refresh current page when called directly', async () => {
+    let callCount = 0
+    const refreshMockGetNextPage = vi.fn().mockImplementation((page) => {
+      callCount++
+      return Promise.resolve({
+        items: [
+          { id: `item-${callCount}-1`, width: 300, height: 200, src: `test${callCount}-1.jpg`, page },
+          { id: `item-${callCount}-2`, width: 400, height: 300, src: `test${callCount}-2.jpg`, page }
+        ],
+        nextPage: page + 1
+      })
+    })
+
+    const wrapper = mount(Masonry, {
+      props: {
+        getNextPage: refreshMockGetNextPage,
+        loadAtPage: 1,
+        backfillEnabled: false
+      },
+      global: {
+        stubs: {
+          'transition-group': {
+            template: '<div><slot /></div>'
+          }
+        }
+      }
+    })
+
+    const vm = wrapper.vm
+
+    // Wait for initial load
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    // Verify items were loaded
+    expect(refreshMockGetNextPage).toHaveBeenCalledWith(1)
+    const initialHistory = [...vm.paginationHistory]
+    expect(initialHistory.length).toBeGreaterThanOrEqual(2)
+
+    // Clear the mock to track refreshCurrentPage call
+    refreshMockGetNextPage.mockClear()
+
+    // Call refreshCurrentPage directly
+    await vm.refreshCurrentPage()
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    // Verify getNextPage was called with page 1 again (current page)
+    expect(refreshMockGetNextPage).toHaveBeenCalledWith(1)
+    
+    // Verify pagination history was reset and updated
+    expect(vm.paginationHistory).toHaveLength(2)
+    expect(vm.paginationHistory[0]).toBe(1)
+  })
+
+  it('should expose refreshCurrentPage method', async () => {
+    const simpleMock = vi.fn().mockResolvedValue({
+      items: [
+        { id: 'test-1', width: 300, height: 200, src: 'test1.jpg', page: 1 }
+      ],
+      nextPage: 2
+    })
+
+    const wrapper = mount(Masonry, {
+      props: {
+        getNextPage: simpleMock,
+        loadAtPage: 1,
+        skipInitialLoad: true,
+        backfillEnabled: false
+      },
+      global: {
+        stubs: {
+          'transition-group': {
+            template: '<div><slot /></div>'
+          }
+        }
+      }
+    })
+
+    const vm = wrapper.vm
+
+    // Verify refreshCurrentPage method exists
+    expect(typeof vm.refreshCurrentPage).toBe('function')
+    
+    // Load a page first
+    await vm.loadPage(1)
+    await new Promise(resolve => setTimeout(resolve, 50))
+    
+    expect(simpleMock).toHaveBeenCalledWith(1)
+    simpleMock.mockClear()
+    
+    // Call refreshCurrentPage
+    await vm.refreshCurrentPage()
+    await new Promise(resolve => setTimeout(resolve, 50))
+    
+    // Should reload page 1
+    expect(simpleMock).toHaveBeenCalledWith(1)
+  })
 })

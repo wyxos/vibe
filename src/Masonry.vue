@@ -91,6 +91,10 @@ const props = defineProps({
   loadThresholdPx: {
     type: Number,
     default: 200
+  },
+  autoRefreshOnEmpty: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -133,6 +137,7 @@ const masonry = computed<any>({
 const columns = ref<number>(7)
 const container = ref<HTMLElement | null>(null)
 const paginationHistory = ref<any[]>([])
+const currentPage = ref<any>(null)  // Track the actual current page being displayed
 const isLoading = ref<boolean>(false)
 const containerHeight = ref<number>(0)
 
@@ -294,6 +299,7 @@ defineExpose({
   removeAll,
   loadNext,
   loadPage,
+  refreshCurrentPage,
   reset,
   init,
   paginationHistory,
@@ -316,7 +322,12 @@ function refreshLayout(items: any[]) {
   if (!container.value) return
   // Developer diagnostics: warn when dimensions are invalid
   checkItemDimensions(items as any[], 'refreshLayout')
-  const content = calculateLayout(items as any, container.value as HTMLElement, columns.value, layout.value as any)
+  // Preserve original index before layout reordering
+  const itemsWithIndex = items.map((item, index) => ({
+    ...item,
+    originalIndex: item.originalIndex ?? index
+  }))
+  const content = calculateLayout(itemsWithIndex as any, container.value as HTMLElement, columns.value, layout.value as any)
   calculateHeight(content as any)
   masonry.value = content
 }
@@ -383,14 +394,16 @@ async function fetchWithRetry<T = any>(fn: () => Promise<T>): Promise<T> {
 }
 
 async function loadPage(page: number) {
-  if (isLoading.value || cancelRequested.value) return
-  isLoading.value = true
+  if (isLoading.value) return
+  // Starting a new load should clear any previous cancel request
   cancelRequested.value = false
+  isLoading.value = true
   try {
     const baseline = (masonry.value as any[]).length
     if (cancelRequested.value) return
     const response = await getContent(page)
     if (cancelRequested.value) return
+    currentPage.value = page  // Track the current page
     paginationHistory.value.push(response.nextPage)
     await maybeBackfillToTarget(baseline)
     return response
@@ -403,15 +416,17 @@ async function loadPage(page: number) {
 }
 
 async function loadNext() {
-  if (isLoading.value || cancelRequested.value) return
-  isLoading.value = true
+  if (isLoading.value) return
+  // Starting a new load should clear any previous cancel request
   cancelRequested.value = false
+  isLoading.value = true
   try {
     const baseline = (masonry.value as any[]).length
     if (cancelRequested.value) return
-    const currentPage = paginationHistory.value[paginationHistory.value.length - 1]
-    const response = await getContent(currentPage)
+    const nextPageToLoad = paginationHistory.value[paginationHistory.value.length - 1]
+    const response = await getContent(nextPageToLoad)
     if (cancelRequested.value) return
+    currentPage.value = nextPageToLoad  // Track the current page
     paginationHistory.value.push(response.nextPage)
     await maybeBackfillToTarget(baseline)
     return response
@@ -423,10 +438,79 @@ async function loadNext() {
   }
 }
 
+/**
+ * Refresh the current page by clearing items and reloading from current page
+ * Useful when items are removed and you want to stay on the same page
+ */
+async function refreshCurrentPage() {
+  console.log('[Masonry] refreshCurrentPage called, isLoading:', isLoading.value, 'currentPage:', currentPage.value)
+  if (isLoading.value) return
+  cancelRequested.value = false
+  isLoading.value = true
+  
+  try {
+    // Use the tracked current page
+    const pageToRefresh = currentPage.value
+    console.log('[Masonry] pageToRefresh:', pageToRefresh)
+    
+    if (pageToRefresh == null) {
+      console.warn('[Masonry] No current page to refresh - currentPage:', currentPage.value, 'paginationHistory:', paginationHistory.value)
+      return
+    }
+    
+    // Clear existing items
+    masonry.value = []
+    containerHeight.value = 0
+    
+    // Reset pagination history to just the current page
+    paginationHistory.value = [pageToRefresh]
+    
+    await nextTick()
+    
+    // Reload the current page
+    const response = await getContent(pageToRefresh)
+    if (cancelRequested.value) return
+    
+    // Update pagination state
+    currentPage.value = pageToRefresh
+    paginationHistory.value.push(response.nextPage)
+    
+    // Optionally backfill if needed
+    const baseline = (masonry.value as any[]).length
+    await maybeBackfillToTarget(baseline)
+    
+    return response
+  } catch (error) {
+    console.error('[Masonry] Error refreshing current page:', error)
+    throw error
+  } finally {
+    isLoading.value = false
+  }
+}
+
 async function remove(item: any) {
   const next = (masonry.value as any[]).filter(i => i.id !== item.id)
   masonry.value = next
   await nextTick()
+  
+  // If all items were removed, either refresh current page or load next based on prop
+  console.log('[Masonry] remove - next.length:', next.length, 'paginationHistory.length:', paginationHistory.value.length)
+  if (next.length === 0 && paginationHistory.value.length > 0) {
+    if (props.autoRefreshOnEmpty) {
+      console.log('[Masonry] All items removed, calling refreshCurrentPage')
+      await refreshCurrentPage()
+    } else {
+      console.log('[Masonry] All items removed, calling loadNext and forcing backfill')
+      try {
+        await loadNext()
+        // Force backfill from 0 to ensure viewport is filled
+        // Pass baseline=0 and force=true to trigger backfill even if backfillEnabled was temporarily disabled
+        await maybeBackfillToTarget(0, true)
+      } catch {}
+    }
+    return
+  }
+  
   // Commit DOM updates without forcing sync reflow
   await new Promise<void>(r => requestAnimationFrame(() => r()))
   // Start FLIP on next frame
@@ -441,6 +525,21 @@ async function removeMany(items: any[]) {
   const next = (masonry.value as any[]).filter(i => !ids.has(i.id))
   masonry.value = next
   await nextTick()
+  
+  // If all items were removed, either refresh current page or load next based on prop
+  if (next.length === 0 && paginationHistory.value.length > 0) {
+    if (props.autoRefreshOnEmpty) {
+      await refreshCurrentPage()
+    } else {
+      try {
+        await loadNext()
+        // Force backfill from 0 to ensure viewport is filled
+        await maybeBackfillToTarget(0, true)
+      } catch {}
+    }
+    return
+  }
+  
   // Commit DOM updates without forcing sync reflow
   await new Promise<void>(r => requestAnimationFrame(() => r()))
   // Start FLIP on next frame
@@ -487,8 +586,8 @@ function onResize() {
 let backfillActive = false
 const cancelRequested = ref(false)
 
-async function maybeBackfillToTarget(baselineCount: number) {
-  if (!props.backfillEnabled) return
+async function maybeBackfillToTarget(baselineCount: number, force = false) {
+  if (!force && !props.backfillEnabled) return
   if (backfillActive) return
   if (cancelRequested.value) return
 
@@ -549,7 +648,9 @@ function cancelLoad() {
 }
 
 function reset() {
+  // Cancel ongoing work, then immediately clear cancel so new loads can start
   cancelLoad()
+  cancelRequested.value = false
   if (container.value) {
     container.value.scrollTo({
       top: 0,
@@ -559,6 +660,7 @@ function reset() {
 
   masonry.value = []
   containerHeight.value = 0
+  currentPage.value = props.loadAtPage  // Reset current page tracking
   paginationHistory.value = [props.loadAtPage]
 
   scrollProgress.value = {
@@ -586,6 +688,7 @@ const debouncedScrollHandler = debounce(async () => {
 const debouncedResizeHandler = debounce(onResize, 200)
 
 function init(items: any[], page: any, next: any) {
+  currentPage.value = page  // Track the initial current page
   paginationHistory.value = [page]
   paginationHistory.value.push(next)
   // Diagnostics: check incoming initial items
