@@ -17,6 +17,7 @@ VIBE (Vue Infinite Block Engine) is designed for applications that need to displ
 - **Infinite Scrolling**: Seamlessly loads more content as the user scrolls, with built-in support for async data fetching.
 - **Dynamic Updates**: Supports adding, removing, and reflowing items with smooth FLIP animations.
 - **Scroll Position Maintenance**: Keeps the user's scroll position stable when new items are loaded or the layout changes.
+- **Built-in Item Component**: Includes a production-ready `MasonryItem` with image preloading, error handling, and hover effects.
 - **Customizable Rendering**: Full control over item markup via scoped slots.
 
 ---
@@ -31,13 +32,18 @@ npm install @wyxos/vibe
 
 ## Usage
 
+### Basic Usage (Default Item)
+
+By default, VIBE uses the built-in `MasonryItem` component, which handles image loading and provides a clean UI.
+
 ```vue
 <script setup>
   import { ref } from 'vue'
   import { Masonry } from '@wyxos/vibe'
 
   const items = ref([])
-
+  
+  // Layout configuration
   const layout = {
     gutterX: 12,
     gutterY: 12,
@@ -47,6 +53,7 @@ npm install @wyxos/vibe
   async function getNextPage(page) {
     const response = await fetch(`/api/items?page=${page}`)
     const data = await response.json()
+    // Items must have a 'src' property for the default MasonryItem
     return {
       items: data.items,
       nextPage: page + 1
@@ -59,16 +66,36 @@ npm install @wyxos/vibe
       v-model:items="items"
       :get-next-page="getNextPage"
       :layout="layout"
+  />
+</template>
+```
+
+### Custom Item Rendering
+
+You can fully customize the item rendering using the `#item` slot. You can also import and use `MasonryItem` inside the slot if you want to wrap it or extend it.
+
+```vue
+<script setup>
+  import { Masonry, MasonryItem } from '@wyxos/vibe'
+  // ... setup code ...
+</script>
+
+<template>
+  <Masonry
+      v-model:items="items"
+      :get-next-page="getNextPage"
+      :layout="layout"
   >
-    <template #item="{ item, onRemove }">
-      <div class="relative">
-        <img :src="item.src" class="w-full" alt="Masonry item" />
-        <button
-            class="absolute bottom-2 right-2 bg-red-600 text-white text-xs p-1 rounded"
-            @click="onRemove(item)"
-        >
-          Remove
-        </button>
+    <template #item="{ item, remove }">
+      <!-- Custom container -->
+      <div class="custom-card">
+        <!-- You can use the built-in item or your own -->
+        <MasonryItem :item="item" :remove="remove">
+           <!-- Optional: MasonryItem also has a default slot for overlays -->
+           <div class="absolute bottom-0 p-2 text-white">
+             {{ item.title }}
+           </div>
+        </MasonryItem>
       </div>
     </template>
   </Masonry>
@@ -85,6 +112,8 @@ npm install @wyxos/vibe
 | `getNextPage` | `Function(page: Number)` | Yes | Async function to load the next page. Must return `{ items, nextPage }`. |
 | `layout` | `Object` | No | Configuration object for layout, including sizes and gutters. |
 | `loadAtPage` | `Number` | No | The starting page number (default: `1`). |
+| `paginationType` | `String` | No | `'page'` or `'cursor'` (default: `'page'`). |
+| `pageSize` | `Number` | No | Number of items per page, used for backfilling (default: `40`). |
 
 ### Layout Configuration Example
 
@@ -105,11 +134,29 @@ npm install @wyxos/vibe
 
 ---
 
+## MasonryItem Component
+
+The built-in `MasonryItem` component is available for use within the `#item` slot or as a standalone component.
+
+### Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `item` | `Object` | The item object. Must contain `src` for image loading. |
+| `remove` | `Function` | Optional callback to remove the item. If provided, a remove button is shown. |
+
+### Features
+- **Image Preloading**: Shows a spinner while the image loads.
+- **Error Handling**: Displays an error state if the image fails to load.
+- **Hover Effects**: Includes a subtle zoom and overlay on hover.
+
+---
+
 ## Slots
 
 | Slot Name | Props | Description |
 |-----------|-------|-------------|
-| `item` | `{ item, onRemove }` | Scoped slot for custom rendering of each masonry block. |
+| `item` | `{ item, remove }` | Scoped slot for custom rendering of each masonry block. |
 
 ---
 
