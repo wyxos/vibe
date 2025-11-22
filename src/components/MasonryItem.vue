@@ -77,44 +77,55 @@ watch(
 </script>
 
 <template>
-  <div class="relative w-full h-full">
+  <div class="relative w-full h-full group">
     <!-- Custom slot content (replaces default if provided) -->
     <slot :item="item" :remove="remove" :imageLoaded="imageLoaded" :imageError="imageError">
       <!-- Default content when no slot is provided -->
-      <!-- Spinner while loading -->
-      <div
-        v-if="!imageLoaded && !imageError"
-        class="absolute inset-0 flex items-center justify-center bg-gray-100"
-      >
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      <div class="w-full h-full rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 bg-white relative">
+        <!-- Spinner while loading -->
+        <div
+          v-if="!imageLoaded && !imageError"
+          class="absolute inset-0 flex items-center justify-center bg-slate-100"
+        >
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        </div>
+
+        <!-- Error state -->
+        <div
+          v-if="imageError"
+          class="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 text-slate-400 text-sm p-4 text-center"
+        >
+          <i class="fas fa-image text-2xl mb-2 opacity-50"></i>
+          <span>Failed to load image</span>
+        </div>
+
+        <!-- Image (only shown when loaded) -->
+        <img
+          v-if="imageLoaded && imageSrc"
+          :src="imageSrc"
+          class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+          decoding="async"
+        />
+
+        <!-- Overlay Gradient -->
+        <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+        <!-- Remove button -->
+        <button
+          v-if="remove"
+          class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-white/90 backdrop-blur-sm text-slate-700 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 hover:bg-red-500 hover:text-white cursor-pointer"
+          @click.stop="remove(item)"
+          aria-label="Remove item"
+        >
+          <i class="fas fa-times text-sm"></i>
+        </button>
+        
+        <!-- Item Info (Optional, visible on hover) -->
+        <div class="absolute bottom-0 left-0 right-0 p-3 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 delay-75">
+          <p class="text-white text-xs font-medium truncate drop-shadow-md">Item #{{ item.id.split('-')[0] }}</p>
+        </div>
       </div>
-
-      <!-- Error state -->
-      <div
-        v-if="imageError"
-        class="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-500 text-sm"
-      >
-        Failed to load image
-      </div>
-
-      <!-- Image (only shown when loaded) -->
-      <img
-        v-if="imageLoaded && imageSrc"
-        :src="imageSrc"
-        class="w-full"
-        loading="lazy"
-        decoding="async"
-      />
-
-      <!-- Remove button -->
-      <button
-        v-if="remove"
-        class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer hover:bg-red-600 transition-colors"
-        @click="remove(item)"
-        aria-label="Remove item"
-      >
-        <i class="fas fa-trash"></i>
-      </button>
     </slot>
   </div>
 </template>
