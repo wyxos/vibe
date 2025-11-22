@@ -235,8 +235,7 @@ async function runLibBuild(skipBuild) {
 
   logStep('Building library...')
   await runCommand('npm', ['run', 'build:lib'])
-  await runCommand('git', ['add', 'lib'])
-  logSuccess('Library built and staged.')
+  logSuccess('Library built.')
 }
 
 async function ensureNpmAuth() {
@@ -248,6 +247,11 @@ async function bumpVersion(releaseType) {
   logStep(`Bumping package version with "npm version ${releaseType}"...`)
   await runCommand('npm', ['version', releaseType, '--message', 'chore: release %s'])
   const pkg = await readPackage()
+  
+  // Add lib files to the commit created by npm version
+  await runCommand('git', ['add', 'lib'])
+  await runCommand('git', ['commit', '--amend', '--no-edit'])
+  
   logSuccess(`Version updated to ${pkg.version}.`)
   return pkg
 }
