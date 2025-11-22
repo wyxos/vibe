@@ -8,7 +8,7 @@ A high-performance, responsive masonry layout engine for Vue 3 with built-in inf
 
 VIBE (Vue Infinite Block Engine) is designed for applications that need to display large datasets in a masonry grid without compromising performance. Unlike other masonry libraries, VIBE leverages virtualization to render only what is visible on the screen, ensuring smooth scrolling even with thousands of items.
 
-![VIBE Demo](https://raw.githubusercontent.com/wyxos/vibe/main/demo.webp)
+![VIBE Demo](demo.webp)
 
 ---
 
