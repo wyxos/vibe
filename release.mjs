@@ -245,15 +245,15 @@ async function ensureNpmAuth() {
 
 async function bumpVersion(releaseType) {
   logStep(`Bumping package version with "npm version ${releaseType}"...`)
-  
+
   // Stash lib changes temporarily so npm version can run
   const { stdout: statusBefore } = await runCommand('git', ['status', '--porcelain'], { capture: true })
   const hasLibChanges = statusBefore.includes('lib/')
-  
+
   if (hasLibChanges) {
     await runCommand('git', ['stash', 'push', '-m', 'temp: lib build artifacts', 'lib/'])
   }
-  
+
   try {
     await runCommand('npm', ['version', releaseType, '--message', 'chore: release %s'])
   } finally {
@@ -264,7 +264,7 @@ async function bumpVersion(releaseType) {
       await runCommand('git', ['commit', '--amend', '--no-edit'])
     }
   }
-  
+
   const pkg = await readPackage()
   logSuccess(`Version updated to ${pkg.version}.`)
   return pkg
