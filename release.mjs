@@ -227,6 +227,18 @@ async function runBuild(skipBuild) {
   logSuccess('Build completed.')
 }
 
+async function runLibBuild(skipBuild) {
+  if (skipBuild) {
+    logWarning('Skipping library build because --skip-build flag was provided.')
+    return
+  }
+
+  logStep('Building library...')
+  await runCommand('npm', ['run', 'build:lib'])
+  await runCommand('git', ['add', 'lib'])
+  logSuccess('Library built and staged.')
+}
+
 async function ensureNpmAuth() {
   logStep('Confirming npm authentication...')
   await runCommand('npm', ['whoami'])
@@ -275,7 +287,7 @@ async function deployGHPages(skipDeploy) {
 
   try {
     await runCommand('git', ['worktree', 'remove', worktreeDir, '-f'])
-  } catch {}
+  } catch { }
 
   try {
     await runCommand('git', ['worktree', 'add', worktreeDir, 'gh-pages'])
@@ -324,6 +336,7 @@ async function main() {
   await runLint(skipLint)
   await runTests(skipTests)
   await runBuild(skipBuild)
+  await runLibBuild(skipBuild)
   await ensureNpmAuth()
 
   const updatedPkg = await bumpVersion(releaseType)
