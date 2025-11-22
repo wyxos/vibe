@@ -123,7 +123,7 @@ watch(
         
         <!-- Item Info (Optional, visible on hover) -->
         <div class="absolute bottom-0 left-0 right-0 p-3 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 delay-75">
-          <p class="text-white text-xs font-medium truncate drop-shadow-md">Item #{{ item.id.split('-')[0] }}</p>
+          <p class="text-white text-xs font-medium truncate drop-shadow-md">Item #{{ String(item.id).split('-')[0] }}</p>
         </div>
       </div>
     </slot>
