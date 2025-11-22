@@ -12,6 +12,9 @@
     "./vibe.css": "./lib/vibe.css",
     "./package.json": "./package.json"
   },
+  "bin": {
+    "vibe": "./toggle-link.mjs"
+  },
   "type": "module",
   "files": [
     "lib",

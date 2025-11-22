@@ -38,6 +38,12 @@ npm install @wyxos/vibe
 
   const items = ref([])
 
+  const layout = {
+    gutterX: 12,
+    gutterY: 12,
+    sizes: { base: 1, sm: 2, md: 3, lg: 4 }
+  }
+
   async function getNextPage(page) {
     const response = await fetch(`/api/items?page=${page}`)
     const data = await response.json()
@@ -49,12 +55,10 @@ npm install @wyxos/vibe
 </script>
 
 <template>
-  <WyxosMasonry
+  <Masonry
       v-model:items="items"
       :get-next-page="getNextPage"
-      :gutter-x="12"
-      :gutter-y="12"
-      :sizes="{ base: 1, sm: 2, md: 3, lg: 4 }"
+      :layout="layout"
   >
     <template #item="{ item, onRemove }">
       <div class="relative">
@@ -67,7 +71,7 @@ npm install @wyxos/vibe
         </button>
       </div>
     </template>
-  </WyxosMasonry>
+  </Masonry>
 </template>
 ```
 
@@ -79,20 +83,22 @@ npm install @wyxos/vibe
 |--------------|----------|----------|-----------------------------------------------------------------------------|
 | `items`      | `Array`  | ✅        | Two-way bound item array (each item must include `width`, `height`, `id`) |
 | `getNextPage`| `Function(page: Number)` | ✅ | Async function to load the next page — returns `{ items, nextPage }`       |
+| `layout`     | `Object` | ❌        | Layout configuration (sizes, gutters, etc.)                                |
 | `loadAtPage` | `Number` | ❌        | Starting page number (default: `1`)                                        |
-| `sizes`      | `Object` | ❌        | Mobile-first column config (default: Tailwind-style breakpoints)          |
-| `gutterX`    | `Number` | ❌        | Horizontal gutter between items (default: `10`)                            |
-| `gutterY`    | `Number` | ❌        | Vertical gutter between items (default: `10`)                              |
 
-### `sizes` example:
+### `layout` example:
 ```js
 {
-  base: 1,
-  sm: 2,
-  md: 3,
-  lg: 4,
-  xl: 5,
-  '2xl': 6
+  gutterX: 10,
+  gutterY: 10,
+  sizes: {
+    base: 1,
+    sm: 2,
+    md: 3,
+    lg: 4,
+    xl: 5,
+    '2xl': 6
+  }
 }
 ```
 
