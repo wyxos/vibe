@@ -10,6 +10,7 @@ import {
 } from './masonryUtils'
 import { useMasonryTransitions } from './useMasonryTransitions'
 import { useMasonryScroll } from './useMasonryScroll'
+import MasonryItem from './components/MasonryItem.vue'
 
 const props = defineProps({
   getNextPage: {
@@ -752,11 +753,7 @@ onUnmounted(() => {
              class="absolute masonry-item"
              v-bind="getItemAttributes(item, i)">
           <slot name="item" v-bind="{item, remove}">
-            <img :src="item.src" class="w-full" loading="lazy" decoding="async"/>
-            <button class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer"
-                    @click="remove(item)">
-              <i class="fas fa-trash"></i>
-            </button>
+            <MasonryItem :item="item" :remove="remove" />
           </slot>
         </div>
       </transition-group>

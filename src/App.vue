@@ -159,13 +159,6 @@ const getPage = async (page: number): Promise<GetPageResult> => {
         </div>
       </div>
     </header>
-    <masonry class="bg-blue-500 " v-model:items="items" :get-next-page="getPage" :load-at-page="1" :layout="layout" ref="masonry">
-      <template #item="{item, remove}">
-        <img :src="item.src" class="w-full"/>
-        <button class="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded cursor-pointer" @click="remove(item)">
-          <i class="fas fa-trash"></i>
-        </button>
-      </template>
-    </masonry>
+    <masonry v-model:items="items" :get-next-page="getPage" :load-at-page="1" :layout="layout" ref="masonry"></masonry>
   </main>
 </template>
