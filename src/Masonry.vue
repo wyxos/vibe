@@ -751,7 +751,8 @@ onUnmounted(() => {
                         @before-leave="beforeLeave">
         <div v-for="(item, i) in visibleMasonry" :key="`${item.page}-${item.id}`"
              class="absolute masonry-item"
-             v-bind="getItemAttributes(item, i)">
+             v-bind="getItemAttributes(item, i)"
+             :style="{ paddingTop: `${layout.header}px`, paddingBottom: `${layout.footer}px` }">
           <slot name="item" v-bind="{item, remove}">
             <MasonryItem :item="item" :remove="remove" />
           </slot>
