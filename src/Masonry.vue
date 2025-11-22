@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import calculateLayout from "./calculateLayout";
 import { debounce } from 'lodash-es'
 import {
@@ -696,6 +696,18 @@ function init(items: any[], page: any, next: any) {
   refreshLayout([...(masonry.value as any[]), ...items])
   updateScrollProgress()
 }
+
+// Watch for layout changes and update columns + refresh layout dynamically
+watch(
+  layout,
+  () => {
+    if (container.value) {
+      columns.value = getColumnCount(layout.value as any)
+      refreshLayout(masonry.value as any)
+    }
+  },
+  { deep: true }
+)
 
 onMounted(async () => {
   try {
