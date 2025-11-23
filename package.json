@@ -1,6 +1,30 @@
 {
   "name": "@wyxos/vibe",
   "version": "1.6.12",
+  "description": "A high-performance, responsive masonry layout engine for Vue 3 with built-in infinite scrolling and virtualization.",
+  "keywords": [
+    "vue",
+    "vue3",
+    "masonry",
+    "grid",
+    "layout",
+    "infinite-scroll",
+    "virtualization",
+    "responsive",
+    "performance",
+    "swipe",
+    "feed",
+    "mobile"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wyxos/vibe.git"
+  },
+  "homepage": "https://wyxos.github.io/vibe/",
+  "bugs": {
+    "url": "https://github.com/wyxos/vibe/issues"
+  },
   "main": "lib/index.js",
   "module": "lib/index.js",
   "types": "lib/index.d.ts",
