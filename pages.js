@@ -12,7 +12,7 @@ const outputPath = path.join(__dirname, 'src', 'pages.json');
 const totalPages = 100;
 const itemsPerPage = 40;
 
-const generateRandomItem = (indexOffset, page, index) => {
+const generateRandomItem = (indexOffset, page, index, specialType = null) => {
     const width = Math.floor(Math.random() * 300) + 200;
     const height = Math.floor(Math.random() * 300) + 200;
 
@@ -24,26 +24,17 @@ const generateRandomItem = (indexOffset, page, index) => {
         index,
     };
 
-    // Each page should have examples of different types
-    const itemIndexInPage = index % itemsPerPage;
-
-    // First item: video example
-    if (itemIndexInPage === 0) {
+    // Handle special item types
+    if (specialType === 'video') {
         item.type = 'video';
-        // Using a sample video URL (you can replace with actual video URLs)
         item.src = `https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4`;
-    }
-    // Second item: not found example
-    else if (itemIndexInPage === 1) {
+    } else if (specialType === 'notFound') {
         item.notFound = true;
         item.src = `https://picsum.photos/id/${indexOffset}/${width}/${height}`;
-    }
-    // Third item: invalid path that will fail to load
-    else if (itemIndexInPage === 2) {
+    } else if (specialType === 'invalid') {
         item.src = `https://invalid-domain-that-does-not-exist-${indexOffset}.com/image.jpg`;
-    }
-    // Rest: normal images
-    else {
+    } else {
+        // Normal image
         item.type = 'image';
         item.src = `https://picsum.photos/id/${indexOffset}/${width}/${height}`;
     }
@@ -51,12 +42,44 @@ const generateRandomItem = (indexOffset, page, index) => {
     return item;
 };
 
+// Helper function to shuffle array (Fisher-Yates algorithm)
+const shuffleArray = (array) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+};
+
 const pages = [];
 
 for (let page = 0; page < totalPages; page++) {
-    const pageItems = Array.from({ length: itemsPerPage }, (_, index) =>
-        generateRandomItem(page * itemsPerPage + index, page, index)
-    );
+    // Create array of indices and shuffle them
+    const indices = Array.from({ length: itemsPerPage }, (_, i) => i);
+    const shuffledIndices = shuffleArray(indices);
+
+    // Select random positions for special items (first 3 shuffled indices)
+    const videoIndex = shuffledIndices[0];
+    const notFoundIndex = shuffledIndices[1];
+    const invalidIndex = shuffledIndices[2];
+
+    // Generate all items
+    const pageItems = Array.from({ length: itemsPerPage }, (_, index) => {
+        const indexOffset = page * itemsPerPage + index;
+        let specialType = null;
+
+        // Determine if this index should be a special item
+        if (index === videoIndex) {
+            specialType = 'video';
+        } else if (index === notFoundIndex) {
+            specialType = 'notFound';
+        } else if (index === invalidIndex) {
+            specialType = 'invalid';
+        }
+
+        return generateRandomItem(indexOffset, page, index, specialType);
+    });
 
     pages.push({
         page: page + 1,

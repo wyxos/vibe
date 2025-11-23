@@ -60,6 +60,8 @@
     "prepublishOnly": "npm run build:lib"
   },
   "dependencies": {
+    "@types/highlight.js": "^9.12.4",
+    "highlight.js": "^11.11.1",
     "lodash": "^4.17.21",
     "lodash-es": "^4.17.21",
     "vue": "^3.0.0",

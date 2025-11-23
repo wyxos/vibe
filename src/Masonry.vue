@@ -1137,20 +1137,9 @@ onUnmounted(() => {
         </div>
       </div>
       
-      <!-- Swipe indicator dots -->
-      <div v-if="masonry.length > 1" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-10 pointer-events-none">
-        <div 
-          v-for="(item, index) in masonry.slice(0, Math.min(10, masonry.length))" 
-          :key="`dot-${item.id}`"
-          class="w-1.5 h-1.5 rounded-full transition-all duration-300"
-          :class="index === currentSwipeIndex ? 'bg-white w-4' : 'bg-white/40'"
-        />
-      </div>
 
-      <!-- Item Counter -->
-      <div class="fixed top-20 right-4 bg-black/50 backdrop-blur-sm text-white text-xs font-medium px-3 py-1.5 rounded-full z-20 pointer-events-none">
-        {{ currentSwipeIndex + 1 }} / {{ masonry.length }}
-      </div>
+
+
     </div>
 
     <!-- Masonry Grid Mode (Desktop) -->
@@ -1174,14 +1163,7 @@ onUnmounted(() => {
           </div>
         </transition-group>
 
-        <!-- Scroll Progress Badge -->
-        <div v-if="containerHeight > 0"
-             class="fixed bottom-4 right-4 bg-gray-800 text-white text-xs rounded-full px-3 py-1.5 shadow-lg z-10 transition-opacity duration-300"
-             :class="{'opacity-50 hover:opacity-100': !scrollProgress.isNearTrigger, 'opacity-100': scrollProgress.isNearTrigger}">
-          <span>{{ masonry.length }} items</span>
-          <span class="mx-2">|</span>
-          <span>{{ scrollProgress.distanceToTrigger }}px to load</span>
-        </div>
+
       </div>
     </div>
   </div>
