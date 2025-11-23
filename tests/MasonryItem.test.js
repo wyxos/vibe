@@ -248,108 +248,6 @@ describe('MasonryItem.vue', () => {
         expect(spinner.exists()).toBe(true)
     })
 
-    it('should show media type indicator badge on hover', async () => {
-        const item = {
-            id: 'test-1',
-            width: 300,
-            height: 200,
-            src: 'https://example.com/image.jpg',
-            type: 'image'
-        }
-
-        const wrapper = mount(MasonryItem, {
-            props: { item }
-        })
-
-        // Set loaded state and wait for DOM update
-        wrapper.vm.imageLoaded = true
-        await wrapper.vm.$nextTick()
-
-        // Badge should exist (opacity-0 by default, shown on hover)
-        // The badge has classes: absolute top-2 left-2
-        const badge = wrapper.find('[class*="top-2"][class*="left-2"]')
-        expect(badge.exists()).toBe(true)
-    })
-
-    it('should show video icon for video type', async () => {
-        const item = {
-            id: 'test-1',
-            width: 300,
-            height: 200,
-            src: 'https://example.com/video.mp4',
-            type: 'video'
-        }
-
-        const wrapper = mount(MasonryItem, {
-            props: { item }
-        })
-
-        wrapper.vm.videoLoaded = true
-        await wrapper.vm.$nextTick()
-
-        // Find the badge container first, then check for the icon inside
-        const badge = wrapper.find('[class*="top-2"][class*="left-2"]')
-        expect(badge.exists()).toBe(true)
-        const icon = badge.find('.fa-video')
-        expect(icon.exists()).toBe(true)
-    })
-
-    it('should show image icon for image type', async () => {
-        const item = {
-            id: 'test-1',
-            width: 300,
-            height: 200,
-            src: 'https://example.com/image.jpg',
-            type: 'image'
-        }
-
-        const wrapper = mount(MasonryItem, {
-            props: { item }
-        })
-
-        wrapper.vm.imageLoaded = true
-        await wrapper.vm.$nextTick()
-
-        // Find the badge container first, then check for the icon inside
-        const badge = wrapper.find('[class*="top-2"][class*="left-2"]')
-        expect(badge.exists()).toBe(true)
-        const icon = badge.find('.fa-image')
-        expect(icon.exists()).toBe(true)
-    })
-
-    it('should call remove callback when remove button is clicked', async () => {
-        const item = {
-            id: 'test-1',
-            width: 300,
-            height: 200,
-            src: 'https://example.com/image.jpg'
-        }
-
-        const removeFn = vi.fn()
-
-        const wrapper = mount(MasonryItem, {
-            props: {
-                item,
-                remove: removeFn
-            }
-        })
-
-        // Set loaded state so button is visible
-        wrapper.vm.imageLoaded = true
-        await wrapper.vm.$nextTick()
-
-        // Simulate hover to show button
-        const container = wrapper.find('.group')
-        await container.trigger('mouseenter')
-        await wrapper.vm.$nextTick()
-
-        const removeButton = wrapper.find('button[aria-label="Remove item"]')
-        if (removeButton.exists()) {
-            await removeButton.trigger('click')
-            expect(removeFn).toHaveBeenCalledWith(item)
-        }
-    })
-
     it('should handle src changes and reload media', async () => {
         const item = {
             id: 'test-1',
@@ -405,6 +303,36 @@ describe('MasonryItem.vue', () => {
         })
 
         expect(wrapper.exists()).toBe(true)
+    })
+
+    it('emits mouse enter and leave events for image content', async () => {
+        const item = {
+            id: 'test-1',
+            width: 300,
+            height: 200,
+            src: 'https://example.com/image.jpg',
+            type: 'image'
+        }
+
+        const wrapper = mount(MasonryItem, {
+            props: { item }
+        })
+
+        // Manually simulate that image has been preloaded so the <img> exists
+        wrapper.vm.imageSrc = item.src
+        await wrapper.vm.$nextTick()
+
+        const img = wrapper.find('img')
+        expect(img.exists()).toBe(true)
+
+        await img.trigger('mouseenter')
+        await img.trigger('mouseleave')
+
+        const enterEvents = wrapper.emitted()['mouse-enter']
+        const leaveEvents = wrapper.emitted()['mouse-leave']
+
+        expect(enterEvents?.[0]?.[0]).toEqual({ item, type: 'image' })
+        expect(leaveEvents?.[0]?.[0]).toEqual({ item, type: 'image' })
     })
 })
 

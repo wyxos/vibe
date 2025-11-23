@@ -125,6 +125,29 @@ async function getNextPage(page) {
 </template>'
                   />
                 </div>
+                -->
+              </div>
+            </section>
+
+            <!-- Header & Footer Example -->
+            <section id="header-footer" ref="headerFooterRef" class="scroll-mt-24">
+              <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                  <h2 class="text-2xl font-bold text-slate-800">Header & Footer</h2>
+                  <p class="text-slate-600 mt-1">
+                    Use `layout.header` and `layout.footer` with slots to add per-item UI like badges, titles and actions.
+                  </p>
+                </div>
+                
+                <!-- Live Example -->
+                <div class="p-6 bg-slate-50">
+                  <div class="bg-white rounded-lg border border-slate-200 p-4" style="height: 500px;">
+                    <HeaderFooterExample />
+                  </div>
+                </div>
+
+                <!-- Code Tabs omitted for this example to keep docs build-safe.
+                     See the Header & Footer example component for full code. -->
               </div>
             </section>
 
@@ -190,21 +213,25 @@ async function getNextPage(page) {
 </template>
 
 <script setup lang="ts">
+// @ts-nocheck - documentation page with inline string code samples that Vue/TS can't statically analyze cleanly
 import { ref, onMounted, onUnmounted } from 'vue'
 import CodeTabs from '../components/CodeTabs.vue'
 import BasicExample from '../components/examples/BasicExample.vue'
 import CustomItemExample from '../components/examples/CustomItemExample.vue'
 import SwipeModeExample from '../components/examples/SwipeModeExample.vue'
+import HeaderFooterExample from '../components/examples/HeaderFooterExample.vue'
 
 const examples = [
   { id: 'basic', title: 'Basic Usage' },
   { id: 'custom-item', title: 'Custom Masonry Item' },
+  { id: 'header-footer', title: 'Header & Footer' },
   { id: 'swipe-mode', title: 'Swipe Mode' }
 ]
 
 const activeSection = ref('basic')
 const basicRef = ref<HTMLElement | null>(null)
 const customItemRef = ref<HTMLElement | null>(null)
+const headerFooterRef = ref<HTMLElement | null>(null)
 const swipeModeRef = ref<HTMLElement | null>(null)
 
 function scrollTo(id: string) {
@@ -219,6 +246,7 @@ function updateActiveSection() {
   const sections = [
     { id: 'basic', ref: basicRef },
     { id: 'custom-item', ref: customItemRef },
+    { id: 'header-footer', ref: headerFooterRef },
     { id: 'swipe-mode', ref: swipeModeRef }
   ]
 

@@ -189,7 +189,13 @@ const emits = defineEmits([
   'retry:start',
   'retry:tick',
   'retry:stop',
-  'remove-all:complete'
+  'remove-all:complete',
+  // Re-emit item-level preload events from the default MasonryItem
+  'item:preload:success',
+  'item:preload:error',
+  // Mouse events from MasonryItem content
+  'item:mouse-enter',
+  'item:mouse-leave'
 ])
 
 const masonry = computed<any>({
@@ -520,7 +526,6 @@ async function loadNext() {
  * Useful when items are removed and you want to stay on the same page
  */
 async function refreshCurrentPage() {
-  console.log('[Masonry] refreshCurrentPage called, isLoading:', isLoading.value, 'currentPage:', currentPage.value)
   if (isLoading.value) return
   cancelRequested.value = false
   isLoading.value = true
@@ -528,7 +533,6 @@ async function refreshCurrentPage() {
   try {
     // Use the tracked current page
     const pageToRefresh = currentPage.value
-    console.log('[Masonry] pageToRefresh:', pageToRefresh)
     
     if (pageToRefresh == null) {
       console.warn('[Masonry] No current page to refresh - currentPage:', currentPage.value, 'paginationHistory:', paginationHistory.value)
@@ -571,13 +575,10 @@ async function remove(item: any) {
   await nextTick()
   
   // If all items were removed, either refresh current page or load next based on prop
-  console.log('[Masonry] remove - next.length:', next.length, 'paginationHistory.length:', paginationHistory.value.length)
   if (next.length === 0 && paginationHistory.value.length > 0) {
     if (props.autoRefreshOnEmpty) {
-      console.log('[Masonry] All items removed, calling refreshCurrentPage')
       await refreshCurrentPage()
     } else {
-      console.log('[Masonry] All items removed, calling loadNext and forcing backfill')
       try {
         await loadNext()
         // Force backfill from 0 to ensure viewport is filled
@@ -1128,9 +1129,28 @@ onUnmounted(() => {
             height: `${100 / masonry.length}%`
           }">
           <div class="w-full h-full flex items-center justify-center p-4">
-            <div class="w-full h-full max-w-full max-h-full">
+            <div class="w-full h-full max-w-full max-h-full relative">
               <slot :item="item" :remove="remove">
-                <MasonryItem :item="item" :remove="remove" />
+                <MasonryItem
+                  :item="item"
+                  :remove="remove"
+                  :header-height="layout.header"
+                  :footer-height="layout.footer"
+                  :in-swipe-mode="true"
+                  :is-active="index === currentSwipeIndex"
+                  @preload:success="(p) => emits('item:preload:success', p)"
+                  @preload:error="(p) => emits('item:preload:error', p)"
+                  @mouse-enter="(p) => emits('item:mouse-enter', p)"
+                  @mouse-leave="(p) => emits('item:mouse-leave', p)"
+                >
+                  <!-- Pass through header and footer slots to MasonryItem -->
+                  <template #header="slotProps">
+                    <slot name="item-header" v-bind="slotProps" />
+                  </template>
+                  <template #footer="slotProps">
+                    <slot name="item-footer" v-bind="slotProps" />
+                  </template>
+                </MasonryItem>
               </slot>
             </div>
           </div>
@@ -1154,11 +1174,29 @@ onUnmounted(() => {
                           @before-leave="beforeLeave">
           <div v-for="(item, i) in visibleMasonry" :key="`${item.page}-${item.id}`"
                class="absolute masonry-item"
-               v-bind="getItemAttributes(item, i)"
-               :style="{ paddingTop: `${layout.header}px`, paddingBottom: `${layout.footer}px` }">
+               v-bind="getItemAttributes(item, i)">
             <!-- Use default slot if provided, otherwise use MasonryItem -->
             <slot :item="item" :remove="remove">
-              <MasonryItem :item="item" :remove="remove" />
+              <MasonryItem
+                :item="item"
+                :remove="remove"
+                :header-height="layout.header"
+                :footer-height="layout.footer"
+                :in-swipe-mode="false"
+                :is-active="false"
+                @preload:success="(p) => emits('item:preload:success', p)"
+                @preload:error="(p) => emits('item:preload:error', p)"
+                @mouse-enter="(p) => emits('item:mouse-enter', p)"
+                @mouse-leave="(p) => emits('item:mouse-leave', p)"
+              >
+                <!-- Pass through header and footer slots to MasonryItem -->
+                <template #header="slotProps">
+                  <slot name="item-header" v-bind="slotProps" />
+                </template>
+                <template #footer="slotProps">
+                  <slot name="item-footer" v-bind="slotProps" />
+                </template>
+              </MasonryItem>
             </slot>
           </div>
         </transition-group>

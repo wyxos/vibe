@@ -127,7 +127,35 @@
     <div class="flex flex-1 overflow-hidden relative p-5 transition-all duration-300 ease-in-out" :class="{'bg-slate-200/50': deviceMode !== 'auto'}">
       <div :style="containerStyle" class="transition-all duration-500 ease-in-out bg-slate-50 shadow-sm relative">
         <masonry v-model:items="items" :get-next-page="getPage" :load-at-page="1" :layout="layout" ref="masonry">
-          <!-- MasonryItem is used automatically, but you can customize it -->
+          <!-- Demonstrate header/footer customization in the main demo -->
+          <template #item-header="{ item }">
+            <div class="h-full flex items-center justify-between px-3">
+              <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm">
+                  <i :class="item.type === 'video' ? 'fas fa-video text-[10px] text-slate-500' : 'fas fa-image text-[10px] text-slate-500'"></i>
+                </div>
+                <span class="text-xs font-medium text-slate-700">#{{ String(item.id).split('-')[0] }}</span>
+              </div>
+              <span v-if="item.title" class="text-[11px] text-slate-600 truncate max-w-[160px]">
+                {{ item.title }}
+              </span>
+            </div>
+          </template>
+
+          <template #item-footer="{ item, remove }">
+            <div class="h-full flex items-center justify-between px-3">
+              <button
+                v-if="remove"
+                class="px-2.5 py-1 rounded-full bg-white/90 text-slate-700 text-[11px] shadow-sm hover:bg-red-500 hover:text-white transition-colors"
+                @click.stop="remove(item)"
+              >
+                Remove
+              </button>
+              <div class="text-[11px] text-slate-600">
+                {{ item.width }}×{{ item.height }}
+              </div>
+            </div>
+          </template>
         </masonry>
       </div>
     </div>
@@ -153,8 +181,8 @@ const layoutParams = reactive({
     xl: 5,
     '2xl': 10
   },
-  header: 0,
-  footer: 0
+  header: 36,
+  footer: 40
 });
 
 const layout = computed(() => ({

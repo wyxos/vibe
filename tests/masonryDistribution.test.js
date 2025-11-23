@@ -36,11 +36,6 @@ describe('Masonry Distribution', () => {
             finalColumnHeights[col] = height
         })
 
-        console.log('Items per column:', Object.fromEntries(
-            Object.entries(columnGroups).map(([col, items]) => [col, items.map(i => i.id)])
-        ))
-        console.log('Final column heights:', finalColumnHeights)
-
         // With proper masonry layout, heights should be more balanced than round-robin
         const heights = Object.values(finalColumnHeights)
         const maxHeight = Math.max(...heights)
