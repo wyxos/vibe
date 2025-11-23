@@ -56,6 +56,9 @@
     "watch": "vite build --watch",
     "release": "node release.mjs",
     "test": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
     "type-check": "vue-tsc --noEmit",
     "prepublishOnly": "npm run build:lib"
   },
@@ -71,6 +74,7 @@
     "vue": "^3.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/vite": "^4.0.15",
     "@types/lodash-es": "^4.17.12",
