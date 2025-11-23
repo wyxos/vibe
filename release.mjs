@@ -313,7 +313,7 @@ async function pushChanges() {
 }
 
 async function publishPackage(pkg) {
-  const publishArgs = ['publish']
+  const publishArgs = ['publish', '--ignore-scripts'] // Skip prepublishOnly since we already built lib
 
   if (pkg.name.startsWith('@')) {
     publishArgs.push('--access', 'public')
@@ -321,21 +321,6 @@ async function publishPackage(pkg) {
 
   logStep(`Publishing ${pkg.name}@${pkg.version} to npm...`)
   await runCommand('npm', publishArgs, { silent: true })
-
-  // After prepublishOnly runs build:lib, check for any new lib changes and commit them
-  const { stdout: statusAfterPublish } = await runCommand('git', ['status', '--porcelain'], { capture: true })
-  const hasLibChangesAfterPublish = statusAfterPublish.split('\n').some(line => {
-    const trimmed = line.trim()
-    return trimmed.includes('lib/') && (trimmed.startsWith('M') || trimmed.startsWith('??') || trimmed.startsWith('A') || trimmed.startsWith('D'))
-  })
-
-  if (hasLibChangesAfterPublish) {
-    logStep('Committing lib changes from prepublishOnly...')
-    await runCommand('git', ['add', 'lib/'], { silent: true })
-    await runCommand('git', ['commit', '--amend', '--no-edit'], { silent: true })
-    logSuccess('Lib changes committed.')
-  }
-
   logSuccess('npm publish completed.')
 }
 
