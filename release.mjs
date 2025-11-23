@@ -246,22 +246,28 @@ async function ensureNpmAuth() {
 async function bumpVersion(releaseType) {
   logStep(`Bumping package version with "npm version ${releaseType}"...`)
 
-  // Stash lib changes temporarily so npm version can run
+  // Check for any lib changes (modified or new files)
   const { stdout: statusBefore } = await runCommand('git', ['status', '--porcelain'], { capture: true })
-  const hasLibChanges = statusBefore.includes('lib/')
+  const hasLibChanges = statusBefore.split('\n').some(line => line.trim().startsWith('M  lib/') || line.trim().startsWith('?? lib/') || line.trim().startsWith(' M lib/') || line.trim().startsWith('?? lib/'))
 
   if (hasLibChanges) {
-    await runCommand('git', ['stash', 'push', '-m', 'temp: lib build artifacts', 'lib/'])
+    // Stash all lib changes including untracked files
+    await runCommand('git', ['stash', 'push', '-u', '-m', 'temp: lib build artifacts', 'lib/'])
   }
 
   try {
     await runCommand('npm', ['version', releaseType, '--message', 'chore: release %s'])
   } finally {
-    // Restore lib changes
+    // Restore lib changes and ensure they're in the commit
     if (hasLibChanges) {
       await runCommand('git', ['stash', 'pop'])
-      await runCommand('git', ['add', 'lib'])
-      await runCommand('git', ['commit', '--amend', '--no-edit'])
+      // Add all lib files (both modified and new)
+      await runCommand('git', ['add', 'lib/'])
+      // Check if there are any changes to commit
+      const { stdout: statusAfter } = await runCommand('git', ['status', '--porcelain'], { capture: true })
+      if (statusAfter.includes('lib/')) {
+        await runCommand('git', ['commit', '--amend', '--no-edit'])
+      }
     }
   }
 
@@ -285,6 +291,21 @@ async function publishPackage(pkg) {
 
   logStep(`Publishing ${pkg.name}@${pkg.version} to npm...`)
   await runCommand('npm', publishArgs)
+  
+  // After prepublishOnly runs build:lib, check for any new lib changes and commit them
+  const { stdout: statusAfterPublish } = await runCommand('git', ['status', '--porcelain'], { capture: true })
+  const hasLibChangesAfterPublish = statusAfterPublish.split('\n').some(line => {
+    const trimmed = line.trim()
+    return trimmed.startsWith('M  lib/') || trimmed.startsWith('?? lib/') || trimmed.startsWith(' M lib/') || trimmed.startsWith('A  lib/')
+  })
+  
+  if (hasLibChangesAfterPublish) {
+    logStep('Adding lib changes created during publish...')
+    await runCommand('git', ['add', 'lib/'])
+    await runCommand('git', ['commit', '--amend', '--no-edit'])
+    logSuccess('Lib changes added to release commit.')
+  }
+  
   logSuccess('npm publish completed.')
 }
 

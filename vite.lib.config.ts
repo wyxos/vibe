@@ -19,5 +19,6 @@ export default defineConfig({
     outDir: 'lib',
     emptyOutDir: false,
   },
+  publicDir: false, // Don't copy public assets to lib
   plugins: [vue()],
 })
