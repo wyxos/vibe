@@ -248,9 +248,13 @@ async function bumpVersion(releaseType) {
 
   // Check for any lib changes (modified or new files)
   const { stdout: statusBefore } = await runCommand('git', ['status', '--porcelain'], { capture: true })
-  const hasLibChanges = statusBefore.split('\n').some(line => line.trim().startsWith('M  lib/') || line.trim().startsWith('?? lib/') || line.trim().startsWith(' M lib/') || line.trim().startsWith('?? lib/'))
+  const hasLibChanges = statusBefore.split('\n').some(line => {
+    const trimmed = line.trim()
+    return trimmed.includes('lib/') && (trimmed.startsWith('M') || trimmed.startsWith('??') || trimmed.startsWith('A') || trimmed.startsWith('D'))
+  })
 
   if (hasLibChanges) {
+    logStep('Stashing lib build artifacts...')
     // Stash all lib changes including untracked files
     await runCommand('git', ['stash', 'push', '-u', '-m', 'temp: lib build artifacts', 'lib/'])
   }
@@ -260,6 +264,7 @@ async function bumpVersion(releaseType) {
   } finally {
     // Restore lib changes and ensure they're in the commit
     if (hasLibChanges) {
+      logStep('Restoring lib build artifacts...')
       await runCommand('git', ['stash', 'pop'])
       // Add all lib files (both modified and new)
       await runCommand('git', ['add', 'lib/'])
