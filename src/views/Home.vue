@@ -2,15 +2,7 @@
   <main class="flex flex-col h-screen overflow-hidden bg-slate-50 relative pt-[112px]">
     <!-- Fixed Sub-Header -->
     <header class="fixed top-[53px] left-0 right-0 z-20 w-full bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all duration-300">
-      <div class="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
-        
-        <!-- Left: Context -->
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">
-            <i class="fas fa-grid-2 text-sm"></i>
-          </div>
-        </div>
-
+      <div class="max-w-7xl mx-auto px-4 h-14 flex items-center justify-end">
         <!-- Right: Controls -->
         <div class="flex items-center gap-3">
           <!-- Status Pill -->
@@ -111,7 +103,7 @@
     </header>
 
     <!-- Main Content -->
-    <div class="flex flex-1 overflow-hidden relative">
+    <div class="flex flex-1 overflow-hidden relative p-5">
       <masonry v-model:items="items" :get-next-page="getPage" :load-at-page="1" :layout="layout" ref="masonry">
         <!-- MasonryItem is used automatically, but you can customize it -->
       </masonry>
