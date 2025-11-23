@@ -16,10 +16,11 @@ VIBE (Vue Infinite Block Engine) is designed for applications that need to displ
 
 - **High Performance Virtualization**: Efficiently renders thousands of items by only mounting elements currently in the viewport.
 - **Responsive Masonry Layout**: Automatically adjusts column counts and layout based on screen width and breakpoints.
+- **Mobile Swipe Feed**: Automatically switches to a vertical swipe feed on mobile devices for optimal mobile UX.
 - **Infinite Scrolling**: Seamlessly loads more content as the user scrolls, with built-in support for async data fetching.
 - **Dynamic Updates**: Supports adding, removing, and reflowing items with smooth FLIP animations.
 - **Scroll Position Maintenance**: Keeps the user's scroll position stable when new items are loaded or the layout changes.
-- **Built-in Item Component**: Includes a production-ready `MasonryItem` with image preloading, error handling, and hover effects.
+- **Built-in Item Component**: Includes a production-ready `MasonryItem` with lazy loading, image/video support, error handling, and hover effects.
 - **Customizable Rendering**: Full control over item markup via scoped slots.
 
 ---
@@ -36,7 +37,7 @@ npm install @wyxos/vibe
 
 ### Basic Usage (Default Item)
 
-By default, VIBE uses the built-in `MasonryItem` component, which handles image loading and provides a clean UI.
+By default, VIBE uses the built-in `MasonryItem` component, which handles image loading and provides a clean UI. On mobile devices (screen width < 768px by default), it automatically switches to a vertical swipe feed mode where users can swipe through items one at a time.
 
 ```vue
 <script setup>
@@ -69,8 +70,32 @@ By default, VIBE uses the built-in `MasonryItem` component, which handles image 
       v-model:items="items"
       :get-next-page="getNextPage"
       :layout="layout"
+      layout-mode="auto"
+      :mobile-breakpoint="768"
   />
 </template>
+```
+
+### Layout Modes
+
+VIBE supports three layout modes:
+
+- **`'auto'`** (default): Automatically switches between masonry grid (desktop) and swipe feed (mobile) based on screen width
+- **`'masonry'`**: Always use masonry grid layout regardless of screen size
+- **`'swipe'`**: Always use swipe feed layout regardless of screen size
+
+```vue
+<!-- Force masonry layout on all devices -->
+<Masonry layout-mode="masonry" ... />
+
+<!-- Force swipe feed on all devices -->
+<Masonry layout-mode="swipe" ... />
+
+<!-- Custom breakpoint (use Tailwind breakpoint name) -->
+<Masonry layout-mode="auto" mobile-breakpoint="lg" ... />
+
+<!-- Custom breakpoint (use pixel value) -->
+<Masonry layout-mode="auto" :mobile-breakpoint="1024" ... />
 ```
 
 ### Custom Item Rendering
@@ -147,6 +172,8 @@ The `MasonryItem` component exposes the following props to its default slot:
 | `loadAtPage` | `Number` | No | The starting page number (default: `1`). |
 | `paginationType` | `String` | No | `'page'` or `'cursor'` (default: `'page'`). |
 | `pageSize` | `Number` | No | Number of items per page, used for backfilling (default: `40`). |
+| `layoutMode` | `String` | No | Layout mode: `'auto'` (detect from screen size), `'masonry'`, or `'swipe'` (default: `'auto'`). |
+| `mobileBreakpoint` | `Number \| String` | No | Breakpoint for switching to swipe mode in pixels or Tailwind breakpoint name (default: `768`). |
 
 ### Layout Configuration Example
 

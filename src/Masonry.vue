@@ -97,6 +97,17 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  // Layout mode: 'auto' (detect from screen size), 'masonry', or 'swipe'
+  layoutMode: {
+    type: String,
+    default: 'auto',
+    validator: (v: string) => ['auto', 'masonry', 'swipe'].includes(v)
+  },
+  // Breakpoint for switching to swipe mode (in pixels or Tailwind breakpoint name)
+  mobileBreakpoint: {
+    type: [Number, String],
+    default: 768 // 'md' breakpoint
+  },
 })
 
 const defaultLayout = {
@@ -118,6 +129,57 @@ const layout = computed(() => ({
     ...(props.layout?.sizes || {})
   }
 }))
+
+const wrapper = ref<HTMLElement | null>(null)
+const containerWidth = ref<number>(typeof window !== 'undefined' ? window.innerWidth : 1024)
+let resizeObserver: ResizeObserver | null = null
+
+// Get breakpoint value from Tailwind breakpoint name
+function getBreakpointValue(breakpoint: string): number {
+  const breakpoints: Record<string, number> = {
+    'sm': 640,
+    'md': 768,
+    'lg': 1024,
+    'xl': 1280,
+    '2xl': 1536
+  }
+  return breakpoints[breakpoint] || 768
+}
+
+// Determine if we should use swipe mode
+const useSwipeMode = computed(() => {
+  if (props.layoutMode === 'masonry') return false
+  if (props.layoutMode === 'swipe') return true
+  
+  // Auto mode: check container width
+  const breakpoint = typeof props.mobileBreakpoint === 'string' 
+    ? getBreakpointValue(props.mobileBreakpoint)
+    : props.mobileBreakpoint
+  
+  return containerWidth.value < breakpoint
+})
+
+// Get current item index for swipe mode
+const currentItem = computed(() => {
+  if (!useSwipeMode.value || masonry.value.length === 0) return null
+  const index = Math.max(0, Math.min(currentSwipeIndex.value, masonry.value.length - 1))
+  return (masonry.value as any[])[index] || null
+})
+
+// Get next/previous items for preloading in swipe mode
+const nextItem = computed(() => {
+  if (!useSwipeMode.value || !currentItem.value) return null
+  const nextIndex = currentSwipeIndex.value + 1
+  if (nextIndex >= masonry.value.length) return null
+  return (masonry.value as any[])[nextIndex] || null
+})
+
+const previousItem = computed(() => {
+  if (!useSwipeMode.value || !currentItem.value) return null
+  const prevIndex = currentSwipeIndex.value - 1
+  if (prevIndex < 0) return null
+  return (masonry.value as any[])[prevIndex] || null
+})
 
 const emits = defineEmits([
   'update:items',
@@ -141,6 +203,14 @@ const paginationHistory = ref<any[]>([])
 const currentPage = ref<any>(null)  // Track the actual current page being displayed
 const isLoading = ref<boolean>(false)
 const containerHeight = ref<number>(0)
+
+// Swipe mode state
+const currentSwipeIndex = ref<number>(0)
+const swipeOffset = ref<number>(0)
+const isDragging = ref<boolean>(false)
+const dragStartY = ref<number>(0)
+const dragStartOffset = ref<number>(0)
+const swipeContainer = ref<HTMLElement | null>(null)
 
 // Diagnostics: track items missing width/height to help developers
 const invalidDimensionIds = ref<Set<number | string>>(new Set())
@@ -320,6 +390,12 @@ function calculateHeight(content: any[]) {
 }
 
 function refreshLayout(items: any[]) {
+  if (useSwipeMode.value) {
+    // In swipe mode, no layout calculation needed - items are stacked vertically
+    masonry.value = items as any
+    return
+  }
+  
   if (!container.value) return
   // Developer diagnostics: warn when dimensions are invalid
   checkItemDimensions(items as any[], 'refreshLayout')
@@ -671,6 +747,8 @@ function reset() {
 }
 
 const debouncedScrollHandler = debounce(async () => {
+  if (useSwipeMode.value) return // Skip scroll handling in swipe mode
+  
   if (container.value) {
     viewportTop.value = container.value.scrollTop
     viewportHeight.value = container.value.clientHeight
@@ -688,34 +766,295 @@ const debouncedScrollHandler = debounce(async () => {
 
 const debouncedResizeHandler = debounce(onResize, 200)
 
+// Swipe gesture handlers
+function handleTouchStart(e: TouchEvent) {
+  if (!useSwipeMode.value) return
+  isDragging.value = true
+  dragStartY.value = e.touches[0].clientY
+  dragStartOffset.value = swipeOffset.value
+  e.preventDefault()
+}
+
+function handleTouchMove(e: TouchEvent) {
+  if (!useSwipeMode.value || !isDragging.value) return
+  const deltaY = e.touches[0].clientY - dragStartY.value
+  swipeOffset.value = dragStartOffset.value + deltaY
+  e.preventDefault()
+}
+
+function handleTouchEnd(e: TouchEvent) {
+  if (!useSwipeMode.value || !isDragging.value) return
+  isDragging.value = false
+  
+  const deltaY = swipeOffset.value - dragStartOffset.value
+  const threshold = 100 // Minimum swipe distance to trigger navigation
+  
+  if (Math.abs(deltaY) > threshold) {
+    if (deltaY > 0 && previousItem.value) {
+      // Swipe down - go to previous
+      goToPreviousItem()
+    } else if (deltaY < 0 && nextItem.value) {
+      // Swipe up - go to next
+      goToNextItem()
+    } else {
+      // Snap back
+      snapToCurrentItem()
+    }
+  } else {
+    // Snap back if swipe wasn't far enough
+    snapToCurrentItem()
+  }
+  
+  e.preventDefault()
+}
+
+// Mouse drag handlers for desktop testing
+function handleMouseDown(e: MouseEvent) {
+  if (!useSwipeMode.value) return
+  isDragging.value = true
+  dragStartY.value = e.clientY
+  dragStartOffset.value = swipeOffset.value
+  e.preventDefault()
+}
+
+function handleMouseMove(e: MouseEvent) {
+  if (!useSwipeMode.value || !isDragging.value) return
+  const deltaY = e.clientY - dragStartY.value
+  swipeOffset.value = dragStartOffset.value + deltaY
+  e.preventDefault()
+}
+
+function handleMouseUp(e: MouseEvent) {
+  if (!useSwipeMode.value || !isDragging.value) return
+  isDragging.value = false
+  
+  const deltaY = swipeOffset.value - dragStartOffset.value
+  const threshold = 100
+  
+  if (Math.abs(deltaY) > threshold) {
+    if (deltaY > 0 && previousItem.value) {
+      goToPreviousItem()
+    } else if (deltaY < 0 && nextItem.value) {
+      goToNextItem()
+    } else {
+      snapToCurrentItem()
+    }
+  } else {
+    snapToCurrentItem()
+  }
+  
+  e.preventDefault()
+}
+
+function goToNextItem() {
+  if (!nextItem.value) {
+    // Try to load next page
+    loadNext()
+    return
+  }
+  
+  currentSwipeIndex.value++
+  snapToCurrentItem()
+  
+  // Preload next item if we're near the end
+  if (currentSwipeIndex.value >= masonry.value.length - 5) {
+    loadNext()
+  }
+}
+
+function goToPreviousItem() {
+  if (!previousItem.value) return
+  
+  currentSwipeIndex.value--
+  snapToCurrentItem()
+}
+
+function snapToCurrentItem() {
+  if (!swipeContainer.value) return
+  
+  // Use container height for swipe mode instead of window height
+  const viewportHeight = swipeContainer.value.clientHeight
+  swipeOffset.value = -currentSwipeIndex.value * viewportHeight
+}
+
+// Watch for container/window resize to update swipe mode
+function handleWindowResize() {
+  // Update container width if wrapper is available
+  if (wrapper.value) {
+    containerWidth.value = wrapper.value.clientWidth
+  } else if (typeof window !== 'undefined') {
+    containerWidth.value = window.innerWidth
+  }
+  
+  // If switching from swipe to masonry, reset swipe state
+  if (!useSwipeMode.value && currentSwipeIndex.value > 0) {
+    currentSwipeIndex.value = 0
+    swipeOffset.value = 0
+  }
+  
+  // If switching to swipe mode, ensure we have items loaded
+  if (useSwipeMode.value && masonry.value.length === 0 && !isLoading.value) {
+    loadPage(paginationHistory.value[0] as any)
+  }
+  
+  // Re-snap to current item on resize to adjust offset
+  if (useSwipeMode.value) {
+    snapToCurrentItem()
+  }
+}
+
 function init(items: any[], page: any, next: any) {
   currentPage.value = page  // Track the initial current page
   paginationHistory.value = [page]
   paginationHistory.value.push(next)
   // Diagnostics: check incoming initial items
   checkItemDimensions(items as any[], 'init')
-  refreshLayout([...(masonry.value as any[]), ...items])
-  updateScrollProgress()
+  
+  if (useSwipeMode.value) {
+    // In swipe mode, just add items without layout calculation
+    masonry.value = [...(masonry.value as any[]), ...items]
+    // Reset swipe index if we're at the start
+    if (currentSwipeIndex.value === 0 && masonry.value.length > 0) {
+      swipeOffset.value = 0
+    }
+  } else {
+    refreshLayout([...(masonry.value as any[]), ...items])
+    updateScrollProgress()
+  }
 }
 
 // Watch for layout changes and update columns + refresh layout dynamically
 watch(
   layout,
   () => {
+    if (useSwipeMode.value) {
+      // In swipe mode, no layout recalculation needed
+      return
+    }
     if (container.value) {
-      columns.value = getColumnCount(layout.value as any)
+      columns.value = getColumnCount(layout.value as any, containerWidth.value)
       refreshLayout(masonry.value as any)
     }
   },
   { deep: true }
 )
 
+// Watch for swipe mode changes to refresh layout and setup/teardown handlers
+watch(useSwipeMode, (newValue) => {
+  nextTick(() => {
+    if (newValue) {
+      // Switching to Swipe Mode
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      
+      // Reset index if needed
+      currentSwipeIndex.value = 0
+      swipeOffset.value = 0
+      if (masonry.value.length > 0) {
+        snapToCurrentItem()
+      }
+    } else {
+      // Switching to Masonry Mode
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      
+      if (container.value && wrapper.value) {
+        // Ensure containerWidth is up to date
+        containerWidth.value = wrapper.value.clientWidth
+        
+        // Re-attach scroll listener since container was re-created
+        container.value.removeEventListener('scroll', debouncedScrollHandler) // Just in case
+        container.value.addEventListener('scroll', debouncedScrollHandler, { passive: true })
+        
+        // Refresh layout with updated width
+        if (masonry.value.length > 0) {
+          columns.value = getColumnCount(layout.value as any, containerWidth.value)
+          refreshLayout(masonry.value as any)
+          
+          // Update viewport state
+          viewportTop.value = container.value.scrollTop
+          viewportHeight.value = container.value.clientHeight
+          updateScrollProgress()
+        }
+      }
+    }
+  })
+}, { immediate: true })
+
+// Watch for swipe container element to attach touch listeners
+watch(swipeContainer, (el) => {
+  if (el) {
+    el.addEventListener('touchstart', handleTouchStart, { passive: false })
+    el.addEventListener('touchmove', handleTouchMove, { passive: false })
+    el.addEventListener('touchend', handleTouchEnd)
+    el.addEventListener('mousedown', handleMouseDown)
+  }
+})
+
+// Watch for items changes in swipe mode to reset index if needed
+watch(() => masonry.value.length, (newLength, oldLength) => {
+  if (useSwipeMode.value && newLength > 0 && oldLength === 0) {
+    // First items loaded, ensure we're at index 0
+    currentSwipeIndex.value = 0
+    nextTick(() => snapToCurrentItem())
+  }
+})
+
+// Watch wrapper element to setup ResizeObserver for container width
+watch(wrapper, (el) => {
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
+  
+  if (el && typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const newWidth = entry.contentRect.width
+        if (containerWidth.value !== newWidth) {
+          containerWidth.value = newWidth
+        }
+      }
+    })
+    resizeObserver.observe(el)
+    // Initial width
+    containerWidth.value = el.clientWidth
+  } else if (el) {
+    // Fallback if ResizeObserver not available
+    containerWidth.value = el.clientWidth
+  }
+}, { immediate: true })
+
+// Watch containerWidth changes to refresh layout in masonry mode
+watch(containerWidth, (newWidth, oldWidth) => {
+  if (newWidth !== oldWidth && newWidth > 0 && !useSwipeMode.value && container.value && masonry.value.length > 0) {
+    // Use nextTick to ensure DOM has updated
+    nextTick(() => {
+      columns.value = getColumnCount(layout.value as any, newWidth)
+      refreshLayout(masonry.value as any)
+      updateScrollProgress()
+    })
+  }
+})
+
 onMounted(async () => {
   try {
-    columns.value = getColumnCount(layout.value as any)
-    if (container.value) {
-      viewportTop.value = container.value.scrollTop
-      viewportHeight.value = container.value.clientHeight
+    // Wait for next tick to ensure wrapper is mounted
+    await nextTick()
+    
+    // Initialize container width
+    if (wrapper.value) {
+      containerWidth.value = wrapper.value.clientWidth
+    } else if (typeof window !== 'undefined') {
+      containerWidth.value = window.innerWidth
+    }
+    
+    if (!useSwipeMode.value) {
+      columns.value = getColumnCount(layout.value as any, containerWidth.value)
+      if (container.value) {
+        viewportTop.value = container.value.scrollTop
+        viewportHeight.value = container.value.clientHeight
+      }
     }
 
     const initialPage = props.loadAtPage as any
@@ -725,48 +1064,124 @@ onMounted(async () => {
       await loadPage(paginationHistory.value[0] as any)
     }
 
-    updateScrollProgress()
+    if (!useSwipeMode.value) {
+      updateScrollProgress()
+    } else {
+      // In swipe mode, snap to first item
+      nextTick(() => snapToCurrentItem())
+    }
 
   } catch (error) {
     console.error('Error during component initialization:', error)
     isLoading.value = false
   }
 
-  container.value?.addEventListener('scroll', debouncedScrollHandler, { passive: true })
+  // Scroll listener is handled by watcher now for consistency
   window.addEventListener('resize', debouncedResizeHandler)
+  window.addEventListener('resize', handleWindowResize)
 })
 
 onUnmounted(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
+  
   container.value?.removeEventListener('scroll', debouncedScrollHandler)
   window.removeEventListener('resize', debouncedResizeHandler)
+  window.removeEventListener('resize', handleWindowResize)
+  
+  if (swipeContainer.value) {
+    swipeContainer.value.removeEventListener('touchstart', handleTouchStart)
+    swipeContainer.value.removeEventListener('touchmove', handleTouchMove)
+    swipeContainer.value.removeEventListener('touchend', handleTouchEnd)
+    swipeContainer.value.removeEventListener('mousedown', handleMouseDown)
+  }
+  
+  // Clean up mouse handlers
+  document.removeEventListener('mousemove', handleMouseMove)
+  document.removeEventListener('mouseup', handleMouseUp)
 })
 </script>
 
 <template>
-  <div class="overflow-auto w-full flex-1 masonry-container" :class="{ 'force-motion': props.forceMotion }" ref="container">
-    <div class="relative"
-         :style="{height: `${containerHeight}px`, '--masonry-duration': `${transitionDurationMs}ms`, '--masonry-leave-duration': `${leaveDurationMs}ms`, '--masonry-ease': transitionEasing}">
-      <transition-group name="masonry" :css="false" @enter="enter" @before-enter="beforeEnter"
-                        @leave="leave"
-                        @before-leave="beforeLeave">
-        <div v-for="(item, i) in visibleMasonry" :key="`${item.page}-${item.id}`"
-             class="absolute masonry-item"
-             v-bind="getItemAttributes(item, i)"
-             :style="{ paddingTop: `${layout.header}px`, paddingBottom: `${layout.footer}px` }">
-          <!-- Use default slot if provided, otherwise use MasonryItem -->
-          <slot :item="item" :remove="remove">
-            <MasonryItem :item="item" :remove="remove" />
-          </slot>
+  <div ref="wrapper" class="w-full h-full flex flex-col relative">
+    <!-- Swipe Feed Mode (Mobile/Tablet) -->
+    <div v-if="useSwipeMode" 
+         class="overflow-hidden w-full flex-1 swipe-container touch-none select-none" 
+         :class="{ 'force-motion': props.forceMotion, 'cursor-grab': !isDragging, 'cursor-grabbing': isDragging }"
+         ref="swipeContainer"
+         style="height: 100%; max-height: 100%; position: relative;">
+      <div 
+        class="relative w-full"
+        :style="{
+          transform: `translateY(${swipeOffset}px)`,
+          transition: isDragging ? 'none' : `transform ${transitionDurationMs}ms ${transitionEasing}`,
+          height: `${masonry.length * 100}%`
+        }">
+        <div 
+          v-for="(item, index) in masonry" 
+          :key="`${item.page}-${item.id}`"
+          class="absolute top-0 left-0 w-full"
+          :style="{ 
+            top: `${index * (100 / masonry.length)}%`,
+            height: `${100 / masonry.length}%`
+          }">
+          <div class="w-full h-full flex items-center justify-center p-4">
+            <div class="w-full h-full max-w-full max-h-full">
+              <slot :item="item" :remove="remove">
+                <MasonryItem :item="item" :remove="remove" />
+              </slot>
+            </div>
+          </div>
         </div>
-      </transition-group>
+      </div>
+      
+      <!-- Swipe indicator dots -->
+      <div v-if="masonry.length > 1" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-10 pointer-events-none">
+        <div 
+          v-for="(item, index) in masonry.slice(0, Math.min(10, masonry.length))" 
+          :key="`dot-${item.id}`"
+          class="w-1.5 h-1.5 rounded-full transition-all duration-300"
+          :class="index === currentSwipeIndex ? 'bg-white w-4' : 'bg-white/40'"
+        />
+      </div>
 
-      <!-- Scroll Progress Badge -->
-      <div v-if="containerHeight > 0"
-           class="fixed bottom-4 right-4 bg-gray-800 text-white text-xs rounded-full px-3 py-1.5 shadow-lg z-10 transition-opacity duration-300"
-           :class="{'opacity-50 hover:opacity-100': !scrollProgress.isNearTrigger, 'opacity-100': scrollProgress.isNearTrigger}">
-        <span>{{ masonry.length }} items</span>
-        <span class="mx-2">|</span>
-        <span>{{ scrollProgress.distanceToTrigger }}px to load</span>
+      <!-- Item Counter -->
+      <div class="fixed top-20 right-4 bg-black/50 backdrop-blur-sm text-white text-xs font-medium px-3 py-1.5 rounded-full z-20 pointer-events-none">
+        {{ currentSwipeIndex + 1 }} / {{ masonry.length }}
+      </div>
+    </div>
+
+    <!-- Masonry Grid Mode (Desktop) -->
+    <div v-else 
+         class="overflow-auto w-full flex-1 masonry-container" 
+         :class="{ 'force-motion': props.forceMotion }" 
+         ref="container">
+      <div class="relative"
+           :style="{height: `${containerHeight}px`, '--masonry-duration': `${transitionDurationMs}ms`, '--masonry-leave-duration': `${leaveDurationMs}ms`, '--masonry-ease': transitionEasing}">
+        <transition-group name="masonry" :css="false" @enter="enter" @before-enter="beforeEnter"
+                          @leave="leave"
+                          @before-leave="beforeLeave">
+          <div v-for="(item, i) in visibleMasonry" :key="`${item.page}-${item.id}`"
+               class="absolute masonry-item"
+               v-bind="getItemAttributes(item, i)"
+               :style="{ paddingTop: `${layout.header}px`, paddingBottom: `${layout.footer}px` }">
+            <!-- Use default slot if provided, otherwise use MasonryItem -->
+            <slot :item="item" :remove="remove">
+              <MasonryItem :item="item" :remove="remove" />
+            </slot>
+          </div>
+        </transition-group>
+
+        <!-- Scroll Progress Badge -->
+        <div v-if="containerHeight > 0"
+             class="fixed bottom-4 right-4 bg-gray-800 text-white text-xs rounded-full px-3 py-1.5 shadow-lg z-10 transition-opacity duration-300"
+             :class="{'opacity-50 hover:opacity-100': !scrollProgress.isNearTrigger, 'opacity-100': scrollProgress.isNearTrigger}">
+          <span>{{ masonry.length }} items</span>
+          <span class="mx-2">|</span>
+          <span>{{ scrollProgress.distanceToTrigger }}px to load</span>
+        </div>
       </div>
     </div>
   </div>

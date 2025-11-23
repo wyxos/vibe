@@ -1,10 +1,10 @@
 import type { LayoutOptions, ProcessedMasonryItem } from './types'
 
 /**
- * Get responsive column count based on window width and layout sizes
+ * Get responsive column count based on container width and layout sizes
  */
-export function getColumnCount(layout: Pick<LayoutOptions, 'sizes'> & { sizes: Required<NonNullable<LayoutOptions['sizes']>> }): number {
-  const width = window.innerWidth
+export function getColumnCount(layout: Pick<LayoutOptions, 'sizes'> & { sizes: Required<NonNullable<LayoutOptions['sizes']>> }, containerWidth?: number): number {
+  const width = containerWidth ?? (typeof window !== 'undefined' ? window.innerWidth : 1024)
   const sizes = layout.sizes
 
   if (width >= 1536 && sizes['2xl']) return sizes['2xl']
