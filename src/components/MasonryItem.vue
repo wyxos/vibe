@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, computed, withDefaults } from 'vue';
+import { ref, onMounted, onUnmounted, watch, computed, withDefaults, nextTick } from 'vue';
 
 const props = withDefaults(defineProps<{
   item: any;
@@ -20,6 +20,7 @@ const videoError = ref(false);
 const videoSrc = ref<string | null>(null);
 const isInView = ref(false);
 const isLoading = ref(false);
+const showMedia = ref(false); // Controls fade-in animation
 const containerRef = ref<HTMLElement | null>(null);
 let intersectionObserver: IntersectionObserver | null = null;
 
@@ -43,10 +44,14 @@ function preloadImage(src: string): Promise<void> {
       const remaining = Math.max(0, minLoadTime - elapsed);
       
       // Ensure spinner shows for at least minLoadTime
-      setTimeout(() => {
+      setTimeout(async () => {
         imageLoaded.value = true;
         imageError.value = false;
         isLoading.value = false;
+        // Wait for Vue to update DOM, then trigger fade-in
+        await nextTick();
+        await new Promise(resolve => setTimeout(resolve, 100));
+        showMedia.value = true;
         resolve();
       }, remaining);
     };
@@ -78,10 +83,14 @@ function preloadVideo(src: string): Promise<void> {
       const elapsed = Date.now() - startTime;
       const remaining = Math.max(0, minLoadTime - elapsed);
       
-      setTimeout(() => {
+      setTimeout(async () => {
         videoLoaded.value = true;
         videoError.value = false;
         isLoading.value = false;
+        // Wait for Vue to update DOM, then trigger fade-in
+        await nextTick();
+        await new Promise(resolve => setTimeout(resolve, 100));
+        showMedia.value = true;
         resolve();
       }, remaining);
     };
@@ -117,6 +126,7 @@ async function startPreloading() {
   if (!src) return;
 
   isLoading.value = true;
+  showMedia.value = false; // Reset fade-in state
 
   if (mediaType.value === 'video') {
     videoSrc.value = src;
@@ -239,21 +249,29 @@ watch(
 
         <!-- Media content (image or video) -->
         <div v-else class="relative w-full h-full">
-          <!-- Image (shown immediately when loaded, with lazy loading attribute) -->
+          <!-- Image (always rendered when src exists, fades in when loaded) -->
           <img
-            v-if="mediaType === 'image' && imageLoaded && imageSrc"
+            v-if="mediaType === 'image' && imageSrc"
             :src="imageSrc"
-            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            :class="[
+              'w-full h-full object-cover transition-opacity duration-700 ease-in-out group-hover:scale-105',
+              imageLoaded && showMedia ? 'opacity-100' : 'opacity-0'
+            ]"
+            style="position: absolute; top: 0; left: 0;"
             loading="lazy"
             decoding="async"
             alt=""
           />
 
-          <!-- Video (shown immediately when loaded) -->
+          <!-- Video (always rendered when src exists, fades in when loaded) -->
           <video
-            v-if="mediaType === 'video' && videoLoaded && videoSrc"
+            v-if="mediaType === 'video' && videoSrc"
             :src="videoSrc"
-            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            :class="[
+              'w-full h-full object-cover transition-opacity duration-700 ease-in-out group-hover:scale-105',
+              videoLoaded && showMedia ? 'opacity-100' : 'opacity-0'
+            ]"
+            style="position: absolute; top: 0; left: 0;"
             muted
             loop
             playsinline
@@ -262,10 +280,13 @@ watch(
             @error="videoError = true"
           />
 
-          <!-- Placeholder background while loading or if not loaded yet -->
+          <!-- Placeholder background while loading or if not loaded yet (fades out when media appears) -->
           <div
             v-if="!imageLoaded && !videoLoaded && !imageError && !videoError"
-            class="absolute inset-0 bg-slate-100 flex items-center justify-center"
+            :class="[
+              'absolute inset-0 bg-slate-100 flex items-center justify-center transition-opacity duration-500',
+              showMedia ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            ]"
           >
             <!-- Media type indicator - shown BEFORE preloading starts -->
             <div
