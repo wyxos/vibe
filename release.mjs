@@ -5,33 +5,34 @@ import { dirname, join } from 'node:path'
 import { readFile } from 'node:fs/promises'
 import fs from 'node:fs'
 import path from 'node:path'
+import chalk from 'chalk'
 
 const ROOT = dirname(fileURLToPath(import.meta.url))
 const PACKAGE_PATH = join(ROOT, 'package.json')
 
-const STEP_PREFIX = '→'
-const OK_PREFIX = '✔'
-const WARN_PREFIX = '⚠'
-
 function logStep(message) {
-  console.log(`${STEP_PREFIX} ${message}`)
+  console.log(chalk.yellow(`→ ${message}`))
 }
 
 function logSuccess(message) {
-  console.log(`${OK_PREFIX} ${message}`)
+  console.log(chalk.green(`✔ ${message}`))
 }
 
 function logWarning(message) {
-  console.warn(`${WARN_PREFIX} ${message}`)
+  console.warn(chalk.yellow(`⚠ ${message}`))
 }
 
-function runCommand(command, args, { cwd = ROOT, capture = false } = {}) {
+function logError(message) {
+  console.error(chalk.red(`✗ ${message}`))
+}
+
+function runCommand(command, args, { cwd = ROOT, capture = false, silent = false } = {}) {
   return new Promise((resolve, reject) => {
     // On Windows, use shell but properly escape arguments
     const isWindows = process.platform === 'win32'
     const spawnOptions = {
       cwd,
-      stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
+      stdio: capture ? ['ignore', 'pipe', 'pipe'] : (silent ? ['ignore', 'ignore', 'pipe'] : 'inherit'),
       shell: isWindows
     }
 
@@ -59,10 +60,23 @@ function runCommand(command, args, { cwd = ROOT, capture = false } = {}) {
     }
 
     child.on('error', reject)
+
+    // Capture stderr even when silent to check for errors
+    let errorOutput = ''
+    if (silent && !capture) {
+      child.stderr.on('data', (chunk) => {
+        errorOutput += chunk.toString()
+      })
+    }
+
     child.on('close', (code) => {
       if (code === 0) {
         resolve(capture ? { stdout: stdout.trim(), stderr: stderr.trim() } : undefined)
       } else {
+        // Output error if silent mode
+        if (silent && errorOutput) {
+          console.error(chalk.red(errorOutput))
+        }
         const error = new Error(`Command failed (${code}): ${command} ${args.join(' ')}`)
         if (capture) {
           error.stdout = stdout
@@ -196,12 +210,11 @@ async function runLint(skipLint) {
 
   const pkg = await readPackage()
   if (!pkg.scripts?.lint) {
-    logWarning('No lint script found in package.json, skipping.')
-    return
+    return // Silently skip if no lint script
   }
 
   logStep('Running lint...')
-  await runCommand('npm', ['run', 'lint'])
+  await runCommand('npm', ['run', 'lint'], { silent: true })
   logSuccess('Lint passed.')
 }
 
@@ -212,7 +225,7 @@ async function runTests(skipTests) {
   }
 
   logStep('Running test suite...')
-  await runCommand('npm', ['test', '--', '--run'])
+  await runCommand('npm', ['test', '--', '--run'], { silent: true })
   logSuccess('Tests passed.')
 }
 
@@ -223,7 +236,7 @@ async function runBuild(skipBuild) {
   }
 
   logStep('Building project...')
-  await runCommand('npm', ['run', 'build'])
+  await runCommand('npm', ['run', 'build'], { silent: true })
   logSuccess('Build completed.')
 }
 
@@ -234,19 +247,34 @@ async function runLibBuild(skipBuild) {
   }
 
   logStep('Building library...')
-  await runCommand('npm', ['run', 'build:lib'])
+  await runCommand('npm', ['run', 'build:lib'], { silent: true })
   logSuccess('Library built.')
+
+  // Check for lib changes and commit them if any
+  const { stdout: statusAfterBuild } = await runCommand('git', ['status', '--porcelain'], { capture: true })
+  const hasLibChanges = statusAfterBuild.split('\n').some(line => {
+    const trimmed = line.trim()
+    return trimmed.includes('lib/') && (trimmed.startsWith('M') || trimmed.startsWith('??') || trimmed.startsWith('A') || trimmed.startsWith('D'))
+  })
+
+  if (hasLibChanges) {
+    logStep('Committing lib build artifacts...')
+    await runCommand('git', ['add', 'lib/'], { silent: true })
+    await runCommand('git', ['commit', '-m', 'chore: build lib artifacts'], { silent: true })
+    logSuccess('Lib build artifacts committed.')
+  }
 }
 
 async function ensureNpmAuth() {
   logStep('Confirming npm authentication...')
-  await runCommand('npm', ['whoami'])
+  await runCommand('npm', ['whoami'], { silent: true })
+  logSuccess('npm authenticated.')
 }
 
 async function bumpVersion(releaseType) {
-  logStep(`Bumping package version with "npm version ${releaseType}"...`)
+  logStep(`Bumping package version...`)
 
-  // Check for any lib changes (modified or new files)
+  // Lib changes should already be committed by runLibBuild, but check anyway
   const { stdout: statusBefore } = await runCommand('git', ['status', '--porcelain'], { capture: true })
   const hasLibChanges = statusBefore.split('\n').some(line => {
     const trimmed = line.trim()
@@ -255,23 +283,20 @@ async function bumpVersion(releaseType) {
 
   if (hasLibChanges) {
     logStep('Stashing lib build artifacts...')
-    // Stash all lib changes including untracked files
-    await runCommand('git', ['stash', 'push', '-u', '-m', 'temp: lib build artifacts', 'lib/'])
+    await runCommand('git', ['stash', 'push', '-u', '-m', 'temp: lib build artifacts', 'lib/'], { silent: true })
   }
 
   try {
-    await runCommand('npm', ['version', releaseType, '--message', 'chore: release %s'])
+    await runCommand('npm', ['version', releaseType, '--message', 'chore: release %s'], { silent: true })
   } finally {
     // Restore lib changes and ensure they're in the commit
     if (hasLibChanges) {
       logStep('Restoring lib build artifacts...')
-      await runCommand('git', ['stash', 'pop'])
-      // Add all lib files (both modified and new)
-      await runCommand('git', ['add', 'lib/'])
-      // Check if there are any changes to commit
+      await runCommand('git', ['stash', 'pop'], { silent: true })
+      await runCommand('git', ['add', 'lib/'], { silent: true })
       const { stdout: statusAfter } = await runCommand('git', ['status', '--porcelain'], { capture: true })
       if (statusAfter.includes('lib/')) {
-        await runCommand('git', ['commit', '--amend', '--no-edit'])
+        await runCommand('git', ['commit', '--amend', '--no-edit'], { silent: true })
       }
     }
   }
@@ -283,7 +308,7 @@ async function bumpVersion(releaseType) {
 
 async function pushChanges() {
   logStep('Pushing commits and tags to origin...')
-  await runCommand('git', ['push', '--follow-tags'])
+  await runCommand('git', ['push', '--follow-tags'], { silent: true })
   logSuccess('Git push completed.')
 }
 
@@ -295,20 +320,20 @@ async function publishPackage(pkg) {
   }
 
   logStep(`Publishing ${pkg.name}@${pkg.version} to npm...`)
-  await runCommand('npm', publishArgs)
+  await runCommand('npm', publishArgs, { silent: true })
 
   // After prepublishOnly runs build:lib, check for any new lib changes and commit them
   const { stdout: statusAfterPublish } = await runCommand('git', ['status', '--porcelain'], { capture: true })
   const hasLibChangesAfterPublish = statusAfterPublish.split('\n').some(line => {
     const trimmed = line.trim()
-    return trimmed.startsWith('M  lib/') || trimmed.startsWith('?? lib/') || trimmed.startsWith(' M lib/') || trimmed.startsWith('A  lib/')
+    return trimmed.includes('lib/') && (trimmed.startsWith('M') || trimmed.startsWith('??') || trimmed.startsWith('A') || trimmed.startsWith('D'))
   })
 
   if (hasLibChangesAfterPublish) {
-    logStep('Adding lib changes created during publish...')
-    await runCommand('git', ['add', 'lib/'])
-    await runCommand('git', ['commit', '--amend', '--no-edit'])
-    logSuccess('Lib changes added to release commit.')
+    logStep('Committing lib changes from prepublishOnly...')
+    await runCommand('git', ['add', 'lib/'], { silent: true })
+    await runCommand('git', ['commit', '--amend', '--no-edit'], { silent: true })
+    logSuccess('Lib changes committed.')
   }
 
   logSuccess('npm publish completed.')
@@ -330,17 +355,17 @@ async function deployGHPages(skipDeploy) {
   const worktreeDir = path.resolve('.gh-pages')
 
   try {
-    await runCommand('git', ['worktree', 'remove', worktreeDir, '-f'])
+    await runCommand('git', ['worktree', 'remove', worktreeDir, '-f'], { silent: true })
   } catch { }
 
   try {
-    await runCommand('git', ['worktree', 'add', worktreeDir, 'gh-pages'])
+    await runCommand('git', ['worktree', 'add', worktreeDir, 'gh-pages'], { silent: true })
   } catch {
-    await runCommand('git', ['worktree', 'add', worktreeDir, '-b', 'gh-pages'])
+    await runCommand('git', ['worktree', 'add', worktreeDir, '-b', 'gh-pages'], { silent: true })
   }
 
-  await runCommand('git', ['-C', worktreeDir, 'config', 'user.name', 'wyxos'])
-  await runCommand('git', ['-C', worktreeDir, 'config', 'user.email', 'github@wyxos.com'])
+  await runCommand('git', ['-C', worktreeDir, 'config', 'user.name', 'wyxos'], { silent: true })
+  await runCommand('git', ['-C', worktreeDir, 'config', 'user.email', 'github@wyxos.com'], { silent: true })
 
   // Clear worktree directory
   for (const entry of fs.readdirSync(worktreeDir)) {
@@ -352,9 +377,9 @@ async function deployGHPages(skipDeploy) {
   // Copy dist to worktree
   fs.cpSync(distPath, worktreeDir, { recursive: true })
 
-  await runCommand('git', ['-C', worktreeDir, 'add', '-A'])
-  await runCommand('git', ['-C', worktreeDir, 'commit', '-m', `deploy: demo ${new Date().toISOString()}`, '--allow-empty'])
-  await runCommand('git', ['-C', worktreeDir, 'push', '-f', 'origin', 'gh-pages'])
+  await runCommand('git', ['-C', worktreeDir, 'add', '-A'], { silent: true })
+  await runCommand('git', ['-C', worktreeDir, 'commit', '-m', `deploy: demo ${new Date().toISOString()}`, '--allow-empty'], { silent: true })
+  await runCommand('git', ['-C', worktreeDir, 'push', '-f', 'origin', 'gh-pages'], { silent: true })
 
   logSuccess('GitHub Pages deployment completed.')
 }
@@ -377,6 +402,10 @@ async function main() {
   const upstreamRef = await getUpstreamRef()
   await ensureUpToDateWithUpstream(branch, upstreamRef)
 
+  // Note: build:lib runs twice:
+  // 1. Here in the main flow (commits lib changes)
+  // 2. Again in prepublishOnly hook during npm publish (we handle those changes too)
+
   await runLint(skipLint)
   await runTests(skipTests)
   await runBuild(skipBuild)
@@ -392,7 +421,10 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error('\nRelease failed:')
-  console.error(error.message)
+  logError('\nRelease failed:')
+  logError(error.message)
+  if (error.stack) {
+    console.error(error.stack)
+  }
   process.exit(1)
 })

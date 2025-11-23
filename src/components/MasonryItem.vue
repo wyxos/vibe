@@ -289,13 +289,8 @@ watch(
             ]"
           >
             <!-- Media type indicator - shown BEFORE preloading starts -->
-            <div
-              class="flex flex-col items-center justify-center gap-2 text-slate-400"
-            >
-              <div class="w-12 h-12 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm">
-                <i :class="mediaType === 'video' ? 'fas fa-video text-xl' : 'fas fa-image text-xl'"></i>
-              </div>
-              <span class="text-xs font-medium uppercase">{{ mediaType }}</span>
+            <div class="w-12 h-12 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm">
+              <i :class="mediaType === 'video' ? 'fas fa-video text-xl text-slate-400' : 'fas fa-image text-xl text-slate-400'"></i>
             </div>
           </div>
 
