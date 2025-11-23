@@ -7,6 +7,17 @@ vi.mock('lodash-es', () => ({
   debounce: vi.fn((fn) => fn)
 }))
 
+// Mock IntersectionObserver for MasonryItem components
+global.IntersectionObserver = class MockIntersectionObserver {
+  constructor(callback, options) {
+    this.callback = callback
+    this.options = options
+    this.observe = vi.fn()
+    this.disconnect = vi.fn()
+    this.unobserve = vi.fn()
+  }
+}
+
 // Mock window.innerWidth for responsive column calculation
 Object.defineProperty(window, 'innerWidth', {
   writable: true,
@@ -38,11 +49,11 @@ describe('Masonry.vue', () => {
 
     // Check that the component mounted
     expect(wrapper.exists()).toBe(true)
-    
+
     // Check that the main container element exists
     const container = wrapper.find('.overflow-auto')
     expect(container.exists()).toBe(true)
-    
+
     // Check that the relative positioned div exists for item positioning
     const relativeDiv = wrapper.find('.relative')
     expect(relativeDiv.exists()).toBe(true)
@@ -70,10 +81,10 @@ describe('Masonry.vue', () => {
     // Access the component's internal layout computed property
     // This verifies the default layout is properly merged
     const vm = wrapper.vm
-    
+
     // The component should have access to layout configuration
     expect(wrapper.props('layout')).toBeUndefined() // no custom layout passed
-    
+
     // Component should still function with default layout values
     expect(wrapper.exists()).toBe(true)
   })
@@ -155,15 +166,15 @@ describe('Masonry.vue', () => {
 
     // Verify the component mounted successfully
     expect(wrapper.exists()).toBe(true)
-    
+
     // Verify ref is available
     const vm = wrapper.vm
     expect(vm.$refs).toBeDefined()
-    
+
     // Verify initial state
     expect(typeof vm.isLoading).toBe('boolean')
     expect(typeof vm.containerHeight).toBe('number')
-    
+
     // Verify exposed methods exist
     expect(typeof vm.refreshLayout).toBe('function')
     expect(typeof vm.remove).toBe('function')
@@ -242,15 +253,15 @@ describe('Masonry.vue', () => {
 
     // Verify initial page was loaded
     expect(dynamicMockGetNextPage).toHaveBeenCalledWith(1)
-    
+
     // Manually trigger loading next page (simulating scroll trigger)
     // We can't easily simulate scroll events in this test environment,
     // but we can test the loadNext functionality directly
     expect(typeof vm.loadNext).toBe('function')
-    
+
     // Reset mock call count to focus on next page loading
     dynamicMockGetNextPage.mockClear()
-    
+
     // The component should have updated its internal state
     expect(vm.isLoading).toBeDefined()
     expect(typeof vm.containerHeight).toBe('number')
@@ -331,7 +342,7 @@ describe('Masonry.vue', () => {
 
     // Verify getNextPage was called with page 1 again (current page)
     expect(refreshMockGetNextPage).toHaveBeenCalledWith(1)
-    
+
     // Verify pagination history was reset and updated
     expect(vm.paginationHistory).toHaveLength(2)
     expect(vm.paginationHistory[0]).toBe(1)
@@ -365,18 +376,18 @@ describe('Masonry.vue', () => {
 
     // Verify refreshCurrentPage method exists
     expect(typeof vm.refreshCurrentPage).toBe('function')
-    
+
     // Load a page first
     await vm.loadPage(1)
     await new Promise(resolve => setTimeout(resolve, 50))
-    
+
     expect(simpleMock).toHaveBeenCalledWith(1)
     simpleMock.mockClear()
-    
+
     // Call refreshCurrentPage
     await vm.refreshCurrentPage()
     await new Promise(resolve => setTimeout(resolve, 50))
-    
+
     // Should reload page 1
     expect(simpleMock).toHaveBeenCalledWith(1)
   })

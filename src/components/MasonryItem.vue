@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed, withDefaults } from 'vue';
+import { ref, onMounted, onUnmounted, watch, computed, withDefaults } from 'vue';
 
 const props = withDefaults(defineProps<{
   item: any;
@@ -18,6 +18,11 @@ const imageSrc = ref<string | null>(null);
 const videoLoaded = ref(false);
 const videoError = ref(false);
 const videoSrc = ref<string | null>(null);
+const isInView = ref(false);
+const isLoading = ref(false);
+const containerRef = ref<HTMLElement | null>(null);
+let intersectionObserver: IntersectionObserver | null = null;
+
 // Auto-read from props or item object, default to 'image'
 const mediaType = computed(() => props.type ?? props.item?.type ?? 'image');
 const showNotFound = computed(() => props.notFound ?? props.item?.notFound ?? false);
@@ -41,12 +46,14 @@ function preloadImage(src: string): Promise<void> {
       setTimeout(() => {
         imageLoaded.value = true;
         imageError.value = false;
+        isLoading.value = false;
         resolve();
       }, remaining);
     };
     img.onerror = () => {
       imageError.value = true;
       imageLoaded.value = false;
+      isLoading.value = false;
       reject(new Error('Failed to load image'));
     };
     img.src = src;
@@ -74,6 +81,7 @@ function preloadVideo(src: string): Promise<void> {
       setTimeout(() => {
         videoLoaded.value = true;
         videoError.value = false;
+        isLoading.value = false;
         resolve();
       }, remaining);
     };
@@ -81,6 +89,7 @@ function preloadVideo(src: string): Promise<void> {
     video.onerror = () => {
       videoError.value = true;
       videoLoaded.value = false;
+      isLoading.value = false;
       reject(new Error('Failed to load video'));
     };
     
@@ -88,18 +97,27 @@ function preloadVideo(src: string): Promise<void> {
   });
 }
 
-onMounted(async () => {
-  // Debug: verify component is mounting
-  console.log('[MasonryItem] Component mounted', props.item?.id);
-  
-  // If notFound is true, skip preloading
-  if (showNotFound.value) {
+async function startPreloading() {
+  // Skip preloading if:
+  // - not in view
+  // - already loading
+  // - already loaded (prevent re-triggering)
+  // - notFound is true
+  if (!isInView.value || isLoading.value || showNotFound.value) {
     return;
   }
-  
+
+  // Don't start preloading if media is already loaded
+  if ((mediaType.value === 'video' && videoLoaded.value) || 
+      (mediaType.value === 'image' && imageLoaded.value)) {
+    return;
+  }
+
   const src = props.item?.src;
   if (!src) return;
-  
+
+  isLoading.value = true;
+
   if (mediaType.value === 'video') {
     videoSrc.value = src;
     videoLoaded.value = false;
@@ -119,6 +137,46 @@ onMounted(async () => {
       // Error handled by imageError state
     }
   }
+}
+
+onMounted(() => {
+  // Set up Intersection Observer to detect when item comes into view
+  // We set it up even for notFound items, but skip preloading
+  if (!containerRef.value) return;
+
+  // Use Intersection Observer to detect when item's full height is in view
+  // Only start preloading when the entire item is visible (intersectionRatio >= 1.0)
+  intersectionObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        // Only trigger when the entire item height is fully visible (intersectionRatio >= 1.0)
+        if (entry.isIntersecting && entry.intersectionRatio >= 1.0) {
+          // Only set isInView if it's not already set (prevent re-triggering)
+          if (!isInView.value) {
+            isInView.value = true;
+            startPreloading();
+          }
+        } else if (!entry.isIntersecting) {
+          // Reset isInView when item leaves viewport (optional, for re-loading if needed)
+          // But we don't reset here to prevent re-triggering on scroll
+        }
+      });
+    },
+    {
+      // Only trigger when item is 100% visible (full height in view)
+      threshold: [1.0]
+    }
+  );
+
+  intersectionObserver.observe(containerRef.value);
+});
+
+onUnmounted(() => {
+  // Clean up Intersection Observer to prevent memory leaks
+  if (intersectionObserver) {
+    intersectionObserver.disconnect();
+    intersectionObserver = null;
+  }
 });
 
 watch(
@@ -126,15 +184,19 @@ watch(
   async (newSrc) => {
     if (!newSrc || showNotFound.value) return;
     
+    // Reset states when src changes
     if (mediaType.value === 'video') {
       if (newSrc !== videoSrc.value) {
         videoLoaded.value = false;
         videoError.value = false;
         videoSrc.value = newSrc;
-        try {
-          await preloadVideo(newSrc);
-        } catch {
-          // Error handled by videoError state
+        if (isInView.value) {
+          isLoading.value = true;
+          try {
+            await preloadVideo(newSrc);
+          } catch {
+            // Error handled by videoError state
+          }
         }
       }
     } else {
@@ -142,23 +204,27 @@ watch(
         imageLoaded.value = false;
         imageError.value = false;
         imageSrc.value = newSrc;
-        try {
-          await preloadImage(newSrc);
-        } catch {
-          // Error handled by imageError state
+        if (isInView.value) {
+          isLoading.value = true;
+          try {
+            await preloadImage(newSrc);
+          } catch {
+            // Error handled by imageError state
+          }
         }
       }
     }
   }
 );
 
-// mediaType and showNotFound are now computed, so they automatically react to changes
+// Note: We don't watch isInView here because startPreloading() is already called
+// from the IntersectionObserver callback, and we want to prevent re-triggering
 </script>
 
 <template>
-  <div class="relative w-full h-full group">
+  <div ref="containerRef" class="relative w-full h-full group">
     <!-- Custom slot content (replaces default if provided) -->
-    <slot :item="item" :remove="remove" :imageLoaded="imageLoaded" :imageError="imageError" :videoLoaded="videoLoaded" :videoError="videoError" :showNotFound="showNotFound">
+    <slot :item="item" :remove="remove" :imageLoaded="imageLoaded" :imageError="imageError" :videoLoaded="videoLoaded" :videoError="videoError" :showNotFound="showNotFound" :isLoading="isLoading" :mediaType="mediaType">
       <!-- Default content when no slot is provided -->
       <div class="w-full h-full rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 bg-white relative">
         <!-- Not Found state -->
@@ -171,44 +237,75 @@ watch(
           <span class="text-xs mt-1 opacity-75">This item could not be located</span>
         </div>
 
-        <!-- Spinner while loading -->
-        <div
-          v-else-if="(mediaType === 'image' && !imageLoaded && !imageError) || (mediaType === 'video' && !videoLoaded && !videoError)"
-          class="absolute inset-0 flex items-center justify-center bg-slate-100"
-        >
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <!-- Media content (image or video) -->
+        <div v-else class="relative w-full h-full">
+          <!-- Image (shown immediately when loaded, with lazy loading attribute) -->
+          <img
+            v-if="mediaType === 'image' && imageLoaded && imageSrc"
+            :src="imageSrc"
+            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
+            decoding="async"
+            alt=""
+          />
+
+          <!-- Video (shown immediately when loaded) -->
+          <video
+            v-if="mediaType === 'video' && videoLoaded && videoSrc"
+            :src="videoSrc"
+            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            muted
+            loop
+            playsinline
+            @mouseenter="(e) => (e.target as HTMLVideoElement).play()"
+            @mouseleave="(e) => (e.target as HTMLVideoElement).pause()"
+            @error="videoError = true"
+          />
+
+          <!-- Placeholder background while loading or if not loaded yet -->
+          <div
+            v-if="!imageLoaded && !videoLoaded && !imageError && !videoError"
+            class="absolute inset-0 bg-slate-100 flex items-center justify-center"
+          >
+            <!-- Media type indicator - shown BEFORE preloading starts -->
+            <div
+              class="flex flex-col items-center justify-center gap-2 text-slate-400"
+            >
+              <div class="w-12 h-12 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm">
+                <i :class="mediaType === 'video' ? 'fas fa-video text-xl' : 'fas fa-image text-xl'"></i>
+              </div>
+              <span class="text-xs font-medium uppercase">{{ mediaType }}</span>
+            </div>
+          </div>
+
+          <!-- Spinner underneath the graphic (only shown when loading) -->
+          <div
+            v-if="isLoading"
+            class="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex items-center justify-center"
+          >
+            <div class="bg-white/90 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-sm">
+              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+            </div>
+          </div>
+
+          <!-- Error state -->
+          <div
+            v-if="(mediaType === 'image' && imageError) || (mediaType === 'video' && videoError)"
+            class="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 text-slate-400 text-sm p-4 text-center"
+          >
+            <i :class="mediaType === 'video' ? 'fas fa-video text-2xl mb-2 opacity-50' : 'fas fa-image text-2xl mb-2 opacity-50'"></i>
+            <span>Failed to load {{ mediaType }}</span>
+          </div>
         </div>
 
-        <!-- Error state -->
+        <!-- Media type indicator badge (top-left corner) -->
         <div
-          v-else-if="(mediaType === 'image' && imageError) || (mediaType === 'video' && videoError)"
-          class="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 text-slate-400 text-sm p-4 text-center"
+          v-if="!showNotFound && (imageLoaded || videoLoaded || isLoading)"
+          class="absolute top-2 left-2 w-7 h-7 flex items-center justify-center bg-black/60 backdrop-blur-sm text-white rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+          :title="mediaType === 'video' ? 'Video' : 'Image'"
         >
-          <i :class="mediaType === 'video' ? 'fas fa-video text-2xl mb-2 opacity-50' : 'fas fa-image text-2xl mb-2 opacity-50'"></i>
-          <span>Failed to load {{ mediaType }}</span>
+          <i :class="mediaType === 'video' ? 'fas fa-video text-xs' : 'fas fa-image text-xs'"></i>
         </div>
-
-        <!-- Image (only shown when loaded) -->
-        <img
-          v-if="mediaType === 'image' && imageLoaded && imageSrc && !showNotFound"
-          :src="imageSrc"
-          class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          loading="lazy"
-          decoding="async"
-        />
-
-        <!-- Video (only shown when loaded) -->
-        <video
-          v-if="mediaType === 'video' && videoLoaded && videoSrc && !showNotFound"
-          :src="videoSrc"
-          class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          muted
-          loop
-          playsinline
-          @mouseenter="(e) => (e.target as HTMLVideoElement).play()"
-          @mouseleave="(e) => (e.target as HTMLVideoElement).pause()"
-          @error="videoError = true"
-        />
 
         <!-- Overlay Gradient -->
         <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
@@ -216,7 +313,7 @@ watch(
         <!-- Remove button -->
         <button
           v-if="remove"
-          class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-white/90 backdrop-blur-sm text-slate-700 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 hover:bg-red-500 hover:text-white cursor-pointer"
+          class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-white/90 backdrop-blur-sm text-slate-700 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 hover:bg-red-500 hover:text-white cursor-pointer z-10"
           @click.stop="remove(item)"
           aria-label="Remove item"
         >
@@ -231,4 +328,3 @@ watch(
     </slot>
   </div>
 </template>
-

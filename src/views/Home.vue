@@ -61,7 +61,7 @@
                     v-model.number="layoutParams.sizes[key]"
                     type="number"
                     min="1"
-                    class="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-center text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    class="w-full min-w-[3rem] px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-center text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                 </div>
               </div>

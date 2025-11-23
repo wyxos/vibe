@@ -56,6 +56,7 @@ By default, VIBE uses the built-in `MasonryItem` component, which handles image 
     const response = await fetch(`/api/items?page=${page}`)
     const data = await response.json()
     // Items must have a 'src' property for the default MasonryItem
+    // Optional: include 'type' ('image' or 'video') and 'notFound' (boolean)
     return {
       items: data.items,
       nextPage: page + 1
@@ -104,6 +105,36 @@ You can fully customize the item rendering using the `#item` slot. You can also 
 </template>
 ```
 
+### Item Data Structure
+
+Items can include the following properties:
+
+```javascript
+{
+  id: 'unique-id',           // Required: unique identifier
+  width: 300,                // Required: original width
+  height: 200,               // Required: original height
+  src: 'https://...',        // Required: media source URL
+  type: 'image' | 'video',   // Optional: media type (defaults to 'image')
+  notFound: false,           // Optional: show "Not Found" state
+  // ... any other custom properties
+}
+```
+
+### Slot Props
+
+The `MasonryItem` component exposes the following props to its default slot:
+
+- `item`: The item object
+- `remove`: The remove callback function
+- `imageLoaded`: Boolean indicating if image has loaded
+- `imageError`: Boolean indicating if image failed to load
+- `videoLoaded`: Boolean indicating if video has loaded
+- `videoError`: Boolean indicating if video failed to load
+- `showNotFound`: Boolean indicating if item is in "not found" state
+- `isLoading`: Boolean indicating if media is currently loading
+- `mediaType`: String indicating the media type ('image' or 'video')
+
 ---
 
 ## Props
@@ -138,19 +169,27 @@ You can fully customize the item rendering using the `#item` slot. You can also 
 
 ## MasonryItem Component
 
-The built-in `MasonryItem` component is available for use within the `#item` slot or as a standalone component.
+The built-in `MasonryItem` component is available for use within the `#item` slot or as a standalone component. It provides intelligent lazy loading, media type detection, and comprehensive error handling.
 
 ### Props
 
 | Prop | Type | Description |
 |------|------|-------------|
-| `item` | `Object` | The item object. Must contain `src` for image loading. |
-| `remove` | `Function` | Optional callback to remove the item. If provided, a remove button is shown. |
+| `item` | `Object` | The item object. Must contain `src` for media loading. Can include `type` (`'image'` or `'video'`), `notFound` (boolean), and other custom properties. |
+| `remove` | `Function` | Optional callback to remove the item. If provided, a remove button is shown on hover. |
+| `type` | `'image' \| 'video'` | Optional. Overrides `item.type`. Defaults to `'image'`. |
+| `notFound` | `Boolean` | Optional. Overrides `item.notFound`. When `true`, displays a "Not Found" state instead of loading media. |
 
 ### Features
-- **Image Preloading**: Shows a spinner while the image loads.
-- **Error Handling**: Displays an error state if the image fails to load.
-- **Hover Effects**: Includes a subtle zoom and overlay on hover.
+
+- **Lazy Loading with Intersection Observer**: Only starts preloading media when the item comes into view (50%+ visible), significantly improving initial page load performance.
+- **Image & Video Support**: Automatically handles both images and videos with appropriate loading strategies.
+- **Media Type Indicator**: Shows a badge icon (image/video) on hover to indicate the media type.
+- **Smart Spinner**: Displays a loading spinner underneath the media (not covering it) during preload.
+- **Error Handling**: Displays user-friendly error states if media fails to load.
+- **Not Found State**: Special visual state for items that cannot be located.
+- **Hover Effects**: Includes subtle zoom, overlay gradient, and smooth transitions.
+- **Performance Optimized**: Properly cleans up Intersection Observers to prevent memory leaks.
 
 ---
 
