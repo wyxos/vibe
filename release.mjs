@@ -291,21 +291,21 @@ async function publishPackage(pkg) {
 
   logStep(`Publishing ${pkg.name}@${pkg.version} to npm...`)
   await runCommand('npm', publishArgs)
-  
+
   // After prepublishOnly runs build:lib, check for any new lib changes and commit them
   const { stdout: statusAfterPublish } = await runCommand('git', ['status', '--porcelain'], { capture: true })
   const hasLibChangesAfterPublish = statusAfterPublish.split('\n').some(line => {
     const trimmed = line.trim()
     return trimmed.startsWith('M  lib/') || trimmed.startsWith('?? lib/') || trimmed.startsWith(' M lib/') || trimmed.startsWith('A  lib/')
   })
-  
+
   if (hasLibChangesAfterPublish) {
     logStep('Adding lib changes created during publish...')
     await runCommand('git', ['add', 'lib/'])
     await runCommand('git', ['commit', '--amend', '--no-edit'])
     logSuccess('Lib changes added to release commit.')
   }
-  
+
   logSuccess('npm publish completed.')
 }
 
