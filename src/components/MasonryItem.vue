@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed, withDefaults } from 'vue';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   item: any;
   remove?: (item: any) => void;
   type?: 'image' | 'video';
   notFound?: boolean;
-}>();
+}>(), {
+  // Auto-read from item if not explicitly provided
+  type: undefined,
+  notFound: undefined
+});
 
 const imageLoaded = ref(false);
 const imageError = ref(false);
@@ -14,8 +18,9 @@ const imageSrc = ref<string | null>(null);
 const videoLoaded = ref(false);
 const videoError = ref(false);
 const videoSrc = ref<string | null>(null);
-const mediaType = ref<'image' | 'video'>(props.type || props.item?.type || 'image');
-const showNotFound = ref(props.notFound ?? props.item?.notFound ?? false);
+// Auto-read from props or item object, default to 'image'
+const mediaType = computed(() => props.type ?? props.item?.type ?? 'image');
+const showNotFound = computed(() => props.notFound ?? props.item?.notFound ?? false);
 
 function preloadImage(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -147,21 +152,7 @@ watch(
   }
 );
 
-watch(
-  () => props.item?.type || props.type,
-  (newType) => {
-    if (newType) {
-      mediaType.value = newType;
-    }
-  }
-);
-
-watch(
-  () => props.item?.notFound ?? props.notFound,
-  (newNotFound) => {
-    showNotFound.value = newNotFound ?? false;
-  }
-);
+// mediaType and showNotFound are now computed, so they automatically react to changes
 </script>
 
 <template>

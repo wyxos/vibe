@@ -26,7 +26,7 @@ const generateRandomItem = (indexOffset, page, index) => {
 
     // Each page should have examples of different types
     const itemIndexInPage = index % itemsPerPage;
-    
+
     // First item: video example
     if (itemIndexInPage === 0) {
         item.type = 'video';

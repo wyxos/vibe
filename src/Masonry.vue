@@ -96,7 +96,7 @@ const props = defineProps({
   autoRefreshOnEmpty: {
     type: Boolean,
     default: false
-  }
+  },
 })
 
 const defaultLayout = {
@@ -753,7 +753,8 @@ onUnmounted(() => {
              class="absolute masonry-item"
              v-bind="getItemAttributes(item, i)"
              :style="{ paddingTop: `${layout.header}px`, paddingBottom: `${layout.footer}px` }">
-          <slot name="item" v-bind="{item, remove}">
+          <!-- Use default slot if provided, otherwise use MasonryItem -->
+          <slot :item="item" :remove="remove">
             <MasonryItem :item="item" :remove="remove" />
           </slot>
         </div>

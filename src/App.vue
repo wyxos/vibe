@@ -158,7 +158,9 @@ const getPage = async (page: number): Promise<GetPageResult> => {
 
     <!-- Main Content -->
     <div class="flex flex-1 overflow-hidden relative pt-24">
-      <masonry v-model:items="items" :get-next-page="getPage" :load-at-page="1" :layout="layout" ref="masonry"></masonry>
+      <masonry v-model:items="items" :get-next-page="getPage" :load-at-page="1" :layout="layout" ref="masonry">
+        <!-- MasonryItem is used automatically, but you can customize it -->
+      </masonry>
     </div>
   </main>
 </template>
