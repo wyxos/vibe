@@ -49,19 +49,19 @@
         leave-from-class="transform translate-y-0 opacity-100"
         leave-to-class="transform -translate-y-2 opacity-0"
       >
-        <div v-if="showLayoutControls" class="absolute top-full right-4 mt-2 w-full max-w-lg bg-white/90 backdrop-blur-md border border-slate-200 shadow-xl rounded-xl p-6 pointer-events-auto z-30">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div v-if="showLayoutControls" class="absolute top-full left-4 right-4 md:left-auto md:right-4 mt-2 md:w-full md:max-w-lg bg-white/90 backdrop-blur-md border border-slate-200 shadow-xl rounded-xl p-4 md:p-6 pointer-events-auto z-30">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
             <!-- Column Settings -->
             <div>
               <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Column Configuration</h3>
-              <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
+              <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
                 <div v-for="(val, key) in layoutParams.sizes" :key="key" class="flex flex-col gap-1.5">
                   <label class="text-[10px] font-bold text-slate-500 uppercase text-center">{{ key }}</label>
                   <input
                     v-model.number="layoutParams.sizes[key]"
                     type="number"
                     min="1"
-                    class="w-full min-w-[3rem] px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-center text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    class="w-full px-1 py-2 bg-slate-50 border border-slate-200 rounded-lg text-center text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                 </div>
               </div>
@@ -70,7 +70,7 @@
             <!-- Spacing Settings -->
             <div>
               <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Spacing</h3>
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="flex flex-col gap-1.5">
                   <label class="text-[10px] font-bold text-slate-500 uppercase">Header Offset</label>
                   <div class="relative">
@@ -78,7 +78,7 @@
                       v-model.number="layoutParams.header"
                       type="number"
                       min="0"
-                      class="w-full pl-3 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                      class="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                     />
                     <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">px</span>
                   </div>
@@ -90,7 +90,7 @@
                       v-model.number="layoutParams.footer"
                       type="number"
                       min="0"
-                      class="w-full pl-3 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                      class="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                     />
                     <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">px</span>
                   </div>
