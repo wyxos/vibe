@@ -55,7 +55,7 @@
     "preview": "vite preview",
     "watch": "vite build --watch",
     "release": "npx @wyxos/zephyr --type=node",
-    "test": "vitest",
+    "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",

@@ -212,6 +212,7 @@ const paginationHistory = ref<any[]>([])
 const currentPage = ref<any>(null)  // Track the actual current page being displayed
 const isLoading = ref<boolean>(false)
 const masonryContentHeight = ref<number>(0)
+const hasReachedEnd = ref<boolean>(false)  // Track when we've reached the last page
 
 // Current breakpoint
 const currentBreakpoint = computed(() => getBreakpointName(containerWidth.value))
@@ -405,6 +406,8 @@ defineExpose({
   contentHeight: masonryContentHeight,
   // Current page
   currentPage,
+  // End of list tracking
+  hasReachedEnd,
   // Set fixed dimensions (overrides ResizeObserver)
   setFixedDimensions,
   remove,
@@ -541,6 +544,8 @@ async function loadPage(page: number) {
   // Starting a new load should clear any previous cancel request
   cancelRequested.value = false
   isLoading.value = true
+  // Reset hasReachedEnd when loading a new page
+  hasReachedEnd.value = false
   try {
     const baseline = (masonry.value as any[]).length
     if (cancelRequested.value) return
@@ -548,6 +553,10 @@ async function loadPage(page: number) {
     if (cancelRequested.value) return
     currentPage.value = page  // Track the current page
     paginationHistory.value.push(response.nextPage)
+    // Update hasReachedEnd if nextPage is null
+    if (response.nextPage == null) {
+      hasReachedEnd.value = true
+    }
     await maybeBackfillToTarget(baseline)
     return response
   } catch (error) {
@@ -560,6 +569,8 @@ async function loadPage(page: number) {
 
 async function loadNext() {
   if (isLoading.value) return
+  // Don't load if we've already reached the end
+  if (hasReachedEnd.value) return
   // Starting a new load should clear any previous cancel request
   cancelRequested.value = false
   isLoading.value = true
@@ -567,10 +578,20 @@ async function loadNext() {
     const baseline = (masonry.value as any[]).length
     if (cancelRequested.value) return
     const nextPageToLoad = paginationHistory.value[paginationHistory.value.length - 1]
+    // Don't load if nextPageToLoad is null
+    if (nextPageToLoad == null) {
+      hasReachedEnd.value = true
+      isLoading.value = false
+      return
+    }
     const response = await getContent(nextPageToLoad)
     if (cancelRequested.value) return
     currentPage.value = nextPageToLoad  // Track the current page
     paginationHistory.value.push(response.nextPage)
+    // Update hasReachedEnd if nextPage is null
+    if (response.nextPage == null) {
+      hasReachedEnd.value = true
+    }
     await maybeBackfillToTarget(baseline)
     return response
   } catch (error) {
@@ -602,6 +623,7 @@ async function refreshCurrentPage() {
     // Clear existing items
     masonry.value = []
     masonryContentHeight.value = 0
+    hasReachedEnd.value = false  // Reset end flag when refreshing
     
     // Reset pagination history to just the current page
     paginationHistory.value = [pageToRefresh]
@@ -615,6 +637,10 @@ async function refreshCurrentPage() {
     // Update pagination state
     currentPage.value = pageToRefresh
     paginationHistory.value.push(response.nextPage)
+    // Update hasReachedEnd if nextPage is null
+    if (response.nextPage == null) {
+      hasReachedEnd.value = true
+    }
     
     // Optionally backfill if needed
     const baseline = (masonry.value as any[]).length
@@ -728,12 +754,17 @@ async function maybeBackfillToTarget(baselineCount: number, force = false) {
   if (!force && !props.backfillEnabled) return
   if (backfillActive) return
   if (cancelRequested.value) return
+  // Don't backfill if we've reached the end
+  if (hasReachedEnd.value) return
 
   const targetCount = (baselineCount || 0) + (props.pageSize || 0)
   if (!props.pageSize || props.pageSize <= 0) return
 
   const lastNext = paginationHistory.value[paginationHistory.value.length - 1]
-  if (lastNext == null) return
+  if (lastNext == null) {
+    hasReachedEnd.value = true
+    return
+  }
 
   if ((masonry.value as any[]).length >= targetCount) return
 
@@ -746,7 +777,8 @@ async function maybeBackfillToTarget(baselineCount: number, force = false) {
       (masonry.value as any[]).length < targetCount &&
       calls < props.backfillMaxCalls &&
       paginationHistory.value[paginationHistory.value.length - 1] != null &&
-      !cancelRequested.value
+      !cancelRequested.value &&
+      !hasReachedEnd.value
     ) {
       await waitWithProgress(props.backfillDelayMs, (remaining, total) => {
         emits('backfill:tick', {
@@ -761,11 +793,19 @@ async function maybeBackfillToTarget(baselineCount: number, force = false) {
       if (cancelRequested.value) break
 
       const currentPage = paginationHistory.value[paginationHistory.value.length - 1]
+      if (currentPage == null) {
+        hasReachedEnd.value = true
+        break
+      }
       try {
         isLoading.value = true
         const response = await getContent(currentPage)
         if (cancelRequested.value) break
         paginationHistory.value.push(response.nextPage)
+        // Update hasReachedEnd if nextPage is null
+        if (response.nextPage == null) {
+          hasReachedEnd.value = true
+        }
       } finally {
         isLoading.value = false
       }
@@ -800,6 +840,7 @@ function reset() {
   containerHeight.value = 0
   currentPage.value = props.loadAtPage  // Reset current page tracking
   paginationHistory.value = [props.loadAtPage]
+  hasReachedEnd.value = false  // Reset end flag
 
   scrollProgress.value = {
     distanceToTrigger: 0,
@@ -962,6 +1003,8 @@ function init(items: any[], page: any, next: any) {
   currentPage.value = page  // Track the initial current page
   paginationHistory.value = [page]
   paginationHistory.value.push(next)
+  // Update hasReachedEnd if next is null
+  hasReachedEnd.value = next == null
   // Diagnostics: check incoming initial items
   checkItemDimensions(items as any[], 'init')
   
@@ -1257,10 +1300,12 @@ onUnmounted(() => {
           </div>
         </div>
       </div>
-      
-
-
-
+      <!-- End of list message for swipe mode -->
+      <div v-if="hasReachedEnd && masonry.length > 0" class="w-full py-8 text-center">
+        <slot name="end-message">
+          <p class="text-gray-500 dark:text-gray-400">You've reached the end</p>
+        </slot>
+      </div>
     </div>
 
     <!-- Masonry Grid Mode (Desktop) -->
@@ -1301,8 +1346,12 @@ onUnmounted(() => {
             </slot>
           </div>
         </transition-group>
-
-
+      </div>
+      <!-- End of list message -->
+      <div v-if="hasReachedEnd && masonry.length > 0" class="w-full py-8 text-center">
+        <slot name="end-message">
+          <p class="text-gray-500 dark:text-gray-400">You've reached the end</p>
+        </slot>
       </div>
     </div>
   </div>

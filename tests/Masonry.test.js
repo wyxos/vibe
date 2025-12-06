@@ -493,4 +493,451 @@ describe('Masonry.vue', () => {
     // The container watcher should have attached the listener when container ref became available
     expect(wrapper.exists()).toBe(true)
   })
+
+  describe('End of list functionality', () => {
+    it('should set hasReachedEnd to true when nextPage is null in loadPage', async () => {
+      const endOfListMock = vi.fn().mockResolvedValue({
+        items: [
+          { id: 1, width: 300, height: 200, src: 'test1.jpg', page: 1 }
+        ],
+        nextPage: null
+      })
+
+      const wrapper = mount(Masonry, {
+        props: {
+          getNextPage: endOfListMock,
+          items: [],
+          loadAtPage: 1,
+          skipInitialLoad: true,
+          backfillEnabled: false
+        },
+        global: {
+          stubs: {
+            'transition-group': {
+              template: '<div><slot /></div>'
+            }
+          }
+        }
+      })
+
+      const vm = wrapper.vm
+
+      // Initially hasReachedEnd should be false
+      expect(vm.hasReachedEnd).toBe(false)
+
+      // Load a page with null nextPage
+      await vm.loadPage(1)
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      // hasReachedEnd should now be true
+      expect(vm.hasReachedEnd).toBe(true)
+      expect(endOfListMock).toHaveBeenCalledWith(1)
+    })
+
+    it('should set hasReachedEnd to true when nextPage is null in loadNext', async () => {
+      let callCount = 0
+      const endOfListMock = vi.fn().mockImplementation((page) => {
+        callCount++
+        return Promise.resolve({
+          items: [
+            { id: callCount, width: 300, height: 200, src: `test${callCount}.jpg`, page }
+          ],
+          nextPage: callCount === 1 ? 2 : null
+        })
+      })
+
+      const wrapper = mount(Masonry, {
+        props: {
+          getNextPage: endOfListMock,
+          items: [],
+          loadAtPage: 1,
+          skipInitialLoad: true,
+          backfillEnabled: false
+        },
+        global: {
+          stubs: {
+            'transition-group': {
+              template: '<div><slot /></div>'
+            }
+          }
+        }
+      })
+
+      const vm = wrapper.vm
+
+      // Load first page
+      await vm.loadPage(1)
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      expect(vm.hasReachedEnd).toBe(false)
+
+      // Load next page (which will return null nextPage)
+      await vm.loadNext()
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      // hasReachedEnd should now be true
+      expect(vm.hasReachedEnd).toBe(true)
+    })
+
+    it('should not load next page if hasReachedEnd is true', async () => {
+      let callCount = 0
+      const endOfListMock = vi.fn().mockImplementation((page) => {
+        callCount++
+        return Promise.resolve({
+          items: [
+            { id: callCount, width: 300, height: 200, src: `test${callCount}.jpg`, page }
+          ],
+          nextPage: callCount === 1 ? 2 : null
+        })
+      })
+
+      const wrapper = mount(Masonry, {
+        props: {
+          getNextPage: endOfListMock,
+          items: [],
+          loadAtPage: 1,
+          skipInitialLoad: true,
+          backfillEnabled: false
+        },
+        global: {
+          stubs: {
+            'transition-group': {
+              template: '<div><slot /></div>'
+            }
+          }
+        }
+      })
+
+      const vm = wrapper.vm
+
+      // Load first page
+      await vm.loadPage(1)
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      // Load next page (which will return null nextPage)
+      await vm.loadNext()
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      expect(vm.hasReachedEnd).toBe(true)
+      const callCountBefore = callCount
+
+      // Try to load next again - should not call getNextPage
+      await vm.loadNext()
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      // Call count should not have increased
+      expect(callCount).toBe(callCountBefore)
+    })
+
+    it('should reset hasReachedEnd when reset() is called', async () => {
+      const endOfListMock = vi.fn().mockResolvedValue({
+        items: [
+          { id: 1, width: 300, height: 200, src: 'test1.jpg', page: 1 }
+        ],
+        nextPage: null
+      })
+
+      const wrapper = mount(Masonry, {
+        props: {
+          getNextPage: endOfListMock,
+          items: [],
+          loadAtPage: 1,
+          skipInitialLoad: true,
+          backfillEnabled: false
+        },
+        global: {
+          stubs: {
+            'transition-group': {
+              template: '<div><slot /></div>'
+            }
+          }
+        }
+      })
+
+      const vm = wrapper.vm
+
+      // Load a page with null nextPage
+      await vm.loadPage(1)
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      expect(vm.hasReachedEnd).toBe(true)
+
+      // Reset
+      vm.reset()
+
+      // hasReachedEnd should be false again
+      expect(vm.hasReachedEnd).toBe(false)
+    })
+
+    it('should reset hasReachedEnd when refreshCurrentPage is called', async () => {
+      let callCount = 0
+      const refreshMock = vi.fn().mockImplementation((page) => {
+        callCount++
+        return Promise.resolve({
+          items: [
+            { id: callCount, width: 300, height: 200, src: `test${callCount}.jpg`, page }
+          ],
+          nextPage: callCount === 1 ? null : 2
+        })
+      })
+
+      const wrapper = mount(Masonry, {
+        props: {
+          getNextPage: refreshMock,
+          items: [],
+          loadAtPage: 1,
+          skipInitialLoad: true,
+          backfillEnabled: false
+        },
+        global: {
+          stubs: {
+            'transition-group': {
+              template: '<div><slot /></div>'
+            }
+          }
+        }
+      })
+
+      const vm = wrapper.vm
+
+      // Load first page (which returns null nextPage)
+      await vm.loadPage(1)
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      expect(vm.hasReachedEnd).toBe(true)
+
+      // Refresh current page (which now returns nextPage: 2)
+      refreshMock.mockImplementation(() => Promise.resolve({
+        items: [
+          { id: 2, width: 300, height: 200, src: 'test2.jpg', page: 1 }
+        ],
+        nextPage: 2
+      }))
+
+      await vm.refreshCurrentPage()
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      // hasReachedEnd should be false if nextPage is not null
+      expect(vm.hasReachedEnd).toBe(false)
+    })
+
+    it('should display end message when hasReachedEnd is true and items exist', async () => {
+      const endOfListMock = vi.fn().mockResolvedValue({
+        items: [
+          { id: 1, width: 300, height: 200, src: 'test1.jpg', page: 1, top: 0, left: 0, columnWidth: 320, columnHeight: 213 }
+        ],
+        nextPage: null
+      })
+
+      const wrapper = mount(Masonry, {
+        props: {
+          getNextPage: endOfListMock,
+          items: [
+            { id: 1, width: 300, height: 200, src: 'test1.jpg', page: 1, top: 0, left: 0, columnWidth: 320, columnHeight: 213 }
+          ],
+          loadAtPage: 1,
+          skipInitialLoad: true,
+          backfillEnabled: false
+        },
+        global: {
+          stubs: {
+            'transition-group': {
+              template: '<div><slot /></div>'
+            }
+          }
+        }
+      })
+
+      const vm = wrapper.vm
+
+      // Manually set hasReachedEnd to true and ensure items exist
+      vm.hasReachedEnd = true
+      await wrapper.vm.$nextTick()
+
+      // Verify state
+      expect(vm.hasReachedEnd).toBe(true)
+      expect(vm.totalItems).toBeGreaterThan(0)
+
+      // Check that end message is displayed - look for the text content
+      const html = wrapper.html()
+      expect(html).toContain("You've reached the end")
+    })
+
+    it('should not display end message when items array is empty', async () => {
+      const wrapper = mount(Masonry, {
+        props: {
+          getNextPage: mockGetNextPage,
+          items: [],
+          loadAtPage: 1,
+          skipInitialLoad: true,
+          backfillEnabled: false
+        },
+        global: {
+          stubs: {
+            'transition-group': {
+              template: '<div><slot /></div>'
+            }
+          }
+        }
+      })
+
+      const vm = wrapper.vm
+      // Manually set hasReachedEnd to true
+      vm.hasReachedEnd = true
+
+      await wrapper.vm.$nextTick()
+
+      // End message should not be displayed when items array is empty
+      const endMessage = wrapper.find('.text-center')
+      // The end message should not exist when masonry.length is 0
+      expect(endMessage.exists()).toBe(false)
+    })
+
+    it('should allow custom end message via slot', async () => {
+      const wrapper = mount(Masonry, {
+        props: {
+          getNextPage: mockGetNextPage,
+          items: [
+            { id: 1, width: 300, height: 200, src: 'test1.jpg', page: 1, top: 0, left: 0, columnWidth: 320, columnHeight: 213 }
+          ],
+          loadAtPage: 1,
+          skipInitialLoad: true,
+          backfillEnabled: false
+        },
+        slots: {
+          'end-message': '<div class="custom-end-message">Custom end message</div>'
+        },
+        global: {
+          stubs: {
+            'transition-group': {
+              template: '<div><slot /></div>'
+            }
+          }
+        }
+      })
+
+      const vm = wrapper.vm
+
+      // Manually set hasReachedEnd to true and ensure items exist
+      vm.hasReachedEnd = true
+      await wrapper.vm.$nextTick()
+
+      // Verify state
+      expect(vm.hasReachedEnd).toBe(true)
+      expect(vm.totalItems).toBeGreaterThan(0)
+
+      // Check that custom end message is displayed
+      const html = wrapper.html()
+      expect(html).toContain('Custom end message')
+    })
+
+    it('should set hasReachedEnd when init is called with null next', () => {
+      const wrapper = mount(Masonry, {
+        props: {
+          getNextPage: mockGetNextPage,
+          items: [],
+          skipInitialLoad: true,
+          backfillEnabled: false
+        },
+        global: {
+          stubs: {
+            'transition-group': {
+              template: '<div><slot /></div>'
+            }
+          }
+        }
+      })
+
+      const vm = wrapper.vm
+
+      const items = [
+        { id: 1, width: 300, height: 200, src: 'test1.jpg', page: 1 }
+      ]
+
+      // Init with null next
+      vm.init(items, 1, null)
+
+      expect(vm.hasReachedEnd).toBe(true)
+    })
+
+    it('should not set hasReachedEnd when init is called with non-null next', () => {
+      const wrapper = mount(Masonry, {
+        props: {
+          getNextPage: mockGetNextPage,
+          items: [],
+          skipInitialLoad: true,
+          backfillEnabled: false
+        },
+        global: {
+          stubs: {
+            'transition-group': {
+              template: '<div><slot /></div>'
+            }
+          }
+        }
+      })
+
+      const vm = wrapper.vm
+
+      const items = [
+        { id: 1, width: 300, height: 200, src: 'test1.jpg', page: 1 }
+      ]
+
+      // Init with non-null next
+      vm.init(items, 1, 2)
+
+      expect(vm.hasReachedEnd).toBe(false)
+    })
+
+    it('should not backfill when hasReachedEnd is true', async () => {
+      let callCount = 0
+      const backfillMock = vi.fn().mockImplementation((page) => {
+        callCount++
+        return Promise.resolve({
+          items: [
+            { id: callCount, width: 300, height: 200, src: `test${callCount}.jpg`, page }
+          ],
+          nextPage: callCount === 1 ? 2 : null
+        })
+      })
+
+      const wrapper = mount(Masonry, {
+        props: {
+          getNextPage: backfillMock,
+          items: [],
+          loadAtPage: 1,
+          skipInitialLoad: true,
+          backfillEnabled: true,
+          pageSize: 10
+        },
+        global: {
+          stubs: {
+            'transition-group': {
+              template: '<div><slot /></div>'
+            }
+          }
+        }
+      })
+
+      const vm = wrapper.vm
+
+      // Load first page
+      await vm.loadPage(1)
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      // Load next page (which will return null nextPage)
+      await vm.loadNext()
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      expect(vm.hasReachedEnd).toBe(true)
+      const callCountBefore = callCount
+
+      // Try to trigger backfill - should not call getNextPage
+      await vm.maybeBackfillToTarget(5, true)
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      // Call count should not have increased
+      expect(callCount).toBe(callCountBefore)
+    })
+  })
 })
