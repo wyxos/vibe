@@ -43,17 +43,22 @@ test.describe('Vibe Demo', () => {
     await page.waitForTimeout(2000);
     
     const initialItemCount = await page.locator('img, video').count();
+    expect(initialItemCount).toBeGreaterThan(0);
     
-    // Scroll to bottom
-    await page.evaluate(() => {
-      window.scrollTo(0, document.body.scrollHeight);
+    // Find the masonry container (the scrollable element)
+    const masonryContainer = page.locator('.masonry-container, .overflow-auto').first();
+    await expect(masonryContainer).toBeVisible();
+    
+    // Scroll within the masonry container to trigger infinite scroll
+    await masonryContainer.evaluate((el) => {
+      el.scrollTop = el.scrollHeight - el.clientHeight - 100; // Scroll near bottom
     });
     
-    // Wait for more items to load
+    // Wait for scroll handler to trigger and load more items
     await page.waitForTimeout(2000);
     
     const finalItemCount = await page.locator('img, video').count();
-    expect(finalItemCount).toBeGreaterThanOrEqual(initialItemCount);
+    expect(finalItemCount).toBeGreaterThan(initialItemCount);
   });
 
   test('should navigate to examples page', async ({ page }) => {

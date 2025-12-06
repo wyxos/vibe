@@ -1004,6 +1004,18 @@ watch(() => props.layoutMode, () => {
   }
 })
 
+// Watch container element to attach scroll listener when available
+watch(container, (el) => {
+  if (el && !useSwipeMode.value) {
+    // Attach scroll listener for masonry mode
+    el.removeEventListener('scroll', debouncedScrollHandler) // Just in case
+    el.addEventListener('scroll', debouncedScrollHandler, { passive: true })
+  } else if (el) {
+    // Remove scroll listener if switching to swipe mode
+    el.removeEventListener('scroll', debouncedScrollHandler)
+  }
+}, { immediate: true })
+
 // Watch for swipe mode changes to refresh layout and setup/teardown handlers
 watch(useSwipeMode, (newValue, oldValue) => {
   // Skip if this is the initial watch call and values are the same
@@ -1014,6 +1026,11 @@ watch(useSwipeMode, (newValue, oldValue) => {
       // Switching to Swipe Mode
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
+      
+      // Remove scroll listener
+      if (container.value) {
+        container.value.removeEventListener('scroll', debouncedScrollHandler)
+      }
       
       // Reset index if needed
       currentSwipeIndex.value = 0
@@ -1034,7 +1051,7 @@ watch(useSwipeMode, (newValue, oldValue) => {
           containerWidth.value = wrapper.value.clientWidth
         }
         
-        // Re-attach scroll listener since container was re-created
+        // Attach scroll listener (container watcher will handle this, but ensure it's attached)
         container.value.removeEventListener('scroll', debouncedScrollHandler) // Just in case
         container.value.addEventListener('scroll', debouncedScrollHandler, { passive: true })
         
