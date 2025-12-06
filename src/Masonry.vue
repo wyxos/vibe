@@ -378,6 +378,20 @@ function setFixedDimensions(dimensions: { width?: number; height?: number } | nu
   if (dimensions) {
     if (dimensions.width !== undefined) containerWidth.value = dimensions.width
     if (dimensions.height !== undefined) containerHeight.value = dimensions.height
+    // Force layout refresh when dimensions change
+    if (!useSwipeMode.value && container.value && masonry.value.length > 0) {
+      nextTick(() => {
+        columns.value = getColumnCount(layout.value as any, containerWidth.value)
+        refreshLayout(masonry.value as any)
+        updateScrollProgress()
+      })
+    }
+  } else {
+    // When clearing fixed dimensions, restore from wrapper
+    if (wrapper.value) {
+      containerWidth.value = wrapper.value.clientWidth
+      containerHeight.value = wrapper.value.clientHeight
+    }
   }
 }
 
@@ -433,9 +447,32 @@ function refreshLayout(items: any[]) {
     ...item,
     originalIndex: item.originalIndex ?? index
   }))
-  const content = calculateLayout(itemsWithIndex as any, container.value as HTMLElement, columns.value, layout.value as any)
-  calculateHeight(content as any)
-  masonry.value = content
+  
+  // When fixed dimensions are set, ensure container uses the fixed width for layout
+  // This prevents gaps when the container's actual width differs from the fixed width
+  const containerEl = container.value as HTMLElement
+  if (fixedDimensions.value && fixedDimensions.value.width !== undefined) {
+    // Temporarily set width to match fixed dimensions for accurate layout calculation
+    const originalWidth = containerEl.style.width
+    const originalBoxSizing = containerEl.style.boxSizing
+    containerEl.style.boxSizing = 'border-box'
+    containerEl.style.width = `${fixedDimensions.value.width}px`
+    // Force reflow
+    containerEl.offsetWidth
+    
+    const content = calculateLayout(itemsWithIndex as any, containerEl, columns.value, layout.value as any)
+    
+    // Restore original width
+    containerEl.style.width = originalWidth
+    containerEl.style.boxSizing = originalBoxSizing
+    
+    calculateHeight(content as any)
+    masonry.value = content
+  } else {
+    const content = calculateLayout(itemsWithIndex as any, containerEl, columns.value, layout.value as any)
+    calculateHeight(content as any)
+    masonry.value = content
+  }
 }
 
 function waitWithProgress(totalMs: number, onTick: (remaining: number, total: number) => void) {
@@ -957,8 +994,21 @@ watch(
   { deep: true }
 )
 
+// Watch for layout-mode prop changes to ensure proper mode switching
+watch(() => props.layoutMode, () => {
+  // Force update containerWidth when layout-mode changes to ensure useSwipeMode computes correctly
+  if (fixedDimensions.value && fixedDimensions.value.width !== undefined) {
+    containerWidth.value = fixedDimensions.value.width
+  } else if (wrapper.value) {
+    containerWidth.value = wrapper.value.clientWidth
+  }
+})
+
 // Watch for swipe mode changes to refresh layout and setup/teardown handlers
-watch(useSwipeMode, (newValue) => {
+watch(useSwipeMode, (newValue, oldValue) => {
+  // Skip if this is the initial watch call and values are the same
+  if (oldValue === undefined && newValue === false) return
+  
   nextTick(() => {
     if (newValue) {
       // Switching to Swipe Mode
@@ -977,8 +1027,12 @@ watch(useSwipeMode, (newValue) => {
       document.removeEventListener('mouseup', handleMouseUp)
       
       if (container.value && wrapper.value) {
-        // Ensure containerWidth is up to date
-        containerWidth.value = wrapper.value.clientWidth
+        // Ensure containerWidth is up to date - use fixed dimensions if set
+        if (fixedDimensions.value && fixedDimensions.value.width !== undefined) {
+          containerWidth.value = fixedDimensions.value.width
+        } else {
+          containerWidth.value = wrapper.value.clientWidth
+        }
         
         // Re-attach scroll listener since container was re-created
         container.value.removeEventListener('scroll', debouncedScrollHandler) // Just in case

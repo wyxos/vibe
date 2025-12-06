@@ -127,24 +127,8 @@
       :class="{ 'bg-slate-200/50': deviceMode !== 'auto' }">
       <div :style="containerStyle" class="transition-all duration-500 ease-in-out bg-slate-50 shadow-sm relative">
         <masonry v-model:items="items" :get-next-page="getPage" :load-at-page="1" :layout="layout"
-          :layout-mode="deviceMode === 'phone' || deviceMode === 'tablet' ? 'swipe' : 'auto'" ref="masonry">
-          <!-- Demonstrate header/footer customization in the main demo -->
-          <template #item-header="{ item }">
-            <div class="h-full flex items-center justify-between px-3">
-              <div class="flex items-center gap-2">
-                <div
-                  class="w-6 h-6 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm">
-                  <i
-                    :class="item.type === 'video' ? 'fas fa-video text-[10px] text-slate-500' : 'fas fa-image text-[10px] text-slate-500'"></i>
-                </div>
-                <span class="text-xs font-medium text-slate-700">#{{ String(item.id).split('-')[0] }}</span>
-              </div>
-              <span v-if="item.title" class="text-[11px] text-slate-600 truncate max-w-[160px]">
-                {{ item.title }}
-              </span>
-            </div>
-          </template>
-
+          :layout-mode="deviceMode === 'phone' || deviceMode === 'tablet' ? 'swipe' : 'auto'" ref="masonry"
+          class="demo-masonry">
           <template #item-footer="{ item, remove }">
             <div class="h-full flex items-center justify-between px-3">
               <button v-if="remove"
@@ -182,7 +166,7 @@ const layoutParams = reactive({
     xl: 5,
     '2xl': 10
   },
-  header: 36,
+  header: 0,
   footer: 40
 });
 
@@ -294,4 +278,44 @@ watch([deviceMode, deviceOrientation, masonry], () => {
     });
   }
 }, { immediate: true });
+
+// Add hover overlays to masonry items
+watch(() => items.value, () => {
+  nextTick(() => {
+    const masonryItems = document.querySelectorAll('.demo-masonry .masonry-item');
+    masonryItems.forEach((el) => {
+      if ((el as HTMLElement).hasAttribute('data-overlay-added')) return;
+
+      const itemId = el.getAttribute('data-id');
+      if (itemId) {
+        const item = items.value.find((i: any) => `${i.page}-${i.id}` === itemId);
+        if (item) {
+          const container = el.querySelector('.relative.w-full.h-full.flex.flex-col') as HTMLElement;
+          if (container && !container.querySelector('.demo-item-overlay')) {
+            const overlay = document.createElement('div');
+            overlay.className = 'demo-item-overlay absolute top-2 left-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none';
+            overlay.innerHTML = `
+              <div class="flex items-center gap-2 px-2 py-1 rounded-lg bg-black/70 backdrop-blur-sm text-white text-xs">
+                <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center">
+                  <i class="fas ${item.type === 'video' ? 'fa-video' : 'fa-image'} text-[8px]"></i>
+                </div>
+                <span class="font-medium">#${String(item.id).split('-')[0]}</span>
+              </div>
+            `;
+            container.classList.add('group');
+            container.appendChild(overlay);
+            (el as HTMLElement).setAttribute('data-overlay-added', 'true');
+          }
+        }
+      }
+    });
+  });
+}, { deep: true });
 </script>
+
+<style scoped>
+/* Hover overlay for masonry items */
+.demo-masonry :deep(.masonry-item:hover .demo-item-overlay) {
+  opacity: 1;
+}
+</style>
