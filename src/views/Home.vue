@@ -18,6 +18,10 @@
             <span>{{ items.length }} items</span>
             <span class="w-px h-3 bg-slate-200"></span>
             <span class="uppercase font-semibold text-slate-500">{{ masonry.currentBreakpoint }}</span>
+            <span class="w-px h-3 bg-slate-200"></span>
+            <span>{{ Math.round(masonry.containerWidth) }}×{{ Math.round(masonry.containerHeight) }}</span>
+            <span v-if="masonry.currentPage != null" class="w-px h-3 bg-slate-200"></span>
+            <span v-if="masonry.currentPage != null" class="text-slate-500">Page {{ masonry.currentPage }}</span>
           </div>
 
           <div class="h-8 w-px bg-slate-100 mx-1 hidden md:block"></div>
@@ -85,18 +89,32 @@
             <!-- Device Simulation -->
             <div class="md:col-span-2 border-t border-slate-100 pt-6 mt-2">
               <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Device Simulation</h3>
-              <div class="flex flex-wrap gap-2">
-                <button v-for="mode in ['auto', 'phone', 'tablet', 'desktop']" :key="mode"
-                  @click="deviceMode = mode as any"
-                  class="px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize"
-                  :class="deviceMode === mode ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
-                  <i class="fas mr-2" :class="{
-                    'fa-desktop': mode === 'desktop' || mode === 'auto',
-                    'fa-mobile-alt': mode === 'phone',
-                    'fa-tablet-alt': mode === 'tablet'
-                  }"></i>
-                  {{ mode }}
-                </button>
+              <div class="space-y-4">
+                <div class="flex flex-wrap gap-2">
+                  <button v-for="mode in ['auto', 'phone', 'tablet', 'desktop']" :key="mode"
+                    @click="deviceMode = mode as any"
+                    class="px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize"
+                    :class="deviceMode === mode ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+                    <i class="fas mr-2" :class="{
+                      'fa-desktop': mode === 'desktop' || mode === 'auto',
+                      'fa-mobile-alt': mode === 'phone',
+                      'fa-tablet-alt': mode === 'tablet'
+                    }"></i>
+                    {{ mode }}
+                  </button>
+                </div>
+                <div v-if="deviceMode !== 'auto'" class="flex flex-wrap gap-2">
+                  <button v-for="orientation in ['portrait', 'landscape']" :key="orientation"
+                    @click="deviceOrientation = orientation as any"
+                    class="px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize"
+                    :class="deviceOrientation === orientation ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+                    <i class="fas mr-2" :class="{
+                      'fa-mobile-alt': orientation === 'portrait',
+                      'fa-mobile-alt fa-rotate-90': orientation === 'landscape'
+                    }"></i>
+                    {{ orientation }}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -108,7 +126,8 @@
     <div class="flex flex-1 overflow-hidden relative p-5 transition-all duration-300 ease-in-out"
       :class="{ 'bg-slate-200/50': deviceMode !== 'auto' }">
       <div :style="containerStyle" class="transition-all duration-500 ease-in-out bg-slate-50 shadow-sm relative">
-        <masonry v-model:items="items" :get-next-page="getPage" :load-at-page="1" :layout="layout" ref="masonry">
+        <masonry v-model:items="items" :get-next-page="getPage" :load-at-page="1" :layout="layout"
+          :layout-mode="deviceMode === 'phone' || deviceMode === 'tablet' ? 'swipe' : 'auto'" ref="masonry">
           <!-- Demonstrate header/footer customization in the main demo -->
           <template #item-header="{ item }">
             <div class="h-full flex items-center justify-between px-3">
@@ -146,7 +165,7 @@
 
 <script setup lang="ts">
 import Masonry from "../Masonry.vue";
-import { ref, reactive, computed } from "vue";
+import { ref, reactive, computed, watch, nextTick } from "vue";
 import fixture from "../pages.json";
 import type { MasonryItem, GetPageResult } from "../types";
 
@@ -202,17 +221,77 @@ const getPage = async (page: number): Promise<GetPageResult> => {
 
 // Device Simulation
 const deviceMode = ref<'auto' | 'phone' | 'tablet' | 'desktop'>('auto');
+const deviceOrientation = ref<'portrait' | 'landscape'>('portrait');
 
-const containerStyle = computed(() => {
+const deviceDimensions = computed(() => {
+  let baseDimensions: { width: number; height: number } | null = null;
+
   switch (deviceMode.value) {
     case 'phone':
-      return { width: '375px', height: '667px', maxWidth: '100%', maxHeight: '100%', margin: '0 auto', border: '1px solid #e2e8f0', borderRadius: '20px', overflow: 'hidden' };
+      baseDimensions = { width: 375, height: 667 };
+      break;
     case 'tablet':
-      return { width: '768px', height: '1024px', maxWidth: '100%', maxHeight: '100%', margin: '0 auto', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' };
+      baseDimensions = { width: 768, height: 1024 };
+      break;
     case 'desktop':
-      return { width: '1280px', height: '720px', maxWidth: '100%', maxHeight: '100%', margin: '0 auto', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' };
+      // Desktop is typically landscape, but allow portrait too
+      baseDimensions = { width: 1280, height: 720 };
+      break;
     default:
-      return { width: '100%', height: '100%' };
+      return null;
   }
+
+  // Swap dimensions for landscape orientation (except desktop which is already landscape by default)
+  if (deviceOrientation.value === 'landscape' && deviceMode.value !== 'desktop') {
+    return { width: baseDimensions.height, height: baseDimensions.width };
+  }
+
+  // For desktop, swap if portrait is selected
+  if (deviceMode.value === 'desktop' && deviceOrientation.value === 'portrait') {
+    return { width: baseDimensions.height, height: baseDimensions.width };
+  }
+
+  return baseDimensions;
 });
+
+const containerStyle = computed(() => {
+  const dimensions = deviceDimensions.value;
+  if (!dimensions) {
+    return { width: '100%', height: '100%' };
+  }
+
+  const borderRadius = deviceMode.value === 'phone' ? '20px' : deviceMode.value === 'tablet' ? '12px' : '8px';
+
+  return {
+    width: `${dimensions.width}px`,
+    height: `${dimensions.height}px`,
+    maxWidth: '100%',
+    margin: '0 auto',
+    border: '1px solid #e2e8f0',
+    borderRadius,
+    overflow: 'hidden'
+  };
+});
+
+// Override container dimensions when device simulation is active
+watch([deviceMode, deviceOrientation, masonry], () => {
+  if (masonry.value && deviceDimensions.value) {
+    // Use nextTick to ensure masonry is fully initialized
+    nextTick(() => {
+      if (masonry.value && masonry.value.setFixedDimensions) {
+        masonry.value.setFixedDimensions({
+          width: deviceDimensions.value.width,
+          height: deviceDimensions.value.height
+        });
+      }
+    });
+  } else if (masonry.value && !deviceDimensions.value) {
+    // Clear fixed dimensions when in auto mode
+    nextTick(() => {
+      if (masonry.value && masonry.value.setFixedDimensions) {
+        masonry.value.setFixedDimensions(null);
+      }
+    });
+  }
+}, { immediate: true });
 </script>

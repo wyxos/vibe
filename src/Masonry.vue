@@ -133,6 +133,8 @@ const layout = computed(() => ({
 
 const wrapper = ref<HTMLElement | null>(null)
 const containerWidth = ref<number>(typeof window !== 'undefined' ? window.innerWidth : 1024)
+const containerHeight = ref<number>(typeof window !== 'undefined' ? window.innerHeight : 768)
+const fixedDimensions = ref<{ width?: number; height?: number } | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
 // Get breakpoint value from Tailwind breakpoint name
@@ -209,7 +211,7 @@ const container = ref<HTMLElement | null>(null)
 const paginationHistory = ref<any[]>([])
 const currentPage = ref<any>(null)  // Track the actual current page being displayed
 const isLoading = ref<boolean>(false)
-const containerHeight = ref<number>(0)
+const masonryContentHeight = ref<number>(0)
 
 // Current breakpoint
 const currentBreakpoint = computed(() => getBreakpointName(containerWidth.value))
@@ -360,7 +362,7 @@ const {handleScroll} = useMasonryScroll({
   container,
   masonry: masonry as any,
   columns,
-  containerHeight,
+  containerHeight: masonryContentHeight,
   isLoading,
   pageSize: props.pageSize,
   refreshLayout,
@@ -371,10 +373,26 @@ const {handleScroll} = useMasonryScroll({
   loadThresholdPx: props.loadThresholdPx
 })
 
+function setFixedDimensions(dimensions: { width?: number; height?: number } | null) {
+  fixedDimensions.value = dimensions
+  if (dimensions) {
+    if (dimensions.width !== undefined) containerWidth.value = dimensions.width
+    if (dimensions.height !== undefined) containerHeight.value = dimensions.height
+  }
+}
+
 defineExpose({
   isLoading,
   refreshLayout,
+  // Container dimensions (wrapper element)
+  containerWidth,
   containerHeight,
+  // Masonry content height (for backward compatibility, old containerHeight)
+  contentHeight: masonryContentHeight,
+  // Current page
+  currentPage,
+  // Set fixed dimensions (overrides ResizeObserver)
+  setFixedDimensions,
   remove,
   removeMany,
   removeAll,
@@ -397,7 +415,7 @@ function calculateHeight(content: any[]) {
     const {scrollTop, clientHeight} = container.value
     floor = scrollTop + clientHeight + 100
   }
-  containerHeight.value = Math.max(newHeight, floor)
+  masonryContentHeight.value = Math.max(newHeight, floor)
 }
 
 function refreshLayout(items: any[]) {
@@ -546,7 +564,7 @@ async function refreshCurrentPage() {
     
     // Clear existing items
     masonry.value = []
-    containerHeight.value = 0
+    masonryContentHeight.value = 0
     
     // Reset pagination history to just the current page
     paginationHistory.value = [pageToRefresh]
@@ -1009,19 +1027,32 @@ watch(wrapper, (el) => {
   
   if (el && typeof ResizeObserver !== 'undefined') {
     resizeObserver = new ResizeObserver((entries) => {
+      // Skip updates if fixed dimensions are set
+      if (fixedDimensions.value) return
+      
       for (const entry of entries) {
         const newWidth = entry.contentRect.width
+        const newHeight = entry.contentRect.height
         if (containerWidth.value !== newWidth) {
           containerWidth.value = newWidth
+        }
+        if (containerHeight.value !== newHeight) {
+          containerHeight.value = newHeight
         }
       }
     })
     resizeObserver.observe(el)
-    // Initial width
-    containerWidth.value = el.clientWidth
+    // Initial dimensions (only if not fixed)
+    if (!fixedDimensions.value) {
+      containerWidth.value = el.clientWidth
+      containerHeight.value = el.clientHeight
+    }
   } else if (el) {
     // Fallback if ResizeObserver not available
-    containerWidth.value = el.clientWidth
+    if (!fixedDimensions.value) {
+      containerWidth.value = el.clientWidth
+      containerHeight.value = el.clientHeight
+    }
   }
 }, { immediate: true })
 
@@ -1042,10 +1073,11 @@ onMounted(async () => {
     // Wait for next tick to ensure wrapper is mounted
     await nextTick()
     
-    // Container width is managed by ResizeObserver
-    // Only set initial value if ResizeObserver isn't available
+    // Container dimensions are managed by ResizeObserver
+    // Only set initial values if ResizeObserver isn't available
     if (wrapper.value && !resizeObserver) {
       containerWidth.value = wrapper.value.clientWidth
+      containerHeight.value = wrapper.value.clientHeight
     }
     
     if (!useSwipeMode.value) {
@@ -1166,7 +1198,7 @@ onUnmounted(() => {
          :class="{ 'force-motion': props.forceMotion }" 
          ref="container">
       <div class="relative"
-           :style="{height: `${containerHeight}px`, '--masonry-duration': `${transitionDurationMs}ms`, '--masonry-leave-duration': `${leaveDurationMs}ms`, '--masonry-ease': transitionEasing}">
+           :style="{height: `${masonryContentHeight}px`, '--masonry-duration': `${transitionDurationMs}ms`, '--masonry-leave-duration': `${leaveDurationMs}ms`, '--masonry-ease': transitionEasing}">
         <transition-group name="masonry" :css="false" @enter="enter" @before-enter="beforeEnter"
                           @leave="leave"
                           @before-leave="beforeLeave">
