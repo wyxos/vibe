@@ -16,7 +16,7 @@ import MasonryItem from './components/MasonryItem.vue'
 const props = defineProps({
   getNextPage: {
     type: Function,
-    default: () => {}
+    default: () => { }
   },
   loadAtPage: {
     type: [Number, String],
@@ -112,7 +112,7 @@ const props = defineProps({
 })
 
 const defaultLayout = {
-  sizes: {base: 1, sm: 2, md: 3, lg: 4, xl: 5, '2xl': 6},
+  sizes: { base: 1, sm: 2, md: 3, lg: 4, xl: 5, '2xl': 6 },
   gutterX: 10,
   gutterY: 10,
   header: 0,
@@ -153,12 +153,12 @@ function getBreakpointValue(breakpoint: string): number {
 const useSwipeMode = computed(() => {
   if (props.layoutMode === 'masonry') return false
   if (props.layoutMode === 'swipe') return true
-  
+
   // Auto mode: check container width
-  const breakpoint = typeof props.mobileBreakpoint === 'string' 
+  const breakpoint = typeof props.mobileBreakpoint === 'string'
     ? getBreakpointValue(props.mobileBreakpoint)
     : props.mobileBreakpoint
-  
+
   return containerWidth.value < breakpoint
 })
 
@@ -280,7 +280,7 @@ const scrollProgress = ref<{ distanceToTrigger: number; isNearTrigger: boolean }
 const updateScrollProgress = (precomputedHeights?: number[]) => {
   if (!container.value) return
 
-  const {scrollTop, clientHeight} = container.value
+  const { scrollTop, clientHeight } = container.value
   const visibleBottom = scrollTop + clientHeight
 
   const columnHeights = precomputedHeights ?? calculateColumnHeights(masonry.value as any, columns.value)
@@ -300,7 +300,7 @@ const updateScrollProgress = (precomputedHeights?: number[]) => {
 }
 
 // Setup composables
-const {onEnter, onBeforeEnter, onBeforeLeave, onLeave} = useMasonryTransitions(masonry, { leaveDurationMs: props.leaveDurationMs })
+const { onEnter, onBeforeEnter, onBeforeLeave, onLeave } = useMasonryTransitions(masonry, { leaveDurationMs: props.leaveDurationMs })
 
 // Transition wrappers that skip animation during virtualization
 function enter(el: HTMLElement, done: () => void) {
@@ -360,7 +360,7 @@ const visibleMasonry = computed(() => {
   })
 })
 
-const {handleScroll} = useMasonryScroll({
+const { handleScroll } = useMasonryScroll({
   container,
   masonry: masonry as any,
   columns,
@@ -432,7 +432,7 @@ function calculateHeight(content: any[]) {
   const newHeight = calculateContainerHeight(content as any)
   let floor = 0
   if (container.value) {
-    const {scrollTop, clientHeight} = container.value
+    const { scrollTop, clientHeight } = container.value
     floor = scrollTop + clientHeight + 100
   }
   masonryContentHeight.value = Math.max(newHeight, floor)
@@ -444,7 +444,7 @@ function refreshLayout(items: any[]) {
     masonry.value = items as any
     return
   }
-  
+
   if (!container.value) return
   // Developer diagnostics: warn when dimensions are invalid
   checkItemDimensions(items as any[], 'refreshLayout')
@@ -453,7 +453,7 @@ function refreshLayout(items: any[]) {
     ...item,
     originalIndex: item.originalIndex ?? index
   }))
-  
+
   // When fixed dimensions are set, ensure container uses the fixed width for layout
   // This prevents gaps when the container's actual width differs from the fixed width
   const containerEl = container.value as HTMLElement
@@ -465,13 +465,13 @@ function refreshLayout(items: any[]) {
     containerEl.style.width = `${fixedDimensions.value.width}px`
     // Force reflow
     containerEl.offsetWidth
-    
+
     const content = calculateLayout(itemsWithIndex as any, containerEl, columns.value, layout.value as any)
-    
+
     // Restore original width
     containerEl.style.width = originalWidth
     containerEl.style.boxSizing = originalBoxSizing
-    
+
     calculateHeight(content as any)
     masonry.value = content
   } else {
@@ -524,18 +524,18 @@ async function fetchWithRetry<T = any>(fn: () => Promise<T>): Promise<T> {
     try {
       const res = await fn()
       if (attempt > 0) {
-        emits('retry:stop', {attempt, success: true})
+        emits('retry:stop', { attempt, success: true })
       }
       return res
     } catch (err) {
       attempt++
       if (attempt > max) {
-        emits('retry:stop', {attempt: attempt - 1, success: false})
+        emits('retry:stop', { attempt: attempt - 1, success: false })
         throw err
       }
-      emits('retry:start', {attempt, max, totalMs: delay})
+      emits('retry:start', { attempt, max, totalMs: delay })
       await waitWithProgress(delay, (remaining, total) => {
-        emits('retry:tick', {attempt, remainingMs: remaining, totalMs: total})
+        emits('retry:tick', { attempt, remainingMs: remaining, totalMs: total })
       })
       delay += props.retryBackoffStepMs
     }
@@ -624,31 +624,31 @@ async function refreshCurrentPage() {
   if (isLoading.value) return
   cancelRequested.value = false
   isLoading.value = true
-  
+
   try {
     // Use the tracked current page
     const pageToRefresh = currentPage.value
-    
+
     if (pageToRefresh == null) {
       console.warn('[Masonry] No current page to refresh - currentPage:', currentPage.value, 'paginationHistory:', paginationHistory.value)
       return
     }
-    
+
     // Clear existing items
     masonry.value = []
     masonryContentHeight.value = 0
     hasReachedEnd.value = false  // Reset end flag when refreshing
     loadError.value = null  // Reset error flag when refreshing
-    
+
     // Reset pagination history to just the current page
     paginationHistory.value = [pageToRefresh]
-    
+
     await nextTick()
-    
+
     // Reload the current page
     const response = await getContent(pageToRefresh)
     if (cancelRequested.value) return
-    
+
     // Clear error on successful load
     loadError.value = null
     // Update pagination state
@@ -658,11 +658,11 @@ async function refreshCurrentPage() {
     if (response.nextPage == null) {
       hasReachedEnd.value = true
     }
-    
+
     // Optionally backfill if needed
     const baseline = (masonry.value as any[]).length
     await maybeBackfillToTarget(baseline)
-    
+
     return response
   } catch (error) {
     console.error('[Masonry] Error refreshing current page:', error)
@@ -678,7 +678,7 @@ async function remove(item: any) {
   const next = (masonry.value as any[]).filter(i => i.id !== item.id)
   masonry.value = next
   await nextTick()
-  
+
   // If all items were removed, either refresh current page or load next based on prop
   if (next.length === 0 && paginationHistory.value.length > 0) {
     if (props.autoRefreshOnEmpty) {
@@ -689,11 +689,11 @@ async function remove(item: any) {
         // Force backfill from 0 to ensure viewport is filled
         // Pass baseline=0 and force=true to trigger backfill even if backfillEnabled was temporarily disabled
         await maybeBackfillToTarget(0, true)
-      } catch {}
+      } catch { }
     }
     return
   }
-  
+
   // Commit DOM updates without forcing sync reflow
   await new Promise<void>(r => requestAnimationFrame(() => r()))
   // Start FLIP on next frame
@@ -708,7 +708,7 @@ async function removeMany(items: any[]) {
   const next = (masonry.value as any[]).filter(i => !ids.has(i.id))
   masonry.value = next
   await nextTick()
-  
+
   // If all items were removed, either refresh current page or load next based on prop
   if (next.length === 0 && paginationHistory.value.length > 0) {
     if (props.autoRefreshOnEmpty) {
@@ -718,11 +718,11 @@ async function removeMany(items: any[]) {
         await loadNext()
         // Force backfill from 0 to ensure viewport is filled
         await maybeBackfillToTarget(0, true)
-      } catch {}
+      } catch { }
     }
     return
   }
-  
+
   // Commit DOM updates without forcing sync reflow
   await new Promise<void>(r => requestAnimationFrame(() => r()))
   // Start FLIP on next frame
@@ -744,15 +744,15 @@ function scrollToTop(options?: ScrollToOptions) {
 async function removeAll() {
   // Scroll to top first for better UX
   scrollToTop({ behavior: 'smooth' })
-  
+
   // Clear all items
   masonry.value = []
-  
+
   // Recalculate height to 0
   containerHeight.value = 0
-  
+
   await nextTick()
-  
+
   // Emit completion event
   emits('remove-all:complete')
 }
@@ -790,7 +790,7 @@ async function maybeBackfillToTarget(baselineCount: number, force = false) {
   backfillActive = true
   try {
     let calls = 0
-    emits('backfill:start', {target: targetCount, fetched: (masonry.value as any[]).length, calls})
+    emits('backfill:start', { target: targetCount, fetched: (masonry.value as any[]).length, calls })
 
     while (
       (masonry.value as any[]).length < targetCount &&
@@ -837,7 +837,7 @@ async function maybeBackfillToTarget(baselineCount: number, force = false) {
       calls++
     }
 
-    emits('backfill:stop', {fetched: (masonry.value as any[]).length, calls})
+    emits('backfill:stop', { fetched: (masonry.value as any[]).length, calls })
   } finally {
     backfillActive = false
   }
@@ -875,7 +875,7 @@ function reset() {
 
 const debouncedScrollHandler = debounce(async () => {
   if (useSwipeMode.value) return // Skip scroll handling in swipe mode
-  
+
   if (container.value) {
     viewportTop.value = container.value.scrollTop
     viewportHeight.value = container.value.clientHeight
@@ -912,10 +912,10 @@ function handleTouchMove(e: TouchEvent) {
 function handleTouchEnd(e: TouchEvent) {
   if (!useSwipeMode.value || !isDragging.value) return
   isDragging.value = false
-  
+
   const deltaY = swipeOffset.value - dragStartOffset.value
   const threshold = 100 // Minimum swipe distance to trigger navigation
-  
+
   if (Math.abs(deltaY) > threshold) {
     if (deltaY > 0 && previousItem.value) {
       // Swipe down - go to previous
@@ -931,7 +931,7 @@ function handleTouchEnd(e: TouchEvent) {
     // Snap back if swipe wasn't far enough
     snapToCurrentItem()
   }
-  
+
   e.preventDefault()
 }
 
@@ -954,10 +954,10 @@ function handleMouseMove(e: MouseEvent) {
 function handleMouseUp(e: MouseEvent) {
   if (!useSwipeMode.value || !isDragging.value) return
   isDragging.value = false
-  
+
   const deltaY = swipeOffset.value - dragStartOffset.value
   const threshold = 100
-  
+
   if (Math.abs(deltaY) > threshold) {
     if (deltaY > 0 && previousItem.value) {
       goToPreviousItem()
@@ -969,7 +969,7 @@ function handleMouseUp(e: MouseEvent) {
   } else {
     snapToCurrentItem()
   }
-  
+
   e.preventDefault()
 }
 
@@ -979,10 +979,10 @@ function goToNextItem() {
     loadNext()
     return
   }
-  
+
   currentSwipeIndex.value++
   snapToCurrentItem()
-  
+
   // Preload next item if we're near the end
   if (currentSwipeIndex.value >= masonry.value.length - 5) {
     loadNext()
@@ -991,14 +991,14 @@ function goToNextItem() {
 
 function goToPreviousItem() {
   if (!previousItem.value) return
-  
+
   currentSwipeIndex.value--
   snapToCurrentItem()
 }
 
 function snapToCurrentItem() {
   if (!swipeContainer.value) return
-  
+
   // Use container height for swipe mode instead of window height
   const viewportHeight = swipeContainer.value.clientHeight
   swipeOffset.value = -currentSwipeIndex.value * viewportHeight
@@ -1012,12 +1012,12 @@ function handleWindowResize() {
     currentSwipeIndex.value = 0
     swipeOffset.value = 0
   }
-  
+
   // If switching to swipe mode, ensure we have items loaded
   if (useSwipeMode.value && masonry.value.length === 0 && !isLoading.value) {
     loadPage(paginationHistory.value[0] as any)
   }
-  
+
   // Re-snap to current item on resize to adjust offset
   if (useSwipeMode.value) {
     snapToCurrentItem()
@@ -1032,7 +1032,7 @@ function init(items: any[], page: any, next: any) {
   hasReachedEnd.value = next == null
   // Diagnostics: check incoming initial items
   checkItemDimensions(items as any[], 'init')
-  
+
   if (useSwipeMode.value) {
     // In swipe mode, just add items without layout calculation
     masonry.value = [...(masonry.value as any[]), ...items]
@@ -1088,18 +1088,18 @@ watch(container, (el) => {
 watch(useSwipeMode, (newValue, oldValue) => {
   // Skip if this is the initial watch call and values are the same
   if (oldValue === undefined && newValue === false) return
-  
+
   nextTick(() => {
     if (newValue) {
       // Switching to Swipe Mode
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
-      
+
       // Remove scroll listener
       if (container.value) {
         container.value.removeEventListener('scroll', debouncedScrollHandler)
       }
-      
+
       // Reset index if needed
       currentSwipeIndex.value = 0
       swipeOffset.value = 0
@@ -1110,7 +1110,7 @@ watch(useSwipeMode, (newValue, oldValue) => {
       // Switching to Masonry Mode
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
-      
+
       if (container.value && wrapper.value) {
         // Ensure containerWidth is up to date - use fixed dimensions if set
         if (fixedDimensions.value && fixedDimensions.value.width !== undefined) {
@@ -1118,16 +1118,16 @@ watch(useSwipeMode, (newValue, oldValue) => {
         } else {
           containerWidth.value = wrapper.value.clientWidth
         }
-        
+
         // Attach scroll listener (container watcher will handle this, but ensure it's attached)
         container.value.removeEventListener('scroll', debouncedScrollHandler) // Just in case
         container.value.addEventListener('scroll', debouncedScrollHandler, { passive: true })
-        
+
         // Refresh layout with updated width
         if (masonry.value.length > 0) {
           columns.value = getColumnCount(layout.value as any, containerWidth.value)
           refreshLayout(masonry.value as any)
-          
+
           // Update viewport state
           viewportTop.value = container.value.scrollTop
           viewportHeight.value = container.value.clientHeight
@@ -1163,12 +1163,12 @@ watch(wrapper, (el) => {
     resizeObserver.disconnect()
     resizeObserver = null
   }
-  
+
   if (el && typeof ResizeObserver !== 'undefined') {
     resizeObserver = new ResizeObserver((entries) => {
       // Skip updates if fixed dimensions are set
       if (fixedDimensions.value) return
-      
+
       for (const entry of entries) {
         const newWidth = entry.contentRect.width
         const newHeight = entry.contentRect.height
@@ -1211,14 +1211,14 @@ onMounted(async () => {
   try {
     // Wait for next tick to ensure wrapper is mounted
     await nextTick()
-    
+
     // Container dimensions are managed by ResizeObserver
     // Only set initial values if ResizeObserver isn't available
     if (wrapper.value && !resizeObserver) {
       containerWidth.value = wrapper.value.clientWidth
       containerHeight.value = wrapper.value.clientHeight
     }
-    
+
     if (!useSwipeMode.value) {
       columns.value = getColumnCount(layout.value as any, containerWidth.value)
       if (container.value) {
@@ -1256,18 +1256,18 @@ onUnmounted(() => {
     resizeObserver.disconnect()
     resizeObserver = null
   }
-  
+
   container.value?.removeEventListener('scroll', debouncedScrollHandler)
   window.removeEventListener('resize', debouncedResizeHandler)
   window.removeEventListener('resize', handleWindowResize)
-  
+
   if (swipeContainer.value) {
     swipeContainer.value.removeEventListener('touchstart', handleTouchStart)
     swipeContainer.value.removeEventListener('touchmove', handleTouchMove)
     swipeContainer.value.removeEventListener('touchend', handleTouchEnd)
     swipeContainer.value.removeEventListener('mousedown', handleMouseDown)
   }
-  
+
   // Clean up mouse handlers
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
@@ -1277,41 +1277,27 @@ onUnmounted(() => {
 <template>
   <div ref="wrapper" class="w-full h-full flex flex-col relative">
     <!-- Swipe Feed Mode (Mobile/Tablet) -->
-    <div v-if="useSwipeMode" 
-         class="overflow-hidden w-full flex-1 swipe-container touch-none select-none" 
-         :class="{ 'force-motion': props.forceMotion, 'cursor-grab': !isDragging, 'cursor-grabbing': isDragging }"
-         ref="swipeContainer"
-         style="height: 100%; max-height: 100%; position: relative;">
-      <div 
-        class="relative w-full"
-        :style="{
-          transform: `translateY(${swipeOffset}px)`,
-          transition: isDragging ? 'none' : `transform ${transitionDurationMs}ms ${transitionEasing}`,
-          height: `${masonry.length * 100}%`
-        }">
-        <div 
-          v-for="(item, index) in masonry" 
-          :key="`${item.page}-${item.id}`"
-          class="absolute top-0 left-0 w-full"
-          :style="{ 
+    <div v-if="useSwipeMode" class="overflow-hidden w-full flex-1 swipe-container touch-none select-none"
+      :class="{ 'force-motion': props.forceMotion, 'cursor-grab': !isDragging, 'cursor-grabbing': isDragging }"
+      ref="swipeContainer" style="height: 100%; max-height: 100%; position: relative;">
+      <div class="relative w-full" :style="{
+        transform: `translateY(${swipeOffset}px)`,
+        transition: isDragging ? 'none' : `transform ${transitionDurationMs}ms ${transitionEasing}`,
+        height: `${masonry.length * 100}%`
+      }">
+        <div v-for="(item, index) in masonry" :key="`${item.page}-${item.id}`" class="absolute top-0 left-0 w-full"
+          :style="{
             top: `${index * (100 / masonry.length)}%`,
             height: `${100 / masonry.length}%`
           }">
           <div class="w-full h-full flex items-center justify-center p-4">
             <div class="w-full h-full max-w-full max-h-full relative">
               <slot :item="item" :remove="remove">
-                <MasonryItem
-                  :item="item"
-                  :remove="remove"
-                  :header-height="layout.header"
-                  :footer-height="layout.footer"
-                  :in-swipe-mode="true"
-                  :is-active="index === currentSwipeIndex"
+                <MasonryItem :item="item" :remove="remove" :header-height="layout.header" :footer-height="layout.footer"
+                  :in-swipe-mode="true" :is-active="index === currentSwipeIndex"
                   @preload:success="(p) => emits('item:preload:success', p)"
                   @preload:error="(p) => emits('item:preload:error', p)"
-                  @mouse-enter="(p) => emits('item:mouse-enter', p)"
-                  @mouse-leave="(p) => emits('item:mouse-leave', p)"
-                >
+                  @mouse-enter="(p) => emits('item:mouse-enter', p)" @mouse-leave="(p) => emits('item:mouse-leave', p)">
                   <!-- Pass through header and footer slots to MasonryItem -->
                   <template #header="slotProps">
                     <slot name="item-header" v-bind="slotProps" />
@@ -1340,32 +1326,20 @@ onUnmounted(() => {
     </div>
 
     <!-- Masonry Grid Mode (Desktop) -->
-    <div v-else 
-         class="overflow-auto w-full flex-1 masonry-container" 
-         :class="{ 'force-motion': props.forceMotion }" 
-         ref="container">
+    <div v-else class="overflow-auto w-full flex-1 masonry-container" :class="{ 'force-motion': props.forceMotion }"
+      ref="container">
       <div class="relative"
-           :style="{height: `${masonryContentHeight}px`, '--masonry-duration': `${transitionDurationMs}ms`, '--masonry-leave-duration': `${leaveDurationMs}ms`, '--masonry-ease': transitionEasing}">
-        <transition-group name="masonry" :css="false" @enter="enter" @before-enter="beforeEnter"
-                          @leave="leave"
-                          @before-leave="beforeLeave">
-          <div v-for="(item, i) in visibleMasonry" :key="`${item.page}-${item.id}`"
-               class="absolute masonry-item"
-               v-bind="getItemAttributes(item, i)">
+        :style="{ height: `${masonryContentHeight}px`, '--masonry-duration': `${transitionDurationMs}ms`, '--masonry-leave-duration': `${leaveDurationMs}ms`, '--masonry-ease': transitionEasing }">
+        <transition-group name="masonry" :css="false" @enter="enter" @before-enter="beforeEnter" @leave="leave"
+          @before-leave="beforeLeave">
+          <div v-for="(item, i) in visibleMasonry" :key="`${item.page}-${item.id}`" class="absolute masonry-item"
+            v-bind="getItemAttributes(item, i)">
             <!-- Use default slot if provided, otherwise use MasonryItem -->
             <slot :item="item" :remove="remove">
-              <MasonryItem
-                :item="item"
-                :remove="remove"
-                :header-height="layout.header"
-                :footer-height="layout.footer"
-                :in-swipe-mode="false"
-                :is-active="false"
-                @preload:success="(p) => emits('item:preload:success', p)"
+              <MasonryItem :item="item" :remove="remove" :header-height="layout.header" :footer-height="layout.footer"
+                :in-swipe-mode="false" :is-active="false" @preload:success="(p) => emits('item:preload:success', p)"
                 @preload:error="(p) => emits('item:preload:error', p)"
-                @mouse-enter="(p) => emits('item:mouse-enter', p)"
-                @mouse-leave="(p) => emits('item:mouse-leave', p)"
-              >
+                @mouse-enter="(p) => emits('item:mouse-enter', p)" @mouse-leave="(p) => emits('item:mouse-leave', p)">
                 <!-- Pass through header and footer slots to MasonryItem -->
                 <template #header="slotProps">
                   <slot name="item-header" v-bind="slotProps" />
@@ -1403,7 +1377,7 @@ onUnmounted(() => {
   will-change: transform, opacity;
   contain: layout paint;
   transition: transform var(--masonry-duration, 450ms) var(--masonry-ease, cubic-bezier(.22, .61, .36, 1)),
-  opacity var(--masonry-leave-duration, 160ms) ease-out var(--masonry-opacity-delay, 0ms);
+    opacity var(--masonry-leave-duration, 160ms) ease-out var(--masonry-opacity-delay, 0ms);
   backface-visibility: hidden;
 }
 
@@ -1412,6 +1386,7 @@ onUnmounted(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .masonry-container:not(.force-motion) .masonry-item,
   .masonry-container:not(.force-motion) .masonry-move {
     transition-duration: 1ms !important;
