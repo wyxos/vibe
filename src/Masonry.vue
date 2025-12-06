@@ -213,6 +213,7 @@ const currentPage = ref<any>(null)  // Track the actual current page being displ
 const isLoading = ref<boolean>(false)
 const masonryContentHeight = ref<number>(0)
 const hasReachedEnd = ref<boolean>(false)  // Track when we've reached the last page
+const loadError = ref<Error | null>(null)  // Track load errors
 
 // Current breakpoint
 const currentBreakpoint = computed(() => getBreakpointName(containerWidth.value))
@@ -408,6 +409,8 @@ defineExpose({
   currentPage,
   // End of list tracking
   hasReachedEnd,
+  // Load error tracking
+  loadError,
   // Set fixed dimensions (overrides ResizeObserver)
   setFixedDimensions,
   remove,
@@ -544,13 +547,16 @@ async function loadPage(page: number) {
   // Starting a new load should clear any previous cancel request
   cancelRequested.value = false
   isLoading.value = true
-  // Reset hasReachedEnd when loading a new page
+  // Reset hasReachedEnd and loadError when loading a new page
   hasReachedEnd.value = false
+  loadError.value = null
   try {
     const baseline = (masonry.value as any[]).length
     if (cancelRequested.value) return
     const response = await getContent(page)
     if (cancelRequested.value) return
+    // Clear error on successful load
+    loadError.value = null
     currentPage.value = page  // Track the current page
     paginationHistory.value.push(response.nextPage)
     // Update hasReachedEnd if nextPage is null
@@ -561,6 +567,8 @@ async function loadPage(page: number) {
     return response
   } catch (error) {
     console.error('Error loading page:', error)
+    // Set load error
+    loadError.value = error instanceof Error ? error : new Error(String(error))
     throw error
   } finally {
     isLoading.value = false
@@ -574,6 +582,8 @@ async function loadNext() {
   // Starting a new load should clear any previous cancel request
   cancelRequested.value = false
   isLoading.value = true
+  // Clear error when attempting to load
+  loadError.value = null
   try {
     const baseline = (masonry.value as any[]).length
     if (cancelRequested.value) return
@@ -586,6 +596,8 @@ async function loadNext() {
     }
     const response = await getContent(nextPageToLoad)
     if (cancelRequested.value) return
+    // Clear error on successful load
+    loadError.value = null
     currentPage.value = nextPageToLoad  // Track the current page
     paginationHistory.value.push(response.nextPage)
     // Update hasReachedEnd if nextPage is null
@@ -596,6 +608,8 @@ async function loadNext() {
     return response
   } catch (error) {
     console.error('Error loading next page:', error)
+    // Set load error
+    loadError.value = error instanceof Error ? error : new Error(String(error))
     throw error
   } finally {
     isLoading.value = false
@@ -624,6 +638,7 @@ async function refreshCurrentPage() {
     masonry.value = []
     masonryContentHeight.value = 0
     hasReachedEnd.value = false  // Reset end flag when refreshing
+    loadError.value = null  // Reset error flag when refreshing
     
     // Reset pagination history to just the current page
     paginationHistory.value = [pageToRefresh]
@@ -634,6 +649,8 @@ async function refreshCurrentPage() {
     const response = await getContent(pageToRefresh)
     if (cancelRequested.value) return
     
+    // Clear error on successful load
+    loadError.value = null
     // Update pagination state
     currentPage.value = pageToRefresh
     paginationHistory.value.push(response.nextPage)
@@ -649,6 +666,8 @@ async function refreshCurrentPage() {
     return response
   } catch (error) {
     console.error('[Masonry] Error refreshing current page:', error)
+    // Set load error
+    loadError.value = error instanceof Error ? error : new Error(String(error))
     throw error
   } finally {
     isLoading.value = false
@@ -801,11 +820,16 @@ async function maybeBackfillToTarget(baselineCount: number, force = false) {
         isLoading.value = true
         const response = await getContent(currentPage)
         if (cancelRequested.value) break
+        // Clear error on successful load
+        loadError.value = null
         paginationHistory.value.push(response.nextPage)
         // Update hasReachedEnd if nextPage is null
         if (response.nextPage == null) {
           hasReachedEnd.value = true
         }
+      } catch (error) {
+        // Set load error but don't break the backfill loop
+        loadError.value = error instanceof Error ? error : new Error(String(error))
       } finally {
         isLoading.value = false
       }
@@ -841,6 +865,7 @@ function reset() {
   currentPage.value = props.loadAtPage  // Reset current page tracking
   paginationHistory.value = [props.loadAtPage]
   hasReachedEnd.value = false  // Reset end flag
+  loadError.value = null  // Reset error flag
 
   scrollProgress.value = {
     distanceToTrigger: 0,
@@ -1306,6 +1331,12 @@ onUnmounted(() => {
           <p class="text-gray-500 dark:text-gray-400">You've reached the end</p>
         </slot>
       </div>
+      <!-- Error message for swipe mode -->
+      <div v-if="loadError && masonry.length > 0" class="w-full py-8 text-center">
+        <slot name="error-message" :error="loadError">
+          <p class="text-red-500 dark:text-red-400">Failed to load content: {{ loadError.message }}</p>
+        </slot>
+      </div>
     </div>
 
     <!-- Masonry Grid Mode (Desktop) -->
@@ -1351,6 +1382,12 @@ onUnmounted(() => {
       <div v-if="hasReachedEnd && masonry.length > 0" class="w-full py-8 text-center">
         <slot name="end-message">
           <p class="text-gray-500 dark:text-gray-400">You've reached the end</p>
+        </slot>
+      </div>
+      <!-- Error message -->
+      <div v-if="loadError && masonry.length > 0" class="w-full py-8 text-center">
+        <slot name="error-message" :error="loadError">
+          <p class="text-red-500 dark:text-red-400">Failed to load content: {{ loadError.message }}</p>
         </slot>
       </div>
     </div>
