@@ -54,7 +54,7 @@
     "build:lib": "vite build --config vite.lib.config.ts && vue-tsc --declaration --emitDeclarationOnly --outDir lib",
     "preview": "vite preview",
     "watch": "vite build --watch",
-    "release": "node release.mjs",
+    "release": "npx @wyxos/zephyr --type=node",
     "test": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",

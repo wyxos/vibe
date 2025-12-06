@@ -16,6 +16,24 @@ export function getColumnCount(layout: Pick<LayoutOptions, 'sizes'> & { sizes: R
 }
 
 /**
+ * Get current breakpoint name based on container width
+ */
+export function getBreakpointName(containerWidth?: number): 'base' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' {
+  // Only use fallback if containerWidth is explicitly undefined/null
+  // If it's 0, we still use it (will return 'base')
+  const width = containerWidth !== undefined && containerWidth !== null 
+    ? containerWidth 
+    : (typeof window !== 'undefined' ? window.innerWidth : 1024)
+
+  if (width >= 1536) return '2xl'
+  if (width >= 1280) return 'xl'
+  if (width >= 1024) return 'lg'
+  if (width >= 768) return 'md'
+  if (width >= 640) return 'sm'
+  return 'base'
+}
+
+/**
  * Calculate container height based on item positions
  */
 export function calculateContainerHeight(items: ProcessedMasonryItem[]): number {

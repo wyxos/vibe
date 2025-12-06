@@ -4,6 +4,7 @@ import calculateLayout from "./calculateLayout";
 import { debounce } from 'lodash-es'
 import {
   getColumnCount,
+  getBreakpointName,
   calculateContainerHeight,
   getItemAttributes,
   calculateColumnHeights
@@ -210,6 +211,9 @@ const currentPage = ref<any>(null)  // Track the actual current page being displ
 const isLoading = ref<boolean>(false)
 const containerHeight = ref<number>(0)
 
+// Current breakpoint
+const currentBreakpoint = computed(() => getBreakpointName(containerWidth.value))
+
 // Swipe mode state
 const currentSwipeIndex = ref<number>(0)
 const swipeOffset = ref<number>(0)
@@ -382,7 +386,8 @@ defineExpose({
   paginationHistory,
   cancelLoad,
   scrollToTop,
-  totalItems: computed(() => (masonry.value as any[]).length)
+  totalItems: computed(() => (masonry.value as any[]).length),
+  currentBreakpoint
 })
 
 function calculateHeight(content: any[]) {
@@ -653,7 +658,7 @@ async function removeAll() {
 }
 
 function onResize() {
-  columns.value = getColumnCount(layout.value as any)
+  columns.value = getColumnCount(layout.value as any, containerWidth.value)
   refreshLayout(masonry.value as any)
   if (container.value) {
     viewportTop.value = container.value.scrollTop
@@ -879,14 +884,8 @@ function snapToCurrentItem() {
 }
 
 // Watch for container/window resize to update swipe mode
+// Note: containerWidth is updated by ResizeObserver, not here
 function handleWindowResize() {
-  // Update container width if wrapper is available
-  if (wrapper.value) {
-    containerWidth.value = wrapper.value.clientWidth
-  } else if (typeof window !== 'undefined') {
-    containerWidth.value = window.innerWidth
-  }
-  
   // If switching from swipe to masonry, reset swipe state
   if (!useSwipeMode.value && currentSwipeIndex.value > 0) {
     currentSwipeIndex.value = 0
@@ -1043,11 +1042,10 @@ onMounted(async () => {
     // Wait for next tick to ensure wrapper is mounted
     await nextTick()
     
-    // Initialize container width
-    if (wrapper.value) {
+    // Container width is managed by ResizeObserver
+    // Only set initial value if ResizeObserver isn't available
+    if (wrapper.value && !resizeObserver) {
       containerWidth.value = wrapper.value.clientWidth
-    } else if (typeof window !== 'undefined') {
-      containerWidth.value = window.innerWidth
     }
     
     if (!useSwipeMode.value) {
