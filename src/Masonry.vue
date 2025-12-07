@@ -420,6 +420,7 @@ defineExpose({
   loadPage,
   refreshCurrentPage,
   reset,
+  destroy,
   init,
   paginationHistory,
   cancelLoad,
@@ -870,6 +871,49 @@ function reset() {
   scrollProgress.value = {
     distanceToTrigger: 0,
     isNearTrigger: false
+  }
+}
+
+function destroy() {
+  // Cancel any ongoing loads
+  cancelLoad()
+  
+  // Reset all state
+  masonry.value = []
+  masonryContentHeight.value = 0
+  currentPage.value = null
+  paginationHistory.value = []
+  hasReachedEnd.value = false
+  loadError.value = null
+  isLoading.value = false
+  backfillActive = false
+  cancelRequested.value = false
+  
+  // Reset swipe mode state
+  currentSwipeIndex.value = 0
+  swipeOffset.value = 0
+  isDragging.value = false
+  
+  // Reset viewport state
+  viewportTop.value = 0
+  viewportHeight.value = 0
+  virtualizing.value = false
+  
+  // Reset scroll progress
+  scrollProgress.value = {
+    distanceToTrigger: 0,
+    isNearTrigger: false
+  }
+  
+  // Reset invalid dimension tracking
+  invalidDimensionIds.value.clear()
+  
+  // Scroll to top if container exists
+  if (container.value) {
+    container.value.scrollTo({
+      top: 0,
+      behavior: 'auto' // Instant scroll for destroy
+    })
   }
 }
 
