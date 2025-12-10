@@ -1336,7 +1336,7 @@ onUnmounted(() => {
           }">
           <div class="w-full h-full flex items-center justify-center p-4">
             <div class="w-full h-full max-w-full max-h-full relative">
-              <slot :item="item" :remove="remove">
+              <slot :item="item" :remove="remove" :index="item.originalIndex ?? props.items.indexOf(item)">
                 <MasonryItem :item="item" :remove="remove" :header-height="layout.header" :footer-height="layout.footer"
                   :in-swipe-mode="true" :is-active="index === currentSwipeIndex"
                   @preload:success="(p) => emits('item:preload:success', p)"
@@ -1379,7 +1379,7 @@ onUnmounted(() => {
           <div v-for="(item, i) in visibleMasonry" :key="`${item.page}-${item.id}`" class="absolute masonry-item"
             v-bind="getItemAttributes(item, i)">
             <!-- Use default slot if provided, otherwise use MasonryItem -->
-            <slot :item="item" :remove="remove">
+            <slot :item="item" :remove="remove" :index="item.originalIndex ?? items.indexOf(item)">
               <MasonryItem :item="item" :remove="remove" :header-height="layout.header" :footer-height="layout.footer"
                 :in-swipe-mode="false" :is-active="false" @preload:success="(p) => emits('item:preload:success', p)"
                 @preload:error="(p) => emits('item:preload:error', p)"
