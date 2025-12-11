@@ -789,6 +789,8 @@ async function maybeBackfillToTarget(baselineCount: number, force = false) {
   if ((masonry.value as any[]).length >= targetCount) return
 
   backfillActive = true
+  // Set loading to true at the start of backfill and keep it true throughout
+  isLoading.value = true
   try {
     let calls = 0
     emits('backfill:start', { target: targetCount, fetched: (masonry.value as any[]).length, calls })
@@ -818,7 +820,7 @@ async function maybeBackfillToTarget(baselineCount: number, force = false) {
         break
       }
       try {
-        isLoading.value = true
+        // Don't toggle isLoading here - keep it true throughout backfill
         const response = await getContent(currentPage)
         if (cancelRequested.value) break
         // Clear error on successful load
@@ -831,8 +833,6 @@ async function maybeBackfillToTarget(baselineCount: number, force = false) {
       } catch (error) {
         // Set load error but don't break the backfill loop
         loadError.value = error instanceof Error ? error : new Error(String(error))
-      } finally {
-        isLoading.value = false
       }
 
       calls++
@@ -841,6 +841,8 @@ async function maybeBackfillToTarget(baselineCount: number, force = false) {
     emits('backfill:stop', { fetched: (masonry.value as any[]).length, calls })
   } finally {
     backfillActive = false
+    // Only set loading to false when backfill completes
+    isLoading.value = false
   }
 }
 
