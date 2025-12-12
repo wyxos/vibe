@@ -449,10 +449,11 @@ function refreshLayout(items: any[]) {
   if (!container.value) return
   // Developer diagnostics: warn when dimensions are invalid
   checkItemDimensions(items as any[], 'refreshLayout')
-  // Preserve original index before layout reordering
+  // Update original index to reflect current position in array
+  // This ensures indices are correct after items are removed
   const itemsWithIndex = items.map((item, index) => ({
     ...item,
-    originalIndex: item.originalIndex ?? index
+    originalIndex: index
   }))
 
   // When fixed dimensions are set, ensure container uses the fixed width for layout
@@ -879,7 +880,7 @@ function reset() {
 function destroy() {
   // Cancel any ongoing loads
   cancelLoad()
-  
+
   // Reset all state
   masonry.value = []
   masonryContentHeight.value = 0
@@ -890,26 +891,26 @@ function destroy() {
   isLoading.value = false
   backfillActive = false
   cancelRequested.value = false
-  
+
   // Reset swipe mode state
   currentSwipeIndex.value = 0
   swipeOffset.value = 0
   isDragging.value = false
-  
+
   // Reset viewport state
   viewportTop.value = 0
   viewportHeight.value = 0
   virtualizing.value = false
-  
+
   // Reset scroll progress
   scrollProgress.value = {
     distanceToTrigger: 0,
     isNearTrigger: false
   }
-  
+
   // Reset invalid dimension tracking
   invalidDimensionIds.value.clear()
-  
+
   // Scroll to top if container exists
   if (container.value) {
     container.value.scrollTo({
