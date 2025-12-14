@@ -26,3 +26,4 @@ dist-ssr
 .npmrc
 .gh-pages
 .cursor/commands
+.zephyr/
