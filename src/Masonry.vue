@@ -925,7 +925,8 @@ async function maybeBackfillToTarget(baselineCount: number, force = false) {
       calls < props.backfillMaxCalls &&
       paginationHistory.value[paginationHistory.value.length - 1] != null &&
       !cancelRequested.value &&
-      !hasReachedEnd.value
+      !hasReachedEnd.value &&
+      backfillActive
     ) {
       await waitWithProgress(props.backfillDelayMs, (remaining, total) => {
         emits('backfill:tick', {
@@ -937,7 +938,7 @@ async function maybeBackfillToTarget(baselineCount: number, force = false) {
         })
       })
 
-      if (cancelRequested.value) break
+      if (cancelRequested.value || !backfillActive) break
 
       const currentPage = paginationHistory.value[paginationHistory.value.length - 1]
       if (currentPage == null) {
@@ -946,8 +947,10 @@ async function maybeBackfillToTarget(baselineCount: number, force = false) {
       }
       try {
         // Don't toggle isLoading here - keep it true throughout backfill
+        // Check cancellation before starting getContent to avoid unnecessary requests
+        if (cancelRequested.value || !backfillActive) break
         const response = await getContent(currentPage)
-        if (cancelRequested.value) break
+        if (cancelRequested.value || !backfillActive) break
         // Clear error on successful load
         loadError.value = null
         paginationHistory.value.push(response.nextPage)
@@ -956,7 +959,8 @@ async function maybeBackfillToTarget(baselineCount: number, force = false) {
           hasReachedEnd.value = true
         }
       } catch (error) {
-        // Set load error but don't break the backfill loop
+        // Set load error but don't break the backfill loop unless cancelled
+        if (cancelRequested.value || !backfillActive) break
         loadError.value = error instanceof Error ? error : new Error(String(error))
       }
 
@@ -966,15 +970,22 @@ async function maybeBackfillToTarget(baselineCount: number, force = false) {
     emits('backfill:stop', { fetched: (masonry.value as any[]).length, calls })
   } finally {
     backfillActive = false
-    // Only set loading to false when backfill completes
+    // Only set loading to false when backfill completes or is cancelled
     isLoading.value = false
   }
 }
 
 function cancelLoad() {
+  const wasBackfilling = backfillActive
   cancelRequested.value = true
   isLoading.value = false
+  // Set backfillActive to false to immediately stop backfilling
+  // The backfill loop checks this flag and will exit on the next iteration
   backfillActive = false
+  // If backfill was active, emit stop event immediately
+  if (wasBackfilling) {
+    emits('backfill:stop', { fetched: (masonry.value as any[]).length, calls: 0, cancelled: true })
+  }
 }
 
 function reset() {
