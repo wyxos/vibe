@@ -30,13 +30,14 @@ const generateRandomItem = (indexOffset, page, index, specialType = null) => {
         item.src = `https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4`;
     } else if (specialType === 'notFound') {
         item.notFound = true;
-        item.src = `https://picsum.photos/id/${indexOffset}/${width}/${height}`;
+        // Use a high ID that likely doesn't exist for testing 404 behavior
+        item.src = `https://picsum.photos/id/99999/${width}/${height}`;
     } else if (specialType === 'invalid') {
         item.src = `https://invalid-domain-that-does-not-exist-${indexOffset}.com/image.jpg`;
     } else {
-        // Normal image
+        // Normal image - use seeded random to ensure valid images
         item.type = 'image';
-        item.src = `https://picsum.photos/id/${indexOffset}/${width}/${height}`;
+        item.src = `https://picsum.photos/seed/${indexOffset}/${width}/${height}`;
     }
 
     return item;

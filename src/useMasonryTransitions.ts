@@ -1,11 +1,45 @@
 /**
  * Composable for handling masonry item transitions (typed)
+ * Optimized for large item arrays by skipping DOM operations for items outside viewport
  */
-export function useMasonryTransitions(masonry: any, opts?: { leaveDurationMs?: number }) {
+export function useMasonryTransitions(refs: { container?: any; masonry?: any }, opts?: { leaveDurationMs?: number }) {
+  // Cache viewport bounds to avoid repeated calculations
+  let cachedViewportTop = 0
+  let cachedViewportBottom = 0
+  let cachedViewportHeight = 0
+  const VIEWPORT_BUFFER_PX = 1000 // Buffer zone for items near viewport
+
+  // Check if item is in viewport (with buffer) - optimized to skip DOM reads
+  function isItemInViewport(itemTop: number, itemHeight: number): boolean {
+    // Update cached viewport bounds if container exists
+    const container = refs.container?.value
+    if (container) {
+      const scrollTop = container.scrollTop
+      const clientHeight = container.clientHeight
+      cachedViewportTop = scrollTop - VIEWPORT_BUFFER_PX
+      cachedViewportBottom = scrollTop + clientHeight + VIEWPORT_BUFFER_PX
+      cachedViewportHeight = clientHeight
+    }
+
+    const itemBottom = itemTop + itemHeight
+    return itemBottom >= cachedViewportTop && itemTop <= cachedViewportBottom
+  }
+
   function onEnter(el: HTMLElement, done: () => void) {
     const left = parseInt(el.dataset.left || '0', 10)
     const top = parseInt(el.dataset.top || '0', 10)
     const index = parseInt(el.dataset.index || '0', 10)
+    // Get height from computed style or use a reasonable fallback
+    const height = el.offsetHeight || parseInt(getComputedStyle(el).height || '200', 10) || 200
+
+    // Skip animation for items outside viewport - just set position immediately
+    if (!isItemInViewport(top, height)) {
+      el.style.opacity = '1'
+      el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1)`
+      el.style.transition = 'none'
+      done()
+      return
+    }
 
     const delay = Math.min(index * 20, 160)
     const prevOpacityDelay = el.style.getPropertyValue('--masonry-opacity-delay')
@@ -37,6 +71,14 @@ export function useMasonryTransitions(masonry: any, opts?: { leaveDurationMs?: n
   function onBeforeLeave(el: HTMLElement) {
     const left = parseInt(el.dataset.left || '0', 10)
     const top = parseInt(el.dataset.top || '0', 10)
+    const height = el.offsetHeight || parseInt(getComputedStyle(el).height || '200', 10) || 200
+
+    // Skip animation for items outside viewport
+    if (!isItemInViewport(top, height)) {
+      el.style.transition = 'none'
+      return
+    }
+
     el.style.transition = 'none'
     el.style.opacity = '1'
     el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1)`
@@ -50,6 +92,15 @@ export function useMasonryTransitions(masonry: any, opts?: { leaveDurationMs?: n
   function onLeave(el: HTMLElement, done: () => void) {
     const left = parseInt(el.dataset.left || '0', 10)
     const top = parseInt(el.dataset.top || '0', 10)
+    const height = el.offsetHeight || parseInt(getComputedStyle(el).height || '200', 10) || 200
+
+    // Skip animation for items outside viewport - remove immediately
+    if (!isItemInViewport(top, height)) {
+      el.style.transition = 'none'
+      el.style.opacity = '0'
+      done()
+      return
+    }
 
     // Prefer explicit option, fallback to CSS variable for safety
     const fromOpts = typeof opts?.leaveDurationMs === 'number' ? opts!.leaveDurationMs : NaN

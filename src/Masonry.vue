@@ -299,8 +299,11 @@ const updateScrollProgress = (precomputedHeights?: number[]) => {
   }
 }
 
-// Setup composables
-const { onEnter, onBeforeEnter, onBeforeLeave, onLeave } = useMasonryTransitions(masonry, { leaveDurationMs: props.leaveDurationMs })
+// Setup composables - pass container ref for viewport optimization
+const { onEnter, onBeforeEnter, onBeforeLeave, onLeave } = useMasonryTransitions(
+  { container, masonry: masonry as any },
+  { leaveDurationMs: props.leaveDurationMs }
+)
 
 // Transition wrappers that skip animation during virtualization
 function enter(el: HTMLElement, done: () => void) {
@@ -441,6 +444,10 @@ function calculateHeight(content: any[]) {
   masonryContentHeight.value = Math.max(newHeight, floor)
 }
 
+// Cache previous layout state for incremental updates
+let previousLayoutItems: any[] = []
+let previousColumnHeights: number[] = []
+
 function refreshLayout(items: any[]) {
   if (useSwipeMode.value) {
     // In swipe mode, no layout calculation needed - items are stacked vertically
@@ -451,6 +458,40 @@ function refreshLayout(items: any[]) {
   if (!container.value) return
   // Developer diagnostics: warn when dimensions are invalid
   checkItemDimensions(items as any[], 'refreshLayout')
+
+  // Optimization: For large arrays, check if we can do incremental update
+  // Only works if items were removed from the end (common case)
+  const canUseIncremental = items.length > 1000 &&
+    previousLayoutItems.length > items.length &&
+    previousLayoutItems.length - items.length < 100 // Only small removals
+
+  if (canUseIncremental) {
+    // Check if items were removed from the end (most common case)
+    let removedFromEnd = true
+    for (let i = 0; i < items.length; i++) {
+      if (items[i]?.id !== previousLayoutItems[i]?.id) {
+        removedFromEnd = false
+        break
+      }
+    }
+
+    if (removedFromEnd) {
+      // Items removed from end - we can reuse previous positions for remaining items
+      // Just update indices and recalculate height
+      const itemsWithIndex = items.map((item, index) => ({
+        ...previousLayoutItems[index],
+        originalIndex: index
+      }))
+
+      // Recalculate height only
+      calculateHeight(itemsWithIndex as any)
+      masonry.value = itemsWithIndex
+      previousLayoutItems = itemsWithIndex
+      return
+    }
+  }
+
+  // Full recalculation (fallback for all other cases)
   // Update original index to reflect current position in array
   // This ensures indices are correct after items are removed
   const itemsWithIndex = items.map((item, index) => ({
@@ -478,10 +519,14 @@ function refreshLayout(items: any[]) {
 
     calculateHeight(content as any)
     masonry.value = content
+    // Cache for next incremental update
+    previousLayoutItems = content
   } else {
     const content = calculateLayout(itemsWithIndex as any, containerEl, columns.value, layout.value as any)
     calculateHeight(content as any)
     masonry.value = content
+    // Cache for next incremental update
+    previousLayoutItems = content
   }
 }
 
