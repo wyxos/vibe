@@ -392,7 +392,10 @@ watch(
             >
               <!-- Media type indicator badge - shown BEFORE preloading starts -->
               <div class="w-12 h-12 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm">
-                <i :class="mediaType === 'video' ? 'fas fa-video text-xl text-slate-400' : 'fas fa-image text-xl text-slate-400'"></i>
+                <!-- Allow custom icon via slot, fallback to default -->
+                <slot name="placeholder-icon" :mediaType="mediaType">
+                  <i :class="mediaType === 'video' ? 'fas fa-video text-xl text-slate-400' : 'fas fa-image text-xl text-slate-400'"></i>
+                </slot>
               </div>
             </div>
 
