@@ -559,7 +559,7 @@ async function getContent(page: number) {
     refreshLayout([...(masonry.value as any[]), ...response.items])
     return response
   } catch (error) {
-    console.error('Error in getContent:', error)
+    // Error is handled by callers (loadPage, loadNext, etc.) which set loadError
     throw error
   }
 }
@@ -615,8 +615,7 @@ async function loadPage(page: number) {
     await maybeBackfillToTarget(baseline)
     return response
   } catch (error) {
-    console.error('Error loading page:', error)
-    // Set load error
+    // Set load error - error is handled and exposed to UI via loadError
     loadError.value = error instanceof Error ? error : new Error(String(error))
     throw error
   } finally {
@@ -656,8 +655,7 @@ async function loadNext() {
     await maybeBackfillToTarget(baseline)
     return response
   } catch (error) {
-    console.error('Error loading next page:', error)
-    // Set load error
+    // Set load error - error is handled and exposed to UI via loadError
     loadError.value = error instanceof Error ? error : new Error(String(error))
     throw error
   } finally {
@@ -714,8 +712,7 @@ async function refreshCurrentPage() {
 
     return response
   } catch (error) {
-    console.error('[Masonry] Error refreshing current page:', error)
-    // Set load error
+    // Set load error - error is handled and exposed to UI via loadError
     loadError.value = error instanceof Error ? error : new Error(String(error))
     throw error
   } finally {
@@ -1469,7 +1466,13 @@ onMounted(async () => {
     }
 
   } catch (error) {
-    console.error('Error during component initialization:', error)
+    // If error is from loadPage, it's already handled via loadError
+    // Only log truly unexpected initialization errors
+    if (!loadError.value) {
+      console.error('Error during component initialization:', error)
+      // Set loadError for unexpected errors too
+      loadError.value = error instanceof Error ? error : new Error(String(error))
+    }
     isLoading.value = false
   }
 
