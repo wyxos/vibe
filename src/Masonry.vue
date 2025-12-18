@@ -373,16 +373,6 @@ const visibleMasonry = computed(() => {
     const itemsWithPositions = items.filter((it: any) =>
       typeof it.top === 'number' && typeof it.columnHeight === 'number'
     )
-    console.warn('[Masonry] visibleMasonry: no visible items', {
-      totalItems: items.length,
-      itemsWithPositions: itemsWithPositions.length,
-      viewportTop: viewportTop.value,
-      viewportHeight: viewportHeight.value,
-      top,
-      bottom,
-      firstItemTop: itemsWithPositions[0]?.top,
-      lastItemTop: itemsWithPositions[itemsWithPositions.length - 1]?.top
-    })
   }
 
   return visible
@@ -452,6 +442,7 @@ defineExpose({
   reset,
   destroy,
   init,
+  restoreItems,
   paginationHistory,
   cancelLoad,
   scrollToTop,
@@ -1340,6 +1331,67 @@ function init(items: any[], page: any, next: any) {
   }
 }
 
+/**
+ * Restore items when skipInitialLoad is true.
+ * This method should be called instead of directly assigning to v-model:items
+ * when restoring items from saved state.
+ * @param items - Items to restore
+ * @param page - Current page number/cursor
+ * @param next - Next page cursor (or null if at end)
+ */
+async function restoreItems(items: any[], page: any, next: any) {
+  // If skipInitialLoad is false, fall back to init behavior
+  if (!props.skipInitialLoad) {
+    init(items, page, next)
+    return
+  }
+
+  // When skipInitialLoad is true, we need to restore items without triggering initial load
+  currentPage.value = page
+  paginationHistory.value = [page]
+  if (next !== null && next !== undefined) {
+    paginationHistory.value.push(next)
+  }
+  hasReachedEnd.value = next == null
+  loadError.value = null
+
+  // Diagnostics: check incoming items
+  checkItemDimensions(items as any[], 'restoreItems')
+
+  // Set items directly (v-model will sync) and refresh layout
+  // Follow the same pattern as init() and getContent()
+  if (useSwipeMode.value) {
+    // In swipe mode, just set items without layout calculation
+    masonry.value = items
+    // Reset swipe index if we're at the start
+    if (currentSwipeIndex.value === 0 && masonry.value.length > 0) {
+      swipeOffset.value = 0
+    }
+  } else {
+    // In masonry mode, refresh layout with the restored items
+    // This is the same pattern as init() - refreshLayout handles all the layout calculation
+    refreshLayout(items)
+
+    // Update viewport state from container's scroll position
+    // Critical after refresh when browser may restore scroll position
+    // This matches the pattern in init()
+    if (container.value) {
+      viewportTop.value = container.value.scrollTop
+      viewportHeight.value = container.value.clientHeight || window.innerHeight
+    }
+
+    // Update again after DOM updates to catch browser scroll restoration
+    // The debounced scroll handler will also catch any scroll changes
+    // This matches the pattern in init()
+    await nextTick()
+    if (container.value) {
+      viewportTop.value = container.value.scrollTop
+      viewportHeight.value = container.value.clientHeight || window.innerHeight
+      updateScrollProgress()
+    }
+  }
+}
+
 // Watch for layout changes and update columns + refresh layout dynamically
 watch(
   layout,
@@ -1526,6 +1578,23 @@ onMounted(async () => {
 
     if (!props.skipInitialLoad) {
       await loadPage(paginationHistory.value[0] as any)
+    } else {
+      // When skipInitialLoad is true, restore items from props if they exist
+      // This allows parent components to pass items via v-model and vibe handles restoration
+      if (props.items && props.items.length > 0) {
+        // Extract page and next from items if available, otherwise use loadAtPage
+        const firstItem = props.items[0]
+        const lastItem = props.items[props.items.length - 1]
+        const page = firstItem?.page ?? initialPage ?? 1
+        const next = lastItem?.next ?? null
+
+        // Restore items - this will set masonry.value and handle layout
+        await restoreItems(props.items, page, next)
+      } else {
+        // No items to restore, just initialize pagination state
+        currentPage.value = initialPage
+        paginationHistory.value = [initialPage]
+      }
     }
 
     if (!useSwipeMode.value) {
