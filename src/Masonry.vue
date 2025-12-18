@@ -11,7 +11,9 @@ import {
 } from './masonryUtils'
 import { useMasonryTransitions } from './useMasonryTransitions'
 import { useMasonryScroll } from './useMasonryScroll'
+import { useSwipeMode as useSwipeModeComposable } from './useSwipeMode'
 import MasonryItem from './components/MasonryItem.vue'
+import { normalizeError } from './utils/errorHandler'
 
 const props = defineProps({
   getNextPage: {
@@ -162,27 +164,6 @@ const useSwipeMode = computed(() => {
   return containerWidth.value < breakpoint
 })
 
-// Get current item index for swipe mode
-const currentItem = computed(() => {
-  if (!useSwipeMode.value || masonry.value.length === 0) return null
-  const index = Math.max(0, Math.min(currentSwipeIndex.value, masonry.value.length - 1))
-  return (masonry.value as any[])[index] || null
-})
-
-// Get next/previous items for preloading in swipe mode
-const nextItem = computed(() => {
-  if (!useSwipeMode.value || !currentItem.value) return null
-  const nextIndex = currentSwipeIndex.value + 1
-  if (nextIndex >= masonry.value.length) return null
-  return (masonry.value as any[])[nextIndex] || null
-})
-
-const previousItem = computed(() => {
-  if (!useSwipeMode.value || !currentItem.value) return null
-  const prevIndex = currentSwipeIndex.value - 1
-  if (prevIndex < 0) return null
-  return (masonry.value as any[])[prevIndex] || null
-})
 
 const emits = defineEmits([
   'update:items',
@@ -218,13 +199,6 @@ const loadError = ref<Error | null>(null)  // Track load errors
 // Current breakpoint
 const currentBreakpoint = computed(() => getBreakpointName(containerWidth.value))
 
-// Swipe mode state
-const currentSwipeIndex = ref<number>(0)
-const swipeOffset = ref<number>(0)
-const isDragging = ref<boolean>(false)
-const dragStartY = ref<number>(0)
-const dragStartOffset = ref<number>(0)
-const swipeContainer = ref<HTMLElement | null>(null)
 
 // Diagnostics: track items missing width/height to help developers
 const invalidDimensionIds = ref<Set<number | string>>(new Set())
@@ -633,7 +607,7 @@ async function loadPage(page: number) {
     return response
   } catch (error) {
     // Set load error - error is handled and exposed to UI via loadError
-    loadError.value = error instanceof Error ? error : new Error(String(error))
+    loadError.value = normalizeError(error)
     throw error
   } finally {
     isLoading.value = false
@@ -673,12 +647,42 @@ async function loadNext() {
     return response
   } catch (error) {
     // Set load error - error is handled and exposed to UI via loadError
-    loadError.value = error instanceof Error ? error : new Error(String(error))
+    loadError.value = normalizeError(error)
     throw error
   } finally {
     isLoading.value = false
   }
 }
+
+// Initialize swipe mode composable (after loadNext and loadPage are defined)
+const swipeMode = useSwipeModeComposable({
+  useSwipeMode,
+  masonry: masonry as any,
+  isLoading,
+  loadNext,
+  loadPage,
+  paginationHistory
+})
+
+// Expose swipe mode computed values and state for template
+const currentItem = swipeMode.currentItem
+const nextItem = swipeMode.nextItem
+const previousItem = swipeMode.previousItem
+const currentSwipeIndex = swipeMode.currentSwipeIndex
+const swipeOffset = swipeMode.swipeOffset
+const isDragging = swipeMode.isDragging
+const swipeContainer = swipeMode.swipeContainer
+
+// Swipe gesture handlers (delegated to composable)
+const handleTouchStart = swipeMode.handleTouchStart
+const handleTouchMove = swipeMode.handleTouchMove
+const handleTouchEnd = swipeMode.handleTouchEnd
+const handleMouseDown = swipeMode.handleMouseDown
+const handleMouseMove = swipeMode.handleMouseMove
+const handleMouseUp = swipeMode.handleMouseUp
+const goToNextItem = swipeMode.goToNextItem
+const goToPreviousItem = swipeMode.goToPreviousItem
+const snapToCurrentItem = swipeMode.snapToCurrentItem
 
 /**
  * Refresh the current page by clearing items and reloading from current page
@@ -730,7 +734,7 @@ async function refreshCurrentPage() {
     return response
   } catch (error) {
     // Set load error - error is handled and exposed to UI via loadError
-    loadError.value = error instanceof Error ? error : new Error(String(error))
+    loadError.value = normalizeError(error)
     throw error
   } finally {
     isLoading.value = false
@@ -1035,7 +1039,7 @@ async function maybeBackfillToTarget(baselineCount: number, force = false) {
       } catch (error) {
         // Set load error but don't break the backfill loop unless cancelled
         if (cancelRequested.value || !backfillActive) break
-        loadError.value = error instanceof Error ? error : new Error(String(error))
+        loadError.value = normalizeError(error)
       }
 
       calls++
@@ -1162,135 +1166,13 @@ const debouncedScrollHandler = debounce(async () => {
 
 const debouncedResizeHandler = debounce(onResize, 200)
 
-// Swipe gesture handlers
-function handleTouchStart(e: TouchEvent) {
-  if (!useSwipeMode.value) return
-  isDragging.value = true
-  dragStartY.value = e.touches[0].clientY
-  dragStartOffset.value = swipeOffset.value
-  e.preventDefault()
-}
-
-function handleTouchMove(e: TouchEvent) {
-  if (!useSwipeMode.value || !isDragging.value) return
-  const deltaY = e.touches[0].clientY - dragStartY.value
-  swipeOffset.value = dragStartOffset.value + deltaY
-  e.preventDefault()
-}
-
-function handleTouchEnd(e: TouchEvent) {
-  if (!useSwipeMode.value || !isDragging.value) return
-  isDragging.value = false
-
-  const deltaY = swipeOffset.value - dragStartOffset.value
-  const threshold = 100 // Minimum swipe distance to trigger navigation
-
-  if (Math.abs(deltaY) > threshold) {
-    if (deltaY > 0 && previousItem.value) {
-      // Swipe down - go to previous
-      goToPreviousItem()
-    } else if (deltaY < 0 && nextItem.value) {
-      // Swipe up - go to next
-      goToNextItem()
-    } else {
-      // Snap back
-      snapToCurrentItem()
-    }
-  } else {
-    // Snap back if swipe wasn't far enough
-    snapToCurrentItem()
-  }
-
-  e.preventDefault()
-}
-
-// Mouse drag handlers for desktop testing
-function handleMouseDown(e: MouseEvent) {
-  if (!useSwipeMode.value) return
-  isDragging.value = true
-  dragStartY.value = e.clientY
-  dragStartOffset.value = swipeOffset.value
-  e.preventDefault()
-}
-
-function handleMouseMove(e: MouseEvent) {
-  if (!useSwipeMode.value || !isDragging.value) return
-  const deltaY = e.clientY - dragStartY.value
-  swipeOffset.value = dragStartOffset.value + deltaY
-  e.preventDefault()
-}
-
-function handleMouseUp(e: MouseEvent) {
-  if (!useSwipeMode.value || !isDragging.value) return
-  isDragging.value = false
-
-  const deltaY = swipeOffset.value - dragStartOffset.value
-  const threshold = 100
-
-  if (Math.abs(deltaY) > threshold) {
-    if (deltaY > 0 && previousItem.value) {
-      goToPreviousItem()
-    } else if (deltaY < 0 && nextItem.value) {
-      goToNextItem()
-    } else {
-      snapToCurrentItem()
-    }
-  } else {
-    snapToCurrentItem()
-  }
-
-  e.preventDefault()
-}
-
-function goToNextItem() {
-  if (!nextItem.value) {
-    // Try to load next page
-    loadNext()
-    return
-  }
-
-  currentSwipeIndex.value++
-  snapToCurrentItem()
-
-  // Preload next item if we're near the end
-  if (currentSwipeIndex.value >= masonry.value.length - 5) {
-    loadNext()
-  }
-}
-
-function goToPreviousItem() {
-  if (!previousItem.value) return
-
-  currentSwipeIndex.value--
-  snapToCurrentItem()
-}
-
-function snapToCurrentItem() {
-  if (!swipeContainer.value) return
-
-  // Use container height for swipe mode instead of window height
-  const viewportHeight = swipeContainer.value.clientHeight
-  swipeOffset.value = -currentSwipeIndex.value * viewportHeight
-}
-
-// Watch for container/window resize to update swipe mode
-// Note: containerWidth is updated by ResizeObserver, not here
+// Window resize handler (combines swipe and general resize logic)
 function handleWindowResize() {
-  // If switching from swipe to masonry, reset swipe state
-  if (!useSwipeMode.value && currentSwipeIndex.value > 0) {
-    currentSwipeIndex.value = 0
-    swipeOffset.value = 0
-  }
+  // Delegate swipe-specific resize handling
+  swipeMode.handleWindowResize()
 
-  // If switching to swipe mode, ensure we have items loaded
-  if (useSwipeMode.value && masonry.value.length === 0 && !isLoading.value) {
-    loadPage(paginationHistory.value[0] as any)
-  }
-
-  // Re-snap to current item on resize to adjust offset
-  if (useSwipeMode.value) {
-    snapToCurrentItem()
-  }
+  // General resize handling (if needed)
+  // Note: containerWidth is updated by ResizeObserver
 }
 
 function init(items: any[], page: any, next: any) {
@@ -1583,8 +1465,8 @@ onMounted(async () => {
       // This allows parent components to pass items via v-model and vibe handles restoration
       if (props.items && props.items.length > 0) {
         // Extract page and next from items if available, otherwise use loadAtPage
-        const firstItem = props.items[0]
-        const lastItem = props.items[props.items.length - 1]
+        const firstItem = props.items[0] as any
+        const lastItem = props.items[props.items.length - 1] as any
         const page = firstItem?.page ?? initialPage ?? 1
         const next = lastItem?.next ?? null
 
@@ -1610,7 +1492,7 @@ onMounted(async () => {
     if (!loadError.value) {
       console.error('Error during component initialization:', error)
       // Set loadError for unexpected errors too
-      loadError.value = error instanceof Error ? error : new Error(String(error))
+      loadError.value = normalizeError(error)
     }
     isLoading.value = false
   }
