@@ -2,7 +2,10 @@
  * Composable for handling masonry item transitions (typed)
  * Optimized for large item arrays by skipping DOM operations for items outside viewport
  */
-export function useMasonryTransitions(refs: { container?: any; masonry?: any }, opts?: { leaveDurationMs?: number }) {
+export function useMasonryTransitions(
+  refs: { container?: any; masonry?: any },
+  opts?: { leaveDurationMs?: number; virtualizing?: { value: boolean } }
+) {
   // Cache viewport bounds to avoid repeated calculations
   let cachedViewportTop = 0
   let cachedViewportBottom = 0
@@ -31,6 +34,19 @@ export function useMasonryTransitions(refs: { container?: any; masonry?: any }, 
     const index = parseInt(el.dataset.index || '0', 10)
     // Get height from computed style or use a reasonable fallback
     const height = el.offsetHeight || parseInt(getComputedStyle(el).height || '200', 10) || 200
+
+    // Skip animation during virtualization - just set position immediately
+    if (opts?.virtualizing?.value) {
+      el.style.transition = 'none'
+      el.style.opacity = '1'
+      el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1)`
+      el.style.removeProperty('--masonry-opacity-delay')
+      requestAnimationFrame(() => {
+        el.style.transition = ''
+        done()
+      })
+      return
+    }
 
     // Skip animation for items outside viewport - just set position immediately
     if (!isItemInViewport(top, height)) {
@@ -64,6 +80,16 @@ export function useMasonryTransitions(refs: { container?: any; masonry?: any }, 
   function onBeforeEnter(el: HTMLElement) {
     const left = parseInt(el.dataset.left || '0', 10)
     const top = parseInt(el.dataset.top || '0', 10)
+    
+    // Skip animation during virtualization
+    if (opts?.virtualizing?.value) {
+      el.style.transition = 'none'
+      el.style.opacity = '1'
+      el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1)`
+      el.style.removeProperty('--masonry-opacity-delay')
+      return
+    }
+    
     el.style.opacity = '0'
     el.style.transform = `translate3d(${left}px, ${top + 10}px, 0) scale(0.985)`
   }
@@ -72,6 +98,12 @@ export function useMasonryTransitions(refs: { container?: any; masonry?: any }, 
     const left = parseInt(el.dataset.left || '0', 10)
     const top = parseInt(el.dataset.top || '0', 10)
     const height = el.offsetHeight || parseInt(getComputedStyle(el).height || '200', 10) || 200
+
+    // Skip animation during virtualization
+    if (opts?.virtualizing?.value) {
+      // no-op; removal will be immediate in leave
+      return
+    }
 
     // Skip animation for items outside viewport
     if (!isItemInViewport(top, height)) {
@@ -93,6 +125,12 @@ export function useMasonryTransitions(refs: { container?: any; masonry?: any }, 
     const left = parseInt(el.dataset.left || '0', 10)
     const top = parseInt(el.dataset.top || '0', 10)
     const height = el.offsetHeight || parseInt(getComputedStyle(el).height || '200', 10) || 200
+
+    // Skip animation during virtualization - remove immediately
+    if (opts?.virtualizing?.value) {
+      done()
+      return
+    }
 
     // Skip animation for items outside viewport - remove immediately
     if (!isItemInViewport(top, height)) {

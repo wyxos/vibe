@@ -12,6 +12,11 @@ import {
 import { useMasonryTransitions } from './useMasonryTransitions'
 import { useMasonryScroll } from './useMasonryScroll'
 import { useSwipeMode as useSwipeModeComposable } from './useSwipeMode'
+import { useMasonryPagination } from './useMasonryPagination'
+import { useMasonryItems } from './useMasonryItems'
+import { useMasonryLayout } from './useMasonryLayout'
+import { useMasonryVirtualization } from './useMasonryVirtualization'
+import { useMasonryDimensions } from './useMasonryDimensions'
 import MasonryItem from './components/MasonryItem.vue'
 import { normalizeError } from './utils/errorHandler'
 
@@ -200,158 +205,90 @@ const loadError = ref<Error | null>(null)  // Track load errors
 const currentBreakpoint = computed(() => getBreakpointName(containerWidth.value))
 
 
-// Diagnostics: track items missing width/height to help developers
-const invalidDimensionIds = ref<Set<number | string>>(new Set())
-function isPositiveNumber(value: unknown): boolean {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0
-}
-function checkItemDimensions(items: any[], context: string) {
-  try {
-    if (!Array.isArray(items) || items.length === 0) return
-    const missing = items.filter((item) => !isPositiveNumber(item?.width) || !isPositiveNumber(item?.height))
-    if (missing.length === 0) return
-
-    const newIds: Array<number | string> = []
-    for (const item of missing) {
-      const id = (item?.id as number | string | undefined) ?? `idx:${items.indexOf(item)}`
-      if (!invalidDimensionIds.value.has(id)) {
-        invalidDimensionIds.value.add(id)
-        newIds.push(id)
-      }
-    }
-    if (newIds.length > 0) {
-      const sample = newIds.slice(0, 10)
-      // eslint-disable-next-line no-console
-      console.warn(
-        '[Masonry] Items missing width/height detected:',
-        {
-          context,
-          count: newIds.length,
-          sampleIds: sample,
-          hint: 'Ensure each item has positive width and height. Consider providing fallbacks (e.g., 512x512) at the data layer.'
-        }
-      )
-    }
-  } catch {
-    // best-effort diagnostics only
-  }
-}
-
-// Virtualization viewport state
-const viewportTop = ref(0)
-const viewportHeight = ref(0)
-const VIRTUAL_BUFFER_PX = props.virtualBufferPx
-
-// Gate transitions during virtualization-only DOM churn
-const virtualizing = ref(false)
-
-// Scroll progress tracking
-const scrollProgress = ref<{ distanceToTrigger: number; isNearTrigger: boolean }>({
-  distanceToTrigger: 0,
-  isNearTrigger: false
+// Initialize dimensions composable first (needed by layout composable)
+const dimensions = useMasonryDimensions({
+  masonry: masonry as any
 })
 
-const updateScrollProgress = (precomputedHeights?: number[]) => {
-  if (!container.value) return
+// Extract dimension checking function
+const { checkItemDimensions, invalidDimensionIds, reset: resetDimensions } = dimensions
 
-  const { scrollTop, clientHeight } = container.value
-  const visibleBottom = scrollTop + clientHeight
+// Initialize layout composable (needs checkItemDimensions from dimensions composable)
+const layoutComposable = useMasonryLayout({
+  masonry: masonry as any,
+  useSwipeMode,
+  container,
+  columns,
+  containerWidth,
+  masonryContentHeight,
+  layout,
+  fixedDimensions,
+  checkItemDimensions
+})
 
-  const columnHeights = precomputedHeights ?? calculateColumnHeights(masonry.value as any, columns.value)
-  const tallest = columnHeights.length ? Math.max(...columnHeights) : 0
-  const threshold = typeof props.loadThresholdPx === 'number' ? props.loadThresholdPx : 200
-  const triggerPoint = threshold >= 0
-    ? Math.max(0, tallest - threshold)
-    : Math.max(0, tallest + threshold)
+// Extract layout functions
+const { refreshLayout, setFixedDimensions: setFixedDimensionsLayout, onResize: onResizeLayout } = layoutComposable
 
-  const distanceToTrigger = Math.max(0, triggerPoint - visibleBottom)
-  const isNearTrigger = distanceToTrigger <= 100
+// Initialize virtualization composable
+const virtualization = useMasonryVirtualization({
+  masonry: masonry as any,
+  container,
+  columns,
+  virtualBufferPx: props.virtualBufferPx,
+  loadThresholdPx: props.loadThresholdPx,
+  handleScroll: () => { } // Will be set after pagination is initialized
+})
 
-  scrollProgress.value = {
-    distanceToTrigger: Math.round(distanceToTrigger),
-    isNearTrigger
-  }
-}
+// Extract virtualization state and functions
+const { viewportTop, viewportHeight, virtualizing, scrollProgress, visibleMasonry, updateScrollProgress, updateViewport: updateViewportVirtualization, reset: resetVirtualization } = virtualization
 
-// Setup composables - pass container ref for viewport optimization
+// Initialize transitions composable with virtualization support
 const { onEnter, onBeforeEnter, onBeforeLeave, onLeave } = useMasonryTransitions(
   { container, masonry: masonry as any },
-  { leaveDurationMs: props.leaveDurationMs }
+  { leaveDurationMs: props.leaveDurationMs, virtualizing }
 )
 
-// Transition wrappers that skip animation during virtualization
-function enter(el: HTMLElement, done: () => void) {
-  if (virtualizing.value) {
-    const left = parseInt(el.dataset.left || '0', 10)
-    const top = parseInt(el.dataset.top || '0', 10)
-    el.style.transition = 'none'
-    el.style.opacity = '1'
-    el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1)`
-    el.style.removeProperty('--masonry-opacity-delay')
-    requestAnimationFrame(() => {
-      el.style.transition = ''
-      done()
-    })
-  } else {
-    onEnter(el, done)
-  }
-}
-function beforeEnter(el: HTMLElement) {
-  if (virtualizing.value) {
-    const left = parseInt(el.dataset.left || '0', 10)
-    const top = parseInt(el.dataset.top || '0', 10)
-    el.style.transition = 'none'
-    el.style.opacity = '1'
-    el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1)`
-    el.style.removeProperty('--masonry-opacity-delay')
-  } else {
-    onBeforeEnter(el)
-  }
-}
-function beforeLeave(el: HTMLElement) {
-  if (virtualizing.value) {
-    // no-op; removal will be immediate in leave
-  } else {
-    onBeforeLeave(el)
-  }
-}
-function leave(el: HTMLElement, done: () => void) {
-  if (virtualizing.value) {
-    // Skip animation during virtualization
-    done()
-  } else {
-    onLeave(el, done)
-  }
-}
+// Transition functions for template (wrapped to match expected signature)
+const enter = onEnter
+const beforeEnter = onBeforeEnter
+const beforeLeave = onBeforeLeave
+const leave = onLeave
 
-// Visible window of items (virtualization)
-const visibleMasonry = computed(() => {
-  const top = viewportTop.value - VIRTUAL_BUFFER_PX
-  const bottom = viewportTop.value + viewportHeight.value + VIRTUAL_BUFFER_PX
-  const items = masonry.value as any[]
-  if (!items || items.length === 0) return [] as any[]
-
-  // Filter items that have valid positions and are within viewport
-  const visible = items.filter((it: any) => {
-    // If item doesn't have position yet, include it (will be filtered once layout is calculated)
-    if (typeof it.top !== 'number' || typeof it.columnHeight !== 'number') {
-      return true // Include items without positions to avoid hiding them prematurely
-    }
-    const itemTop = it.top
-    const itemBottom = it.top + it.columnHeight
-    return itemBottom >= top && itemTop <= bottom
-  })
-
-  // Log if we're filtering out items (for debugging)
-  if (import.meta.env.DEV && items.length > 0 && visible.length === 0 && viewportHeight.value > 0) {
-    const itemsWithPositions = items.filter((it: any) =>
-      typeof it.top === 'number' && typeof it.columnHeight === 'number'
-    )
-  }
-
-  return visible
+// Initialize pagination composable
+const pagination = useMasonryPagination({
+  getNextPage: props.getNextPage,
+  masonry: masonry as any,
+  isLoading,
+  hasReachedEnd,
+  loadError,
+  currentPage,
+  paginationHistory,
+  refreshLayout,
+  retryMaxAttempts: props.retryMaxAttempts,
+  retryInitialDelayMs: props.retryInitialDelayMs,
+  retryBackoffStepMs: props.retryBackoffStepMs,
+  backfillEnabled: props.backfillEnabled,
+  backfillDelayMs: props.backfillDelayMs,
+  backfillMaxCalls: props.backfillMaxCalls,
+  pageSize: props.pageSize,
+  autoRefreshOnEmpty: props.autoRefreshOnEmpty,
+  emits
 })
 
+// Extract pagination functions
+const { loadPage, loadNext, refreshCurrentPage, cancelLoad, maybeBackfillToTarget } = pagination
+
+// Initialize swipe mode composable (needs loadNext and loadPage from pagination)
+const swipeMode = useSwipeModeComposable({
+  useSwipeMode,
+  masonry: masonry as any,
+  isLoading,
+  loadNext,
+  loadPage,
+  paginationHistory
+})
+
+// Initialize scroll handler (needs loadNext from pagination)
 const { handleScroll } = useMasonryScroll({
   container,
   masonry: masonry as any,
@@ -367,25 +304,32 @@ const { handleScroll } = useMasonryScroll({
   loadThresholdPx: props.loadThresholdPx
 })
 
+// Update virtualization handleScroll to use the scroll handler
+virtualization.handleScroll = handleScroll
+
+// Initialize items composable
+const items = useMasonryItems({
+  masonry: masonry as any,
+  useSwipeMode,
+  refreshLayout,
+  refreshCurrentPage,
+  loadNext,
+  maybeBackfillToTarget,
+  autoRefreshOnEmpty: props.autoRefreshOnEmpty,
+  paginationHistory
+})
+
+// Extract item management functions
+const { remove, removeMany, restore, restoreMany, removeAll: removeAllItems } = items
+
+// setFixedDimensions is now in useMasonryLayout composable
+// Wrapper function to maintain API compatibility and handle wrapper restoration
 function setFixedDimensions(dimensions: { width?: number; height?: number } | null) {
-  fixedDimensions.value = dimensions
-  if (dimensions) {
-    if (dimensions.width !== undefined) containerWidth.value = dimensions.width
-    if (dimensions.height !== undefined) containerHeight.value = dimensions.height
-    // Force layout refresh when dimensions change
-    if (!useSwipeMode.value && container.value && masonry.value.length > 0) {
-      nextTick(() => {
-        columns.value = getColumnCount(layout.value as any, containerWidth.value)
-        refreshLayout(masonry.value as any)
-        updateScrollProgress()
-      })
-    }
-  } else {
+  setFixedDimensionsLayout(dimensions, updateScrollProgress)
+  if (!dimensions && wrapper.value) {
     // When clearing fixed dimensions, restore from wrapper
-    if (wrapper.value) {
-      containerWidth.value = wrapper.value.clientWidth
-      containerHeight.value = wrapper.value.clientHeight
-    }
+    containerWidth.value = wrapper.value.clientWidth
+    containerHeight.value = wrapper.value.clientHeight
   }
 }
 
@@ -407,7 +351,7 @@ defineExpose({
   setFixedDimensions,
   remove,
   removeMany,
-  removeAll,
+  removeAll: removeAllItems,
   restore,
   restoreMany,
   loadNext,
@@ -425,244 +369,8 @@ defineExpose({
   currentBreakpoint
 })
 
-function calculateHeight(content: any[]) {
-  const newHeight = calculateContainerHeight(content as any)
-  let floor = 0
-  if (container.value) {
-    const { scrollTop, clientHeight } = container.value
-    floor = scrollTop + clientHeight + 100
-  }
-  masonryContentHeight.value = Math.max(newHeight, floor)
-}
-
-// Cache previous layout state for incremental updates
-let previousLayoutItems: any[] = []
-let previousColumnHeights: number[] = []
-
-function refreshLayout(items: any[]) {
-  if (useSwipeMode.value) {
-    // In swipe mode, no layout calculation needed - items are stacked vertically
-    masonry.value = items as any
-    return
-  }
-
-  if (!container.value) return
-  // Developer diagnostics: warn when dimensions are invalid
-  checkItemDimensions(items as any[], 'refreshLayout')
-
-  // Optimization: For large arrays, check if we can do incremental update
-  // Only works if items were removed from the end (common case)
-  const canUseIncremental = items.length > 1000 &&
-    previousLayoutItems.length > items.length &&
-    previousLayoutItems.length - items.length < 100 // Only small removals
-
-  if (canUseIncremental) {
-    // Check if items were removed from the end (most common case)
-    let removedFromEnd = true
-    for (let i = 0; i < items.length; i++) {
-      if (items[i]?.id !== previousLayoutItems[i]?.id) {
-        removedFromEnd = false
-        break
-      }
-    }
-
-    if (removedFromEnd) {
-      // Items removed from end - we can reuse previous positions for remaining items
-      // Just update indices and recalculate height
-      const itemsWithIndex = items.map((item, index) => ({
-        ...previousLayoutItems[index],
-        originalIndex: index
-      }))
-
-      // Recalculate height only
-      calculateHeight(itemsWithIndex as any)
-      masonry.value = itemsWithIndex
-      previousLayoutItems = itemsWithIndex
-      return
-    }
-  }
-
-  // Full recalculation (fallback for all other cases)
-  // Update original index to reflect current position in array
-  // This ensures indices are correct after items are removed
-  const itemsWithIndex = items.map((item, index) => ({
-    ...item,
-    originalIndex: index
-  }))
-
-  // When fixed dimensions are set, ensure container uses the fixed width for layout
-  // This prevents gaps when the container's actual width differs from the fixed width
-  const containerEl = container.value as HTMLElement
-  if (fixedDimensions.value && fixedDimensions.value.width !== undefined) {
-    // Temporarily set width to match fixed dimensions for accurate layout calculation
-    const originalWidth = containerEl.style.width
-    const originalBoxSizing = containerEl.style.boxSizing
-    containerEl.style.boxSizing = 'border-box'
-    containerEl.style.width = `${fixedDimensions.value.width}px`
-    // Force reflow
-    containerEl.offsetWidth
-
-    const content = calculateLayout(itemsWithIndex as any, containerEl, columns.value, layout.value as any)
-
-    // Restore original width
-    containerEl.style.width = originalWidth
-    containerEl.style.boxSizing = originalBoxSizing
-
-    calculateHeight(content as any)
-    masonry.value = content
-    // Cache for next incremental update
-    previousLayoutItems = content
-  } else {
-    const content = calculateLayout(itemsWithIndex as any, containerEl, columns.value, layout.value as any)
-    calculateHeight(content as any)
-    masonry.value = content
-    // Cache for next incremental update
-    previousLayoutItems = content
-  }
-}
-
-function waitWithProgress(totalMs: number, onTick: (remaining: number, total: number) => void) {
-  return new Promise<void>((resolve) => {
-    const total = Math.max(0, totalMs | 0)
-    const start = Date.now()
-    onTick(total, total)
-    const id = setInterval(() => {
-      // Check for cancellation
-      if (cancelRequested.value) {
-        clearInterval(id)
-        resolve()
-        return
-      }
-      const elapsed = Date.now() - start
-      const remaining = Math.max(0, total - elapsed)
-      onTick(remaining, total)
-      if (remaining <= 0) {
-        clearInterval(id)
-        resolve()
-      }
-    }, 100)
-  })
-}
-
-async function getContent(page: number) {
-  try {
-    const response = await fetchWithRetry(() => props.getNextPage(page))
-    refreshLayout([...(masonry.value as any[]), ...response.items])
-    return response
-  } catch (error) {
-    // Error is handled by callers (loadPage, loadNext, etc.) which set loadError
-    throw error
-  }
-}
-
-async function fetchWithRetry<T = any>(fn: () => Promise<T>): Promise<T> {
-  let attempt = 0
-  const max = props.retryMaxAttempts
-  let delay = props.retryInitialDelayMs
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    try {
-      const res = await fn()
-      if (attempt > 0) {
-        emits('retry:stop', { attempt, success: true })
-      }
-      return res
-    } catch (err) {
-      attempt++
-      if (attempt > max) {
-        emits('retry:stop', { attempt: attempt - 1, success: false })
-        throw err
-      }
-      emits('retry:start', { attempt, max, totalMs: delay })
-      await waitWithProgress(delay, (remaining, total) => {
-        emits('retry:tick', { attempt, remainingMs: remaining, totalMs: total })
-      })
-      delay += props.retryBackoffStepMs
-    }
-  }
-}
-
-async function loadPage(page: number) {
-  if (isLoading.value) return
-  // Starting a new load should clear any previous cancel request
-  cancelRequested.value = false
-  isLoading.value = true
-  // Reset hasReachedEnd and loadError when loading a new page
-  hasReachedEnd.value = false
-  loadError.value = null
-  try {
-    const baseline = (masonry.value as any[]).length
-    if (cancelRequested.value) return
-    const response = await getContent(page)
-    if (cancelRequested.value) return
-    // Clear error on successful load
-    loadError.value = null
-    currentPage.value = page  // Track the current page
-    paginationHistory.value.push(response.nextPage)
-    // Update hasReachedEnd if nextPage is null
-    if (response.nextPage == null) {
-      hasReachedEnd.value = true
-    }
-    await maybeBackfillToTarget(baseline)
-    return response
-  } catch (error) {
-    // Set load error - error is handled and exposed to UI via loadError
-    loadError.value = normalizeError(error)
-    throw error
-  } finally {
-    isLoading.value = false
-  }
-}
-
-async function loadNext() {
-  if (isLoading.value) return
-  // Don't load if we've already reached the end
-  if (hasReachedEnd.value) return
-  // Starting a new load should clear any previous cancel request
-  cancelRequested.value = false
-  isLoading.value = true
-  // Clear error when attempting to load
-  loadError.value = null
-  try {
-    const baseline = (masonry.value as any[]).length
-    if (cancelRequested.value) return
-    const nextPageToLoad = paginationHistory.value[paginationHistory.value.length - 1]
-    // Don't load if nextPageToLoad is null
-    if (nextPageToLoad == null) {
-      hasReachedEnd.value = true
-      isLoading.value = false
-      return
-    }
-    const response = await getContent(nextPageToLoad)
-    if (cancelRequested.value) return
-    // Clear error on successful load
-    loadError.value = null
-    currentPage.value = nextPageToLoad  // Track the current page
-    paginationHistory.value.push(response.nextPage)
-    // Update hasReachedEnd if nextPage is null
-    if (response.nextPage == null) {
-      hasReachedEnd.value = true
-    }
-    await maybeBackfillToTarget(baseline)
-    return response
-  } catch (error) {
-    // Set load error - error is handled and exposed to UI via loadError
-    loadError.value = normalizeError(error)
-    throw error
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// Initialize swipe mode composable (after loadNext and loadPage are defined)
-const swipeMode = useSwipeModeComposable({
-  useSwipeMode,
-  masonry: masonry as any,
-  isLoading,
-  loadNext,
-  loadPage,
-  paginationHistory
-})
+// Layout functions are now in useMasonryLayout composable
+// Removed: calculateHeight, refreshLayout - now from layoutComposable
 
 // Expose swipe mode computed values and state for template
 const currentItem = swipeMode.currentItem
@@ -684,241 +392,9 @@ const goToNextItem = swipeMode.goToNextItem
 const goToPreviousItem = swipeMode.goToPreviousItem
 const snapToCurrentItem = swipeMode.snapToCurrentItem
 
-/**
- * Refresh the current page by clearing items and reloading from current page
- * Useful when items are removed and you want to stay on the same page
- */
-async function refreshCurrentPage() {
-  if (isLoading.value) return
-  cancelRequested.value = false
-  isLoading.value = true
+// refreshCurrentPage is now in useMasonryPagination composable
 
-  try {
-    // Use the tracked current page
-    const pageToRefresh = currentPage.value
-
-    if (pageToRefresh == null) {
-      console.warn('[Masonry] No current page to refresh - currentPage:', currentPage.value, 'paginationHistory:', paginationHistory.value)
-      return
-    }
-
-    // Clear existing items
-    masonry.value = []
-    masonryContentHeight.value = 0
-    hasReachedEnd.value = false  // Reset end flag when refreshing
-    loadError.value = null  // Reset error flag when refreshing
-
-    // Reset pagination history to just the current page
-    paginationHistory.value = [pageToRefresh]
-
-    await nextTick()
-
-    // Reload the current page
-    const response = await getContent(pageToRefresh)
-    if (cancelRequested.value) return
-
-    // Clear error on successful load
-    loadError.value = null
-    // Update pagination state
-    currentPage.value = pageToRefresh
-    paginationHistory.value.push(response.nextPage)
-    // Update hasReachedEnd if nextPage is null
-    if (response.nextPage == null) {
-      hasReachedEnd.value = true
-    }
-
-    // Optionally backfill if needed
-    const baseline = (masonry.value as any[]).length
-    await maybeBackfillToTarget(baseline)
-
-    return response
-  } catch (error) {
-    // Set load error - error is handled and exposed to UI via loadError
-    loadError.value = normalizeError(error)
-    throw error
-  } finally {
-    isLoading.value = false
-  }
-}
-
-async function remove(item: any) {
-  const next = (masonry.value as any[]).filter(i => i.id !== item.id)
-  masonry.value = next
-  await nextTick()
-
-  // If all items were removed, either refresh current page or load next based on prop
-  if (next.length === 0 && paginationHistory.value.length > 0) {
-    if (props.autoRefreshOnEmpty) {
-      await refreshCurrentPage()
-    } else {
-      try {
-        await loadNext()
-        // Force backfill from 0 to ensure viewport is filled
-        // Pass baseline=0 and force=true to trigger backfill even if backfillEnabled was temporarily disabled
-        await maybeBackfillToTarget(0, true)
-      } catch { }
-    }
-    return
-  }
-
-  // Commit DOM updates without forcing sync reflow
-  await new Promise<void>(r => requestAnimationFrame(() => r()))
-  // Start FLIP on next frame
-  requestAnimationFrame(() => {
-    refreshLayout(next)
-  })
-}
-
-async function removeMany(items: any[]) {
-  if (!items || items.length === 0) return
-  const ids = new Set(items.map(i => i.id))
-  const next = (masonry.value as any[]).filter(i => !ids.has(i.id))
-  masonry.value = next
-  await nextTick()
-
-  // If all items were removed, either refresh current page or load next based on prop
-  if (next.length === 0 && paginationHistory.value.length > 0) {
-    if (props.autoRefreshOnEmpty) {
-      await refreshCurrentPage()
-    } else {
-      try {
-        await loadNext()
-        // Force backfill from 0 to ensure viewport is filled
-        await maybeBackfillToTarget(0, true)
-      } catch { }
-    }
-    return
-  }
-
-  // Commit DOM updates without forcing sync reflow
-  await new Promise<void>(r => requestAnimationFrame(() => r()))
-  // Start FLIP on next frame
-  requestAnimationFrame(() => {
-    refreshLayout(next)
-  })
-}
-
-/**
- * Restore a single item at its original index.
- * This is useful for undo operations where an item needs to be restored to its exact position.
- * Handles all index calculation and layout recalculation internally.
- * @param item - Item to restore
- * @param index - Original index of the item
- */
-async function restore(item: any, index: number) {
-  if (!item) return
-
-  const current = masonry.value as any[]
-  const existingIndex = current.findIndex(i => i.id === item.id)
-  if (existingIndex !== -1) return // Item already exists
-
-  // Insert at the original index (clamped to valid range)
-  const newItems = [...current]
-  const targetIndex = Math.min(index, newItems.length)
-  newItems.splice(targetIndex, 0, item)
-
-  // Update the masonry array
-  masonry.value = newItems
-  await nextTick()
-
-  // Trigger layout recalculation (same pattern as remove)
-  if (!useSwipeMode.value) {
-    // Commit DOM updates without forcing sync reflow
-    await new Promise<void>(r => requestAnimationFrame(() => r()))
-    // Start FLIP on next frame
-    requestAnimationFrame(() => {
-      refreshLayout(newItems)
-    })
-  }
-}
-
-/**
- * Restore multiple items at their original indices.
- * This is useful for undo operations where items need to be restored to their exact positions.
- * Handles all index calculation and layout recalculation internally.
- * @param items - Array of items to restore
- * @param indices - Array of original indices for each item (must match items array length)
- */
-async function restoreMany(items: any[], indices: number[]) {
-  if (!items || items.length === 0) return
-  if (!indices || indices.length !== items.length) {
-    console.warn('[Masonry] restoreMany: items and indices arrays must have the same length')
-    return
-  }
-
-  const current = masonry.value as any[]
-  const existingIds = new Set(current.map(i => i.id))
-
-  // Filter out items that already exist and pair with their indices
-  const itemsToRestore: Array<{ item: any; index: number }> = []
-  for (let i = 0; i < items.length; i++) {
-    if (!existingIds.has(items[i]?.id)) {
-      itemsToRestore.push({ item: items[i], index: indices[i] })
-    }
-  }
-
-  if (itemsToRestore.length === 0) return
-
-  // Build the final array by merging current items and restored items
-  // Strategy: Build position by position - for each position, decide if it should be
-  // a restored item (at its original index) or a current item (accounting for shifts)
-
-  // Create a map of restored items by their original index for O(1) lookup
-  const restoredByIndex = new Map<number, any>()
-  for (const { item, index } of itemsToRestore) {
-    restoredByIndex.set(index, item)
-  }
-
-  // Find the maximum position we need to consider
-  const maxRestoredIndex = itemsToRestore.length > 0
-    ? Math.max(...itemsToRestore.map(({ index }) => index))
-    : -1
-  const maxPosition = Math.max(current.length - 1, maxRestoredIndex)
-
-  // Build the final array position by position
-  // Key insight: Current array items are in "shifted" positions (missing the removed items).
-  // When we restore items at their original positions, current items naturally shift back.
-  // We can build the final array by iterating positions and using items sequentially.
-  const newItems: any[] = []
-  let currentArrayIndex = 0 // Track which current item we should use next
-
-  // Iterate through all positions up to the maximum we need
-  for (let position = 0; position <= maxPosition; position++) {
-    // If there's a restored item that belongs at this position, use it
-    if (restoredByIndex.has(position)) {
-      newItems.push(restoredByIndex.get(position)!)
-    } else {
-      // Otherwise, this position should be filled by the next current item
-      // Since current array is missing restored items, items are shifted left.
-      // By using them sequentially, they naturally end up in the correct positions.
-      if (currentArrayIndex < current.length) {
-        newItems.push(current[currentArrayIndex])
-        currentArrayIndex++
-      }
-    }
-  }
-
-  // Add any remaining current items that come after the last restored position
-  // (These are items that were originally after maxRestoredIndex)
-  while (currentArrayIndex < current.length) {
-    newItems.push(current[currentArrayIndex])
-    currentArrayIndex++
-  }
-
-  // Update the masonry array
-  masonry.value = newItems
-  await nextTick()
-
-  // Trigger layout recalculation (same pattern as removeMany)
-  if (!useSwipeMode.value) {
-    // Commit DOM updates without forcing sync reflow
-    await new Promise<void>(r => requestAnimationFrame(() => r()))
-    // Start FLIP on next frame
-    requestAnimationFrame(() => {
-      refreshLayout(newItems)
-    })
-  }
-}
+// Item management functions (remove, removeMany, restore, restoreMany, removeAll) are now in useMasonryItems composable
 
 function scrollToTop(options?: ScrollToOptions) {
   if (container.value) {
@@ -945,131 +421,24 @@ function scrollTo(options: { top?: number; left?: number; behavior?: ScrollBehav
   }
 }
 
-async function removeAll() {
-  // Scroll to top first for better UX
-  scrollToTop({ behavior: 'smooth' })
+// removeAll is now in useMasonryItems composable (removeAllItems)
 
-  // Clear all items
-  masonry.value = []
-
-  // Recalculate height to 0
-  containerHeight.value = 0
-
-  await nextTick()
-
-  // Emit completion event
-  emits('remove-all:complete')
-}
-
+// onResize is now in useMasonryLayout composable (onResizeLayout)
 function onResize() {
-  columns.value = getColumnCount(layout.value as any, containerWidth.value)
-  refreshLayout(masonry.value as any)
+  onResizeLayout()
   if (container.value) {
     viewportTop.value = container.value.scrollTop
     viewportHeight.value = container.value.clientHeight
   }
 }
 
-let backfillActive = false
-const cancelRequested = ref(false)
-
-async function maybeBackfillToTarget(baselineCount: number, force = false) {
-  if (!force && !props.backfillEnabled) return
-  if (backfillActive) return
-  if (cancelRequested.value) return
-  // Don't backfill if we've reached the end
-  if (hasReachedEnd.value) return
-
-  const targetCount = (baselineCount || 0) + (props.pageSize || 0)
-  if (!props.pageSize || props.pageSize <= 0) return
-
-  const lastNext = paginationHistory.value[paginationHistory.value.length - 1]
-  if (lastNext == null) {
-    hasReachedEnd.value = true
-    return
-  }
-
-  if ((masonry.value as any[]).length >= targetCount) return
-
-  backfillActive = true
-  // Set loading to true at the start of backfill and keep it true throughout
-  isLoading.value = true
-  try {
-    let calls = 0
-    emits('backfill:start', { target: targetCount, fetched: (masonry.value as any[]).length, calls })
-
-    while (
-      (masonry.value as any[]).length < targetCount &&
-      calls < props.backfillMaxCalls &&
-      paginationHistory.value[paginationHistory.value.length - 1] != null &&
-      !cancelRequested.value &&
-      !hasReachedEnd.value &&
-      backfillActive
-    ) {
-      await waitWithProgress(props.backfillDelayMs, (remaining, total) => {
-        emits('backfill:tick', {
-          fetched: (masonry.value as any[]).length,
-          target: targetCount,
-          calls,
-          remainingMs: remaining,
-          totalMs: total
-        })
-      })
-
-      if (cancelRequested.value || !backfillActive) break
-
-      const currentPage = paginationHistory.value[paginationHistory.value.length - 1]
-      if (currentPage == null) {
-        hasReachedEnd.value = true
-        break
-      }
-      try {
-        // Don't toggle isLoading here - keep it true throughout backfill
-        // Check cancellation before starting getContent to avoid unnecessary requests
-        if (cancelRequested.value || !backfillActive) break
-        const response = await getContent(currentPage)
-        if (cancelRequested.value || !backfillActive) break
-        // Clear error on successful load
-        loadError.value = null
-        paginationHistory.value.push(response.nextPage)
-        // Update hasReachedEnd if nextPage is null
-        if (response.nextPage == null) {
-          hasReachedEnd.value = true
-        }
-      } catch (error) {
-        // Set load error but don't break the backfill loop unless cancelled
-        if (cancelRequested.value || !backfillActive) break
-        loadError.value = normalizeError(error)
-      }
-
-      calls++
-    }
-
-    emits('backfill:stop', { fetched: (masonry.value as any[]).length, calls })
-  } finally {
-    backfillActive = false
-    // Only set loading to false when backfill completes or is cancelled
-    isLoading.value = false
-  }
-}
-
-function cancelLoad() {
-  const wasBackfilling = backfillActive
-  cancelRequested.value = true
-  isLoading.value = false
-  // Set backfillActive to false to immediately stop backfilling
-  // The backfill loop checks this flag and will exit on the next iteration
-  backfillActive = false
-  // If backfill was active, emit stop event immediately
-  if (wasBackfilling) {
-    emits('backfill:stop', { fetched: (masonry.value as any[]).length, calls: 0, cancelled: true })
-  }
-}
+// maybeBackfillToTarget, cancelLoad are now in useMasonryPagination composable
+// Removed: backfillActive, cancelRequested - now internal to pagination composable
 
 function reset() {
-  // Cancel ongoing work, then immediately clear cancel so new loads can start
+  // Cancel ongoing work
   cancelLoad()
-  cancelRequested.value = false
+
   if (container.value) {
     container.value.scrollTo({
       top: 0,
@@ -1084,10 +453,8 @@ function reset() {
   hasReachedEnd.value = false  // Reset end flag
   loadError.value = null  // Reset error flag
 
-  scrollProgress.value = {
-    distanceToTrigger: 0,
-    isNearTrigger: false
-  }
+  // Reset virtualization state
+  resetVirtualization()
 }
 
 function destroy() {
@@ -1102,27 +469,17 @@ function destroy() {
   hasReachedEnd.value = false
   loadError.value = null
   isLoading.value = false
-  backfillActive = false
-  cancelRequested.value = false
 
   // Reset swipe mode state
   currentSwipeIndex.value = 0
   swipeOffset.value = 0
   isDragging.value = false
 
-  // Reset viewport state
-  viewportTop.value = 0
-  viewportHeight.value = 0
-  virtualizing.value = false
-
-  // Reset scroll progress
-  scrollProgress.value = {
-    distanceToTrigger: 0,
-    isNearTrigger: false
-  }
+  // Reset virtualization state
+  resetVirtualization()
 
   // Reset invalid dimension tracking
-  invalidDimensionIds.value.clear()
+  resetDimensions()
 
   // Scroll to top if container exists
   if (container.value) {
@@ -1133,35 +490,10 @@ function destroy() {
   }
 }
 
+// Scroll handler is now handled by virtualization composable's updateViewport
 const debouncedScrollHandler = debounce(async () => {
   if (useSwipeMode.value) return // Skip scroll handling in swipe mode
-
-  if (container.value) {
-    const scrollTop = container.value.scrollTop
-    const clientHeight = container.value.clientHeight || window.innerHeight
-    // Ensure viewportHeight is never 0 (fallback to window height if container height is 0)
-    const safeClientHeight = clientHeight > 0 ? clientHeight : window.innerHeight
-    viewportTop.value = scrollTop
-    viewportHeight.value = safeClientHeight
-    // Log when scroll handler runs (helpful for debugging viewport issues)
-    if (import.meta.env.DEV) {
-      console.log('[Masonry] scroll: viewport updated', {
-        scrollTop,
-        clientHeight: safeClientHeight,
-        itemsCount: masonry.value.length,
-        visibleItemsCount: visibleMasonry.value.length
-      })
-    }
-  }
-  // Gate transitions for virtualization-only DOM changes
-  virtualizing.value = true
-  await nextTick()
-  await new Promise<void>(r => requestAnimationFrame(() => r()))
-  virtualizing.value = false
-
-  const heights = calculateColumnHeights(masonry.value as any, columns.value)
-  handleScroll(heights as any)
-  updateScrollProgress(heights)
+  await updateViewportVirtualization()
 }, 200)
 
 const debouncedResizeHandler = debounce(onResize, 200)
@@ -1251,20 +583,15 @@ async function restoreItems(items: any[], page: any, next: any) {
     }
   } else {
     // In masonry mode, refresh layout with the restored items
-    // This is the same pattern as init() - refreshLayout handles all the layout calculation
     refreshLayout(items)
 
     // Update viewport state from container's scroll position
-    // Critical after refresh when browser may restore scroll position
-    // This matches the pattern in init()
     if (container.value) {
       viewportTop.value = container.value.scrollTop
       viewportHeight.value = container.value.clientHeight || window.innerHeight
     }
 
     // Update again after DOM updates to catch browser scroll restoration
-    // The debounced scroll handler will also catch any scroll changes
-    // This matches the pattern in init()
     await nextTick()
     if (container.value) {
       viewportTop.value = container.value.scrollTop
@@ -1543,7 +870,7 @@ onUnmounted(() => {
           }">
           <div class="w-full h-full flex items-center justify-center p-4">
             <div class="w-full h-full max-w-full max-h-full relative">
-              <slot :item="item" :remove="remove" :index="item.originalIndex ?? props.items.indexOf(item)">
+              <slot :item="item" :remove="remove" :index="item.originalIndex ?? masonry.indexOf(item)">
                 <MasonryItem :item="item" :remove="remove" :header-height="layout.header" :footer-height="layout.footer"
                   :in-swipe-mode="true" :is-active="index === currentSwipeIndex"
                   @preload:success="(p) => emits('item:preload:success', p)"
@@ -1586,7 +913,7 @@ onUnmounted(() => {
           <div v-for="(item, i) in visibleMasonry" :key="`${item.page}-${item.id}`" class="absolute masonry-item"
             v-bind="getItemAttributes(item, i)">
             <!-- Use default slot if provided, otherwise use MasonryItem -->
-            <slot :item="item" :remove="remove" :index="item.originalIndex ?? items.indexOf(item)">
+            <slot :item="item" :remove="remove" :index="item.originalIndex ?? masonry.indexOf(item)">
               <MasonryItem :item="item" :remove="remove" :header-height="layout.header" :footer-height="layout.footer"
                 :in-swipe-mode="false" :is-active="false" @preload:success="(p) => emits('item:preload:success', p)"
                 @preload:error="(p) => emits('item:preload:error', p)"
