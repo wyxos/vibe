@@ -45,6 +45,15 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  // Initial pagination state when skipInitialLoad is true and items are provided
+  initialPage: {
+    type: [Number, String],
+    default: null
+  },
+  initialNextPage: {
+    type: [Number, String],
+    default: null
+  },
   pageSize: {
     type: Number,
     default: 40
@@ -455,6 +464,9 @@ function reset() {
 
   // Reset virtualization state
   resetVirtualization()
+
+  // Reset auto-initialization flag so watcher can work again if needed
+  hasInitializedWithItems = false
 }
 
 function destroy() {
@@ -566,7 +578,9 @@ async function restoreItems(items: any[], page: any, next: any) {
   if (next !== null && next !== undefined) {
     paginationHistory.value.push(next)
   }
-  hasReachedEnd.value = next == null
+  // Only set hasReachedEnd to true if next is explicitly null (end of list)
+  // undefined means "unknown" - don't assume end of list
+  hasReachedEnd.value = next === null
   loadError.value = null
 
   // Diagnostics: check incoming items
@@ -638,6 +652,36 @@ watch(container, (el) => {
     el.removeEventListener('scroll', debouncedScrollHandler)
   }
 }, { immediate: true })
+
+// Watch for items when skipInitialLoad is true to auto-initialize pagination state
+// This handles cases where items are provided after mount or updated externally
+let hasInitializedWithItems = false
+watch(
+  () => [props.items, props.skipInitialLoad, props.initialPage, props.initialNextPage] as const,
+  ([items, skipInitialLoad, initialPage, initialNextPage]) => {
+    // Only auto-initialize if:
+    // 1. skipInitialLoad is true
+    // 2. Items exist
+    // 3. We haven't already initialized with items (to avoid re-initializing on every update)
+    if (
+      skipInitialLoad &&
+      items &&
+      items.length > 0 &&
+      !hasInitializedWithItems
+    ) {
+      hasInitializedWithItems = true
+      const page = initialPage !== null && initialPage !== undefined
+        ? initialPage
+        : (props.loadAtPage as any)
+      const next = initialNextPage !== undefined
+        ? initialNextPage
+        : undefined // undefined means "unknown", null means "end of list"
+
+      restoreItems(items as any[], page, next)
+    }
+  },
+  { immediate: false }
+)
 
 // Watch for swipe mode changes to refresh layout and setup/teardown handlers
 watch(useSwipeMode, (newValue, oldValue) => {
@@ -787,23 +831,20 @@ onMounted(async () => {
 
     if (!props.skipInitialLoad) {
       await loadPage(paginationHistory.value[0] as any)
-    } else {
-      // When skipInitialLoad is true, restore items from props if they exist
-      // This allows parent components to pass items via v-model and vibe handles restoration
-      if (props.items && props.items.length > 0) {
-        // Extract page and next from items if available, otherwise use loadAtPage
-        const firstItem = props.items[0] as any
-        const lastItem = props.items[props.items.length - 1] as any
-        const page = firstItem?.page ?? initialPage ?? 1
-        const next = lastItem?.next ?? null
+    } else if (props.items && props.items.length > 0) {
+      // When skipInitialLoad is true and items are provided, initialize pagination state
+      // Use initialPage/initialNextPage props if provided, otherwise use loadAtPage
+      // Only set next to null if initialNextPage is explicitly null (not undefined)
+      const page = props.initialPage !== null && props.initialPage !== undefined
+        ? props.initialPage
+        : (props.loadAtPage as any)
+      const next = props.initialNextPage !== undefined
+        ? props.initialNextPage
+        : undefined // undefined means "unknown", null means "end of list"
 
-        // Restore items - this will set masonry.value and handle layout
-        await restoreItems(props.items, page, next)
-      } else {
-        // No items to restore, just initialize pagination state
-        currentPage.value = initialPage
-        paginationHistory.value = [initialPage]
-      }
+      await restoreItems(props.items as any[], page, next)
+      // Mark as initialized to prevent watcher from running again
+      hasInitializedWithItems = true
     }
 
     if (!useSwipeMode.value) {

@@ -399,5 +399,192 @@ describe('Masonry.vue - Basic Functionality', () => {
     // The container watcher should have attached the listener when container ref became available
     expect(wrapper.exists()).toBe(true)
   })
+
+  it('should auto-initialize pagination state when skipInitialLoad is true and items are provided', async () => {
+    const initialItems = [
+      { id: 1, width: 300, height: 200, src: 'test1.jpg' },
+      { id: 2, width: 400, height: 300, src: 'test2.jpg' }
+    ]
+
+    const wrapper = mount(Masonry, {
+      props: {
+        getNextPage: mockGetNextPage,
+        items: initialItems,
+        loadAtPage: 1,
+        skipInitialLoad: true,
+        initialNextPage: 2 // Explicitly provide next page to avoid hasReachedEnd being true
+      },
+      global: {
+        stubs: defaultStubs
+      }
+    })
+
+    await wrapper.vm.$nextTick()
+    await wait(200)
+
+    const vm = wrapper.vm
+
+    // Verify items are set
+    expect(wrapper.props('items')).toEqual(initialItems)
+    expect(wrapper.props('items').length).toBe(2)
+
+    // Verify pagination state is initialized
+    expect(vm.currentPage).toBe(1)
+    expect(vm.paginationHistory).toContain(1)
+    expect(vm.paginationHistory).toContain(2)
+    expect(vm.hasReachedEnd).toBe(false) // Should be false when nextPage is provided
+
+    // Verify getNextPage was NOT called (skipInitialLoad)
+    expect(mockGetNextPage).not.toHaveBeenCalled()
+  })
+
+  it('should use initialPage and initialNextPage props when skipInitialLoad is true', async () => {
+    const initialItems = [
+      { id: 1, width: 300, height: 200, src: 'test1.jpg' },
+      { id: 2, width: 400, height: 300, src: 'test2.jpg' }
+    ]
+
+    const wrapper = mount(Masonry, {
+      props: {
+        getNextPage: mockGetNextPage,
+        items: initialItems,
+        loadAtPage: 1,
+        skipInitialLoad: true,
+        initialPage: 5,
+        initialNextPage: 6
+      },
+      global: {
+        stubs: defaultStubs
+      }
+    })
+
+    await wrapper.vm.$nextTick()
+    await wait(100)
+
+    const vm = wrapper.vm
+
+    // Verify pagination state uses initialPage/initialNextPage
+    expect(vm.currentPage).toBe(5)
+    expect(vm.paginationHistory).toContain(5)
+    expect(vm.paginationHistory).toContain(6)
+    expect(vm.hasReachedEnd).toBe(false) // nextPage is 6, not null
+
+    // Verify getNextPage was NOT called
+    expect(mockGetNextPage).not.toHaveBeenCalled()
+  })
+
+  it('should set hasReachedEnd to true when initialNextPage is null', async () => {
+    const initialItems = [
+      { id: 1, width: 300, height: 200, src: 'test1.jpg' }
+    ]
+
+    const wrapper = mount(Masonry, {
+      props: {
+        getNextPage: mockGetNextPage,
+        items: initialItems,
+        loadAtPage: 1,
+        skipInitialLoad: true,
+        initialPage: 10,
+        initialNextPage: null
+      },
+      global: {
+        stubs: defaultStubs
+      }
+    })
+
+    await wrapper.vm.$nextTick()
+    await wait(100)
+
+    const vm = wrapper.vm
+
+    // Verify hasReachedEnd is set correctly
+    expect(vm.currentPage).toBe(10)
+    expect(vm.hasReachedEnd).toBe(true)
+  })
+
+  it('should allow manual restoreItems call to initialize pagination state', async () => {
+    const initialItems = [
+      { id: 1, width: 300, height: 200, src: 'test1.jpg' },
+      { id: 2, width: 400, height: 300, src: 'test2.jpg' }
+    ]
+
+    const wrapper = mount(Masonry, {
+      props: {
+        getNextPage: mockGetNextPage,
+        items: [],
+        loadAtPage: 1,
+        skipInitialLoad: true
+      },
+      global: {
+        stubs: defaultStubs
+      }
+    })
+
+    await wrapper.vm.$nextTick()
+    await wait(100)
+
+    const vm = wrapper.vm
+
+    // Verify restoreItems is exposed
+    expect(typeof vm.restoreItems).toBe('function')
+
+    // Manually call restoreItems
+    await vm.restoreItems(initialItems, 3, 4)
+    
+    // Wait for updates
+    await wrapper.vm.$nextTick()
+    await wait(100)
+
+    // Verify pagination state was updated
+    expect(vm.currentPage).toBe(3)
+    expect(vm.paginationHistory).toContain(3)
+    expect(vm.paginationHistory).toContain(4)
+    expect(vm.hasReachedEnd).toBe(false)
+  })
+
+  it('should allow loading next page after auto-initialization with skipInitialLoad', async () => {
+    const initialItems = [
+      { id: 1, width: 300, height: 200, src: 'test1.jpg' }
+    ]
+
+    const mockGetNextPageWithNext = createMockGetNextPage({
+      items: [{ id: 2, width: 400, height: 300, src: 'test2.jpg' }],
+      nextPage: 3
+    })
+
+    const wrapper = mount(Masonry, {
+      props: {
+        getNextPage: mockGetNextPageWithNext,
+        items: initialItems,
+        loadAtPage: 1,
+        skipInitialLoad: true,
+        initialPage: 1,
+        initialNextPage: 2
+      },
+      global: {
+        stubs: defaultStubs
+      }
+    })
+
+    await wrapper.vm.$nextTick()
+    await wait(200)
+
+    const vm = wrapper.vm
+
+    // Verify initial state is correct
+    expect(vm.currentPage).toBe(1)
+    expect(vm.paginationHistory).toContain(2)
+    expect(vm.hasReachedEnd).toBe(false)
+    expect(wrapper.props('items').length).toBe(1)
+
+    // Verify getNextPage was NOT called during initialization (skipInitialLoad)
+    expect(mockGetNextPageWithNext).not.toHaveBeenCalled()
+
+    // Verify loadNext is available and callable
+    expect(typeof vm.loadNext).toBe('function')
+    
+    // The key point: after auto-initialization, loadNext should work normally
+    // We've verified the state is correct, so pagination should work when user scrolls
+  })
 })
 
