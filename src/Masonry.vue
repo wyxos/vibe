@@ -256,7 +256,7 @@ const leave = onLeave
 
 // Initialize pagination composable
 const pagination = useMasonryPagination({
-  getNextPage: props.getNextPage,
+  getNextPage: props.getNextPage as (page: any) => Promise<{ items: any[]; nextPage: any }>,
   masonry: masonry as any,
   isLoading,
   hasReachedEnd,
@@ -305,7 +305,7 @@ const { handleScroll } = useMasonryScroll({
 })
 
 // Update virtualization handleScroll to use the scroll handler
-virtualization.handleScroll = handleScroll
+virtualization.handleScroll.value = handleScroll
 
 // Initialize items composable
 const items = useMasonryItems({

@@ -16,9 +16,11 @@ export function useMasonryVirtualization(options: UseMasonryVirtualizationOption
     container,
     columns,
     virtualBufferPx,
-    loadThresholdPx,
-    handleScroll
+    loadThresholdPx
   } = options
+
+  // Use a ref for handleScroll so it can be updated after initialization
+  const handleScrollRef = ref<(precomputedHeights?: number[]) => void>(options.handleScroll)
 
   // Virtualization viewport state
   const viewportTop = ref(0)
@@ -109,7 +111,7 @@ export function useMasonryVirtualization(options: UseMasonryVirtualizationOption
     virtualizing.value = false
 
     const heights = calculateColumnHeights(masonry.value as any, columns.value)
-    handleScroll(heights as any)
+    handleScrollRef.value(heights as any)
     updateScrollProgress(heights)
   }
 
@@ -131,7 +133,8 @@ export function useMasonryVirtualization(options: UseMasonryVirtualizationOption
     visibleMasonry,
     updateScrollProgress,
     updateViewport,
-    reset
+    reset,
+    handleScroll: handleScrollRef
   }
 }
 
