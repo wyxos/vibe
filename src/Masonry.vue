@@ -356,11 +356,36 @@ const visibleMasonry = computed(() => {
   const bottom = viewportTop.value + viewportHeight.value + VIRTUAL_BUFFER_PX
   const items = masonry.value as any[]
   if (!items || items.length === 0) return [] as any[]
-  return items.filter((it: any) => {
+
+  // Filter items that have valid positions and are within viewport
+  const visible = items.filter((it: any) => {
+    // If item doesn't have position yet, include it (will be filtered once layout is calculated)
+    if (typeof it.top !== 'number' || typeof it.columnHeight !== 'number') {
+      return true // Include items without positions to avoid hiding them prematurely
+    }
     const itemTop = it.top
     const itemBottom = it.top + it.columnHeight
     return itemBottom >= top && itemTop <= bottom
   })
+
+  // Log if we're filtering out items (for debugging)
+  if (import.meta.env.DEV && items.length > 0 && visible.length === 0 && viewportHeight.value > 0) {
+    const itemsWithPositions = items.filter((it: any) =>
+      typeof it.top === 'number' && typeof it.columnHeight === 'number'
+    )
+    console.warn('[Masonry] visibleMasonry: no visible items', {
+      totalItems: items.length,
+      itemsWithPositions: itemsWithPositions.length,
+      viewportTop: viewportTop.value,
+      viewportHeight: viewportHeight.value,
+      top,
+      bottom,
+      firstItemTop: itemsWithPositions[0]?.top,
+      lastItemTop: itemsWithPositions[itemsWithPositions.length - 1]?.top
+    })
+  }
+
+  return visible
 })
 
 const { handleScroll } = useMasonryScroll({
@@ -430,6 +455,7 @@ defineExpose({
   paginationHistory,
   cancelLoad,
   scrollToTop,
+  scrollTo,
   totalItems: computed(() => (masonry.value as any[]).length),
   currentBreakpoint
 })
@@ -909,6 +935,21 @@ function scrollToTop(options?: ScrollToOptions) {
   }
 }
 
+function scrollTo(options: { top?: number; left?: number; behavior?: ScrollBehavior }) {
+  if (container.value) {
+    container.value.scrollTo({
+      top: options.top ?? container.value.scrollTop,
+      left: options.left ?? container.value.scrollLeft,
+      behavior: options.behavior ?? 'auto',
+    })
+    // Update viewport state immediately after scrolling
+    if (container.value) {
+      viewportTop.value = container.value.scrollTop
+      viewportHeight.value = container.value.clientHeight || window.innerHeight
+    }
+  }
+}
+
 async function removeAll() {
   // Scroll to top first for better UX
   scrollToTop({ behavior: 'smooth' })
@@ -1101,8 +1142,21 @@ const debouncedScrollHandler = debounce(async () => {
   if (useSwipeMode.value) return // Skip scroll handling in swipe mode
 
   if (container.value) {
-    viewportTop.value = container.value.scrollTop
-    viewportHeight.value = container.value.clientHeight
+    const scrollTop = container.value.scrollTop
+    const clientHeight = container.value.clientHeight || window.innerHeight
+    // Ensure viewportHeight is never 0 (fallback to window height if container height is 0)
+    const safeClientHeight = clientHeight > 0 ? clientHeight : window.innerHeight
+    viewportTop.value = scrollTop
+    viewportHeight.value = safeClientHeight
+    // Log when scroll handler runs (helpful for debugging viewport issues)
+    if (import.meta.env.DEV) {
+      console.log('[Masonry] scroll: viewport updated', {
+        scrollTop,
+        clientHeight: safeClientHeight,
+        itemsCount: masonry.value.length,
+        visibleItemsCount: visibleMasonry.value.length
+      })
+    }
   }
   // Gate transitions for virtualization-only DOM changes
   virtualizing.value = true
@@ -1266,7 +1320,23 @@ function init(items: any[], page: any, next: any) {
     }
   } else {
     refreshLayout([...(masonry.value as any[]), ...items])
-    updateScrollProgress()
+
+    // Update viewport state from container's scroll position
+    // Critical after refresh when browser may restore scroll position
+    if (container.value) {
+      viewportTop.value = container.value.scrollTop
+      viewportHeight.value = container.value.clientHeight || window.innerHeight
+    }
+
+    // Update again after DOM updates to catch browser scroll restoration
+    // The debounced scroll handler will also catch any scroll changes
+    nextTick(() => {
+      if (container.value) {
+        viewportTop.value = container.value.scrollTop
+        viewportHeight.value = container.value.clientHeight || window.innerHeight
+        updateScrollProgress()
+      }
+    })
   }
 }
 
