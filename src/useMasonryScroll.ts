@@ -31,7 +31,7 @@ export function useMasonryScroll({
   let cleanupInProgress = false
   let lastScrollTop = 0
 
-  async function handleScroll(precomputedHeights?: number[]) {
+  async function handleScroll(precomputedHeights?: number[], forceCheck = false) {
     if (!container.value) return
 
     const columnHeights = precomputedHeights ?? calculateColumnHeights(masonry.value, columns.value)
@@ -47,7 +47,8 @@ export function useMasonryScroll({
       : Math.max(0, tallest + threshold)
     const nearBottom = scrollerBottom >= triggerPoint
 
-    if (nearBottom && isScrollingDown && !isLoading.value) {
+    // Allow loading if near bottom and either scrolling down OR forceCheck is true (for restoration)
+    if (nearBottom && (isScrollingDown || forceCheck) && !isLoading.value) {
       await loadNext()
       await nextTick()
       return
