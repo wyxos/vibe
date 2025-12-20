@@ -25,6 +25,7 @@ export interface UseMasonryPaginationOptions {
     (event: 'backfill:start', payload: { target: number; fetched: number; calls: number }): void
     (event: 'backfill:tick', payload: { fetched: number; target: number; calls: number; remainingMs: number; totalMs: number }): void
     (event: 'backfill:stop', payload: { fetched: number; calls: number; cancelled?: boolean }): void
+    (event: 'loading:stop', payload: { fetched: number }): void
   }
 }
 
@@ -190,6 +191,7 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
       backfillActive = false
       // Only set loading to false when backfill completes or is cancelled
       isLoading.value = false
+      emits('loading:stop', { fetched: masonry.value.length })
     }
   }
 
@@ -242,6 +244,7 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
       if (nextPageToLoad == null) {
         hasReachedEnd.value = true
         isLoading.value = false
+        emits('loading:stop', { fetched: masonry.value.length })
         return
       }
       const response = await getContent(nextPageToLoad)
@@ -262,6 +265,7 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
       throw error
     } finally {
       isLoading.value = false
+      emits('loading:stop', { fetched: masonry.value.length })
     }
   }
 
@@ -314,6 +318,7 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
       throw error
     } finally {
       isLoading.value = false
+      emits('loading:stop', { fetched: masonry.value.length })
     }
   }
 
@@ -328,6 +333,7 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
     if (wasBackfilling) {
       emits('backfill:stop', { fetched: masonry.value.length, calls: 0, cancelled: true })
     }
+    emits('loading:stop', { fetched: masonry.value.length })
   }
 
   return {

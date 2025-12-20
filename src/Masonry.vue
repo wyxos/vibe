@@ -187,6 +187,7 @@ const emits = defineEmits([
   'retry:start',
   'retry:tick',
   'retry:stop',
+  'loading:stop',
   'remove-all:complete',
   // Re-emit item-level preload events from the default MasonryItem
   'item:preload:success',
@@ -611,7 +612,7 @@ async function restoreItems(items: any[], page: any, next: any) {
       viewportTop.value = container.value.scrollTop
       viewportHeight.value = container.value.clientHeight || window.innerHeight
       updateScrollProgress()
-      
+
       // Check if user is already at the bottom after restoration
       // If so, trigger loading to restore scroll-to-bottom functionality
       // Wait for layout to be fully calculated before checking
@@ -624,7 +625,7 @@ async function restoreItems(items: any[], page: any, next: any) {
         ? Math.max(0, tallest - threshold)
         : Math.max(0, tallest + threshold)
       const nearBottom = scrollerBottom >= triggerPoint
-      
+
       // If user is at bottom and there's a next page, trigger loading
       // This restores scroll-to-bottom functionality after tab restoration
       if (nearBottom && !hasReachedEnd.value && !isLoading.value && paginationHistory.value.length > 0) {
