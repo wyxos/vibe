@@ -30,6 +30,7 @@ const emit = defineEmits<{
   (e: 'mouse-enter', payload: { item: any; type: 'image' | 'video' }): void
   (e: 'mouse-leave', payload: { item: any; type: 'image' | 'video' }): void
   (e: 'in-view', payload: { item: any; type: 'image' | 'video' }): void
+  (e: 'in-view-and-loaded', payload: { item: any; type: 'image' | 'video'; src: string }): void
 }>()
 
 const imageLoaded = ref(false);
@@ -40,6 +41,7 @@ const videoError = ref(false);
 const videoSrc = ref<string | null>(null);
 const isInView = ref(false);
 const isFullyInView = ref(false); // Track when fully visible (for in-view event)
+const isFullyInViewAndLoaded = ref(false); // Track when both fully in view AND loaded (for in-view-and-loaded event)
 const isLoading = ref(false);
 const showMedia = ref(false); // Controls fade-in animation
 const containerRef = ref<HTMLElement | null>(null);
@@ -50,6 +52,23 @@ let intersectionObserver: IntersectionObserver | null = null;
 const mediaType = computed(() => props.type ?? props.item?.type ?? 'image');
 const showNotFound = computed(() => props.notFound ?? props.item?.notFound ?? false);
 const isSwipeMode = computed(() => !!props.inSwipeMode);
+
+/**
+ * Check if item is both fully in view AND loaded, then emit in-view-and-loaded event.
+ * This event only fires once when both conditions are met.
+ */
+function checkAndEmitInViewAndLoaded(type: 'image' | 'video', src: string): void {
+  // Only emit if:
+  // 1. Item is fully in view
+  // 2. Media is loaded (imageLoaded for images, videoLoaded for videos)
+  // 3. We haven't already emitted this event
+  const isLoaded = type === 'image' ? imageLoaded.value : videoLoaded.value;
+
+  if (isFullyInView.value && isLoaded && !isFullyInViewAndLoaded.value) {
+    isFullyInViewAndLoaded.value = true;
+    emit('in-view-and-loaded', { item: props.item, type, src });
+  }
+}
 
 function emitMouseEnter(type: 'image' | 'video'): void {
   emit('mouse-enter', { item: props.item, type });
@@ -121,6 +140,10 @@ function preloadImage(src: string): Promise<void> {
         await new Promise(resolve => setTimeout(resolve, 100));
         showMedia.value = true;
         emit('preload:success', { item: props.item, type: 'image', src });
+
+        // Check if we should emit in-view-and-loaded event
+        checkAndEmitInViewAndLoaded('image', src);
+
         resolve();
       }, remaining);
     };
@@ -165,6 +188,10 @@ function preloadVideo(src: string): Promise<void> {
         await new Promise(resolve => setTimeout(resolve, 100));
         showMedia.value = true;
         emit('preload:success', { item: props.item, type: 'video', src });
+
+        // Check if we should emit in-view-and-loaded event
+        checkAndEmitInViewAndLoaded('video', src);
+
         resolve();
       }, remaining);
     };
@@ -225,7 +252,7 @@ async function startPreloading() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   // Set up Intersection Observer to detect when item comes into view
   // We set it up even for notFound items, but skip preloading
   if (!containerRef.value) return;
@@ -246,6 +273,13 @@ onMounted(() => {
         if (isFullyVisible && !isFullyInView.value) {
           isFullyInView.value = true;
           emit('in-view', { item: props.item, type: mediaType.value });
+
+          // Check if media is already loaded (item came into view after loading)
+          const currentSrc = mediaType.value === 'image' ? imageSrc.value : videoSrc.value;
+          const isLoaded = mediaType.value === 'image' ? imageLoaded.value : videoLoaded.value;
+          if (currentSrc && isLoaded) {
+            checkAndEmitInViewAndLoaded(mediaType.value, currentSrc);
+          }
         }
 
         // Start preloading when threshold is reached
@@ -265,6 +299,54 @@ onMounted(() => {
   );
 
   intersectionObserver.observe(containerRef.value);
+
+  // Check initial visibility for items already in viewport when mounted
+  // IntersectionObserver should fire immediately, but we check manually as a fallback
+  // Wait for Vue to finish rendering, then for layout to complete, then check visibility
+  await nextTick();
+
+  // Double requestAnimationFrame ensures layout is complete (especially for masonry layouts)
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      checkInitialVisibility();
+    });
+  });
+
+  // Also check after a small delay to catch items that become visible after masonry layout completes
+  setTimeout(() => {
+    checkInitialVisibility();
+  }, 100);
+
+  function checkInitialVisibility(): void {
+    if (!containerRef.value || isFullyInView.value) return;
+
+    // Use IntersectionObserver's logic: check if entry would have intersectionRatio >= 1.0
+    // We manually calculate this to ensure we catch items already in view
+    const rect = containerRef.value.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+
+    // Check if item is fully visible (intersectionRatio >= 1.0)
+    // Item is fully visible if it's completely within the viewport
+    const isFullyVisible = rect.top >= 0
+      && rect.bottom <= viewportHeight
+      && rect.left >= 0
+      && rect.right <= viewportWidth
+      && rect.height > 0
+      && rect.width > 0;
+
+    if (isFullyVisible) {
+      isFullyInView.value = true;
+      emit('in-view', { item: props.item, type: mediaType.value });
+
+      // Check if media is already loaded (item was already in view when mounted)
+      const currentSrc = mediaType.value === 'image' ? imageSrc.value : videoSrc.value;
+      const isLoaded = mediaType.value === 'image' ? imageLoaded.value : videoLoaded.value;
+      if (currentSrc && isLoaded) {
+        checkAndEmitInViewAndLoaded(mediaType.value, currentSrc);
+      }
+    }
+  }
 });
 
 onUnmounted(() => {
@@ -336,7 +418,7 @@ watch(
     <div v-if="headerHeight > 0" class="relative z-10" :style="{ height: `${headerHeight}px` }">
       <slot name="header" :item="item" :remove="remove" :imageLoaded="imageLoaded" :imageError="imageError"
         :videoLoaded="videoLoaded" :videoError="videoError" :showNotFound="showNotFound" :isLoading="isLoading"
-        :mediaType="mediaType" />
+        :mediaType="mediaType" :isFullyInView="isFullyInView" />
     </div>
 
     <!-- Body section (main content) -->
@@ -344,7 +426,7 @@ watch(
       <!-- Custom slot content (replaces default if provided) -->
       <slot :item="item" :remove="remove" :imageLoaded="imageLoaded" :imageError="imageError" :videoLoaded="videoLoaded"
         :videoError="videoError" :showNotFound="showNotFound" :isLoading="isLoading" :mediaType="mediaType"
-        :imageSrc="imageSrc" :videoSrc="videoSrc" :showMedia="showMedia">
+        :imageSrc="imageSrc" :videoSrc="videoSrc" :showMedia="showMedia" :isFullyInView="isFullyInView">
         <!-- Default content when no slot is provided -->
         <div class="w-full h-full rounded-xl overflow-hidden shadow-sm transition-all duration-300 bg-white relative">
           <!-- Not Found state -->
@@ -413,7 +495,7 @@ watch(
     <div v-if="footerHeight > 0" class="relative z-10" :style="{ height: `${footerHeight}px` }">
       <slot name="footer" :item="item" :remove="remove" :imageLoaded="imageLoaded" :imageError="imageError"
         :videoLoaded="videoLoaded" :videoError="videoError" :showNotFound="showNotFound" :isLoading="isLoading"
-        :mediaType="mediaType" />
+        :mediaType="mediaType" :isFullyInView="isFullyInView" />
     </div>
   </div>
 </template>
