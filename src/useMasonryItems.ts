@@ -23,35 +23,40 @@ export function useMasonryItems(options: UseMasonryItemsOptions) {
     paginationHistory
   } = options
 
-  async function remove(item: any) {
-    const next = masonry.value.filter(i => i.id !== item.id)
-    masonry.value = next
-    await nextTick()
+  // Batch remove operations to prevent visual glitches from rapid successive calls
+  let pendingRemoves = new Set<any>()
+  let removeTimeoutId: ReturnType<typeof setTimeout> | null = null
+  let isProcessingRemoves = false
 
-    // If all items were removed, either refresh current page or load next based on prop
-    if (next.length === 0 && paginationHistory.value.length > 0) {
-      if (autoRefreshOnEmpty) {
-        await refreshCurrentPage()
-      } else {
-        try {
-          await loadNext()
-          // Force backfill from 0 to ensure viewport is filled
-          // Pass baseline=0 and force=true to trigger backfill even if backfillEnabled was temporarily disabled
-          await maybeBackfillToTarget(0, true)
-        } catch { }
-      }
-      return
-    }
+  async function processPendingRemoves() {
+    if (pendingRemoves.size === 0 || isProcessingRemoves) return
 
-    // Commit DOM updates without forcing sync reflow
-    await new Promise<void>(r => requestAnimationFrame(() => r()))
-    // Start FLIP on next frame
-    requestAnimationFrame(() => {
-      refreshLayout(next)
-    })
+    isProcessingRemoves = true
+    const itemsToRemove = Array.from(pendingRemoves)
+    pendingRemoves.clear()
+    removeTimeoutId = null
+
+    // Use removeManyInternal for batched removal (bypass batching to avoid recursion)
+    await removeManyInternal(itemsToRemove)
+    isProcessingRemoves = false
   }
 
-  async function removeMany(items: any[]) {
+  async function remove(item: any) {
+    // Add to pending removes
+    pendingRemoves.add(item)
+
+    // Clear existing timeout
+    if (removeTimeoutId) {
+      clearTimeout(removeTimeoutId)
+    }
+
+    // Batch removes within a short time window (16ms = ~1 frame at 60fps)
+    removeTimeoutId = setTimeout(() => {
+      processPendingRemoves()
+    }, 16)
+  }
+
+  async function removeManyInternal(items: any[]) {
     if (!items || items.length === 0) return
     const ids = new Set(items.map(i => i.id))
     const next = masonry.value.filter(i => !ids.has(i.id))
@@ -78,6 +83,23 @@ export function useMasonryItems(options: UseMasonryItemsOptions) {
     requestAnimationFrame(() => {
       refreshLayout(next)
     })
+  }
+
+  async function removeMany(items: any[]) {
+    if (!items || items.length === 0) return
+
+    // Add all items to pending removes for batching
+    items.forEach(item => pendingRemoves.add(item))
+
+    // Clear existing timeout
+    if (removeTimeoutId) {
+      clearTimeout(removeTimeoutId)
+    }
+
+    // Batch removes within a short time window (16ms = ~1 frame at 60fps)
+    removeTimeoutId = setTimeout(() => {
+      processPendingRemoves()
+    }, 16)
   }
 
   /**
