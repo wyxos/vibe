@@ -62,7 +62,7 @@ const props = defineProps({
   mode: {
     type: String,
     default: 'backfill',
-    validator: (value: string) => ['backfill', 'none'].includes(value)
+    validator: (value: string) => ['backfill', 'none', 'refresh'].includes(value)
   },
   backfillDelayMs: {
     type: Number,

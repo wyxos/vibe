@@ -53,6 +53,35 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
   const cancelRequested = ref(false)
   let backfillActive = false
 
+  // Helper function to count items for a specific page
+  function countItemsForPage(page: any): number {
+    return masonry.value.filter((item: any) => item.page === page).length
+  }
+
+  // Helper function to check if an item already exists in masonry
+  function itemExists(item: any, itemsArray?: any[]): boolean {
+    if (!item || item.id == null || item.page == null) return false
+    const itemsToCheck = itemsArray || masonry.value
+    return itemsToCheck.some((existing: any) => {
+      return existing && existing.id === item.id && existing.page === item.page
+    })
+  }
+
+  // Helper function to get only new items from a response
+  function getNewItems(responseItems: any[]): any[] {
+    if (!responseItems || responseItems.length === 0) return []
+    // Create a snapshot of current masonry items to avoid reactivity issues
+    const currentItems = [...masonry.value]
+    return responseItems.filter((item: any) => {
+      if (!item || item.id == null || item.page == null) return false
+      // Check if item exists by comparing id and page
+      const exists = currentItems.some((existing: any) => {
+        return existing && existing.id === item.id && existing.page === item.page
+      })
+      return !exists
+    })
+  }
+
   function waitWithProgress(totalMs: number, onTick: (remaining: number, total: number) => void) {
     return new Promise<void>((resolve) => {
       const total = Math.max(0, totalMs | 0)
@@ -239,12 +268,89 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
     try {
       const baseline = masonry.value.length
       if (cancelRequested.value) return
+
+      // Refresh mode: check if current page needs refreshing before loading next
+      if (mode === 'refresh' && currentPage.value != null) {
+        const currentPageItemCount = countItemsForPage(currentPage.value)
+
+        // If current page has fewer items than pageSize, refresh it first
+        if (currentPageItemCount < pageSize) {
+          const response = await fetchWithRetry(() => getNextPage(currentPage.value))
+          if (cancelRequested.value) return
+
+          // Get only new items that don't already exist
+          // We need to check against the current masonry state at this moment
+          const currentMasonrySnapshot = [...masonry.value]
+          const newItems = response.items.filter((item: any) => {
+            if (!item || item.id == null || item.page == null) return false
+            return !currentMasonrySnapshot.some((existing: any) => {
+              return existing && existing.id === item.id && existing.page === item.page
+            })
+          })
+
+          // Append only new items to masonry (same pattern as getContent)
+          if (newItems.length > 0) {
+            const updatedItems = [...masonry.value, ...newItems]
+            refreshLayout(updatedItems)
+            // Wait a tick for masonry to update
+            await new Promise(resolve => setTimeout(resolve, 0))
+          }
+
+          // Clear error on successful load
+          loadError.value = null
+
+          // If no new items were found, automatically proceed to next page
+          // This means the current page has no more items available
+          if (newItems.length === 0) {
+            const nextPageToLoad = paginationHistory.value[paginationHistory.value.length - 1]
+            if (nextPageToLoad == null) {
+              hasReachedEnd.value = true
+              return
+            }
+            const nextResponse = await getContent(nextPageToLoad)
+            if (cancelRequested.value) return
+            loadError.value = null
+            currentPage.value = nextPageToLoad
+            paginationHistory.value.push(nextResponse.nextPage)
+            if (nextResponse.nextPage == null) {
+              hasReachedEnd.value = true
+            }
+            await maybeBackfillToTarget(baseline)
+            return nextResponse
+          }
+
+          // If we now have enough items for current page, proceed to next page
+          // Re-check count after items have been added
+          const updatedCount = countItemsForPage(currentPage.value)
+          if (updatedCount >= pageSize) {
+            // Current page is now full, proceed with normal next page loading
+            const nextPageToLoad = paginationHistory.value[paginationHistory.value.length - 1]
+            if (nextPageToLoad == null) {
+              hasReachedEnd.value = true
+              return
+            }
+            const nextResponse = await getContent(nextPageToLoad)
+            if (cancelRequested.value) return
+            loadError.value = null
+            currentPage.value = nextPageToLoad
+            paginationHistory.value.push(nextResponse.nextPage)
+            if (nextResponse.nextPage == null) {
+              hasReachedEnd.value = true
+            }
+            await maybeBackfillToTarget(baseline)
+            return nextResponse
+          } else {
+            // Still not enough items, but we refreshed - return the refresh response
+            return response
+          }
+        }
+      }
+
+      // Normal flow: load next page
       const nextPageToLoad = paginationHistory.value[paginationHistory.value.length - 1]
       // Don't load if nextPageToLoad is null
       if (nextPageToLoad == null) {
         hasReachedEnd.value = true
-        isLoading.value = false
-        emits('loading:stop', { fetched: masonry.value.length })
         return
       }
       const response = await getContent(nextPageToLoad)

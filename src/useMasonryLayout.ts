@@ -47,6 +47,10 @@ export function useMasonryLayout(options: UseMasonryLayoutOptions) {
       return
     }
 
+    // Always update masonry value, even if container isn't ready
+    // This ensures items are added in tests and when container isn't available yet
+    masonry.value = items as any
+
     if (!container.value) return
     // Developer diagnostics: warn when dimensions are invalid
     checkItemDimensions(items as any[], 'refreshLayout')
