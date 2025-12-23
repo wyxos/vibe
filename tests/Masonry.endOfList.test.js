@@ -272,7 +272,7 @@ describe('Masonry.vue - End of List Functionality', () => {
     const wrapper = mount(Masonry, {
       props: getDefaultProps({
         getNextPage: backfillMock,
-        backfillEnabled: true,
+        mode: 'backfill',
         pageSize: 10
       }),
       global: { stubs: defaultStubs }

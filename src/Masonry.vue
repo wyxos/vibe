@@ -59,9 +59,10 @@ const props = defineProps({
     default: 40
   },
   // Backfill configuration
-  backfillEnabled: {
-    type: Boolean,
-    default: true
+  mode: {
+    type: String,
+    default: 'backfill',
+    validator: (value: string) => ['backfill', 'none'].includes(value)
   },
   backfillDelayMs: {
     type: Number,
@@ -277,7 +278,7 @@ const pagination = useMasonryPagination({
   retryMaxAttempts: props.retryMaxAttempts,
   retryInitialDelayMs: props.retryInitialDelayMs,
   retryBackoffStepMs: props.retryBackoffStepMs,
-  backfillEnabled: props.backfillEnabled,
+  mode: props.mode,
   backfillDelayMs: props.backfillDelayMs,
   backfillMaxCalls: props.backfillMaxCalls,
   pageSize: props.pageSize,

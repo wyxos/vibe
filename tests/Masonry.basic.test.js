@@ -248,7 +248,7 @@ describe('Masonry.vue - Basic Functionality', () => {
       props: {
         getNextPage: refreshMockGetNextPage,
         loadAtPage: 1,
-        backfillEnabled: false
+        mode: 'none'
       },
       global: {
         stubs: defaultStubs

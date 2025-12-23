@@ -13,7 +13,7 @@ export interface UseMasonryPaginationOptions {
   retryMaxAttempts: number
   retryInitialDelayMs: number
   retryBackoffStepMs: number
-  backfillEnabled: boolean
+  mode: string
   backfillDelayMs: number
   backfillMaxCalls: number
   pageSize: number
@@ -42,7 +42,7 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
     retryMaxAttempts,
     retryInitialDelayMs,
     retryBackoffStepMs,
-    backfillEnabled,
+    mode,
     backfillDelayMs,
     backfillMaxCalls,
     pageSize,
@@ -115,7 +115,7 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
   }
 
   async function maybeBackfillToTarget(baselineCount: number, force = false) {
-    if (!force && !backfillEnabled) return
+    if (!force && mode !== 'backfill') return
     if (backfillActive) return
     if (cancelRequested.value) return
     // Don't backfill if we've reached the end

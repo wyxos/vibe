@@ -50,7 +50,7 @@ export function getDefaultProps(overrides = {}) {
     items: [],
     loadAtPage: 1,
     skipInitialLoad: true,
-    backfillEnabled: false,
+    mode: 'none',
     ...overrides
   }
 }
