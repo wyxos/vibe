@@ -16,7 +16,7 @@ describe('Masonry.vue - Basic Functionality', () => {
         getNextPage: mockGetNextPage,
         items: [],
         loadAtPage: 1,
-        init: 'manual'
+        init: 'auto'
       }
     })
 
@@ -24,7 +24,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     await wrapper.vm.$nextTick()
     await flushPromises()
 
-    // Wait for isInitialized to be set (for init='manual' it should be true in onMounted)
+    // Wait for isInitialized to be set (for init='auto' it should be true in onMounted)
     await waitFor(() => {
       return wrapper.vm.isInitialized === true
     }, { timeout: 500, interval: 10 })
@@ -181,7 +181,8 @@ describe('Masonry.vue - Basic Functionality', () => {
       props: {
         getNextPage: initialMockGetNextPage,
         items: [],
-        loadAtPage: 1
+        loadAtPage: 1,
+        init: 'auto'
       },
       global: {
         stubs: defaultStubs
@@ -214,7 +215,8 @@ describe('Masonry.vue - Basic Functionality', () => {
       props: {
         getNextPage: dynamicMockGetNextPage,
         items: [],
-        loadAtPage: 1
+        loadAtPage: 1,
+        init: 'auto'
       },
       global: {
         stubs: defaultStubs
@@ -256,7 +258,8 @@ describe('Masonry.vue - Basic Functionality', () => {
         getNextPage: cursorMockGetNextPage,
         items: [],
         loadAtPage: 1,
-        paginationType: 'cursor'
+        paginationType: 'cursor',
+        init: 'auto'
       },
       global: {
         stubs: defaultStubs
@@ -284,7 +287,8 @@ describe('Masonry.vue - Basic Functionality', () => {
       props: {
         getNextPage: refreshMockGetNextPage,
         loadAtPage: 1,
-        mode: 'none'
+        mode: 'none',
+        init: 'auto'
       },
       global: {
         stubs: defaultStubs
@@ -352,7 +356,8 @@ describe('Masonry.vue - Basic Functionality', () => {
         getNextPage: mockGetNextPage,
         items: [],
         loadAtPage: 1,
-        layoutMode: 'masonry' // Explicitly set to masonry mode
+        layoutMode: 'masonry', // Explicitly set to masonry mode
+        init: 'auto'
       },
       global: {
         stubs: defaultStubs
@@ -381,7 +386,8 @@ describe('Masonry.vue - Basic Functionality', () => {
         getNextPage: mockGetNextPage,
         items: [],
         loadAtPage: 1,
-        layoutMode: 'swipe' // Start in swipe mode
+        layoutMode: 'swipe', // Start in swipe mode
+        init: 'auto'
       },
       global: {
         stubs: defaultStubs
@@ -413,7 +419,8 @@ describe('Masonry.vue - Basic Functionality', () => {
         getNextPage: mockGetNextPage,
         items: [],
         loadAtPage: 1,
-        layoutMode: 'auto' // Auto mode - should use masonry for wide screens (1024px > 768px breakpoint)
+        layoutMode: 'auto', // Auto mode - should use masonry for wide screens (1024px > 768px breakpoint)
+        init: 'auto'
       },
       global: {
         stubs: defaultStubs
@@ -436,7 +443,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     expect(wrapper.exists()).toBe(true)
   })
 
-  it('should auto-initialize pagination state when init is auto and items are provided', async () => {
+  it('should restore pagination state when init is manual and items are provided', async () => {
     const initialItems = [
       { id: 1, width: 300, height: 200, src: 'test1.jpg' },
       { id: 2, width: 400, height: 300, src: 'test2.jpg' }
@@ -447,7 +454,7 @@ describe('Masonry.vue - Basic Functionality', () => {
         getNextPage: mockGetNextPage,
         items: initialItems,
         loadAtPage: 1,
-        init: 'auto',
+        init: 'manual',
         initialNextPage: 2 // Explicitly provide next page to avoid hasReachedEnd being true
       },
       global: {
@@ -470,11 +477,11 @@ describe('Masonry.vue - Basic Functionality', () => {
     expect(vm.paginationHistory).toContain(2)
     expect(vm.hasReachedEnd).toBe(false) // Should be false when nextPage is provided
 
-    // Verify getNextPage was NOT called (init is auto)
+    // Verify getNextPage was NOT called (init is manual with items provided)
     expect(mockGetNextPage).not.toHaveBeenCalled()
   })
 
-  it('should use initialPage and initialNextPage props when init is auto', async () => {
+  it('should use initialPage and initialNextPage props when init is manual', async () => {
     const initialItems = [
       { id: 1, width: 300, height: 200, src: 'test1.jpg' },
       { id: 2, width: 400, height: 300, src: 'test2.jpg' }
@@ -485,7 +492,7 @@ describe('Masonry.vue - Basic Functionality', () => {
         getNextPage: mockGetNextPage,
         items: initialItems,
         loadAtPage: 1,
-        init: 'auto',
+        init: 'manual',
         initialPage: 5,
         initialNextPage: 6
       },
@@ -519,7 +526,7 @@ describe('Masonry.vue - Basic Functionality', () => {
         getNextPage: mockGetNextPage,
         items: initialItems,
         loadAtPage: 1,
-        init: 'auto',
+        init: 'manual',
         initialPage: 10,
         initialNextPage: null
       },
@@ -549,7 +556,7 @@ describe('Masonry.vue - Basic Functionality', () => {
         getNextPage: mockGetNextPage,
         items: [],
         loadAtPage: 1,
-        init: 'auto'
+        init: 'manual'
       },
       global: {
         stubs: defaultStubs
@@ -578,7 +585,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     expect(vm.hasReachedEnd).toBe(false)
   })
 
-  it('should allow loading next page after auto-initialization with init auto', async () => {
+  it('should allow loading next page after restoration with init manual', async () => {
     const initialItems = [
       { id: 1, width: 300, height: 200, src: 'test1.jpg' }
     ]
@@ -593,7 +600,7 @@ describe('Masonry.vue - Basic Functionality', () => {
         getNextPage: mockGetNextPageWithNext,
         items: initialItems,
         loadAtPage: 1,
-        init: 'auto',
+        init: 'manual',
         initialPage: 1,
         initialNextPage: 2
       },
@@ -613,13 +620,13 @@ describe('Masonry.vue - Basic Functionality', () => {
     expect(vm.hasReachedEnd).toBe(false)
     expect(wrapper.props('items').length).toBe(1)
 
-    // Verify getNextPage was NOT called during initialization (init is auto)
+    // Verify getNextPage was NOT called during initialization (init is manual with items provided)
     expect(mockGetNextPageWithNext).not.toHaveBeenCalled()
 
     // Verify loadNext is available and callable
     expect(typeof vm.loadNext).toBe('function')
     
-    // The key point: after auto-initialization, loadNext should work normally
+    // The key point: after restoration, loadNext should work normally
     // We've verified the state is correct, so pagination should work when user scrolls
   })
 })

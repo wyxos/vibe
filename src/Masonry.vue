@@ -569,7 +569,7 @@ function init(items: any[], page: any, next: any) {
 }
 
 /**
- * Restore items when init is 'auto'.
+ * Restore items when init is 'manual'.
  * This method should be called instead of directly assigning to v-model:items
  * when restoring items from saved state.
  * @param items - Items to restore
@@ -577,8 +577,8 @@ function init(items: any[], page: any, next: any) {
  * @param next - Next page cursor (or null if at end)
  */
 async function restoreItems(items: any[], page: any, next: any) {
-  // If init is 'manual', fall back to init behavior
-  if (props.init === 'manual') {
+  // If init is 'auto', fall back to init behavior
+  if (props.init === 'auto') {
     init(items, page, next)
     // Mark as initialized when items are restored
     if (items && items.length > 0) {
@@ -587,7 +587,7 @@ async function restoreItems(items: any[], page: any, next: any) {
     return
   }
 
-  // When init is 'auto', we need to restore items without triggering initial load
+  // When init is 'manual', we need to restore items without triggering initial load
   currentPage.value = page
   paginationHistory.value = [page]
   if (next !== null && next !== undefined) {
@@ -696,18 +696,18 @@ watch(container, (el) => {
   }
 }, { immediate: true })
 
-// Watch for items when init is 'auto' to auto-initialize pagination state
+// Watch for items when init is 'manual' to restore pagination state
 // This handles cases where items are provided after mount or updated externally
 let hasInitializedWithItems = false
 watch(
   () => [props.items, props.init, props.initialPage, props.initialNextPage] as const,
   ([items, init, initialPage, initialNextPage]) => {
-    // Only auto-initialize if:
-    // 1. init is 'auto'
+    // Only restore if:
+    // 1. init is 'manual'
     // 2. Items exist
     // 3. We haven't already initialized with items (to avoid re-initializing on every update)
     if (
-      init === 'auto' &&
+      init === 'manual' &&
       items &&
       items.length > 0 &&
       !hasInitializedWithItems
@@ -727,7 +727,7 @@ watch(
   { immediate: true }
 )
 
-// Watch for when items are first loaded (for init='auto' when items are loaded later via loadPage/loadNext)
+// Watch for when items are first loaded (handles both auto and manual modes)
 watch(
   () => masonry.value.length,
   (newLength, oldLength) => {
@@ -869,8 +869,8 @@ watch(containerWidth, (newWidth, oldWidth) => {
 
 onMounted(async () => {
   try {
-    // For 'manual' init, show masonry immediately since we're about to load
-    if (props.init === 'manual') {
+    // For 'auto' init, show masonry immediately since we're about to load
+    if (props.init === 'auto') {
       isInitialized.value = true
     }
 
@@ -895,14 +895,13 @@ onMounted(async () => {
     const initialPage = props.loadAtPage as any
     paginationHistory.value = [initialPage]
 
-    if (props.init === 'manual') {
+    if (props.init === 'auto') {
+      // Auto mode: automatically load the first page
       // Wait for next tick to ensure parent component has finished initializing
-      // This is especially important when switching tabs, as the parent needs time
-      // to restore query params and set up the tab state before masonry loads
       await nextTick()
       await loadPage(paginationHistory.value[0] as any)
     } else if (props.items && props.items.length > 0) {
-      // When init is 'auto' and items are provided, initialize pagination state
+      // When init is 'manual' and items are provided, restore pagination state
       // Use initialPage/initialNextPage props if provided, otherwise use loadAtPage
       // Only set next to null if initialNextPage is explicitly null (not undefined)
       const page = props.initialPage !== null && props.initialPage !== undefined
