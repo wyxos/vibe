@@ -855,6 +855,10 @@ onMounted(async () => {
     paginationHistory.value = [initialPage]
 
     if (!props.skipInitialLoad) {
+      // Wait for next tick to ensure parent component has finished initializing
+      // This is especially important when switching tabs, as the parent needs time
+      // to restore query params and set up the tab state before masonry loads
+      await nextTick()
       await loadPage(paginationHistory.value[0] as any)
     } else if (props.items && props.items.length > 0) {
       // When skipInitialLoad is true and items are provided, initialize pagination state
