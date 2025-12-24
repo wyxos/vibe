@@ -212,6 +212,10 @@ const isLoading = ref<boolean>(false)
 const masonryContentHeight = ref<number>(0)
 const hasReachedEnd = ref<boolean>(false)  // Track when we've reached the last page
 const loadError = ref<Error | null>(null)  // Track load errors
+// Track when first content has loaded
+// For 'manual' init, show masonry immediately since we're about to load
+// For 'auto' init, wait for items to be provided or loaded
+const isInitialized = ref<boolean>(false)
 
 // Current breakpoint
 const currentBreakpoint = computed(() => getBreakpointName(containerWidth.value))
@@ -359,6 +363,8 @@ defineExpose({
   hasReachedEnd,
   // Load error tracking
   loadError,
+  // Initialization state
+  isInitialized,
   // Set fixed dimensions (overrides ResizeObserver)
   setFixedDimensions,
   remove,
@@ -464,6 +470,7 @@ function reset() {
   paginationHistory.value = [props.loadAtPage]
   hasReachedEnd.value = false  // Reset end flag
   loadError.value = null  // Reset error flag
+  isInitialized.value = false  // Reset initialization flag
 
   // Reset virtualization state
   resetVirtualization()
@@ -484,6 +491,7 @@ function destroy() {
   hasReachedEnd.value = false
   loadError.value = null
   isLoading.value = false
+  isInitialized.value = false
 
   // Reset swipe mode state
   currentSwipeIndex.value = 0
@@ -572,6 +580,10 @@ async function restoreItems(items: any[], page: any, next: any) {
   // If init is 'manual', fall back to init behavior
   if (props.init === 'manual') {
     init(items, page, next)
+    // Mark as initialized when items are restored
+    if (items && items.length > 0) {
+      isInitialized.value = true
+    }
     return
   }
 
@@ -639,6 +651,11 @@ async function restoreItems(items: any[], page: any, next: any) {
       }
     }
   }
+
+  // Mark as initialized when items are restored
+  if (items && items.length > 0) {
+    isInitialized.value = true
+  }
 }
 
 // Watch for layout changes and update columns + refresh layout dynamically
@@ -704,6 +721,24 @@ watch(
         : undefined // undefined means "unknown", null means "end of list"
 
       restoreItems(items as any[], page, next)
+      // isInitialized is set inside restoreItems
+    }
+  },
+  { immediate: true }
+)
+
+// Watch for when items are first loaded (for init='auto' when items are loaded later via loadPage/loadNext)
+watch(
+  () => masonry.value.length,
+  (newLength, oldLength) => {
+    // If init is 'auto' and we haven't initialized yet, mark as initialized when items appear
+    // This handles the case where items are loaded via loadPage/loadNext after mount
+    if (props.init === 'auto' && !isInitialized.value && newLength > 0 && oldLength === 0) {
+      isInitialized.value = true
+    }
+    // Also handle the case where init is 'manual' and items are loaded
+    if (props.init === 'manual' && !isInitialized.value && newLength > 0 && oldLength === 0) {
+      isInitialized.value = true
     }
   },
   { immediate: false }
@@ -834,6 +869,11 @@ watch(containerWidth, (newWidth, oldWidth) => {
 
 onMounted(async () => {
   try {
+    // For 'manual' init, show masonry immediately since we're about to load
+    if (props.init === 'manual') {
+      isInitialized.value = true
+    }
+
     // Wait for next tick to ensure wrapper is mounted
     await nextTick()
 
@@ -875,6 +915,7 @@ onMounted(async () => {
       await restoreItems(props.items as any[], page, next)
       // Mark as initialized to prevent watcher from running again
       hasInitializedWithItems = true
+      // isInitialized is set inside restoreItems
     }
 
     if (!useSwipeMode.value) {
@@ -925,8 +966,15 @@ onUnmounted(() => {
 
 <template>
   <div ref="wrapper" class="w-full h-full flex flex-col relative">
+    <!-- Loading message while waiting for initial content -->
+    <div v-if="!isInitialized" class="w-full h-full flex items-center justify-center">
+      <slot name="loading-message">
+        <p class="text-gray-500 dark:text-gray-400">Waiting for content to load...</p>
+      </slot>
+    </div>
+
     <!-- Swipe Feed Mode (Mobile/Tablet) -->
-    <div v-if="useSwipeMode" class="overflow-hidden w-full flex-1 swipe-container touch-none select-none"
+    <div v-else-if="useSwipeMode" class="overflow-hidden w-full flex-1 swipe-container touch-none select-none"
       :class="{ 'force-motion': props.forceMotion, 'cursor-grab': !isDragging, 'cursor-grabbing': isDragging }"
       ref="swipeContainer" style="height: 100%; max-height: 100%; position: relative;">
       <div class="relative w-full" :style="{

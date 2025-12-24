@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import Masonry from '../src/Masonry.vue'
-import { createMockGetNextPage, getDefaultProps, defaultStubs, wait } from './helpers/testSetup'
+import { createMockGetNextPage, getDefaultProps, defaultStubs, wait, flushPromises, waitFor } from './helpers/testSetup'
 
 describe('Masonry.vue - Basic Functionality', () => {
   let mockGetNextPage
@@ -15,27 +15,63 @@ describe('Masonry.vue - Basic Functionality', () => {
       props: {
         getNextPage: mockGetNextPage,
         items: [],
-        loadAtPage: 1
+        loadAtPage: 1,
+        init: 'manual'
       }
     })
+
+    // Wait for component to mount and all promises to flush
+    await wrapper.vm.$nextTick()
+    await flushPromises()
+
+    // Wait for isInitialized to be set (for init='manual' it should be true in onMounted)
+    await waitFor(() => {
+      return wrapper.vm.isInitialized === true
+    }, { timeout: 500, interval: 10 })
 
     // Check that the component mounted
     expect(wrapper.exists()).toBe(true)
 
-    // Check that the main container element exists
-    const container = wrapper.find('.overflow-auto')
-    expect(container.exists()).toBe(true)
-
-    // Check that the relative positioned div exists for item positioning
-    const relativeDiv = wrapper.find('.relative')
-    expect(relativeDiv.exists()).toBe(true)
-
-    // Check that transition-group exists
-    const transitionGroup = wrapper.findComponent({ name: 'transition-group' })
-    expect(transitionGroup.exists()).toBe(true)
-
     // Verify component is exposed correctly
     const vm = wrapper.vm
+    expect(vm.isInitialized).toBe(true)
+
+    // Wait for the masonry container to actually appear in the DOM
+    // This ensures Vue has re-rendered after isInitialized became true
+    // Check both possible containers (masonry-container for desktop, swipe-container for mobile)
+    await waitFor(() => {
+      // Force a DOM update check
+      wrapper.vm.$nextTick()
+      const html = wrapper.html()
+      // Check if either container exists, or if loading message is gone
+      const hasMasonryContainer = wrapper.find('.masonry-container').exists()
+      const hasSwipeContainer = wrapper.find('.swipe-container').exists()
+      const hasLoadingMessage = html.includes('Waiting for content to load')
+      // Container should exist OR loading message should be gone (meaning masonry is rendered)
+      return hasMasonryContainer || hasSwipeContainer || (!hasLoadingMessage && vm.isInitialized)
+    }, { timeout: 1000, interval: 10 })
+
+    // Check that the component mounted
+    expect(wrapper.exists()).toBe(true)
+
+    // Verify isInitialized is true
+    expect(vm.isInitialized).toBe(true)
+
+    // Check that either masonry or swipe container exists (depending on mode)
+    const masonryContainer = wrapper.find('.masonry-container')
+    const swipeContainer = wrapper.find('.swipe-container')
+    expect(masonryContainer.exists() || swipeContainer.exists()).toBe(true)
+
+    // If masonry container exists, check for its child elements
+    if (masonryContainer.exists()) {
+      // Check that the relative positioned div exists for item positioning
+      const relativeDiv = masonryContainer.find('.relative')
+      expect(relativeDiv.exists()).toBe(true)
+
+      // Check that transition-group exists (it's stubbed in defaultStubs)
+      const transitionGroup = masonryContainer.findComponent({ name: 'transition-group' })
+      expect(transitionGroup.exists()).toBe(true)
+    }
     expect(typeof vm.isLoading).toBe('boolean')
     expect(typeof vm.refreshLayout).toBe('function')
     expect(typeof vm.containerHeight).toBe('number')

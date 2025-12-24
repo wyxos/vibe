@@ -72,6 +72,35 @@ export function wait(ms = 50) {
 }
 
 /**
+ * Flush all pending promises - useful for waiting for Vue reactivity updates
+ */
+export function flushPromises() {
+  return new Promise(resolve => setImmediate(resolve))
+}
+
+/**
+ * Wait for a condition to be true, checking at intervals
+ * @param {Function} condition - Function that returns true when condition is met
+ * @param {Object} options - Options object
+ * @param {number} options.timeout - Maximum time to wait in ms (default: 1000)
+ * @param {number} options.interval - Interval between checks in ms (default: 10)
+ * @returns {Promise<void>}
+ */
+export async function waitFor(condition, options = {}) {
+  const { timeout = 1000, interval = 10 } = options
+  const startTime = Date.now()
+  
+  while (Date.now() - startTime < timeout) {
+    if (condition()) {
+      return
+    }
+    await wait(interval)
+  }
+  
+  throw new Error(`waitFor condition not met within ${timeout}ms`)
+}
+
+/**
  * Helper to create a test item with all required properties
  */
 export function createTestItem(overrides = {}) {
