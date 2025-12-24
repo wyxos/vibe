@@ -41,11 +41,12 @@ const props = defineProps({
     default: 'page', // or 'cursor'
     validator: (v: string) => ['page', 'cursor'].includes(v)
   },
-  skipInitialLoad: {
-    type: Boolean,
-    default: false
+  init: {
+    type: String,
+    default: 'manual',
+    validator: (v: string) => ['auto', 'manual'].includes(v)
   },
-  // Initial pagination state when skipInitialLoad is true and items are provided
+  // Initial pagination state when init is 'auto' and items are provided
   initialPage: {
     type: [Number, String],
     default: null
@@ -560,7 +561,7 @@ function init(items: any[], page: any, next: any) {
 }
 
 /**
- * Restore items when skipInitialLoad is true.
+ * Restore items when init is 'auto'.
  * This method should be called instead of directly assigning to v-model:items
  * when restoring items from saved state.
  * @param items - Items to restore
@@ -568,13 +569,13 @@ function init(items: any[], page: any, next: any) {
  * @param next - Next page cursor (or null if at end)
  */
 async function restoreItems(items: any[], page: any, next: any) {
-  // If skipInitialLoad is false, fall back to init behavior
-  if (!props.skipInitialLoad) {
+  // If init is 'manual', fall back to init behavior
+  if (props.init === 'manual') {
     init(items, page, next)
     return
   }
 
-  // When skipInitialLoad is true, we need to restore items without triggering initial load
+  // When init is 'auto', we need to restore items without triggering initial load
   currentPage.value = page
   paginationHistory.value = [page]
   if (next !== null && next !== undefined) {
@@ -678,18 +679,18 @@ watch(container, (el) => {
   }
 }, { immediate: true })
 
-// Watch for items when skipInitialLoad is true to auto-initialize pagination state
+// Watch for items when init is 'auto' to auto-initialize pagination state
 // This handles cases where items are provided after mount or updated externally
 let hasInitializedWithItems = false
 watch(
-  () => [props.items, props.skipInitialLoad, props.initialPage, props.initialNextPage] as const,
-  ([items, skipInitialLoad, initialPage, initialNextPage]) => {
+  () => [props.items, props.init, props.initialPage, props.initialNextPage] as const,
+  ([items, init, initialPage, initialNextPage]) => {
     // Only auto-initialize if:
-    // 1. skipInitialLoad is true
+    // 1. init is 'auto'
     // 2. Items exist
     // 3. We haven't already initialized with items (to avoid re-initializing on every update)
     if (
-      skipInitialLoad &&
+      init === 'auto' &&
       items &&
       items.length > 0 &&
       !hasInitializedWithItems
@@ -854,14 +855,14 @@ onMounted(async () => {
     const initialPage = props.loadAtPage as any
     paginationHistory.value = [initialPage]
 
-    if (!props.skipInitialLoad) {
+    if (props.init === 'manual') {
       // Wait for next tick to ensure parent component has finished initializing
       // This is especially important when switching tabs, as the parent needs time
       // to restore query params and set up the tab state before masonry loads
       await nextTick()
       await loadPage(paginationHistory.value[0] as any)
     } else if (props.items && props.items.length > 0) {
-      // When skipInitialLoad is true and items are provided, initialize pagination state
+      // When init is 'auto' and items are provided, initialize pagination state
       // Use initialPage/initialNextPage props if provided, otherwise use loadAtPage
       // Only set next to null if initialNextPage is explicitly null (not undefined)
       const page = props.initialPage !== null && props.initialPage !== undefined

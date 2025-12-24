@@ -400,7 +400,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     expect(wrapper.exists()).toBe(true)
   })
 
-  it('should auto-initialize pagination state when skipInitialLoad is true and items are provided', async () => {
+  it('should auto-initialize pagination state when init is auto and items are provided', async () => {
     const initialItems = [
       { id: 1, width: 300, height: 200, src: 'test1.jpg' },
       { id: 2, width: 400, height: 300, src: 'test2.jpg' }
@@ -411,7 +411,7 @@ describe('Masonry.vue - Basic Functionality', () => {
         getNextPage: mockGetNextPage,
         items: initialItems,
         loadAtPage: 1,
-        skipInitialLoad: true,
+        init: 'auto',
         initialNextPage: 2 // Explicitly provide next page to avoid hasReachedEnd being true
       },
       global: {
@@ -434,11 +434,11 @@ describe('Masonry.vue - Basic Functionality', () => {
     expect(vm.paginationHistory).toContain(2)
     expect(vm.hasReachedEnd).toBe(false) // Should be false when nextPage is provided
 
-    // Verify getNextPage was NOT called (skipInitialLoad)
+    // Verify getNextPage was NOT called (init is auto)
     expect(mockGetNextPage).not.toHaveBeenCalled()
   })
 
-  it('should use initialPage and initialNextPage props when skipInitialLoad is true', async () => {
+  it('should use initialPage and initialNextPage props when init is auto', async () => {
     const initialItems = [
       { id: 1, width: 300, height: 200, src: 'test1.jpg' },
       { id: 2, width: 400, height: 300, src: 'test2.jpg' }
@@ -449,7 +449,7 @@ describe('Masonry.vue - Basic Functionality', () => {
         getNextPage: mockGetNextPage,
         items: initialItems,
         loadAtPage: 1,
-        skipInitialLoad: true,
+        init: 'auto',
         initialPage: 5,
         initialNextPage: 6
       },
@@ -483,7 +483,7 @@ describe('Masonry.vue - Basic Functionality', () => {
         getNextPage: mockGetNextPage,
         items: initialItems,
         loadAtPage: 1,
-        skipInitialLoad: true,
+        init: 'auto',
         initialPage: 10,
         initialNextPage: null
       },
@@ -513,7 +513,7 @@ describe('Masonry.vue - Basic Functionality', () => {
         getNextPage: mockGetNextPage,
         items: [],
         loadAtPage: 1,
-        skipInitialLoad: true
+        init: 'auto'
       },
       global: {
         stubs: defaultStubs
@@ -542,7 +542,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     expect(vm.hasReachedEnd).toBe(false)
   })
 
-  it('should allow loading next page after auto-initialization with skipInitialLoad', async () => {
+  it('should allow loading next page after auto-initialization with init auto', async () => {
     const initialItems = [
       { id: 1, width: 300, height: 200, src: 'test1.jpg' }
     ]
@@ -557,7 +557,7 @@ describe('Masonry.vue - Basic Functionality', () => {
         getNextPage: mockGetNextPageWithNext,
         items: initialItems,
         loadAtPage: 1,
-        skipInitialLoad: true,
+        init: 'auto',
         initialPage: 1,
         initialNextPage: 2
       },
@@ -577,7 +577,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     expect(vm.hasReachedEnd).toBe(false)
     expect(wrapper.props('items').length).toBe(1)
 
-    // Verify getNextPage was NOT called during initialization (skipInitialLoad)
+    // Verify getNextPage was NOT called during initialization (init is auto)
     expect(mockGetNextPageWithNext).not.toHaveBeenCalled()
 
     // Verify loadNext is available and callable

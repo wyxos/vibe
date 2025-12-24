@@ -42,7 +42,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    skipInitialLoad: true,
+                    init: 'auto',
                     initialPage: 5,
                     initialNextPage: 6
                 }),
@@ -104,7 +104,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    skipInitialLoad: true,
+                    init: 'auto',
                     initialPage: 5,
                     initialNextPage: 6,
                     'onUpdate:items': (newItems) => {
@@ -181,7 +181,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    skipInitialLoad: true,
+                    init: 'auto',
                     initialPage: 5,
                     initialNextPage: 6,
                     'onUpdate:items': (newItems) => {
@@ -241,7 +241,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    skipInitialLoad: true,
+                    init: 'auto',
                     initialPage: 5,
                     initialNextPage: 6
                 }),
@@ -299,7 +299,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    skipInitialLoad: true,
+                    init: 'auto',
                     initialPage: 5,
                     initialNextPage: 6,
                     'onUpdate:items': (newItems) => {
@@ -358,7 +358,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    skipInitialLoad: true
+                    init: 'auto'
                 }),
                 global: { stubs: defaultStubs }
             })

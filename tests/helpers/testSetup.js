@@ -49,7 +49,7 @@ export function getDefaultProps(overrides = {}) {
     getNextPage: createMockGetNextPage(),
     items: [],
     loadAtPage: 1,
-    skipInitialLoad: true,
+    init: 'auto',
     mode: 'none',
     ...overrides
   }

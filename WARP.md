@@ -34,14 +34,14 @@ High-level architecture
       - items (Array): v-model:items as two-way binding
       - layout (Object, optional): merges with defaults
       - paginationType: 'page' | 'cursor' (default 'page')
-      - skipInitialLoad, maxItems (default 100), pageSize (default 40)
+      - init ('auto' | 'manual', default 'manual'), maxItems (default 100), pageSize (default 40)
       - transitionDurationMs (default 450), transitionEasing (default cubic-bezier(.22,.61,.36,1))
     - Emits
       - update:items for v-model
     - Exposed methods/refs (via defineExpose)
       - isLoading, refreshLayout, containerHeight, onRemove, removeMany, loadNext, loadPage, reset, paginationHistory
     - Lifecycle and events
-      - On mount: computes columns from layout.sizes, seeds paginationHistory, triggers initial load (unless skipInitialLoad), sets up debounced scroll/resize listeners
+      - On mount: computes columns from layout.sizes, seeds paginationHistory, triggers initial load (if init is 'manual'), sets up debounced scroll/resize listeners
       - On unmount: removes listeners
 
 - Layout engine: src/calculateLayout.js
