@@ -174,6 +174,7 @@ const useSwipeMode = computed(() => {
 
 const emits = defineEmits([
   'update:items',
+  'loading:start',
   'backfill:start',
   'backfill:tick',
   'backfill:stop',

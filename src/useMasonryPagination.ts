@@ -19,6 +19,7 @@ export interface UseMasonryPaginationOptions {
   pageSize: number
   autoRefreshOnEmpty: boolean
   emits: {
+    (event: 'loading:start'): void
     (event: 'retry:start', payload: { attempt: number; max: number; totalMs: number }): void
     (event: 'retry:tick', payload: { attempt: number; remainingMs: number; totalMs: number }): void
     (event: 'retry:stop', payload: { attempt: number; success: boolean }): void
@@ -163,7 +164,10 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
 
     backfillActive = true
     // Set loading to true at the start of backfill and keep it true throughout
-    isLoading.value = true
+    if (!isLoading.value) {
+      isLoading.value = true
+      emits('loading:start')
+    }
     try {
       let calls = 0
       emits('backfill:start', { target: targetCount, fetched: masonry.value.length, calls })
@@ -228,7 +232,10 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
     if (isLoading.value) return
     // Starting a new load should clear any previous cancel request
     cancelRequested.value = false
-    isLoading.value = true
+    if (!isLoading.value) {
+      isLoading.value = true
+      emits('loading:start')
+    }
     // Reset hasReachedEnd and loadError when loading a new page
     hasReachedEnd.value = false
     loadError.value = null
@@ -262,7 +269,10 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
     if (hasReachedEnd.value) return
     // Starting a new load should clear any previous cancel request
     cancelRequested.value = false
-    isLoading.value = true
+    if (!isLoading.value) {
+      isLoading.value = true
+      emits('loading:start')
+    }
     // Clear error when attempting to load
     loadError.value = null
     try {
@@ -379,6 +389,7 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
     if (isLoading.value) return
     cancelRequested.value = false
     isLoading.value = true
+    emits('loading:start')
 
     try {
       // Use the tracked current page
