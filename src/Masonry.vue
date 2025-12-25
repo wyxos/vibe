@@ -701,16 +701,12 @@ watch(container, (el) => {
   }
 }, { immediate: true })
 
-// Watch for when items are first loaded (for init='auto' when items are loaded later via loadPage/loadNext)
+// Watch for when items are first loaded (for init='manual' when items are loaded via restore/init)
 watch(
   () => masonry.value.length,
   (newLength, oldLength) => {
-    // If init is 'auto' and we haven't initialized yet, mark as initialized when items appear
-    // This handles the case where items are loaded via loadPage/loadNext after mount
-    if (props.init === 'auto' && !isInitialized.value && newLength > 0 && oldLength === 0) {
-      isInitialized.value = true
-    }
-    // Also handle the case where init is 'manual' and items are loaded
+    // For manual mode, mark as initialized when items first appear
+    // This handles the case where items are loaded via restore/init after mount
     if (props.init === 'manual' && !isInitialized.value && newLength > 0 && oldLength === 0) {
       isInitialized.value = true
     }
@@ -866,8 +862,15 @@ onMounted(async () => {
 
     if (props.init === 'auto') {
       // Auto mode: automatically call loadPage on mount
-      // isInitialized will be set to true when items appear (via watcher)
-      await loadPage(initialPage)
+      try {
+        await loadPage(initialPage)
+      } catch (error) {
+        // Error is already handled by loadPage via loadError
+        // Continue to mark as initialized even if loadPage failed
+      }
+      // Mark as initialized after loadPage completes (or fails), regardless of whether items were returned
+      // This ensures initialization completes even if the first page is empty or errors
+      isInitialized.value = true
     }
     // Manual mode: do nothing, user will manually call restore()
 
@@ -887,6 +890,11 @@ onMounted(async () => {
       loadError.value = normalizeError(error)
     }
     isLoading.value = false
+    // Still mark as initialized even if there was an unexpected error
+    // The component has attempted to initialize
+    if (props.init === 'auto') {
+      isInitialized.value = true
+    }
   }
 
   // Scroll listener is handled by watcher now for consistency
