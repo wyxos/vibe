@@ -862,15 +862,17 @@ onMounted(async () => {
 
     if (props.init === 'auto') {
       // Auto mode: automatically call loadPage on mount
+      // Set initialized BEFORE loading so the masonry container renders
+      // This allows refreshLayout to access the container element for measurements
+      isInitialized.value = true
+      await nextTick() // Ensure container is rendered before loading
+
       try {
         await loadPage(initialPage)
       } catch (error) {
         // Error is already handled by loadPage via loadError
-        // Continue to mark as initialized even if loadPage failed
+        // Continue - component is already initialized
       }
-      // Mark as initialized after loadPage completes (or fails), regardless of whether items were returned
-      // This ensures initialization completes even if the first page is empty or errors
-      isInitialized.value = true
     }
     // Manual mode: do nothing, user will manually call restore()
 
@@ -890,11 +892,7 @@ onMounted(async () => {
       loadError.value = normalizeError(error)
     }
     isLoading.value = false
-    // Still mark as initialized even if there was an unexpected error
-    // The component has attempted to initialize
-    if (props.init === 'auto') {
-      isInitialized.value = true
-    }
+    // isInitialized is already set to true before loadPage for 'auto' mode
   }
 
   // Scroll listener is handled by watcher now for consistency

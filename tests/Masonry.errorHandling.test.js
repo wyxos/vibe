@@ -95,7 +95,8 @@ describe('Masonry.vue - Error Handling Functionality', () => {
     const wrapper = mount(Masonry, {
       props: getDefaultProps({
         getPage: errorThenSuccessMock,
-        retryMaxAttempts: 0
+        retryMaxAttempts: 0,
+        init: 'manual' // Use manual init to control when loadPage is called
       }),
       global: { stubs: defaultStubs }
     })
