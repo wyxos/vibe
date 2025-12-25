@@ -28,7 +28,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           pageSize: 10,
           backfillDelayMs: 10,
           items: [createTestItem({ id: 0 })],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -62,7 +62,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           mode: 'none',
           pageSize: 10,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -97,7 +97,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           pageSize: 10,
           backfillDelayMs: 10,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -129,7 +129,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           mode: 'backfill',
           pageSize: 10,
           items,
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -169,7 +169,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           backfillDelayMs: 10,
           backfillMaxCalls: 5,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -211,7 +211,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           pageSize: 10,
           backfillDelayMs: 10,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -252,7 +252,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           pageSize: 10,
           backfillDelayMs: 100,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -297,7 +297,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           pageSize: 10,
           backfillDelayMs: 10,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -341,7 +341,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           backfillMaxCalls: 3,
           backfillDelayMs: 10,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -376,7 +376,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           backfillMaxCalls: 2,
           backfillDelayMs: 10,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -416,7 +416,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           backfillMaxCalls: 10,
           backfillDelayMs: 50,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -460,7 +460,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           mode: 'backfill',
           pageSize: 10,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -502,7 +502,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           backfillMaxCalls: 10,
           backfillDelayMs: 10,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -532,7 +532,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           mode: 'backfill',
           pageSize: 10,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: null // Already at end
         }),
@@ -576,7 +576,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           backfillDelayMs: 10,
           retryMaxAttempts: 0, // Disable retries for faster test
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -619,7 +619,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           backfillDelayMs: 10,
           retryMaxAttempts: 0,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -666,7 +666,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           backfillMaxCalls: 3,
           backfillDelayMs: 100,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -715,7 +715,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           pageSize: 10,
           backfillDelayMs: 50,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -759,7 +759,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           pageSize: 100,
           backfillDelayMs: 50,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -800,7 +800,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           mode: 'backfill',
           pageSize: 10,
           items: [createTestItem()],
-          init: 'manual'
+          init: 'auto'
         }),
         global: { stubs: defaultStubs }
       })
@@ -831,7 +831,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           mode: 'backfill',
           pageSize: 0,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),
@@ -860,7 +860,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
           mode: 'backfill',
           pageSize: -10,
           items: [createTestItem()],
-          init: 'manual',
+          init: 'auto',
           initialPage: 1,
           initialNextPage: 2
         }),

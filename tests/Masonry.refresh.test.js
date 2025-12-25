@@ -42,7 +42,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    init: 'manual',
+                    init: 'auto',
                     initialPage: 5,
                     initialNextPage: 6
                 }),
@@ -104,7 +104,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    init: 'manual',
+                    init: 'auto',
                     initialPage: 5,
                     initialNextPage: 6,
                     'onUpdate:items': (newItems) => {
@@ -181,7 +181,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    init: 'manual',
+                    init: 'auto',
                     initialPage: 5,
                     initialNextPage: 6,
                     'onUpdate:items': (newItems) => {
@@ -241,7 +241,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    init: 'manual',
+                    init: 'auto',
                     initialPage: 5,
                     initialNextPage: 6
                 }),
@@ -299,7 +299,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    init: 'manual',
+                    init: 'auto',
                     initialPage: 5,
                     initialNextPage: 6,
                     'onUpdate:items': (newItems) => {
@@ -358,7 +358,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    init: 'manual'
+                    init: 'auto'
                 }),
                 global: { stubs: defaultStubs }
             })
@@ -366,7 +366,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             const vm = wrapper.vm
             await wait(100)
 
-            // currentPage should be null initially (init='manual' with empty items)
+            // currentPage should be null initially
             expect(vm.currentPage).toBeNull()
 
             // Should proceed with normal next page loading
