@@ -1,7 +1,7 @@
 <template>
   <Masonry
     v-model:items="items"
-    :get-next-page="getPage"
+    :get-page="getPage"
     :load-at-page="1"
     :layout="layout"
   >

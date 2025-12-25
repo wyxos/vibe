@@ -24,9 +24,9 @@ Object.defineProperty(window, 'innerWidth', {
 })
 
 /**
- * Creates a default mock for getNextPage function
+ * Creates a default mock for getPage function
  */
-export function createMockGetNextPage(options = {}) {
+export function createMockGetPage(options = {}) {
   const {
     items = [
       { id: 1, width: 300, height: 200, src: 'test1.jpg', page: 1 },
@@ -46,7 +46,7 @@ export function createMockGetNextPage(options = {}) {
  */
 export function getDefaultProps(overrides = {}) {
   return {
-    getNextPage: createMockGetNextPage(),
+    getPage: createMockGetPage(),
     items: [],
     loadAtPage: 1,
     init: 'auto',

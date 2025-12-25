@@ -29,7 +29,7 @@ High-level architecture
 - Core pieces
   - Component: src/Masonry.vue
     - Public API (props)
-      - getNextPage(page): async data fetcher returning { items, nextPage } or { items, nextCursor } when using cursor mode
+      - getPage(page): async data fetcher returning { items, nextPage } or { items, nextCursor } when using cursor mode
       - loadAtPage: initial page (nullable when paginationType='cursor')
       - items (Array): v-model:items as two-way binding
       - layout (Object, optional): merges with defaults
@@ -77,7 +77,7 @@ High-level architecture
     - Masonry.vue wires these to a transition-group with :css=false to fully control animations via JS + inline styles
 
   - Demo app shell: src/App.vue and src/main.js
-    - Illustrates usage of <Masonry> with a fixture-driven getNextPage and an item slot that renders an image and a remove button
+    - Illustrates usage of <Masonry> with a fixture-driven getPage and an item slot that renders an image and a remove button
     - Not part of the published API; primarily for local development and GitHub Pages demo
 
 - Rendering model

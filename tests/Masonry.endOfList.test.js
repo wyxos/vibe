@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import Masonry from '../src/Masonry.vue'
-import { createMockGetNextPage, getDefaultProps, defaultStubs, wait, createTestItem } from './helpers/testSetup'
+import { createMockGetPage, getDefaultProps, defaultStubs, wait, createTestItem } from './helpers/testSetup'
 
 describe('Masonry.vue - End of List Functionality', () => {
-  const mockGetNextPage = createMockGetNextPage()
+  const mockGetPage = createMockGetPage()
 
   it('should set hasReachedEnd to true when nextPage is null in loadPage', async () => {
     const endOfListMock = vi.fn().mockResolvedValue({
@@ -13,7 +13,7 @@ describe('Masonry.vue - End of List Functionality', () => {
     })
 
     const wrapper = mount(Masonry, {
-      props: getDefaultProps({ getNextPage: endOfListMock }),
+      props: getDefaultProps({ getPage: endOfListMock }),
       global: { stubs: defaultStubs }
     })
 
@@ -42,7 +42,7 @@ describe('Masonry.vue - End of List Functionality', () => {
     })
 
     const wrapper = mount(Masonry, {
-      props: getDefaultProps({ getNextPage: endOfListMock }),
+      props: getDefaultProps({ getPage: endOfListMock }),
       global: { stubs: defaultStubs }
     })
 
@@ -73,7 +73,7 @@ describe('Masonry.vue - End of List Functionality', () => {
     })
 
     const wrapper = mount(Masonry, {
-      props: getDefaultProps({ getNextPage: endOfListMock }),
+      props: getDefaultProps({ getPage: endOfListMock }),
       global: { stubs: defaultStubs }
     })
 
@@ -90,7 +90,7 @@ describe('Masonry.vue - End of List Functionality', () => {
     expect(vm.hasReachedEnd).toBe(true)
     const callCountBefore = callCount
 
-    // Try to load next again - should not call getNextPage
+    // Try to load next again - should not call getPage
     await vm.loadNext()
     await wait(50)
 
@@ -105,7 +105,7 @@ describe('Masonry.vue - End of List Functionality', () => {
     })
 
     const wrapper = mount(Masonry, {
-      props: getDefaultProps({ getNextPage: endOfListMock }),
+      props: getDefaultProps({ getPage: endOfListMock }),
       global: { stubs: defaultStubs }
     })
 
@@ -135,7 +135,7 @@ describe('Masonry.vue - End of List Functionality', () => {
     })
 
     const wrapper = mount(Masonry, {
-      props: getDefaultProps({ getNextPage: refreshMock }),
+      props: getDefaultProps({ getPage: refreshMock }),
       global: { stubs: defaultStubs }
     })
 
@@ -200,7 +200,7 @@ describe('Masonry.vue - End of List Functionality', () => {
 
   it('should not display end message when items array is empty', async () => {
     const wrapper = mount(Masonry, {
-      props: getDefaultProps({ getNextPage: mockGetNextPage }),
+      props: getDefaultProps({ getPage: mockGetPage }),
       global: { stubs: defaultStubs }
     })
 
@@ -259,7 +259,7 @@ describe('Masonry.vue - End of List Functionality', () => {
 
   it('should set hasReachedEnd when init is called with null next', () => {
     const wrapper = mount(Masonry, {
-      props: getDefaultProps({ getNextPage: mockGetNextPage }),
+      props: getDefaultProps({ getPage: mockGetPage }),
       global: { stubs: defaultStubs }
     })
 
@@ -275,7 +275,7 @@ describe('Masonry.vue - End of List Functionality', () => {
 
   it('should not set hasReachedEnd when init is called with non-null next', () => {
     const wrapper = mount(Masonry, {
-      props: getDefaultProps({ getNextPage: mockGetNextPage }),
+      props: getDefaultProps({ getPage: mockGetPage }),
       global: { stubs: defaultStubs }
     })
 
@@ -301,7 +301,7 @@ describe('Masonry.vue - End of List Functionality', () => {
 
     const wrapper = mount(Masonry, {
       props: getDefaultProps({
-        getNextPage: backfillMock,
+        getPage: backfillMock,
         mode: 'backfill',
         pageSize: 10
       }),
@@ -321,7 +321,7 @@ describe('Masonry.vue - End of List Functionality', () => {
     expect(vm.hasReachedEnd).toBe(true)
     const callCountBefore = callCount
 
-    // Try to trigger backfill - should not call getNextPage
+    // Try to trigger backfill - should not call getPage
     await vm.maybeBackfillToTarget(5, true)
     await wait(50)
 

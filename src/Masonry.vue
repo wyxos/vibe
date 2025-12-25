@@ -21,7 +21,7 @@ import MasonryItem from './components/MasonryItem.vue'
 import { normalizeError } from './utils/errorHandler'
 
 const props = defineProps({
-  getNextPage: {
+  getPage: {
     type: Function,
     default: () => { }
   },
@@ -268,7 +268,7 @@ const leave = onLeave
 
 // Initialize pagination composable
 const pagination = useMasonryPagination({
-  getNextPage: props.getNextPage as (page: any) => Promise<{ items: any[]; nextPage: any }>,
+  getPage: props.getPage as (page: any) => Promise<{ items: any[]; nextPage: any }>,
   masonry: masonry as any,
   isLoading,
   hasReachedEnd,

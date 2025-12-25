@@ -50,7 +50,7 @@ import { Masonry } from "@wyxos/vibe";
 
 const items = ref([]);
 
-async function getNextPage(page) {
+async function getPage(page) {
   const response = await fetch(`/api/items?page=${page}`);
   const data = await response.json();
   return {
@@ -63,7 +63,7 @@ async function getNextPage(page) {
 <template>
   <Masonry
     v-model:items="items"
-    :get-next-page="getNextPage"
+    :get-page="getPage"
     :load-at-page="1"
   />
 </template>'
@@ -96,7 +96,7 @@ import { Masonry } from "@wyxos/vibe";
 
 const items = ref([]);
 
-async function getNextPage(page) {
+async function getPage(page) {
   const response = await fetch(`/api/items?page=${page}`);
   const data = await response.json();
   return {
@@ -109,7 +109,7 @@ async function getNextPage(page) {
 <template>
   <Masonry
     v-model:items="items"
-    :get-next-page="getNextPage"
+    :get-page="getPage"
     :load-at-page="1"
   >
     <template #item="{ item, remove }">
@@ -175,7 +175,7 @@ import { Masonry } from "@wyxos/vibe";
 
 const items = ref([]);
 
-async function getNextPage(page) {
+async function getPage(page) {
   const response = await fetch(`/api/items?page=${page}`);
   const data = await response.json();
   return {
@@ -189,7 +189,7 @@ async function getNextPage(page) {
   <!-- Auto mode: switches to swipe on mobile -->
   <Masonry
     v-model:items="items"
-    :get-next-page="getNextPage"
+    :get-page="getPage"
     layout-mode="auto"
     :mobile-breakpoint="768"
   />
@@ -197,7 +197,7 @@ async function getNextPage(page) {
   <!-- Force swipe mode on all devices -->
   <Masonry
     v-model:items="items"
-    :get-next-page="getNextPage"
+    :get-page="getPage"
     layout-mode="swipe"
   />
 </template>'

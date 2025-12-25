@@ -1,17 +1,17 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import Masonry from '../src/Masonry.vue'
-import { createMockGetNextPage, getDefaultProps, defaultStubs, wait, createTestItem } from './helpers/testSetup'
+import { createMockGetPage, getDefaultProps, defaultStubs, wait, createTestItem } from './helpers/testSetup'
 
 describe('Masonry.vue - Error Handling Functionality', () => {
-  const mockGetNextPage = createMockGetNextPage()
+  const mockGetPage = createMockGetPage()
 
   it('should set loadError when loadPage fails', async () => {
     const errorMock = vi.fn().mockRejectedValue(new Error('Network error'))
 
     const wrapper = mount(Masonry, {
       props: getDefaultProps({
-        getNextPage: errorMock,
+        getPage: errorMock,
         retryMaxAttempts: 0 // Disable retries for faster test
       }),
       global: { stubs: defaultStubs }
@@ -51,7 +51,7 @@ describe('Masonry.vue - Error Handling Functionality', () => {
 
     const wrapper = mount(Masonry, {
       props: getDefaultProps({
-        getNextPage: errorMock,
+        getPage: errorMock,
         retryMaxAttempts: 0
       }),
       global: { stubs: defaultStubs }
@@ -94,7 +94,7 @@ describe('Masonry.vue - Error Handling Functionality', () => {
 
     const wrapper = mount(Masonry, {
       props: getDefaultProps({
-        getNextPage: errorThenSuccessMock,
+        getPage: errorThenSuccessMock,
         retryMaxAttempts: 0
       }),
       global: { stubs: defaultStubs }
@@ -132,7 +132,7 @@ describe('Masonry.vue - Error Handling Functionality', () => {
 
     const wrapper = mount(Masonry, {
       props: getDefaultProps({
-        getNextPage: errorMock,
+        getPage: errorMock,
         retryMaxAttempts: 0
       }),
       global: { stubs: defaultStubs }
@@ -173,7 +173,7 @@ describe('Masonry.vue - Error Handling Functionality', () => {
 
     const wrapper = mount(Masonry, {
       props: getDefaultProps({
-        getNextPage: refreshErrorMock,
+        getPage: refreshErrorMock,
         retryMaxAttempts: 0
       }),
       global: { stubs: defaultStubs }
@@ -239,7 +239,7 @@ describe('Masonry.vue - Error Handling Functionality', () => {
 
   it('should not display error message when items array is empty', async () => {
     const wrapper = mount(Masonry, {
-      props: getDefaultProps({ getNextPage: mockGetNextPage }),
+      props: getDefaultProps({ getPage: mockGetPage }),
       global: { stubs: defaultStubs }
     })
 
@@ -303,7 +303,7 @@ describe('Masonry.vue - Error Handling Functionality', () => {
 
     const wrapper = mount(Masonry, {
       props: getDefaultProps({
-        getNextPage: errorMock,
+        getPage: errorMock,
         retryMaxAttempts: 0
       }),
       global: { stubs: defaultStubs }
@@ -347,7 +347,7 @@ describe('Masonry.vue - Error Handling Functionality', () => {
 
     const wrapper = mount(Masonry, {
       props: getDefaultProps({
-        getNextPage: errorThenSuccessMock,
+        getPage: errorThenSuccessMock,
         retryMaxAttempts: 0
       }),
       global: { stubs: defaultStubs }

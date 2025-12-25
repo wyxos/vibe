@@ -1,19 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import Masonry from '../src/Masonry.vue'
-import { createMockGetNextPage, getDefaultProps, defaultStubs, wait, flushPromises, waitFor } from './helpers/testSetup'
+import { createMockGetPage, getDefaultProps, defaultStubs, wait, flushPromises, waitFor } from './helpers/testSetup'
 
 describe('Masonry.vue - Basic Functionality', () => {
-  let mockGetNextPage
+  let mockGetPage
 
   beforeEach(() => {
-    mockGetNextPage = createMockGetNextPage()
+    mockGetPage = createMockGetPage()
   })
 
   it('should mount correctly with basic props', async () => {
     const wrapper = mount(Masonry, {
       props: {
-        getNextPage: mockGetNextPage,
+        getPage: mockGetPage,
         items: [],
         loadAtPage: 1,
         init: 'manual'
@@ -86,7 +86,7 @@ describe('Masonry.vue - Basic Functionality', () => {
   it('should initialize with default layout configuration', () => {
     const wrapper = mount(Masonry, {
       props: {
-        getNextPage: mockGetNextPage,
+        getPage: mockGetPage,
         items: []
       }
     })
@@ -111,7 +111,7 @@ describe('Masonry.vue - Basic Functionality', () => {
 
     const wrapper = mount(Masonry, {
       props: {
-        getNextPage: mockGetNextPage,
+        getPage: mockGetPage,
         items: [],
         layout: customLayout
       }
@@ -124,7 +124,7 @@ describe('Masonry.vue - Basic Functionality', () => {
   it('should accept pagination type prop', () => {
     const wrapper = mount(Masonry, {
       props: {
-        getNextPage: mockGetNextPage,
+        getPage: mockGetPage,
         items: [],
         paginationType: 'cursor'
       }
@@ -142,7 +142,7 @@ describe('Masonry.vue - Basic Functionality', () => {
 
     const wrapper = mount(Masonry, {
       props: {
-        getNextPage: mockGetNextPage,
+        getPage: mockGetPage,
         items: initialItems
       }
     })
@@ -180,11 +180,11 @@ describe('Masonry.vue - Basic Functionality', () => {
   })
 
   it('should load initial page on mount', async () => {
-    const initialMockGetNextPage = createMockGetNextPage()
+    const initialMockGetPage = createMockGetPage()
 
     const wrapper = mount(Masonry, {
       props: {
-        getNextPage: initialMockGetNextPage,
+        getPage: initialMockGetPage,
         items: [],
         loadAtPage: 1,
         init: 'auto' // Auto mode should call loadPage on mount
@@ -198,14 +198,14 @@ describe('Masonry.vue - Basic Functionality', () => {
     await wrapper.vm.$nextTick()
     await wait(0) // Wait for async operations
 
-    // Verify getNextPage was called with the loadAtPage value
-    expect(initialMockGetNextPage).toHaveBeenCalledWith(1)
-    expect(initialMockGetNextPage).toHaveBeenCalledTimes(1)
+    // Verify getPage was called with the loadAtPage value
+    expect(initialMockGetPage).toHaveBeenCalledWith(1)
+    expect(initialMockGetPage).toHaveBeenCalledTimes(1)
   })
 
   it('should handle loading next page correctly', async () => {
     let pageCount = 0
-    const dynamicMockGetNextPage = vi.fn().mockImplementation((page) => {
+    const dynamicMockGetPage = vi.fn().mockImplementation((page) => {
       pageCount++
       return Promise.resolve({
         items: [
@@ -218,7 +218,7 @@ describe('Masonry.vue - Basic Functionality', () => {
 
     const wrapper = mount(Masonry, {
       props: {
-        getNextPage: dynamicMockGetNextPage,
+        getPage: dynamicMockGetPage,
         items: [],
         loadAtPage: 1,
         init: 'auto' // Auto mode should call loadPage on mount
@@ -235,7 +235,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     await wait(10)
 
     // Verify initial page was loaded
-    expect(dynamicMockGetNextPage).toHaveBeenCalledWith(1)
+    expect(dynamicMockGetPage).toHaveBeenCalledWith(1)
 
     // Manually trigger loading next page (simulating scroll trigger)
     // We can't easily simulate scroll events in this test environment,
@@ -243,7 +243,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     expect(typeof vm.loadNext).toBe('function')
 
     // Reset mock call count to focus on next page loading
-    dynamicMockGetNextPage.mockClear()
+    dynamicMockGetPage.mockClear()
 
     // The component should have updated its internal state
     expect(vm.isLoading).toBeDefined()
@@ -251,7 +251,7 @@ describe('Masonry.vue - Basic Functionality', () => {
   })
 
   it('should support cursor-based pagination', () => {
-    const cursorMockGetNextPage = vi.fn().mockResolvedValue({
+    const cursorMockGetPage = vi.fn().mockResolvedValue({
       items: [
         { id: 1, width: 300, height: 200, src: 'test1.jpg', page: 1 }
       ],
@@ -260,7 +260,7 @@ describe('Masonry.vue - Basic Functionality', () => {
 
     const wrapper = mount(Masonry, {
       props: {
-        getNextPage: cursorMockGetNextPage,
+        getPage: cursorMockGetPage,
         items: [],
         loadAtPage: 1,
         paginationType: 'cursor'
@@ -276,7 +276,7 @@ describe('Masonry.vue - Basic Functionality', () => {
 
   it('should refresh current page when called directly', async () => {
     let callCount = 0
-    const refreshMockGetNextPage = vi.fn().mockImplementation((page) => {
+    const refreshMockGetPage = vi.fn().mockImplementation((page) => {
       callCount++
       return Promise.resolve({
         items: [
@@ -289,7 +289,7 @@ describe('Masonry.vue - Basic Functionality', () => {
 
     const wrapper = mount(Masonry, {
       props: {
-        getNextPage: refreshMockGetNextPage,
+        getPage: refreshMockGetPage,
         loadAtPage: 1,
         mode: 'none',
         init: 'auto' // Auto mode should call loadPage on mount
@@ -305,19 +305,19 @@ describe('Masonry.vue - Basic Functionality', () => {
     await wait(50)
 
     // Verify items were loaded
-    expect(refreshMockGetNextPage).toHaveBeenCalledWith(1)
+    expect(refreshMockGetPage).toHaveBeenCalledWith(1)
     const initialHistory = [...vm.paginationHistory]
     expect(initialHistory.length).toBeGreaterThanOrEqual(2)
 
     // Clear the mock to track refreshCurrentPage call
-    refreshMockGetNextPage.mockClear()
+    refreshMockGetPage.mockClear()
 
     // Call refreshCurrentPage directly
     await vm.refreshCurrentPage()
     await wait(50)
 
-    // Verify getNextPage was called with page 1 again (current page)
-    expect(refreshMockGetNextPage).toHaveBeenCalledWith(1)
+    // Verify getPage was called with page 1 again (current page)
+    expect(refreshMockGetPage).toHaveBeenCalledWith(1)
 
     // Verify pagination history was reset and updated
     expect(vm.paginationHistory).toHaveLength(2)
@@ -325,10 +325,10 @@ describe('Masonry.vue - Basic Functionality', () => {
   })
 
   it('should expose refreshCurrentPage method', async () => {
-    const simpleMock = createMockGetNextPage()
+    const simpleMock = createMockGetPage()
 
     const wrapper = mount(Masonry, {
-      props: getDefaultProps({ getNextPage: simpleMock }),
+      props: getDefaultProps({ getPage: simpleMock }),
       global: {
         stubs: defaultStubs
       }
@@ -357,7 +357,7 @@ describe('Masonry.vue - Basic Functionality', () => {
   it('should attach scroll listener when container becomes available in masonry mode', async () => {
     const wrapper = mount(Masonry, {
       props: {
-        getNextPage: mockGetNextPage,
+        getPage: mockGetPage,
         items: [],
         loadAtPage: 1,
         layoutMode: 'masonry' // Explicitly set to masonry mode
@@ -386,7 +386,7 @@ describe('Masonry.vue - Basic Functionality', () => {
   it('should attach scroll listener when switching from swipe to masonry mode', async () => {
     const wrapper = mount(Masonry, {
       props: {
-        getNextPage: mockGetNextPage,
+        getPage: mockGetPage,
         items: [],
         loadAtPage: 1,
         layoutMode: 'swipe' // Start in swipe mode
@@ -418,7 +418,7 @@ describe('Masonry.vue - Basic Functionality', () => {
   it('should attach scroll listener on initial mount in masonry mode', async () => {
     const wrapper = mount(Masonry, {
       props: {
-        getNextPage: mockGetNextPage,
+        getPage: mockGetPage,
         items: [],
         loadAtPage: 1,
         layoutMode: 'auto' // Auto mode - should use masonry for wide screens (1024px > 768px breakpoint)
@@ -452,7 +452,7 @@ describe('Masonry.vue - Basic Functionality', () => {
 
     const wrapper = mount(Masonry, {
       props: {
-        getNextPage: mockGetNextPage,
+        getPage: mockGetPage,
         items: initialItems,
         loadAtPage: 1,
         init: 'auto'
@@ -467,8 +467,8 @@ describe('Masonry.vue - Basic Functionality', () => {
 
     const vm = wrapper.vm
 
-    // Verify getNextPage WAS called (auto mode always calls loadPage)
-    expect(mockGetNextPage).toHaveBeenCalledWith(1)
+    // Verify getPage WAS called (auto mode always calls loadPage)
+    expect(mockGetPage).toHaveBeenCalledWith(1)
     
     // Items will be overwritten by loadPage results
     // Verify pagination state is initialized from loadPage
@@ -484,7 +484,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     ]
 
     // Create a mock that returns null nextPage for page 10
-    const mockGetNextPageWithNull = vi.fn((page) => {
+    const mockGetPageWithNull = vi.fn((page) => {
       return Promise.resolve({
         items: [
           { id: `item-${page}-1`, width: 300, height: 200, src: `test${page}-1.jpg`, page }
@@ -495,7 +495,7 @@ describe('Masonry.vue - Basic Functionality', () => {
 
     const wrapper = mount(Masonry, {
       props: {
-        getNextPage: mockGetNextPageWithNull,
+        getPage: mockGetPageWithNull,
         items: initialItems,
         loadAtPage: 10,
         init: 'auto'
@@ -511,7 +511,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     const vm = wrapper.vm
 
     // Verify loadPage was called with loadAtPage
-    expect(mockGetNextPageWithNull).toHaveBeenCalledWith(10)
+    expect(mockGetPageWithNull).toHaveBeenCalledWith(10)
     
     // Verify hasReachedEnd is set correctly based on loadPage result
     expect(vm.currentPage).toBe(10)
@@ -526,7 +526,7 @@ describe('Masonry.vue - Basic Functionality', () => {
 
     const wrapper = mount(Masonry, {
       props: {
-        getNextPage: mockGetNextPage,
+        getPage: mockGetPage,
         items: [],
         loadAtPage: 1,
         init: 'auto'
@@ -563,14 +563,14 @@ describe('Masonry.vue - Basic Functionality', () => {
       { id: 1, width: 300, height: 200, src: 'test1.jpg' }
     ]
 
-    const mockGetNextPageWithNext = createMockGetNextPage({
+    const mockGetPageWithNext = createMockGetPage({
       items: [{ id: 2, width: 400, height: 300, src: 'test2.jpg' }],
       nextPage: 3
     })
 
     const wrapper = mount(Masonry, {
       props: {
-        getNextPage: mockGetNextPageWithNext,
+        getPage: mockGetPageWithNext,
         items: initialItems,
         loadAtPage: 1,
         init: 'auto'
@@ -586,7 +586,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     const vm = wrapper.vm
 
     // Verify loadPage was called with loadAtPage
-    expect(mockGetNextPageWithNext).toHaveBeenCalledWith(1)
+    expect(mockGetPageWithNext).toHaveBeenCalledWith(1)
     
     // Verify initial state is correct (based on loadPage result)
     expect(vm.currentPage).toBe(1)

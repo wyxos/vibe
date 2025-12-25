@@ -53,7 +53,7 @@ By default, VIBE uses the built-in `MasonryItem` component, which handles image 
     sizes: { base: 1, sm: 2, md: 3, lg: 4 }
   }
 
-  async function getNextPage(page) {
+  async function getPage(page) {
     const response = await fetch(`/api/items?page=${page}`)
     const data = await response.json()
     // Items must have a 'src' property for the default MasonryItem
@@ -68,7 +68,7 @@ By default, VIBE uses the built-in `MasonryItem` component, which handles image 
 <template>
   <Masonry
       v-model:items="items"
-      :get-next-page="getNextPage"
+      :get-page="getPage"
       :layout="layout"
       layout-mode="auto"
       :mobile-breakpoint="768"
@@ -87,7 +87,7 @@ VIBE supports two initialization modes:
 <!-- Auto mode: loads first page automatically -->
 <Masonry
   v-model:items="items"
-  :get-next-page="getNextPage"
+  :get-page="getPage"
   init="auto"
   :load-at-page="1"
 />
@@ -96,7 +96,7 @@ VIBE supports two initialization modes:
 <Masonry
   ref="masonry"
   v-model:items="items"
-  :get-next-page="getNextPage"
+  :get-page="getPage"
   init="manual"
 />
 <script setup>
@@ -142,7 +142,7 @@ You can fully customize the item rendering using the `#item` slot. You can also 
 <template>
   <Masonry
       v-model:items="items"
-      :get-next-page="getNextPage"
+      :get-page="getPage"
       :layout="layout"
   >
     <template #item="{ item, remove }">
@@ -198,7 +198,7 @@ The `MasonryItem` component exposes the following props to its default slot:
 | Prop | Type | Required | Description |
 |------|------|----------|-------------|
 | `items` | `Array` | Yes | Two-way bound item array. Each item must include `width`, `height`, and `id`. |
-| `getNextPage` | `Function(page: Number)` | Yes | Async function to load the next page. Must return `{ items, nextPage }`. |
+| `getPage` | `Function(page: Number)` | Yes | Async function to load a page. Must return `{ items, nextPage }`. |
 | `layout` | `Object` | No | Configuration object for layout, including sizes and gutters. |
 | `loadAtPage` | `Number` | No | The starting page number (default: `1`). |
 | `init` | `String` | No | Initialization mode: `'auto'` (automatically loads first page on mount) or `'manual'` (user must call `restoreItems()` manually) (default: `'manual'`). |

@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import Masonry from '../src/Masonry.vue'
-import { createMockGetNextPage, getDefaultProps, defaultStubs, wait, createTestItem } from './helpers/testSetup'
+import { createMockGetPage, getDefaultProps, defaultStubs, wait, createTestItem } from './helpers/testSetup'
 
 describe('Masonry.vue - Backfill Functionality', () => {
-  let mockGetNextPage
+  let mockGetPage
 
   beforeEach(() => {
-    mockGetNextPage = createMockGetNextPage()
+    mockGetPage = createMockGetPage()
   })
 
   describe('Basic Backfill Behavior', () => {
@@ -23,7 +23,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 10,
           backfillDelayMs: 10,
@@ -43,7 +43,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
       await vm.maybeBackfillToTarget(1, true)
       await wait(500) // Wait for backfill to complete
 
-      // Should have called getNextPage multiple times to reach target
+      // Should have called getPage multiple times to reach target
       expect(backfillMock).toHaveBeenCalled()
       expect(callCount).toBeGreaterThan(0)
     }, 10000)
@@ -56,7 +56,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'none',
           pageSize: 10,
           items: [],
@@ -79,7 +79,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
       await vm.maybeBackfillToTarget(1, false)
       await wait(100)
 
-      // Should not have called getNextPage
+      // Should not have called getPage
       expect(backfillMock).not.toHaveBeenCalled()
     })
 
@@ -95,7 +95,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'none',
           pageSize: 10,
           backfillDelayMs: 10,
@@ -112,7 +112,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
       await vm.maybeBackfillToTarget(1, true)
       await wait(500)
 
-      // Should have called getNextPage even though disabled
+      // Should have called getPage even though disabled
       expect(backfillMock).toHaveBeenCalled()
     }, 10000)
 
@@ -126,7 +126,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 10,
           items: [],
@@ -156,7 +156,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
       await vm.maybeBackfillToTarget(1, true)
       await wait(100)
 
-      // Should not have called getNextPage
+      // Should not have called getPage
       expect(backfillMock).not.toHaveBeenCalled()
     })
 
@@ -173,7 +173,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 10,
           backfillDelayMs: 10,
@@ -198,7 +198,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
       await backfillPromise
       await wait(200)
 
-      // Should only have called getNextPage from the first backfill
+      // Should only have called getPage from the first backfill
       // The second call should have been ignored
       expect(callCount).toBeGreaterThan(0)
       expect(callCount).toBeLessThanOrEqual(5) // Should respect max calls
@@ -214,7 +214,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 10,
           backfillDelayMs: 10,
@@ -253,7 +253,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 10,
           backfillDelayMs: 100,
@@ -296,7 +296,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 10,
           backfillDelayMs: 10,
@@ -337,7 +337,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 100, // Large page size so we need many calls
           backfillMaxCalls: 3,
@@ -362,7 +362,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
       await vm.maybeBackfillToTarget(1, true)
       await wait(300)
 
-      // Should have called getNextPage at most 3 times
+      // Should have called getPage at most 3 times
       expect(callCount).toBeLessThanOrEqual(3)
     })
 
@@ -378,7 +378,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 20, // Need 20 items, but max calls is 2
           backfillMaxCalls: 2,
@@ -424,7 +424,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 100,
           backfillMaxCalls: 10,
@@ -456,7 +456,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
       expect(cancelledEvent).toBeDefined()
       expect(cancelledEvent[0].cancelled).toBe(true)
 
-      // Should have called getNextPage fewer times than max
+      // Should have called getPage fewer times than max
       expect(callCount).toBeLessThan(10)
     })
 
@@ -468,7 +468,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 10,
           items: [],
@@ -495,7 +495,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
       await vm.maybeBackfillToTarget(1, true)
       await wait(100)
 
-      // Should not have called getNextPage
+      // Should not have called getPage
       expect(backfillMock).not.toHaveBeenCalled()
     })
   })
@@ -513,7 +513,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 100, // Large target
           backfillMaxCalls: 10,
@@ -543,7 +543,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 10,
           items: [],
@@ -568,7 +568,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
       await vm.maybeBackfillToTarget(1, true)
       await wait(100)
 
-      // Should not have called getNextPage
+      // Should not have called getPage
       expect(backfillMock).not.toHaveBeenCalled()
     })
   })
@@ -589,7 +589,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 20,
           backfillMaxCalls: 5,
@@ -630,7 +630,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 100,
           backfillMaxCalls: 10,
@@ -676,7 +676,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 10,
           backfillMaxCalls: 3,
@@ -724,7 +724,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 10,
           backfillDelayMs: 50,
@@ -770,7 +770,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 100,
           backfillDelayMs: 50,
@@ -814,7 +814,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 10,
           items: [],
@@ -839,7 +839,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
       await vm.maybeBackfillToTarget(1, true)
       await wait(100)
 
-      // Should not have called getNextPage (no next page available)
+      // Should not have called getPage (no next page available)
       expect(backfillMock).not.toHaveBeenCalled()
       expect(vm.hasReachedEnd).toBe(true)
     })
@@ -852,7 +852,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: 0,
           items: [],
@@ -874,7 +874,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
       await vm.maybeBackfillToTarget(1, true)
       await wait(100)
 
-      // Should not have called getNextPage (invalid pageSize)
+      // Should not have called getPage (invalid pageSize)
       expect(backfillMock).not.toHaveBeenCalled()
     })
 
@@ -886,7 +886,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       const wrapper = mount(Masonry, {
         props: getDefaultProps({
-          getNextPage: backfillMock,
+          getPage: backfillMock,
           mode: 'backfill',
           pageSize: -10,
           items: [],
@@ -908,7 +908,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
       await vm.maybeBackfillToTarget(1, true)
       await wait(100)
 
-      // Should not have called getNextPage (invalid pageSize)
+      // Should not have called getPage (invalid pageSize)
       expect(backfillMock).not.toHaveBeenCalled()
     })
   })

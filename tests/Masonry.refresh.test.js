@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import Masonry from '../src/Masonry.vue'
-import { createMockGetNextPage, getDefaultProps, defaultStubs, wait, createTestItem } from './helpers/testSetup'
+import { createMockGetPage, getDefaultProps, defaultStubs, wait, createTestItem } from './helpers/testSetup'
 
 describe('Masonry.vue - Refresh Mode Functionality', () => {
-    let mockGetNextPage
+    let mockGetPage
 
     beforeEach(() => {
-        mockGetNextPage = createMockGetNextPage()
+        mockGetPage = createMockGetPage()
     })
 
     describe('Refresh Mode - Current Page Refresh', () => {
@@ -38,7 +38,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
 
             const wrapper = mount(Masonry, {
                 props: getDefaultProps({
-                    getNextPage: refreshMock,
+                    getPage: refreshMock,
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
@@ -63,7 +63,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             await vm.loadNext()
             await wait(200)
 
-            // Should have called getNextPage for page 5 (refresh)
+            // Should have called getPage for page 5 (refresh)
             expect(refreshMock).toHaveBeenCalledWith(5)
             // Should have added new items (3 new items to reach 10)
             expect(countItemsForPage(vm, 5)).toBeGreaterThanOrEqual(7)
@@ -98,7 +98,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             let items = []
             const wrapper = mount(Masonry, {
                 props: getDefaultProps({
-                    getNextPage: refreshMock,
+                    getPage: refreshMock,
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
@@ -173,7 +173,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             let items = []
             const wrapper = mount(Masonry, {
                 props: getDefaultProps({
-                    getNextPage: refreshMock,
+                    getPage: refreshMock,
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
@@ -231,7 +231,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
 
             const wrapper = mount(Masonry, {
                 props: getDefaultProps({
-                    getNextPage: refreshMock,
+                    getPage: refreshMock,
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
@@ -287,7 +287,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             let items = []
             const wrapper = mount(Masonry, {
                 props: getDefaultProps({
-                    getNextPage: refreshMock,
+                    getPage: refreshMock,
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
@@ -351,7 +351,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
 
             const wrapper = mount(Masonry, {
                 props: getDefaultProps({
-                    getNextPage: refreshMock,
+                    getPage: refreshMock,
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],

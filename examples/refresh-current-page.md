@@ -67,7 +67,7 @@ const removeAllVisible = async () => {
     <Masonry
       ref="masonry"
       v-model:items="items"
-      :get-next-page="getPage"
+      :get-page="getPage"
       :load-at-page="1"
     >
       <template #item="{ item, remove }">
