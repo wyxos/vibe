@@ -163,16 +163,31 @@ describe('Masonry.vue - End of List Functionality', () => {
   it('should display end message when hasReachedEnd is true and items exist', async () => {
     const wrapper = mount(Masonry, {
       props: getDefaultProps({
-        items: [createTestItem()]
+        items: [],
+        init: 'manual'
       }),
       global: { stubs: defaultStubs }
     })
 
     const vm = wrapper.vm
 
+    // Set items via props and initialize pagination state
+    const testItem = createTestItem()
+    await wrapper.setProps({ items: [testItem] })
+    vm.currentPage = 1
+    vm.paginationHistory = [1]
+    vm.hasReachedEnd = true
+    vm.isInitialized = true
+    await wrapper.vm.$nextTick()
+    await wait(50)
+    
+    // Verify items were set
+    expect(vm.totalItems).toBeGreaterThan(0)
+
     // Manually set hasReachedEnd to true and ensure items exist
     vm.hasReachedEnd = true
     await wrapper.vm.$nextTick()
+    await wait(10)
 
     // Verify state
     expect(vm.hasReachedEnd).toBe(true)
@@ -204,7 +219,8 @@ describe('Masonry.vue - End of List Functionality', () => {
   it('should allow custom end message via slot', async () => {
     const wrapper = mount(Masonry, {
       props: getDefaultProps({
-        items: [createTestItem()]
+        items: [],
+        init: 'manual'
       }),
       slots: {
         'end-message': '<div class="custom-end-message">Custom end message</div>'
@@ -214,9 +230,23 @@ describe('Masonry.vue - End of List Functionality', () => {
 
     const vm = wrapper.vm
 
+    // Set items via props and initialize pagination state
+    const testItem = createTestItem()
+    await wrapper.setProps({ items: [testItem] })
+    vm.currentPage = 1
+    vm.paginationHistory = [1]
+    vm.hasReachedEnd = true
+    vm.isInitialized = true
+    await wrapper.vm.$nextTick()
+    await wait(50)
+    
+    // Verify items were set
+    expect(vm.totalItems).toBeGreaterThan(0)
+
     // Manually set hasReachedEnd to true and ensure items exist
     vm.hasReachedEnd = true
     await wrapper.vm.$nextTick()
+    await wait(10)
 
     // Verify state
     expect(vm.hasReachedEnd).toBe(true)

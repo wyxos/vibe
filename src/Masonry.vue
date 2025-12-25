@@ -46,15 +46,6 @@ const props = defineProps({
     default: 'manual',
     validator: (v: string) => ['auto', 'manual'].includes(v)
   },
-  // Initial pagination state when init is 'auto' and items are provided
-  initialPage: {
-    type: [Number, String],
-    default: null
-  },
-  initialNextPage: {
-    type: [Number, String],
-    default: null
-  },
   pageSize: {
     type: Number,
     default: 40
@@ -202,6 +193,11 @@ const emits = defineEmits([
 const masonry = computed<any>({
   get: () => props.items,
   set: (val) => emits('update:items', val)
+})
+
+const masonryLength = computed((): number => {
+  const items = masonry.value as any[]
+  return items?.length ?? 0
 })
 
 const columns = ref<number>(7)
@@ -410,6 +406,18 @@ const goToNextItem = swipeMode.goToNextItem
 const goToPreviousItem = swipeMode.goToPreviousItem
 const snapToCurrentItem = swipeMode.snapToCurrentItem
 
+// Helper functions for swipe mode percentage calculations
+function getSwipeItemTop(index: string | number): string {
+  const length = masonryLength.value
+  const numIndex = typeof index === 'string' ? parseInt(index, 10) : index
+  return length > 0 ? `${numIndex * (100 / length)}%` : '0%'
+}
+
+function getSwipeItemHeight(): string {
+  const length = masonryLength.value
+  return length > 0 ? `${100 / length}%` : '0%'
+}
+
 // refreshCurrentPage is now in useMasonryPagination composable
 
 // Item management functions (remove, removeMany, restore, restoreMany, removeAll) are now in useMasonryItems composable
@@ -474,9 +482,6 @@ function reset() {
 
   // Reset virtualization state
   resetVirtualization()
-
-  // Reset auto-initialization flag so watcher can work again if needed
-  hasInitializedWithItems = false
 }
 
 function destroy() {
@@ -696,37 +701,6 @@ watch(container, (el) => {
   }
 }, { immediate: true })
 
-// Watch for items when init is 'auto' to auto-initialize pagination state
-// This handles cases where items are provided after mount or updated externally
-let hasInitializedWithItems = false
-watch(
-  () => [props.items, props.init, props.initialPage, props.initialNextPage] as const,
-  ([items, init, initialPage, initialNextPage]) => {
-    // Only auto-initialize if:
-    // 1. init is 'auto'
-    // 2. Items exist
-    // 3. We haven't already initialized with items (to avoid re-initializing on every update)
-    if (
-      init === 'auto' &&
-      items &&
-      items.length > 0 &&
-      !hasInitializedWithItems
-    ) {
-      hasInitializedWithItems = true
-      const page = initialPage !== null && initialPage !== undefined
-        ? initialPage
-        : (props.loadAtPage as any)
-      const next = initialNextPage !== undefined
-        ? initialNextPage
-        : undefined // undefined means "unknown", null means "end of list"
-
-      restoreItems(items as any[], page, next)
-      // isInitialized is set inside restoreItems
-    }
-  },
-  { immediate: true }
-)
-
 // Watch for when items are first loaded (for init='auto' when items are loaded later via loadPage/loadNext)
 watch(
   () => masonry.value.length,
@@ -869,11 +843,6 @@ watch(containerWidth, (newWidth, oldWidth) => {
 
 onMounted(async () => {
   try {
-    // For 'manual' init, show masonry immediately since we're about to load
-    if (props.init === 'manual') {
-      isInitialized.value = true
-    }
-
     // Wait for next tick to ensure wrapper is mounted
     await nextTick()
 
@@ -895,28 +864,12 @@ onMounted(async () => {
     const initialPage = props.loadAtPage as any
     paginationHistory.value = [initialPage]
 
-    if (props.init === 'manual') {
-      // Wait for next tick to ensure parent component has finished initializing
-      // This is especially important when switching tabs, as the parent needs time
-      // to restore query params and set up the tab state before masonry loads
-      await nextTick()
-      await loadPage(paginationHistory.value[0] as any)
-    } else if (props.items && props.items.length > 0) {
-      // When init is 'auto' and items are provided, initialize pagination state
-      // Use initialPage/initialNextPage props if provided, otherwise use loadAtPage
-      // Only set next to null if initialNextPage is explicitly null (not undefined)
-      const page = props.initialPage !== null && props.initialPage !== undefined
-        ? props.initialPage
-        : (props.loadAtPage as any)
-      const next = props.initialNextPage !== undefined
-        ? props.initialNextPage
-        : undefined // undefined means "unknown", null means "end of list"
-
-      await restoreItems(props.items as any[], page, next)
-      // Mark as initialized to prevent watcher from running again
-      hasInitializedWithItems = true
-      // isInitialized is set inside restoreItems
+    if (props.init === 'auto') {
+      // Auto mode: automatically call loadPage on mount
+      // isInitialized will be set to true when items appear (via watcher)
+      await loadPage(initialPage)
     }
+    // Manual mode: do nothing, user will manually call restore()
 
     if (!useSwipeMode.value) {
       updateScrollProgress()
@@ -980,12 +933,12 @@ onUnmounted(() => {
       <div class="relative w-full" :style="{
         transform: `translateY(${swipeOffset}px)`,
         transition: isDragging ? 'none' : `transform ${transitionDurationMs}ms ${transitionEasing}`,
-        height: `${masonry.length * 100}%`
+        height: `${masonryLength * 100}%`
       }">
         <div v-for="(item, index) in masonry" :key="`${item.page}-${item.id}`" class="absolute top-0 left-0 w-full"
           :style="{
-            top: `${index * (100 / masonry.length)}%`,
-            height: `${100 / masonry.length}%`
+            top: getSwipeItemTop(index),
+            height: getSwipeItemHeight()
           }">
           <div class="w-full h-full flex items-center justify-center p-4">
             <div class="w-full h-full max-w-full max-h-full relative">

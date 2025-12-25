@@ -202,20 +202,30 @@ describe('Masonry.vue - Error Handling Functionality', () => {
   it('should display error message when loadError is set and items exist', async () => {
     const wrapper = mount(Masonry, {
       props: getDefaultProps({
-        items: [createTestItem()]
+        items: [],
+        init: 'manual'
       }),
       global: { stubs: defaultStubs }
     })
 
-    // Wait for component to fully initialize (restoreItems may reset loadError)
-    await wrapper.vm.$nextTick()
-    await wait(10)
-
     const vm = wrapper.vm
+
+    // Set items via props and initialize pagination state
+    const testItem = createTestItem()
+    await wrapper.setProps({ items: [testItem] })
+    vm.currentPage = 1
+    vm.paginationHistory = [1, 2]
+    vm.isInitialized = true
+    await wrapper.vm.$nextTick()
+    await wait(50)
+    
+    // Verify items were set
+    expect(vm.totalItems).toBeGreaterThan(0)
 
     // Manually set loadError (Vue Test Utils unwraps refs, so set directly)
     vm.loadError = new Error('Test error message')
     await wrapper.vm.$nextTick()
+    await wait(10)
 
     // Verify state
     expect(vm.loadError).not.toBeNull()
@@ -251,7 +261,8 @@ describe('Masonry.vue - Error Handling Functionality', () => {
   it('should allow custom error message via slot', async () => {
     const wrapper = mount(Masonry, {
       props: getDefaultProps({
-        items: [createTestItem()]
+        items: [],
+        init: 'manual'
       }),
       slots: {
         'error-message': '<div class="custom-error-message">Custom error: {{ error.message }}</div>'
@@ -259,15 +270,24 @@ describe('Masonry.vue - Error Handling Functionality', () => {
       global: { stubs: defaultStubs }
     })
 
-    // Wait for component to fully initialize (restoreItems may reset loadError)
-    await wrapper.vm.$nextTick()
-    await wait(10)
-
     const vm = wrapper.vm
+
+    // Set items via props and initialize pagination state
+    const testItem = createTestItem()
+    await wrapper.setProps({ items: [testItem] })
+    vm.currentPage = 1
+    vm.paginationHistory = [1, 2]
+    vm.isInitialized = true
+    await wrapper.vm.$nextTick()
+    await wait(50)
+    
+    // Verify items were set
+    expect(vm.totalItems).toBeGreaterThan(0)
 
     // Manually set loadError (Vue Test Utils unwraps refs, so set directly)
     vm.loadError = new Error('Custom error')
     await wrapper.vm.$nextTick()
+    await wait(10)
 
     // Verify state
     expect(vm.loadError).not.toBeNull()

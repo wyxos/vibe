@@ -61,16 +61,21 @@ describe('Masonry.vue - Backfill Functionality', () => {
           getNextPage: backfillMock,
           mode: 'none',
           pageSize: 10,
-          items: [createTestItem()],
-          init: 'auto',
-          initialPage: 1,
-          initialNextPage: 2
+          items: [],
+          init: 'manual'
         }),
         global: { stubs: defaultStubs }
       })
 
       const vm = wrapper.vm
       await wait(50)
+
+      // Manually set up state (simulating items already loaded)
+      await vm.restoreItems([createTestItem()], 1, 2)
+      await wait(50)
+
+      // Reset mock call count after restoreItems
+      backfillMock.mockClear()
 
       // Try to backfill without force
       await vm.maybeBackfillToTarget(1, false)
@@ -128,10 +133,8 @@ describe('Masonry.vue - Backfill Functionality', () => {
           getNextPage: backfillMock,
           mode: 'backfill',
           pageSize: 10,
-          items,
-          init: 'auto',
-          initialPage: 1,
-          initialNextPage: 2
+          items: [],
+          init: 'manual'
         }),
         global: { stubs: defaultStubs }
       })
@@ -139,8 +142,19 @@ describe('Masonry.vue - Backfill Functionality', () => {
       const vm = wrapper.vm
       await wait(50)
 
+      // Set items via props and initialize pagination state
+      await wrapper.setProps({ items })
+      vm.currentPage = 1
+      vm.paginationHistory = [1, 2]
+      vm.isInitialized = true
+      await wrapper.vm.$nextTick()
+      await wait(100)
+
       // We have 15 items, target is 1 + 10 = 11, so we're already above target
       expect(vm.totalItems).toBe(15)
+
+      // Reset mock call count after restoreItems
+      backfillMock.mockClear()
 
       // Try to backfill
       await vm.maybeBackfillToTarget(1, true)
@@ -340,16 +354,22 @@ describe('Masonry.vue - Backfill Functionality', () => {
           pageSize: 100, // Large page size so we need many calls
           backfillMaxCalls: 3,
           backfillDelayMs: 10,
-          items: [createTestItem()],
-          init: 'auto',
-          initialPage: 1,
-          initialNextPage: 2
+          items: [],
+          init: 'manual'
         }),
         global: { stubs: defaultStubs }
       })
 
       const vm = wrapper.vm
       await wait(50)
+
+      // Manually set up state
+      await vm.restoreItems([createTestItem()], 1, 2)
+      await wait(50)
+      
+      // Reset call count after setup
+      callCount = 0
+      backfillMock.mockClear()
 
       await vm.maybeBackfillToTarget(1, true)
       await wait(300)
@@ -375,16 +395,22 @@ describe('Masonry.vue - Backfill Functionality', () => {
           pageSize: 20, // Need 20 items, but max calls is 2
           backfillMaxCalls: 2,
           backfillDelayMs: 10,
-          items: [createTestItem()],
-          init: 'auto',
-          initialPage: 1,
-          initialNextPage: 2
+          items: [],
+          init: 'manual'
         }),
         global: { stubs: defaultStubs }
       })
 
       const vm = wrapper.vm
       await wait(50)
+
+      // Manually set up state
+      await vm.restoreItems([createTestItem()], 1, 2)
+      await wait(50)
+      
+      // Reset call count after setup
+      callCount = 0
+      backfillMock.mockClear()
 
       await vm.maybeBackfillToTarget(1, true)
       await wait(200)
@@ -459,16 +485,21 @@ describe('Masonry.vue - Backfill Functionality', () => {
           getNextPage: backfillMock,
           mode: 'backfill',
           pageSize: 10,
-          items: [createTestItem()],
-          init: 'auto',
-          initialPage: 1,
-          initialNextPage: 2
+          items: [],
+          init: 'manual'
         }),
         global: { stubs: defaultStubs }
       })
 
       const vm = wrapper.vm
       await wait(50)
+
+      // Manually set up state
+      await vm.restoreItems([createTestItem()], 1, 2)
+      await wait(50)
+      
+      // Clear mock after setup
+      backfillMock.mockClear()
 
       // Cancel first
       vm.cancelLoad()
@@ -531,10 +562,8 @@ describe('Masonry.vue - Backfill Functionality', () => {
           getNextPage: backfillMock,
           mode: 'backfill',
           pageSize: 10,
-          items: [createTestItem()],
-          init: 'auto',
-          initialPage: 1,
-          initialNextPage: null // Already at end
+          items: [],
+          init: 'manual'
         }),
         global: { stubs: defaultStubs }
       })
@@ -542,7 +571,14 @@ describe('Masonry.vue - Backfill Functionality', () => {
       const vm = wrapper.vm
       await wait(50)
 
+      // Manually set up state with hasReachedEnd = true
+      await vm.restoreItems([createTestItem()], 1, null)
+      await wait(50)
+      
       expect(vm.hasReachedEnd).toBe(true)
+      
+      // Clear mock after setup
+      backfillMock.mockClear()
 
       // Try to backfill
       await vm.maybeBackfillToTarget(1, true)
@@ -714,10 +750,8 @@ describe('Masonry.vue - Backfill Functionality', () => {
           mode: 'backfill',
           pageSize: 10,
           backfillDelayMs: 50,
-          items: [createTestItem()],
-          init: 'auto',
-          initialPage: 1,
-          initialNextPage: 2
+          items: [],
+          init: 'manual'
         }),
         global: { stubs: defaultStubs }
       })
@@ -725,6 +759,10 @@ describe('Masonry.vue - Backfill Functionality', () => {
       const vm = wrapper.vm
       await wait(50)
 
+      // Manually set up state
+      await vm.restoreItems([createTestItem()], 1, 2)
+      await wait(50)
+      
       expect(vm.isLoading).toBe(false)
 
       // Start backfill
@@ -758,15 +796,17 @@ describe('Masonry.vue - Backfill Functionality', () => {
           mode: 'backfill',
           pageSize: 100,
           backfillDelayMs: 50,
-          items: [createTestItem()],
-          init: 'auto',
-          initialPage: 1,
-          initialNextPage: 2
+          items: [],
+          init: 'manual'
         }),
         global: { stubs: defaultStubs }
       })
 
       const vm = wrapper.vm
+      await wait(50)
+
+      // Manually set up state
+      await vm.restoreItems([createTestItem()], 1, 2)
       await wait(50)
 
       // Start backfill
@@ -799,8 +839,8 @@ describe('Masonry.vue - Backfill Functionality', () => {
           getNextPage: backfillMock,
           mode: 'backfill',
           pageSize: 10,
-          items: [createTestItem()],
-          init: 'auto'
+          items: [],
+          init: 'manual'
         }),
         global: { stubs: defaultStubs }
       })
@@ -808,8 +848,15 @@ describe('Masonry.vue - Backfill Functionality', () => {
       const vm = wrapper.vm
       await wait(50)
 
+      // Manually set up state
+      await vm.restoreItems([createTestItem()], 1, null)
+      await wait(50)
+      
       // Manually clear pagination history
       vm.paginationHistory = []
+      
+      // Clear mock after setup
+      backfillMock.mockClear()
 
       await vm.maybeBackfillToTarget(1, true)
       await wait(100)
@@ -830,16 +877,21 @@ describe('Masonry.vue - Backfill Functionality', () => {
           getNextPage: backfillMock,
           mode: 'backfill',
           pageSize: 0,
-          items: [createTestItem()],
-          init: 'auto',
-          initialPage: 1,
-          initialNextPage: 2
+          items: [],
+          init: 'manual'
         }),
         global: { stubs: defaultStubs }
       })
 
       const vm = wrapper.vm
       await wait(50)
+
+      // Manually set up state
+      await vm.restoreItems([createTestItem()], 1, 2)
+      await wait(50)
+      
+      // Clear mock after setup
+      backfillMock.mockClear()
 
       await vm.maybeBackfillToTarget(1, true)
       await wait(100)
@@ -859,16 +911,21 @@ describe('Masonry.vue - Backfill Functionality', () => {
           getNextPage: backfillMock,
           mode: 'backfill',
           pageSize: -10,
-          items: [createTestItem()],
-          init: 'auto',
-          initialPage: 1,
-          initialNextPage: 2
+          items: [],
+          init: 'manual'
         }),
         global: { stubs: defaultStubs }
       })
 
       const vm = wrapper.vm
       await wait(50)
+
+      // Manually set up state
+      await vm.restoreItems([createTestItem()], 1, 2)
+      await wait(50)
+      
+      // Clear mock after setup
+      backfillMock.mockClear()
 
       await vm.maybeBackfillToTarget(1, true)
       await wait(100)

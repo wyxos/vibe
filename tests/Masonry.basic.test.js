@@ -24,16 +24,21 @@ describe('Masonry.vue - Basic Functionality', () => {
     await wrapper.vm.$nextTick()
     await flushPromises()
 
-    // Wait for isInitialized to be set (for init='manual' it should be true in onMounted)
-    await waitFor(() => {
-      return wrapper.vm.isInitialized === true
-    }, { timeout: 500, interval: 10 })
-
     // Check that the component mounted
     expect(wrapper.exists()).toBe(true)
 
     // Verify component is exposed correctly
     const vm = wrapper.vm
+    // For manual mode, isInitialized should be false until user calls restoreItems
+    expect(vm.isInitialized).toBe(false)
+    
+    // Manually call restoreItems to initialize (as user would do in manual mode)
+    // Pass some items so isInitialized gets set to true
+    const testItems = [{ id: 1, width: 300, height: 200, src: 'test1.jpg' }]
+    await vm.restoreItems(testItems, 1, 2)
+    await wrapper.vm.$nextTick()
+    
+    // Now isInitialized should be true
     expect(vm.isInitialized).toBe(true)
 
     // Wait for the masonry container to actually appear in the DOM
@@ -181,7 +186,8 @@ describe('Masonry.vue - Basic Functionality', () => {
       props: {
         getNextPage: initialMockGetNextPage,
         items: [],
-        loadAtPage: 1
+        loadAtPage: 1,
+        init: 'auto' // Auto mode should call loadPage on mount
       },
       global: {
         stubs: defaultStubs
@@ -214,7 +220,8 @@ describe('Masonry.vue - Basic Functionality', () => {
       props: {
         getNextPage: dynamicMockGetNextPage,
         items: [],
-        loadAtPage: 1
+        loadAtPage: 1,
+        init: 'auto' // Auto mode should call loadPage on mount
       },
       global: {
         stubs: defaultStubs
@@ -284,7 +291,8 @@ describe('Masonry.vue - Basic Functionality', () => {
       props: {
         getNextPage: refreshMockGetNextPage,
         loadAtPage: 1,
-        mode: 'none'
+        mode: 'none',
+        init: 'auto' // Auto mode should call loadPage on mount
       },
       global: {
         stubs: defaultStubs
@@ -447,8 +455,7 @@ describe('Masonry.vue - Basic Functionality', () => {
         getNextPage: mockGetNextPage,
         items: initialItems,
         loadAtPage: 1,
-        init: 'auto',
-        initialNextPage: 2 // Explicitly provide next page to avoid hasReachedEnd being true
+        init: 'auto'
       },
       global: {
         stubs: defaultStubs
@@ -460,68 +467,38 @@ describe('Masonry.vue - Basic Functionality', () => {
 
     const vm = wrapper.vm
 
-    // Verify items are set
-    expect(wrapper.props('items')).toEqual(initialItems)
-    expect(wrapper.props('items').length).toBe(2)
-
-    // Verify pagination state is initialized
+    // Verify getNextPage WAS called (auto mode always calls loadPage)
+    expect(mockGetNextPage).toHaveBeenCalledWith(1)
+    
+    // Items will be overwritten by loadPage results
+    // Verify pagination state is initialized from loadPage
     expect(vm.currentPage).toBe(1)
     expect(vm.paginationHistory).toContain(1)
     expect(vm.paginationHistory).toContain(2)
     expect(vm.hasReachedEnd).toBe(false) // Should be false when nextPage is provided
-
-    // Verify getNextPage was NOT called (init is auto)
-    expect(mockGetNextPage).not.toHaveBeenCalled()
   })
 
-  it('should use initialPage and initialNextPage props when init is auto', async () => {
-    const initialItems = [
-      { id: 1, width: 300, height: 200, src: 'test1.jpg' },
-      { id: 2, width: 400, height: 300, src: 'test2.jpg' }
-    ]
-
-    const wrapper = mount(Masonry, {
-      props: {
-        getNextPage: mockGetNextPage,
-        items: initialItems,
-        loadAtPage: 1,
-        init: 'auto',
-        initialPage: 5,
-        initialNextPage: 6
-      },
-      global: {
-        stubs: defaultStubs
-      }
-    })
-
-    await wrapper.vm.$nextTick()
-    await wait(100)
-
-    const vm = wrapper.vm
-
-    // Verify pagination state uses initialPage/initialNextPage
-    expect(vm.currentPage).toBe(5)
-    expect(vm.paginationHistory).toContain(5)
-    expect(vm.paginationHistory).toContain(6)
-    expect(vm.hasReachedEnd).toBe(false) // nextPage is 6, not null
-
-    // Verify getNextPage was NOT called
-    expect(mockGetNextPage).not.toHaveBeenCalled()
-  })
-
-  it('should set hasReachedEnd to true when initialNextPage is null', async () => {
+  it('should set hasReachedEnd to true when loadPage returns null nextPage', async () => {
     const initialItems = [
       { id: 1, width: 300, height: 200, src: 'test1.jpg' }
     ]
 
+    // Create a mock that returns null nextPage for page 10
+    const mockGetNextPageWithNull = vi.fn((page) => {
+      return Promise.resolve({
+        items: [
+          { id: `item-${page}-1`, width: 300, height: 200, src: `test${page}-1.jpg`, page }
+        ],
+        nextPage: page === 10 ? null : page + 1
+      })
+    })
+
     const wrapper = mount(Masonry, {
       props: {
-        getNextPage: mockGetNextPage,
+        getNextPage: mockGetNextPageWithNull,
         items: initialItems,
-        loadAtPage: 1,
-        init: 'auto',
-        initialPage: 10,
-        initialNextPage: null
+        loadAtPage: 10,
+        init: 'auto'
       },
       global: {
         stubs: defaultStubs
@@ -533,7 +510,10 @@ describe('Masonry.vue - Basic Functionality', () => {
 
     const vm = wrapper.vm
 
-    // Verify hasReachedEnd is set correctly
+    // Verify loadPage was called with loadAtPage
+    expect(mockGetNextPageWithNull).toHaveBeenCalledWith(10)
+    
+    // Verify hasReachedEnd is set correctly based on loadPage result
     expect(vm.currentPage).toBe(10)
     expect(vm.hasReachedEnd).toBe(true)
   })
@@ -593,9 +573,7 @@ describe('Masonry.vue - Basic Functionality', () => {
         getNextPage: mockGetNextPageWithNext,
         items: initialItems,
         loadAtPage: 1,
-        init: 'auto',
-        initialPage: 1,
-        initialNextPage: 2
+        init: 'auto'
       },
       global: {
         stubs: defaultStubs
@@ -607,14 +585,16 @@ describe('Masonry.vue - Basic Functionality', () => {
 
     const vm = wrapper.vm
 
-    // Verify initial state is correct
+    // Verify loadPage was called with initialPage
+    expect(mockGetNextPageWithNext).toHaveBeenCalledWith(1)
+    
+    // Verify initial state is correct (based on loadPage result)
     expect(vm.currentPage).toBe(1)
-    expect(vm.paginationHistory).toContain(2)
+    // paginationHistory will contain nextPage from loadPage result (3, not 2 from initialNextPage)
+    expect(vm.paginationHistory).toContain(3)
     expect(vm.hasReachedEnd).toBe(false)
-    expect(wrapper.props('items').length).toBe(1)
-
-    // Verify getNextPage was NOT called during initialization (init is auto)
-    expect(mockGetNextPageWithNext).not.toHaveBeenCalled()
+    // Items will be overwritten by loadPage result
+    expect(wrapper.props('items').length).toBeGreaterThanOrEqual(1)
 
     // Verify loadNext is available and callable
     expect(typeof vm.loadNext).toBe('function')

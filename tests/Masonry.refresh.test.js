@@ -299,9 +299,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    init: 'auto',
-                    initialPage: 5,
-                    initialNextPage: 6,
+                    init: 'manual',
                     'onUpdate:items': (newItems) => {
                         items = newItems
                         wrapper.setProps({ items: newItems })
@@ -315,10 +313,17 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
 
             // Start with 7 items for page 5 (less than pageSize of 10)
             const page5Items = Array.from({ length: 7 }, (_, i) => createTestItem({ id: i + 1, page: 5 }))
-            items = page5Items
-            await wrapper.setProps({ items: page5Items })
+            // Use restoreItems to set up state (don't set items prop to avoid duplication)
             await vm.restoreItems(page5Items, 5, 6)
             await wait(200)
+            
+            // Update items for the onUpdate handler
+            items = page5Items
+            await wrapper.setProps({ items: page5Items })
+            await wait(50)
+            
+            // Clear mock calls from restoreItems setup
+            refreshMock.mockClear()
 
             const initialCount = vm.totalItems
             expect(initialCount).toBe(7)
@@ -358,7 +363,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    init: 'auto'
+                    init: 'manual'
                 }),
                 global: { stubs: defaultStubs }
             })
@@ -366,7 +371,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             const vm = wrapper.vm
             await wait(100)
 
-            // currentPage should be null initially
+            // currentPage should be null initially (manual mode doesn't load on mount)
             expect(vm.currentPage).toBeNull()
 
             // Should proceed with normal next page loading
