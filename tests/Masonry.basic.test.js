@@ -585,12 +585,12 @@ describe('Masonry.vue - Basic Functionality', () => {
 
     const vm = wrapper.vm
 
-    // Verify loadPage was called with initialPage
+    // Verify loadPage was called with loadAtPage
     expect(mockGetNextPageWithNext).toHaveBeenCalledWith(1)
     
     // Verify initial state is correct (based on loadPage result)
     expect(vm.currentPage).toBe(1)
-    // paginationHistory will contain nextPage from loadPage result (3, not 2 from initialNextPage)
+    // paginationHistory will contain nextPage from loadPage result
     expect(vm.paginationHistory).toContain(3)
     expect(vm.hasReachedEnd).toBe(false)
     // Items will be overwritten by loadPage result

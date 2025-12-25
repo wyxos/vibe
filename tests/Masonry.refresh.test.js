@@ -42,9 +42,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    init: 'auto',
-                    initialPage: 5,
-                    initialNextPage: 6
+                    init: 'auto'
                 }),
                 global: { stubs: defaultStubs }
             })
@@ -105,8 +103,6 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     pageSize: 10,
                     items: [],
                     init: 'auto',
-                    initialPage: 5,
-                    initialNextPage: 6,
                     'onUpdate:items': (newItems) => {
                         items = newItems
                         wrapper.setProps({ items: newItems })
@@ -182,8 +178,6 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     pageSize: 10,
                     items: [],
                     init: 'auto',
-                    initialPage: 5,
-                    initialNextPage: 6,
                     'onUpdate:items': (newItems) => {
                         items = newItems
                         wrapper.setProps({ items: newItems })
@@ -241,9 +235,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    init: 'auto',
-                    initialPage: 5,
-                    initialNextPage: 6
+                    init: 'auto'
                 }),
                 global: { stubs: defaultStubs }
             })

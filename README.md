@@ -76,6 +76,37 @@ By default, VIBE uses the built-in `MasonryItem` component, which handles image 
 </template>
 ```
 
+### Initialization Modes
+
+VIBE supports two initialization modes:
+
+- **`'auto'`**: Automatically calls `loadPage` on mount to fetch the first page. Use this when you want the component to start loading immediately.
+- **`'manual'`**: Does nothing on mount. You must manually call `restoreItems()` to initialize the component with items. Use this when you need to restore items from saved state or have more control over when loading begins.
+
+```vue
+<!-- Auto mode: loads first page automatically -->
+<Masonry
+  v-model:items="items"
+  :get-next-page="getNextPage"
+  init="auto"
+  :load-at-page="1"
+/>
+
+<!-- Manual mode: you control when to initialize -->
+<Masonry
+  ref="masonry"
+  v-model:items="items"
+  :get-next-page="getNextPage"
+  init="manual"
+/>
+<script setup>
+const masonry = ref(null)
+
+// Later, restore items manually
+await masonry.value.restoreItems(savedItems, savedPage, savedNextPage)
+</script>
+```
+
 ### Layout Modes
 
 VIBE supports three layout modes:
@@ -170,6 +201,7 @@ The `MasonryItem` component exposes the following props to its default slot:
 | `getNextPage` | `Function(page: Number)` | Yes | Async function to load the next page. Must return `{ items, nextPage }`. |
 | `layout` | `Object` | No | Configuration object for layout, including sizes and gutters. |
 | `loadAtPage` | `Number` | No | The starting page number (default: `1`). |
+| `init` | `String` | No | Initialization mode: `'auto'` (automatically loads first page on mount) or `'manual'` (user must call `restoreItems()` manually) (default: `'manual'`). |
 | `paginationType` | `String` | No | `'page'` or `'cursor'` (default: `'page'`). |
 | `pageSize` | `Number` | No | Number of items per page, used for backfilling (default: `40`). |
 | `layoutMode` | `String` | No | Layout mode: `'auto'` (detect from screen size), `'masonry'`, or `'swipe'` (default: `'auto'`). |
