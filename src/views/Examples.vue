@@ -8,14 +8,10 @@
             <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Examples</h3>
             <ul class="space-y-2">
               <li v-for="example in examples" :key="example.id">
-                <a
-                  :href="`#${example.id}`"
-                  @click.prevent="scrollTo(example.id)"
-                  class="block px-3 py-2 text-sm rounded-md transition-colors"
-                  :class="activeSection === example.id 
-                    ? 'bg-blue-50 text-blue-600 font-medium' 
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'"
-                >
+                <a :href="`#${example.id}`" @click.prevent="scrollTo(example.id)"
+                  class="block px-3 py-2 text-sm rounded-md transition-colors" :class="activeSection === example.id
+                    ? 'bg-blue-50 text-blue-600 font-medium'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'">
                   {{ example.title }}
                 </a>
               </li>
@@ -33,7 +29,7 @@
                   <h2 class="text-2xl font-bold text-slate-800">Basic Usage</h2>
                   <p class="text-slate-600 mt-1">Simple masonry grid with default MasonryItem component</p>
                 </div>
-                
+
                 <!-- Live Example -->
                 <div class="p-6 bg-slate-50">
                   <div class="bg-white rounded-lg border border-slate-200 p-4" style="height: 500px;">
@@ -43,8 +39,7 @@
 
                 <!-- Code Tabs -->
                 <div class="px-6 pb-6">
-                  <CodeTabs
-                    vue='<script setup>
+                  <CodeTabs vue='<script setup>
 import { ref } from "vue";
 import { Masonry } from "@wyxos/vibe";
 
@@ -66,8 +61,60 @@ async function getPage(page) {
     :get-page="getPage"
     :load-at-page="1"
   />
-</template>'
-                  />
+</template>' />
+                </div>
+              </div>
+            </section>
+
+            <!-- Manual Init Example -->
+            <section id="manual-init" ref="manualInitRef" class="scroll-mt-24">
+              <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                  <h2 class="text-2xl font-bold text-slate-800">Manual Init CTA</h2>
+                  <p class="text-slate-600 mt-1">Delay initialization until the user clicks a call-to-action</p>
+                </div>
+
+                <!-- Live Example -->
+                <div class="p-6 bg-slate-50">
+                  <div class="bg-white rounded-lg border border-slate-200 p-4" style="height: 500px;">
+                    <ManualInitExample />
+                  </div>
+                </div>
+
+                <!-- Code Tabs -->
+                <div class="px-6 pb-6">
+                  <CodeTabs vue='<script setup>
+import { ref } from "vue";
+import { Masonry } from "@wyxos/vibe";
+
+const items = ref([]);
+const masonryRef = ref(null);
+
+async function getPage(page) {
+  const response = await fetch(`/api/items?page=${page}`);
+  const data = await response.json();
+  return {
+    items: data.items,
+    nextPage: page + 1
+  };
+}
+
+function handleInit() {
+  masonryRef.value?.loadPage(1);
+}
+</script>
+
+<template>
+  <button @click="handleInit">Load gallery</button>
+
+  <Masonry
+    ref="masonryRef"
+    v-model:items="items"
+    :get-page="getPage"
+    :load-at-page="1"
+    init="manual"
+  />
+</template>' />
                 </div>
               </div>
             </section>
@@ -79,7 +126,7 @@ async function getPage(page) {
                   <h2 class="text-2xl font-bold text-slate-800">Custom Masonry Item</h2>
                   <p class="text-slate-600 mt-1">Customize item rendering with scoped slots</p>
                 </div>
-                
+
                 <!-- Live Example -->
                 <div class="p-6 bg-slate-50">
                   <div class="bg-white rounded-lg border border-slate-200 p-4" style="height: 500px;">
@@ -89,8 +136,7 @@ async function getPage(page) {
 
                 <!-- Code Tabs -->
                 <div class="px-6 pb-6">
-                  <CodeTabs
-                    vue='<script setup>
+                  <CodeTabs vue='<script setup>
 import { ref } from "vue";
 import { Masonry } from "@wyxos/vibe";
 
@@ -122,8 +168,7 @@ async function getPage(page) {
       </div>
     </template>
   </Masonry>
-</template>'
-                  />
+</template>' />
                 </div>
                 -->
               </div>
@@ -135,10 +180,11 @@ async function getPage(page) {
                 <div class="px-6 py-4 border-b border-slate-200 bg-slate-50">
                   <h2 class="text-2xl font-bold text-slate-800">Header & Footer</h2>
                   <p class="text-slate-600 mt-1">
-                    Use `layout.header` and `layout.footer` with slots to add per-item UI like badges, titles and actions.
+                    Use `layout.header` and `layout.footer` with slots to add per-item UI like badges, titles and
+                    actions.
                   </p>
                 </div>
-                
+
                 <!-- Live Example -->
                 <div class="p-6 bg-slate-50">
                   <div class="bg-white rounded-lg border border-slate-200 p-4" style="height: 500px;">
@@ -158,7 +204,7 @@ async function getPage(page) {
                   <h2 class="text-2xl font-bold text-slate-800">Swipe Mode</h2>
                   <p class="text-slate-600 mt-1">Vertical swipe feed for mobile devices</p>
                 </div>
-                
+
                 <!-- Live Example -->
                 <div class="p-6 bg-slate-50">
                   <div class="bg-white rounded-lg border border-slate-200 p-4" style="height: 500px;">
@@ -168,8 +214,7 @@ async function getPage(page) {
 
                 <!-- Code Tabs -->
                 <div class="px-6 pb-6">
-                  <CodeTabs
-                    vue='<script setup>
+                  <CodeTabs vue='<script setup>
 import { ref } from "vue";
 import { Masonry } from "@wyxos/vibe";
 
@@ -200,8 +245,7 @@ async function getPage(page) {
     :get-page="getPage"
     layout-mode="swipe"
   />
-</template>'
-                  />
+</template>' />
                 </div>
               </div>
             </section>
@@ -217,12 +261,14 @@ async function getPage(page) {
 import { ref, onMounted, onUnmounted } from 'vue'
 import CodeTabs from '../components/CodeTabs.vue'
 import BasicExample from '../components/examples/BasicExample.vue'
+import ManualInitExample from '../components/examples/ManualInitExample.vue'
 import CustomItemExample from '../components/examples/CustomItemExample.vue'
 import SwipeModeExample from '../components/examples/SwipeModeExample.vue'
 import HeaderFooterExample from '../components/examples/HeaderFooterExample.vue'
 
 const examples = [
   { id: 'basic', title: 'Basic Usage' },
+  { id: 'manual-init', title: 'Manual Init CTA' },
   { id: 'custom-item', title: 'Custom Masonry Item' },
   { id: 'header-footer', title: 'Header & Footer' },
   { id: 'swipe-mode', title: 'Swipe Mode' }
@@ -230,6 +276,7 @@ const examples = [
 
 const activeSection = ref('basic')
 const basicRef = ref<HTMLElement | null>(null)
+const manualInitRef = ref<HTMLElement | null>(null)
 const customItemRef = ref<HTMLElement | null>(null)
 const headerFooterRef = ref<HTMLElement | null>(null)
 const swipeModeRef = ref<HTMLElement | null>(null)
@@ -245,6 +292,7 @@ function scrollTo(id: string) {
 function updateActiveSection() {
   const sections = [
     { id: 'basic', ref: basicRef },
+    { id: 'manual-init', ref: manualInitRef },
     { id: 'custom-item', ref: customItemRef },
     { id: 'header-footer', ref: headerFooterRef },
     { id: 'swipe-mode', ref: swipeModeRef }

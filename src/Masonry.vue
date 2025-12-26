@@ -375,7 +375,7 @@ defineExpose({
   // Boolean indicating if the end of the list has been reached (no more pages to load)
   hasReachedEnd,
   // Initializes the component with items, page, and next page cursor. Use this for manual init mode.
-  init,
+  initialize,
   // Boolean indicating if the component has been initialized (first content has loaded)
   isInitialized,
   // Boolean indicating if a page load or backfill operation is currently in progress
@@ -568,7 +568,7 @@ function handleWindowResize() {
   // Note: containerWidth is updated by ResizeObserver
 }
 
-function init(items: any[], page: any, next: any) {
+function initialize(items: any[], page: any, next: any) {
   currentPage.value = page  // Track the initial current page
   paginationHistory.value = [page]
   if (next !== null && next !== undefined) {
@@ -577,7 +577,7 @@ function init(items: any[], page: any, next: any) {
   // Only treat explicit null as end-of-list. Undefined means "unknown".
   hasReachedEnd.value = next === null
   // Diagnostics: check incoming initial items
-  checkItemDimensions(items as any[], 'init')
+  checkItemDimensions(items as any[], 'initialize')
 
   // If masonry is empty, replace items; otherwise add them
   const currentItems = masonry.value as any[]
@@ -658,12 +658,12 @@ watch(container, (el) => {
   }
 }, { immediate: true })
 
-// Watch for when items are first loaded (for init='manual' when items are loaded via init)
+// Watch for when items are first loaded (for init='manual' when items are loaded via initialize)
 watch(
   () => masonry.value.length,
   (newLength, oldLength) => {
     // For manual mode, mark as initialized when items first appear
-    // This handles the case where items are loaded via init after mount
+    // This handles the case where items are loaded via initialize after mount
     if (props.init === 'manual' && !isInitialized.value && newLength > 0 && oldLength === 0) {
       isInitialized.value = true
     }

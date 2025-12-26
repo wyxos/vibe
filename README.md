@@ -81,7 +81,7 @@ By default, VIBE uses the built-in `MasonryItem` component, which handles image 
 VIBE supports two initialization modes:
 
 - **`'auto'`**: Automatically calls `loadPage` on mount to fetch the first page. Use this when you want the component to start loading immediately.
-- **`'manual'`**: Does nothing on mount. You must manually call `init()` to initialize the component with items. Use this when you need to restore items from saved state or have more control over when loading begins.
+- **`'manual'`**: Does nothing on mount. You must manually call `initialize()` to initialize the component with items. Use this when you need to restore items from saved state or have more control over when loading begins.
 
 ```vue
 <!-- Auto mode: loads first page automatically -->
@@ -104,7 +104,7 @@ const masonry = ref(null)
 
 // Later, initialize manually
 masonry.value.items = []
-masonry.value.init(savedItems, savedPage, savedNextPage)
+masonry.value.initialize(savedItems, savedPage, savedNextPage)
 </script>
 ```
 
@@ -202,7 +202,7 @@ The `MasonryItem` component exposes the following props to its default slot:
 | `getPage` | `Function(page: Number)` | Yes | Async function to load a page. Must return `{ items, nextPage }`. |
 | `layout` | `Object` | No | Configuration object for layout, including sizes and gutters. |
 | `loadAtPage` | `Number` | No | The starting page number (default: `1`). |
-| `init` | `String` | No | Initialization mode: `'auto'` (automatically loads first page on mount) or `'manual'` (user must call `init()` manually) (default: `'manual'`). |
+| `init` | `String` | No | Initialization mode: `'auto'` (automatically loads first page on mount) or `'manual'` (user must call `initialize()` manually) (default: `'manual'`). |
 | `paginationType` | `String` | No | `'page'` or `'cursor'` (default: `'page'`). |
 | `pageSize` | `Number` | No | Number of items per page, used for backfilling (default: `40`). |
 | `layoutMode` | `String` | No | Layout mode: `'auto'` (detect from screen size), `'masonry'`, or `'swipe'` (default: `'auto'`). |

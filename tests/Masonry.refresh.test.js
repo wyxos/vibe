@@ -54,7 +54,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             const page5Items = Array.from({ length: 7 }, (_, i) => createTestItem({ id: i + 1, page: 5 }))
             await wrapper.setProps({ items: [] })
             await wrapper.vm.$nextTick()
-            vm.init(page5Items, 5, 6)
+            vm.initialize(page5Items, 5, 6)
             // Manually sync the prop since v-model might not work in tests
             await wrapper.setProps({ items: page5Items })
             await wrapper.vm.$nextTick()
@@ -123,7 +123,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             items = page5Items
             await wrapper.setProps({ items: [] })
             await wrapper.vm.$nextTick()
-            vm.init(page5Items, 5, 6)
+            vm.initialize(page5Items, 5, 6)
             await wrapper.setProps({ items: page5Items })
             await wrapper.vm.$nextTick()
             await wait(200)
@@ -204,7 +204,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             items = initialItems
             vm.items = []
             await wrapper.vm.$nextTick()
-            vm.init(initialItems, 5, 6)
+            vm.initialize(initialItems, 5, 6)
             await wrapper.vm.$nextTick()
             await wait(200)
 
@@ -256,7 +256,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             const page5Items = Array.from({ length: 10 }, (_, i) => createTestItem({ id: i + 1, page: 5 }))
             await wrapper.setProps({ items: [] })
             await wrapper.vm.$nextTick()
-            vm.init(page5Items, 5, 6)
+            vm.initialize(page5Items, 5, 6)
             await wrapper.setProps({ items: page5Items })
             await wrapper.vm.$nextTick()
             await wait(200)
@@ -320,7 +320,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             // Use init to set up state
             await wrapper.setProps({ items: [] })
             await wrapper.vm.$nextTick()
-            vm.init(page5Items, 5, 6)
+            vm.initialize(page5Items, 5, 6)
             await wrapper.setProps({ items: page5Items })
             await wrapper.vm.$nextTick()
             await wait(200)
@@ -330,7 +330,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             await wrapper.setProps({ items: page5Items })
             await wait(50)
             
-            // Clear mock calls from init setup
+            // Clear mock calls from initialize setup
             refreshMock.mockClear()
 
             const initialCount = vm.totalItems

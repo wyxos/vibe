@@ -70,7 +70,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       // Manually set up state (simulating items already loaded)
       vm.items = []
-      vm.init([createTestItem()], 1, 2)
+      vm.initialize([createTestItem()], 1, 2)
       await wait(50)
 
       // Reset mock call count after init
@@ -354,7 +354,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       // Manually set up state
       vm.items = []
-      vm.init([createTestItem()], 1, 2)
+      vm.initialize([createTestItem()], 1, 2)
       await wait(50)
       
       // Reset call count after setup
@@ -396,7 +396,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       // Manually set up state
       vm.items = []
-      vm.init([createTestItem()], 1, 2)
+      vm.initialize([createTestItem()], 1, 2)
       await wait(50)
       
       // Reset call count after setup
@@ -485,7 +485,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       // Manually set up state
       vm.items = []
-      vm.init([createTestItem()], 1, 2)
+      vm.initialize([createTestItem()], 1, 2)
       await wait(50)
       
       // Clear mock after setup
@@ -561,7 +561,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       // Manually set up state with hasReachedEnd = true
       vm.items = []
-      vm.init([createTestItem()], 1, null)
+      vm.initialize([createTestItem()], 1, null)
       await wait(50)
       
       expect(vm.hasReachedEnd).toBe(true)
@@ -744,7 +744,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       // Manually set up state
       vm.items = []
-      vm.init([createTestItem()], 1, 2)
+      vm.initialize([createTestItem()], 1, 2)
       await wait(50)
       
       expect(vm.isLoading).toBe(false)
@@ -791,7 +791,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       // Manually set up state
       vm.items = []
-      vm.init([createTestItem()], 1, 2)
+      vm.initialize([createTestItem()], 1, 2)
       await wait(50)
 
       // Start backfill
@@ -835,7 +835,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       // Manually set up state
       vm.items = []
-      vm.init([createTestItem()], 1, null)
+      vm.initialize([createTestItem()], 1, null)
       await wait(50)
       
       // Manually clear pagination history
@@ -874,7 +874,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       // Manually set up state
       vm.items = []
-      vm.init([createTestItem()], 1, 2)
+      vm.initialize([createTestItem()], 1, 2)
       await wait(50)
       
       // Clear mock after setup
@@ -909,7 +909,7 @@ describe('Masonry.vue - Backfill Functionality', () => {
 
       // Manually set up state
       vm.items = []
-      vm.init([createTestItem()], 1, 2)
+      vm.initialize([createTestItem()], 1, 2)
       await wait(50)
       
       // Clear mock after setup
