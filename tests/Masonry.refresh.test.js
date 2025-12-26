@@ -42,7 +42,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    init: 'auto'
+                    init: 'manual'
                 }),
                 global: { stubs: defaultStubs }
             })
@@ -52,9 +52,11 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
 
             // Simulate being on page 5 with only 7 items (after removing 3)
             const page5Items = Array.from({ length: 7 }, (_, i) => createTestItem({ id: i + 1, page: 5 }))
-            vm.items = []
+            await wrapper.setProps({ items: [] })
             await wrapper.vm.$nextTick()
             vm.init(page5Items, 5, 6)
+            // Manually sync the prop since v-model might not work in tests
+            await wrapper.setProps({ items: page5Items })
             await wrapper.vm.$nextTick()
             await wait(200)
 
@@ -104,7 +106,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    init: 'auto',
+                    init: 'manual',
                     'onUpdate:items': (newItems) => {
                         items = newItems
                         wrapper.setProps({ items: newItems })
@@ -119,9 +121,11 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             // Simulate being on page 5 with only 7 items (after removing 3)
             const page5Items = Array.from({ length: 7 }, (_, i) => createTestItem({ id: i + 1, page: 5 }))
             items = page5Items
-            vm.items = []
+            await wrapper.setProps({ items: [] })
             await wrapper.vm.$nextTick()
             vm.init(page5Items, 5, 6)
+            await wrapper.setProps({ items: page5Items })
+            await wrapper.vm.$nextTick()
             await wait(200)
 
             // Trigger loadNext
@@ -180,7 +184,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    init: 'auto',
+                    init: 'manual',
                     'onUpdate:items': (newItems) => {
                         items = newItems
                         wrapper.setProps({ items: newItems })
@@ -201,6 +205,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             vm.items = []
             await wrapper.vm.$nextTick()
             vm.init(initialItems, 5, 6)
+            await wrapper.vm.$nextTick()
             await wait(200)
 
             const initialCount = vm.totalItems
@@ -239,7 +244,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                     mode: 'refresh',
                     pageSize: 10,
                     items: [],
-                    init: 'auto'
+                    init: 'manual'
                 }),
                 global: { stubs: defaultStubs }
             })
@@ -249,9 +254,11 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
 
             // Start with 10 items (full page)
             const page5Items = Array.from({ length: 10 }, (_, i) => createTestItem({ id: i + 1, page: 5 }))
-            vm.items = []
+            await wrapper.setProps({ items: [] })
             await wrapper.vm.$nextTick()
             vm.init(page5Items, 5, 6)
+            await wrapper.setProps({ items: page5Items })
+            await wrapper.vm.$nextTick()
             await wait(200)
 
             // Trigger loadNext
@@ -311,9 +318,11 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             // Start with 7 items for page 5 (less than pageSize of 10)
             const page5Items = Array.from({ length: 7 }, (_, i) => createTestItem({ id: i + 1, page: 5 }))
             // Use init to set up state
-            vm.items = []
+            await wrapper.setProps({ items: [] })
             await wrapper.vm.$nextTick()
             vm.init(page5Items, 5, 6)
+            await wrapper.setProps({ items: page5Items })
+            await wrapper.vm.$nextTick()
             await wait(200)
             
             // Update items for the onUpdate handler

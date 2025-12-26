@@ -579,15 +579,21 @@ function init(items: any[], page: any, next: any) {
   // Diagnostics: check incoming initial items
   checkItemDimensions(items as any[], 'init')
 
+  // If masonry is empty, replace items; otherwise add them
+  const currentItems = masonry.value as any[]
+  const newItems = currentItems.length === 0 ? items : [...currentItems, ...items]
+
+  // Set items first (this updates the v-model)
+  masonry.value = newItems
+
   if (useSwipeMode.value) {
-    // In swipe mode, just add items without layout calculation
-    masonry.value = [...(masonry.value as any[]), ...items]
+    // In swipe mode, just set items without layout calculation
     // Reset swipe index if we're at the start
     if (currentSwipeIndex.value === 0 && masonry.value.length > 0) {
       swipeOffset.value = 0
     }
   } else {
-    refreshLayout([...(masonry.value as any[]), ...items])
+    refreshLayout(newItems)
 
     // Update viewport state from container's scroll position
     // Critical after refresh when browser may restore scroll position
