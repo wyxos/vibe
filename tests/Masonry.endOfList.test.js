@@ -28,7 +28,7 @@ describe('Masonry.vue - End of List Functionality', () => {
 
     // hasReachedEnd should now be true
     expect(vm.hasReachedEnd).toBe(true)
-    expect(endOfListMock).toHaveBeenCalledWith(1)
+    expect(endOfListMock).toHaveBeenCalledWith(1, null)
   })
 
   it('should set hasReachedEnd to true when nextPage is null in loadNext', async () => {

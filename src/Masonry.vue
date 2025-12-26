@@ -33,6 +33,12 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  // Opaque caller-owned context passed through to getPage(page, context).
+  // Useful for including filters, service selection, tabId, etc.
+  context: {
+    type: Object,
+    default: null
+  },
   layout: {
     type: Object
   },
@@ -188,13 +194,23 @@ const emits = defineEmits([
   'item:preload:error',
   // Mouse events from MasonryItem content
   'item:mouse-enter',
-  'item:mouse-leave'
+  'item:mouse-leave',
+  'update:context'
 ])
 
 const masonry = computed<any>({
   get: () => props.items,
   set: (val) => emits('update:items', val)
 })
+
+const context = computed<any>({
+  get: () => props.context,
+  set: (val) => emits('update:context', val)
+})
+
+function setContext(val: any) {
+  context.value = val
+}
 
 const masonryLength = computed((): number => {
   const items = masonry.value as any[]
@@ -269,7 +285,8 @@ const leave = onLeave
 
 // Initialize pagination composable
 const pagination = useMasonryPagination({
-  getPage: props.getPage as (page: any) => Promise<{ items: any[]; nextPage: any }>,
+  getPage: props.getPage as (page: any, ctx?: any) => Promise<{ items: any[]; nextPage: any }>,
+  context,
   masonry: masonry as any,
   isLoading,
   hasReachedEnd,
@@ -349,6 +366,9 @@ function setFixedDimensions(dimensions: { width?: number; height?: number } | nu
 defineExpose({
   isLoading,
   refreshLayout,
+  // Opaque caller context passed through to getPage(page, context)
+  context,
+  setContext,
   // Container dimensions (wrapper element)
   containerWidth,
   containerHeight,
@@ -539,9 +559,11 @@ function handleWindowResize() {
 function init(items: any[], page: any, next: any) {
   currentPage.value = page  // Track the initial current page
   paginationHistory.value = [page]
-  paginationHistory.value.push(next)
-  // Update hasReachedEnd if next is null
-  hasReachedEnd.value = next == null
+  if (next !== null && next !== undefined) {
+    paginationHistory.value.push(next)
+  }
+  // Only treat explicit null as end-of-list. Undefined means "unknown".
+  hasReachedEnd.value = next === null
   // Diagnostics: check incoming initial items
   checkItemDimensions(items as any[], 'init')
 

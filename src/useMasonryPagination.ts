@@ -2,7 +2,8 @@ import { ref, type Ref } from 'vue'
 import { normalizeError } from './utils/errorHandler'
 
 export interface UseMasonryPaginationOptions {
-  getPage: (page: any) => Promise<{ items: any[]; nextPage: any }>
+  getPage: (page: any, context?: any) => Promise<{ items: any[]; nextPage: any }>
+  context?: Ref<any>
   masonry: Ref<any[]>
   isLoading: Ref<boolean>
   hasReachedEnd: Ref<boolean>
@@ -33,6 +34,7 @@ export interface UseMasonryPaginationOptions {
 export function useMasonryPagination(options: UseMasonryPaginationOptions) {
   const {
     getPage,
+    context,
     masonry,
     isLoading,
     hasReachedEnd,
@@ -135,7 +137,7 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
 
   async function getContent(page: number) {
     try {
-      const response = await fetchWithRetry(() => getPage(page))
+      const response = await fetchWithRetry(() => getPage(page, context?.value))
       refreshLayout([...masonry.value, ...response.items])
       return response
     } catch (error) {
@@ -285,7 +287,7 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
 
         // If current page has fewer items than pageSize, refresh it first
         if (currentPageItemCount < pageSize) {
-          const response = await fetchWithRetry(() => getPage(currentPage.value))
+          const response = await fetchWithRetry(() => getPage(currentPage.value, context?.value))
           if (cancelRequested.value) return
 
           // Get only new items that don't already exist

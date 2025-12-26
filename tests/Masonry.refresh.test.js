@@ -64,7 +64,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             await wait(200)
 
             // Should have called getPage for page 5 (refresh)
-            expect(refreshMock).toHaveBeenCalledWith(5)
+            expect(refreshMock).toHaveBeenCalledWith(5, null)
             // Should have added new items (3 new items to reach 10)
             expect(countItemsForPage(vm, 5)).toBeGreaterThanOrEqual(7)
         })
@@ -130,14 +130,14 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             await wait(100)
 
             // Should have refreshed page 5
-            expect(refreshMock).toHaveBeenCalledWith(5)
+            expect(refreshMock).toHaveBeenCalledWith(5, null)
             // After refresh, we should have 10 items for page 5 (7 existing + 3 new)
             const page5Count = countItemsForPage(vm, 5)
             expect(page5Count).toBeGreaterThanOrEqual(10)
 
             // If we have enough items, should proceed to load page 6
             if (page5Count >= 10) {
-                expect(refreshMock).toHaveBeenCalledWith(6)
+                expect(refreshMock).toHaveBeenCalledWith(6, null)
                 expect(vm.currentPage).toBe(6)
             }
         })
@@ -254,8 +254,8 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             await wait(200)
 
             // Should have loaded page 6 directly, not refreshed page 5
-            expect(refreshMock).toHaveBeenCalledWith(6)
-            expect(refreshMock).not.toHaveBeenCalledWith(5)
+            expect(refreshMock).toHaveBeenCalledWith(6, null)
+            expect(refreshMock).not.toHaveBeenCalledWith(5, null)
             expect(vm.currentPage).toBe(6)
         })
 
@@ -329,10 +329,10 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             await wait(100)
 
             // Refresh should have been called for page 5
-            expect(refreshMock).toHaveBeenCalledWith(5)
+            expect(refreshMock).toHaveBeenCalledWith(5, null)
 
             // Since no new items were found, it should automatically proceed to load page 6
-            expect(refreshMock).toHaveBeenCalledWith(6)
+            expect(refreshMock).toHaveBeenCalledWith(6, null)
 
             // Should have loaded page 6 items
             expect(vm.currentPage).toBe(6)

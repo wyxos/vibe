@@ -199,7 +199,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     await wait(0) // Wait for async operations
 
     // Verify getPage was called with the loadAtPage value
-    expect(initialMockGetPage).toHaveBeenCalledWith(1)
+    expect(initialMockGetPage).toHaveBeenCalledWith(1, null)
     expect(initialMockGetPage).toHaveBeenCalledTimes(1)
   })
 
@@ -235,7 +235,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     await wait(10)
 
     // Verify initial page was loaded
-    expect(dynamicMockGetPage).toHaveBeenCalledWith(1)
+    expect(dynamicMockGetPage).toHaveBeenCalledWith(1, null)
 
     // Manually trigger loading next page (simulating scroll trigger)
     // We can't easily simulate scroll events in this test environment,
@@ -305,7 +305,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     await wait(50)
 
     // Verify items were loaded
-    expect(refreshMockGetPage).toHaveBeenCalledWith(1)
+    expect(refreshMockGetPage).toHaveBeenCalledWith(1, null)
     const initialHistory = [...vm.paginationHistory]
     expect(initialHistory.length).toBeGreaterThanOrEqual(2)
 
@@ -317,7 +317,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     await wait(50)
 
     // Verify getPage was called with page 1 again (current page)
-    expect(refreshMockGetPage).toHaveBeenCalledWith(1)
+    expect(refreshMockGetPage).toHaveBeenCalledWith(1, null)
 
     // Verify pagination history was reset and updated
     expect(vm.paginationHistory).toHaveLength(2)
@@ -343,7 +343,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     await vm.loadPage(1)
     await wait(50)
 
-    expect(simpleMock).toHaveBeenCalledWith(1)
+    expect(simpleMock).toHaveBeenCalledWith(1, null)
     simpleMock.mockClear()
 
     // Call refreshCurrentPage
@@ -351,7 +351,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     await wait(50)
 
     // Should reload page 1
-    expect(simpleMock).toHaveBeenCalledWith(1)
+    expect(simpleMock).toHaveBeenCalledWith(1, null)
   })
 
   it('should attach scroll listener when container becomes available in masonry mode', async () => {
@@ -468,7 +468,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     const vm = wrapper.vm
 
     // Verify getPage WAS called (auto mode always calls loadPage)
-    expect(mockGetPage).toHaveBeenCalledWith(1)
+    expect(mockGetPage).toHaveBeenCalledWith(1, null)
     
     // Items will be overwritten by loadPage results
     // Verify pagination state is initialized from loadPage
@@ -511,7 +511,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     const vm = wrapper.vm
 
     // Verify loadPage was called with loadAtPage
-    expect(mockGetPageWithNull).toHaveBeenCalledWith(10)
+    expect(mockGetPageWithNull).toHaveBeenCalledWith(10, null)
     
     // Verify hasReachedEnd is set correctly based on loadPage result
     expect(vm.currentPage).toBe(10)
@@ -586,7 +586,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     const vm = wrapper.vm
 
     // Verify loadPage was called with loadAtPage
-    expect(mockGetPageWithNext).toHaveBeenCalledWith(1)
+    expect(mockGetPageWithNext).toHaveBeenCalledWith(1, null)
     
     // Verify initial state is correct (based on loadPage result)
     expect(vm.currentPage).toBe(1)
