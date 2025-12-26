@@ -293,8 +293,8 @@ watch(() => items.value, () => {
       :class="{ 'bg-slate-200/50': deviceMode !== 'auto' }">
       <div :style="containerStyle" class="transition-all duration-500 ease-in-out bg-slate-50 shadow-sm relative">
         <masonry v-model:items="items" :get-page="getPage" :load-at-page="1" :layout="layout"
-          :layout-mode="deviceMode === 'phone' || deviceMode === 'tablet' ? 'swipe' : 'auto'" ref="masonry"
-          init="auto" class="demo-masonry">
+          :layout-mode="deviceMode === 'phone' || deviceMode === 'tablet' ? 'swipe' : 'auto'" ref="masonry" init="auto"
+          class="demo-masonry">
           <template #item-footer="{ item, remove }">
             <div class="h-full flex items-center justify-between px-3">
               <button v-if="remove"

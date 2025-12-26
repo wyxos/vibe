@@ -13,3 +13,4 @@ const plugin: Plugin = {
 
 export default plugin
 export { Masonry, MasonryItem }
+export type { MasonryItem, ProcessedMasonryItem, LayoutOptions, GetPageResult, MasonryInstance } from './src/types'
