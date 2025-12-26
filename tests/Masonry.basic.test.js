@@ -29,13 +29,13 @@ describe('Masonry.vue - Basic Functionality', () => {
 
     // Verify component is exposed correctly
     const vm = wrapper.vm
-    // For manual mode, isInitialized should be false until user calls restoreItems
+    // For manual mode, isInitialized should be false until user calls init
     expect(vm.isInitialized).toBe(false)
     
-    // Manually call restoreItems to initialize (as user would do in manual mode)
+    // Manually call init to initialize (as user would do in manual mode)
     // Pass some items so isInitialized gets set to true
     const testItems = [{ id: 1, width: 300, height: 200, src: 'test1.jpg' }]
-    await vm.restoreItems(testItems, 1, 2)
+    vm.init(testItems, 1, 2)
     await wrapper.vm.$nextTick()
     
     // Now isInitialized should be true
@@ -518,7 +518,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     expect(vm.hasReachedEnd).toBe(true)
   })
 
-  it('should allow manual restoreItems call to initialize pagination state', async () => {
+  it('should allow manual init call to initialize pagination state', async () => {
     const initialItems = [
       { id: 1, width: 300, height: 200, src: 'test1.jpg' },
       { id: 2, width: 400, height: 300, src: 'test2.jpg' }
@@ -541,11 +541,14 @@ describe('Masonry.vue - Basic Functionality', () => {
 
     const vm = wrapper.vm
 
-    // Verify restoreItems is exposed
-    expect(typeof vm.restoreItems).toBe('function')
+    // Verify init is exposed
+    expect(typeof vm.init).toBe('function')
 
-    // Manually call restoreItems
-    await vm.restoreItems(initialItems, 3, 4)
+    // Clear items first since init adds items
+    vm.items = []
+    await wrapper.vm.$nextTick()
+    // Manually call init
+    vm.init(initialItems, 3, 4)
     
     // Wait for updates
     await wrapper.vm.$nextTick()

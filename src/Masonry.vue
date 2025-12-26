@@ -109,10 +109,6 @@ const props = defineProps({
     type: Number,
     default: 200
   },
-  autoRefreshOnEmpty: {
-    type: Boolean,
-    default: false
-  },
   // Layout mode: 'auto' (detect from screen size), 'masonry', or 'swipe'
   layoutMode: {
     type: String,
@@ -301,7 +297,6 @@ const pagination = useMasonryPagination({
   backfillDelayMs: props.backfillDelayMs,
   backfillMaxCalls: props.backfillMaxCalls,
   pageSize: props.pageSize,
-  autoRefreshOnEmpty: props.autoRefreshOnEmpty,
   emits
 })
 
@@ -345,12 +340,11 @@ const items = useMasonryItems({
   refreshCurrentPage,
   loadNext,
   maybeBackfillToTarget,
-  autoRefreshOnEmpty: props.autoRefreshOnEmpty,
   paginationHistory
 })
 
 // Extract item management functions
-const { remove, removeMany, restore, restoreMany, removeAll: removeAllItems } = items
+const { remove, removeMany, restore, restoreMany, removeAll } = items
 
 // setFixedDimensions is now in useMasonryLayout composable
 // Wrapper function to maintain API compatibility and handle wrapper restoration
@@ -364,44 +358,62 @@ function setFixedDimensions(dimensions: { width?: number; height?: number } | nu
 }
 
 defineExpose({
-  isLoading,
-  refreshLayout,
-  // Opaque caller context passed through to getPage(page, context)
-  context,
-  setContext,
-  // Container dimensions (wrapper element)
-  containerWidth,
-  containerHeight,
-  // Masonry content height (for backward compatibility, old containerHeight)
-  contentHeight: masonryContentHeight,
-  // Current page
-  currentPage,
-  // End of list tracking
-  hasReachedEnd,
-  // Load error tracking
-  loadError,
-  // Initialization state
-  isInitialized,
-  // Set fixed dimensions (overrides ResizeObserver)
-  setFixedDimensions,
-  remove,
-  removeMany,
-  removeAll: removeAllItems,
-  restore,
-  restoreMany,
-  loadNext,
-  loadPage,
-  refreshCurrentPage,
-  reset,
-  destroy,
-  init,
-  restoreItems,
-  paginationHistory,
+  // Cancels any ongoing load operations (page loads, backfills, etc.)
   cancelLoad,
-  scrollToTop,
+  // Opaque caller context passed through to getPage(page, context). Useful for including filters, service selection, tabId, etc.
+  context,
+  // Container height (wrapper element) in pixels
+  containerHeight,
+  // Container width (wrapper element) in pixels
+  containerWidth,
+  // Current Tailwind breakpoint name (base, sm, md, lg, xl, 2xl) based on containerWidth
+  currentBreakpoint,
+  // Current page number or cursor being displayed
+  currentPage,
+  // Completely destroys the component, clearing all state and resetting to initial state
+  destroy,
+  // Boolean indicating if the end of the list has been reached (no more pages to load)
+  hasReachedEnd,
+  // Initializes the component with items, page, and next page cursor. Use this for manual init mode.
+  init,
+  // Boolean indicating if the component has been initialized (first content has loaded)
+  isInitialized,
+  // Boolean indicating if a page load or backfill operation is currently in progress
+  isLoading,
+  // Error object if the last load operation failed, null otherwise
+  loadError,
+  // Loads the next page of items asynchronously
+  loadNext,
+  // Loads a specific page number or cursor asynchronously
+  loadPage,
+  // Array tracking pagination history (pages/cursors that have been loaded)
+  paginationHistory,
+  // Refreshes the current page by clearing items and reloading from the current page
+  refreshCurrentPage,
+  // Recalculates the layout positions for all items. Call this after manually modifying items.
+  refreshLayout,
+  // Removes a single item from the masonry
+  remove,
+  // Removes all items from the masonry
+  removeAll,
+  // Removes multiple items from the masonry in a single operation
+  removeMany,
+  // Resets the component to initial state (clears items, resets pagination, scrolls to top)
+  reset,
+  // Restores a single item at its original index (useful for undo operations)
+  restore,
+  // Restores multiple items at their original indices (useful for undo operations)
+  restoreMany,
+  // Scrolls the container to a specific position
   scrollTo,
-  totalItems: computed(() => (masonry.value as any[]).length),
-  currentBreakpoint
+  // Scrolls the container to the top
+  scrollToTop,
+  // Sets the opaque caller context (alternative to v-model:context)
+  setContext,
+  // Sets fixed dimensions for the container, overriding ResizeObserver. Pass null to restore automatic sizing.
+  setFixedDimensions,
+  // Computed property returning the total number of items currently in the masonry
+  totalItems: computed(() => (masonry.value as any[]).length)
 })
 
 // Layout functions are now in useMasonryLayout composable
@@ -468,7 +480,7 @@ function scrollTo(options: { top?: number; left?: number; behavior?: ScrollBehav
   }
 }
 
-// removeAll is now in useMasonryItems composable (removeAllItems)
+// removeAll is now in useMasonryItems composable
 
 // onResize is now in useMasonryLayout composable (onResizeLayout)
 function onResize() {
@@ -594,97 +606,13 @@ function init(items: any[], page: any, next: any) {
       }
     })
   }
-}
 
-/**
- * Restore items when init is 'auto'.
- * This method should be called instead of directly assigning to v-model:items
- * when restoring items from saved state.
- * @param items - Items to restore
- * @param page - Current page number/cursor
- * @param next - Next page cursor (or null if at end)
- */
-async function restoreItems(items: any[], page: any, next: any) {
-  // If init is 'manual', fall back to init behavior
-  if (props.init === 'manual') {
-    init(items, page, next)
-    // Mark as initialized when items are restored
-    if (items && items.length > 0) {
-      isInitialized.value = true
-    }
-    return
-  }
-
-  // When init is 'auto', we need to restore items without triggering initial load
-  currentPage.value = page
-  paginationHistory.value = [page]
-  if (next !== null && next !== undefined) {
-    paginationHistory.value.push(next)
-  }
-  // Only set hasReachedEnd to true if next is explicitly null (end of list)
-  // undefined means "unknown" - don't assume end of list
-  hasReachedEnd.value = next === null
-  loadError.value = null
-
-  // Diagnostics: check incoming items
-  checkItemDimensions(items as any[], 'restoreItems')
-
-  // Set items directly (v-model will sync) and refresh layout
-  // Follow the same pattern as init() and getContent()
-  if (useSwipeMode.value) {
-    // In swipe mode, just set items without layout calculation
-    masonry.value = items
-    // Reset swipe index if we're at the start
-    if (currentSwipeIndex.value === 0 && masonry.value.length > 0) {
-      swipeOffset.value = 0
-    }
-  } else {
-    // In masonry mode, refresh layout with the restored items
-    refreshLayout(items)
-
-    // Update viewport state from container's scroll position
-    if (container.value) {
-      viewportTop.value = container.value.scrollTop
-      viewportHeight.value = container.value.clientHeight || window.innerHeight
-    }
-
-    // Update again after DOM updates to catch browser scroll restoration
-    await nextTick()
-    if (container.value) {
-      viewportTop.value = container.value.scrollTop
-      viewportHeight.value = container.value.clientHeight || window.innerHeight
-      updateScrollProgress()
-
-      // Check if user is already at the bottom after restoration
-      // If so, trigger loading to restore scroll-to-bottom functionality
-      // Wait for layout to be fully calculated before checking
-      await nextTick()
-      const columnHeights = calculateColumnHeights(masonry.value as any, columns.value)
-      const tallest = columnHeights.length ? Math.max(...columnHeights) : 0
-      const scrollerBottom = container.value.scrollTop + container.value.clientHeight
-      const threshold = typeof props.loadThresholdPx === 'number' ? props.loadThresholdPx : 200
-      const triggerPoint = threshold >= 0
-        ? Math.max(0, tallest - threshold)
-        : Math.max(0, tallest + threshold)
-      const nearBottom = scrollerBottom >= triggerPoint
-
-      // If user is at bottom and there's a next page, trigger loading
-      // This restores scroll-to-bottom functionality after tab restoration
-      if (nearBottom && !hasReachedEnd.value && !isLoading.value && paginationHistory.value.length > 0) {
-        const nextPage = paginationHistory.value[paginationHistory.value.length - 1]
-        if (nextPage != null) {
-          // Use handleScroll with forceCheck=true to bypass isScrollingDown check
-          await handleScroll(columnHeights, true)
-        }
-      }
-    }
-  }
-
-  // Mark as initialized when items are restored
+  // Mark as initialized when items are provided
   if (items && items.length > 0) {
     isInitialized.value = true
   }
 }
+
 
 // Watch for layout changes and update columns + refresh layout dynamically
 watch(
@@ -724,12 +652,12 @@ watch(container, (el) => {
   }
 }, { immediate: true })
 
-// Watch for when items are first loaded (for init='manual' when items are loaded via restore/init)
+// Watch for when items are first loaded (for init='manual' when items are loaded via init)
 watch(
   () => masonry.value.length,
   (newLength, oldLength) => {
     // For manual mode, mark as initialized when items first appear
-    // This handles the case where items are loaded via restore/init after mount
+    // This handles the case where items are loaded via init after mount
     if (props.init === 'manual' && !isInitialized.value && newLength > 0 && oldLength === 0) {
       isInitialized.value = true
     }

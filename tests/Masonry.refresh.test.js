@@ -52,8 +52,10 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
 
             // Simulate being on page 5 with only 7 items (after removing 3)
             const page5Items = Array.from({ length: 7 }, (_, i) => createTestItem({ id: i + 1, page: 5 }))
-            await wrapper.setProps({ items: page5Items })
-            await vm.restoreItems(page5Items, 5, 6)
+            vm.items = []
+            await wrapper.vm.$nextTick()
+            vm.init(page5Items, 5, 6)
+            await wrapper.vm.$nextTick()
             await wait(200)
 
             expect(vm.currentPage).toBe(5)
@@ -117,8 +119,9 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             // Simulate being on page 5 with only 7 items (after removing 3)
             const page5Items = Array.from({ length: 7 }, (_, i) => createTestItem({ id: i + 1, page: 5 }))
             items = page5Items
-            await wrapper.setProps({ items: page5Items })
-            await vm.restoreItems(page5Items, 5, 6)
+            vm.items = []
+            await wrapper.vm.$nextTick()
+            vm.init(page5Items, 5, 6)
             await wait(200)
 
             // Trigger loadNext
@@ -195,8 +198,9 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
                 createTestItem({ id: 2, page: 5 })
             ]
             items = initialItems
-            await wrapper.setProps({ items: initialItems })
-            await vm.restoreItems(initialItems, 5, 6)
+            vm.items = []
+            await wrapper.vm.$nextTick()
+            vm.init(initialItems, 5, 6)
             await wait(200)
 
             const initialCount = vm.totalItems
@@ -245,8 +249,9 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
 
             // Start with 10 items (full page)
             const page5Items = Array.from({ length: 10 }, (_, i) => createTestItem({ id: i + 1, page: 5 }))
-            await wrapper.setProps({ items: page5Items })
-            await vm.restoreItems(page5Items, 5, 6)
+            vm.items = []
+            await wrapper.vm.$nextTick()
+            vm.init(page5Items, 5, 6)
             await wait(200)
 
             // Trigger loadNext
@@ -305,8 +310,10 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
 
             // Start with 7 items for page 5 (less than pageSize of 10)
             const page5Items = Array.from({ length: 7 }, (_, i) => createTestItem({ id: i + 1, page: 5 }))
-            // Use restoreItems to set up state (don't set items prop to avoid duplication)
-            await vm.restoreItems(page5Items, 5, 6)
+            // Use init to set up state
+            vm.items = []
+            await wrapper.vm.$nextTick()
+            vm.init(page5Items, 5, 6)
             await wait(200)
             
             // Update items for the onUpdate handler
@@ -314,7 +321,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             await wrapper.setProps({ items: page5Items })
             await wait(50)
             
-            // Clear mock calls from restoreItems setup
+            // Clear mock calls from init setup
             refreshMock.mockClear()
 
             const initialCount = vm.totalItems

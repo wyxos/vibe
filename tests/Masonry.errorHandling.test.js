@@ -244,7 +244,7 @@ describe('Masonry.vue - Error Handling Functionality', () => {
       global: { stubs: defaultStubs }
     })
 
-    // Wait for component to fully initialize (restoreItems may reset loadError)
+    // Wait for component to fully initialize
     await wrapper.vm.$nextTick()
     await wait(10)
 

@@ -18,7 +18,6 @@ export interface UseMasonryPaginationOptions {
   backfillDelayMs: number
   backfillMaxCalls: number
   pageSize: number
-  autoRefreshOnEmpty: boolean
   emits: {
     (event: 'loading:start'): void
     (event: 'retry:start', payload: { attempt: number; max: number; totalMs: number }): void
@@ -49,7 +48,6 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
     backfillDelayMs,
     backfillMaxCalls,
     pageSize,
-    autoRefreshOnEmpty,
     emits
   } = options
 

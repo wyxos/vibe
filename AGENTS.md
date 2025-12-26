@@ -39,10 +39,10 @@ High-level architecture
     - Emits
       - update:items for v-model
     - Exposed methods/refs (via defineExpose)
-      - isLoading, refreshLayout, containerHeight, onRemove, removeMany, loadNext, loadPage, reset, restoreItems, paginationHistory
+      - isLoading, refreshLayout, containerHeight, onRemove, removeMany, loadNext, loadPage, reset, init, paginationHistory
     - Lifecycle and events
       - On mount: computes columns from layout.sizes, seeds paginationHistory, triggers initial load (if init is 'auto'), sets up debounced scroll/resize listeners
-      - If init is 'manual', user must call restoreItems() to initialize
+      - If init is 'manual', user must call init() to initialize
       - On unmount: removes listeners
 
 - Layout engine: src/calculateLayout.js

@@ -7,7 +7,6 @@ export interface UseMasonryItemsOptions {
   refreshCurrentPage: () => Promise<any>
   loadNext: () => Promise<any>
   maybeBackfillToTarget: (baseline: number, force?: boolean) => Promise<void>
-  autoRefreshOnEmpty: boolean
   paginationHistory: Ref<any[]>
 }
 
@@ -19,7 +18,6 @@ export function useMasonryItems(options: UseMasonryItemsOptions) {
     refreshCurrentPage,
     loadNext,
     maybeBackfillToTarget,
-    autoRefreshOnEmpty,
     paginationHistory
   } = options
 
@@ -63,17 +61,13 @@ export function useMasonryItems(options: UseMasonryItemsOptions) {
     masonry.value = next
     await nextTick()
 
-    // If all items were removed, either refresh current page or load next based on prop
+    // If all items were removed, load next page
     if (next.length === 0 && paginationHistory.value.length > 0) {
-      if (autoRefreshOnEmpty) {
-        await refreshCurrentPage()
-      } else {
-        try {
-          await loadNext()
-          // Force backfill from 0 to ensure viewport is filled
-          await maybeBackfillToTarget(0, true)
-        } catch { }
-      }
+      try {
+        await loadNext()
+        // Force backfill from 0 to ensure viewport is filled
+        await maybeBackfillToTarget(0, true)
+      } catch { }
       return
     }
 
