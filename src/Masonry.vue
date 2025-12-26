@@ -9,7 +9,7 @@ import {
   getItemAttributes,
   calculateColumnHeights
 } from './masonryUtils'
-import { useMasonryTransitions } from './useMasonryTransitions'
+import { createMasonryTransitions } from './createMasonryTransitions'
 import { useMasonryScroll } from './useMasonryScroll'
 import { useSwipeMode as useSwipeModeComposable } from './useSwipeMode'
 import { useMasonryPagination } from './useMasonryPagination'
@@ -271,8 +271,8 @@ const virtualization = useMasonryVirtualization({
 // Extract virtualization state and functions
 const { viewportTop, viewportHeight, virtualizing, scrollProgress, visibleMasonry, updateScrollProgress, updateViewport: updateViewportVirtualization, reset: resetVirtualization } = virtualization
 
-// Initialize transitions composable with virtualization support
-const { onEnter, onBeforeEnter, onBeforeLeave, onLeave } = useMasonryTransitions(
+// Initialize transitions factory with virtualization support
+const { onEnter, onBeforeEnter, onBeforeLeave, onLeave } = createMasonryTransitions(
   { container, masonry: masonry as any },
   { leaveDurationMs: props.leaveDurationMs, virtualizing }
 )
