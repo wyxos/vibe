@@ -4,6 +4,7 @@
     :get-page="getPage"
     :load-at-page="1"
     :layout="layout"
+    init="auto"
   >
     <template #item-header="{ item }">
       <div class="h-full flex items-center justify-between px-3">

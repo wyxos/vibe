@@ -4,6 +4,7 @@
     :get-page="getPage"
     :load-at-page="1"
     layout-mode="swipe"
+    init="auto"
   />
 </template>
 

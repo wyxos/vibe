@@ -4,6 +4,7 @@
     :get-page="getPage"
     :load-at-page="1"
     :layout="layout"
+    init="auto"
   >
     <template #item="{ item, remove }">
       <div class="custom-card">
