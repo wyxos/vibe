@@ -1,4 +1,4 @@
-import { ref, type Ref } from 'vue'
+import { ref, nextTick, type Ref } from 'vue'
 import { normalizeError } from './utils/errorHandler'
 
 export interface UseMasonryPaginationOptions {
@@ -136,7 +136,16 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
   async function getContent(page: number) {
     try {
       const response = await fetchWithRetry(() => getPage(page, context?.value))
-      refreshLayout([...masonry.value, ...response.items])
+      // Add items to masonry array first (allows Vue transition-group to detect new items)
+      const newItems = [...masonry.value, ...response.items]
+      masonry.value = newItems
+      await nextTick()
+      
+      // Commit DOM updates without forcing sync reflow
+      await nextTick()
+      // Start FLIP on next tick (same pattern as restore/restoreMany)
+      await nextTick()
+      refreshLayout(newItems)
       return response
     } catch (error) {
       // Error is handled by callers (loadPage, loadNext, etc.) which set loadError
@@ -301,9 +310,14 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
           // Append only new items to masonry (same pattern as getContent)
           if (newItems.length > 0) {
             const updatedItems = [...masonry.value, ...newItems]
+            masonry.value = updatedItems
+            await nextTick()
+            
+            // Commit DOM updates without forcing sync reflow
+            await nextTick()
+            // Start FLIP on next tick (same pattern as restore/restoreMany)
+            await nextTick()
             refreshLayout(updatedItems)
-            // Wait a tick for masonry to update
-            await new Promise(resolve => setTimeout(resolve, 0))
           }
 
           // Clear error on successful load
