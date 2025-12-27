@@ -257,7 +257,7 @@ describe('Masonry.vue - End of List Functionality', () => {
     expect(html).toContain('Custom end message')
   })
 
-  it('should set hasReachedEnd when initialize is called with null next', () => {
+  it('should set hasReachedEnd when initialize is called with null next', async () => {
     const wrapper = mount(Masonry, {
       props: getDefaultProps({ getPage: mockGetPage }),
       global: { stubs: defaultStubs }
@@ -268,12 +268,12 @@ describe('Masonry.vue - End of List Functionality', () => {
     const items = [createTestItem()]
 
     // Initialize with null next
-    vm.initialize(items, 1, null)
+    await vm.initialize(items, 1, null)
 
     expect(vm.hasReachedEnd).toBe(true)
   })
 
-  it('should not set hasReachedEnd when initialize is called with non-null next', () => {
+  it('should not set hasReachedEnd when initialize is called with non-null next', async () => {
     const wrapper = mount(Masonry, {
       props: getDefaultProps({ getPage: mockGetPage }),
       global: { stubs: defaultStubs }
@@ -284,7 +284,7 @@ describe('Masonry.vue - End of List Functionality', () => {
     const items = [createTestItem()]
 
     // Initialize with non-null next
-    vm.initialize(items, 1, 2)
+    await vm.initialize(items, 1, 2)
 
     expect(vm.hasReachedEnd).toBe(false)
   })

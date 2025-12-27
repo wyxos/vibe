@@ -35,7 +35,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     // Manually call initialize to initialize (as user would do in manual mode)
     // Pass some items so isInitialized gets set to true
     const testItems = [{ id: 1, width: 300, height: 200, src: 'test1.jpg' }]
-    vm.initialize(testItems, 1, 2)
+    await vm.initialize(testItems, 1, 2)
     await wrapper.vm.$nextTick()
     
     // Now isInitialized should be true
@@ -548,7 +548,7 @@ describe('Masonry.vue - Basic Functionality', () => {
     vm.items = []
     await wrapper.vm.$nextTick()
     // Manually call initialize
-    vm.initialize(initialItems, 3, 4)
+    await vm.initialize(initialItems, 3, 4)
     
     // Wait for updates
     await wrapper.vm.$nextTick()

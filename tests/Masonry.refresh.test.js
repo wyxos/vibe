@@ -54,7 +54,7 @@ describe('Masonry.vue - Refresh Mode Functionality', () => {
             const page5Items = Array.from({ length: 7 }, (_, i) => createTestItem({ id: i + 1, page: 5 }))
             await wrapper.setProps({ items: [] })
             await wrapper.vm.$nextTick()
-            vm.initialize(page5Items, 5, 6)
+            await vm.initialize(page5Items, 5, 6)
             // Manually sync the prop since v-model might not work in tests
             await wrapper.setProps({ items: page5Items })
             await wrapper.vm.$nextTick()

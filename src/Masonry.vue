@@ -568,7 +568,7 @@ function handleWindowResize() {
   // Note: containerWidth is updated by ResizeObserver
 }
 
-function initialize(items: any[], page: any, next: any) {
+async function initialize(items: any[], page: any, next: any) {
   currentPage.value = page  // Track the initial current page
   paginationHistory.value = [page]
   if (next !== null && next !== undefined) {
