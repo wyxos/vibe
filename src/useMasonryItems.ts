@@ -72,11 +72,10 @@ export function useMasonryItems(options: UseMasonryItemsOptions) {
     }
 
     // Commit DOM updates without forcing sync reflow
-    await new Promise<void>(r => requestAnimationFrame(() => r()))
-    // Start FLIP on next frame
-    requestAnimationFrame(() => {
-      refreshLayout(next)
-    })
+    await nextTick()
+    // Start FLIP on next tick
+    await nextTick()
+    refreshLayout(next)
   }
 
   async function removeMany(items: any[]) {
@@ -122,11 +121,10 @@ export function useMasonryItems(options: UseMasonryItemsOptions) {
     // Trigger layout recalculation (same pattern as remove)
     if (!useSwipeMode.value) {
       // Commit DOM updates without forcing sync reflow
-      await new Promise<void>(r => requestAnimationFrame(() => r()))
-      // Start FLIP on next frame
-      requestAnimationFrame(() => {
-        refreshLayout(newItems)
-      })
+      await nextTick()
+      // Start FLIP on next tick
+      await nextTick()
+      refreshLayout(newItems)
     }
   }
 
@@ -210,11 +208,10 @@ export function useMasonryItems(options: UseMasonryItemsOptions) {
     // Trigger layout recalculation (same pattern as removeMany)
     if (!useSwipeMode.value) {
       // Commit DOM updates without forcing sync reflow
-      await new Promise<void>(r => requestAnimationFrame(() => r()))
-      // Start FLIP on next frame
-      requestAnimationFrame(() => {
-        refreshLayout(newItems)
-      })
+      await nextTick()
+      // Start FLIP on next tick
+      await nextTick()
+      refreshLayout(newItems)
     }
   }
 

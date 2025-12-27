@@ -41,10 +41,8 @@ export function createMasonryTransitions(
       el.style.opacity = '1'
       el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1)`
       el.style.removeProperty('--masonry-opacity-delay')
-      requestAnimationFrame(() => {
-        el.style.transition = ''
-        done()
-      })
+      el.style.transition = ''
+      done()
       return
     }
 
@@ -61,20 +59,18 @@ export function createMasonryTransitions(
     const prevOpacityDelay = el.style.getPropertyValue('--masonry-opacity-delay')
     el.style.setProperty('--masonry-opacity-delay', `${delay}ms`)
 
-    requestAnimationFrame(() => {
-      el.style.opacity = '1'
-      el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1)`
-      const clear = () => {
-        if (prevOpacityDelay) {
-          el.style.setProperty('--masonry-opacity-delay', prevOpacityDelay)
-        } else {
-          el.style.removeProperty('--masonry-opacity-delay')
-        }
-        el.removeEventListener('transitionend', clear)
-        done()
+    el.style.opacity = '1'
+    el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1)`
+    const clear = () => {
+      if (prevOpacityDelay) {
+        el.style.setProperty('--masonry-opacity-delay', prevOpacityDelay)
+      } else {
+        el.style.removeProperty('--masonry-opacity-delay')
       }
-      el.addEventListener('transitionend', clear)
-    })
+      el.removeEventListener('transitionend', clear)
+      done()
+    }
+    el.addEventListener('transitionend', clear)
   }
 
   function onBeforeEnter(el: HTMLElement) {
@@ -115,10 +111,7 @@ export function createMasonryTransitions(
     el.style.opacity = '1'
     el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1)`
     el.style.removeProperty('--masonry-opacity-delay')
-    // Avoid forced reflow: re-enable transition on the next frame
-    requestAnimationFrame(() => {
-      el.style.transition = ''
-    })
+    el.style.transition = ''
   }
 
   function onLeave(el: HTMLElement, done: () => void) {
@@ -168,12 +161,10 @@ export function createMasonryTransitions(
       done()
     }, leaveMs + 100)
 
-    requestAnimationFrame(() => {
-      el.style.transitionDuration = `${leaveMs}ms`
-      el.style.opacity = '0'
-      el.style.transform = `translate3d(${left}px, ${top + 10}px, 0) scale(0.985)`
-      el.addEventListener('transitionend', onEnd as any)
-    })
+    el.style.transitionDuration = `${leaveMs}ms`
+    el.style.opacity = '0'
+    el.style.transform = `translate3d(${left}px, ${top + 10}px, 0) scale(0.985)`
+    el.addEventListener('transitionend', onEnd as any)
   }
 
   return {

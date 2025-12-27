@@ -107,7 +107,7 @@ export function useMasonryVirtualization(options: UseMasonryVirtualizationOption
     // Gate transitions for virtualization-only DOM changes
     virtualizing.value = true
     await nextTick()
-    await new Promise<void>(r => requestAnimationFrame(() => r()))
+    await nextTick()
     virtualizing.value = false
 
     const heights = calculateColumnHeights(masonry.value as any, columns.value)

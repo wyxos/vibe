@@ -305,12 +305,10 @@ onMounted(async () => {
   // Wait for Vue to finish rendering, then for layout to complete, then check visibility
   await nextTick();
 
-  // Double requestAnimationFrame ensures layout is complete (especially for masonry layouts)
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      checkInitialVisibility();
-    });
-  });
+  // Double nextTick ensures layout is complete (especially for masonry layouts)
+  await nextTick();
+  await nextTick();
+  checkInitialVisibility();
 
   // Also check after a small delay to catch items that become visible after masonry layout completes
   setTimeout(() => {
