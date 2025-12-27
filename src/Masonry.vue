@@ -280,6 +280,8 @@ const beforeLeave = onBeforeLeave
 const leave = onLeave
 
 // Initialize pagination composable
+// Make mode reactive so it updates when the prop changes
+const modeRef = computed(() => props.mode)
 const pagination = useMasonryPagination({
   getPage: props.getPage as (page: any, ctx?: any) => Promise<{ items: any[]; nextPage: any }>,
   context,
@@ -293,7 +295,7 @@ const pagination = useMasonryPagination({
   retryMaxAttempts: props.retryMaxAttempts,
   retryInitialDelayMs: props.retryInitialDelayMs,
   retryBackoffStepMs: props.retryBackoffStepMs,
-  mode: props.mode,
+  mode: modeRef,
   backfillDelayMs: props.backfillDelayMs,
   backfillMaxCalls: props.backfillMaxCalls,
   pageSize: props.pageSize,

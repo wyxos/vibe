@@ -14,7 +14,7 @@ export interface UseMasonryPaginationOptions {
   retryMaxAttempts: number
   retryInitialDelayMs: number
   retryBackoffStepMs: number
-  mode: string
+  mode: string | Ref<string>
   backfillDelayMs: number
   backfillMaxCalls: number
   pageSize: number
@@ -50,6 +50,9 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
     pageSize,
     emits
   } = options
+
+  // Make mode reactive so it updates when the prop changes
+  const modeRef = typeof mode === 'string' ? ref(mode) : (mode as Ref<string>)
 
   const cancelRequested = ref(false)
   let backfillActive = false
@@ -154,7 +157,7 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
   }
 
   async function maybeBackfillToTarget(baselineCount: number, force = false) {
-    if (!force && mode !== 'backfill') return
+    if (!force && modeRef.value !== 'backfill') return
     if (backfillActive) return
     if (cancelRequested.value) return
     // Don't backfill if we've reached the end
@@ -295,6 +298,13 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
       throw error
     } finally {
       isLoading.value = false
+      const finalCurrentPage = currentPage.value
+      const finalNextPage = paginationHistory.value[paginationHistory.value.length - 1]
+      emits('loading:stop', {
+        fetched: masonry.value.length,
+        currentPage: finalCurrentPage,
+        nextPage: finalNextPage
+      })
     }
   }
 
@@ -315,7 +325,7 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
       if (cancelRequested.value) return
 
       // Refresh mode: check if current page needs refreshing before loading next
-      if (mode === 'refresh' && currentPage.value != null) {
+      if (modeRef.value === 'refresh' && currentPage.value != null) {
         const currentPageItemCount = countItemsForPage(currentPage.value)
 
         // If current page has fewer items than pageSize, refresh it first
