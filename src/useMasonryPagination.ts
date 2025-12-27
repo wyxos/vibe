@@ -23,10 +23,10 @@ export interface UseMasonryPaginationOptions {
     (event: 'retry:start', payload: { attempt: number; max: number; totalMs: number }): void
     (event: 'retry:tick', payload: { attempt: number; remainingMs: number; totalMs: number }): void
     (event: 'retry:stop', payload: { attempt: number; success: boolean }): void
-    (event: 'backfill:start', payload: { target: number; fetched: number; calls: number }): void
-    (event: 'backfill:tick', payload: { fetched: number; target: number; calls: number; remainingMs: number; totalMs: number }): void
-    (event: 'backfill:stop', payload: { fetched: number; calls: number; cancelled?: boolean }): void
-    (event: 'loading:stop', payload: { fetched: number }): void
+    (event: 'backfill:start', payload: { target: number; fetched: number; calls: number; currentPage: any; nextPage: any }): void
+    (event: 'backfill:tick', payload: { fetched: number; target: number; calls: number; remainingMs: number; totalMs: number; currentPage: any; nextPage: any }): void
+    (event: 'backfill:stop', payload: { fetched: number; calls: number; cancelled?: boolean; currentPage: any; nextPage: any }): void
+    (event: 'loading:stop', payload: { fetched: number; currentPage: any; nextPage: any }): void
   }
 }
 
@@ -140,7 +140,7 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
       const newItems = [...masonry.value, ...response.items]
       masonry.value = newItems
       await nextTick()
-      
+
       // Commit DOM updates without forcing sync reflow
       await nextTick()
       // Start FLIP on next tick (same pattern as restore/restoreMany)
@@ -179,7 +179,15 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
     }
     try {
       let calls = 0
-      emits('backfill:start', { target: targetCount, fetched: masonry.value.length, calls })
+      const initialCurrentPage = currentPage.value
+      const initialNextPage = paginationHistory.value[paginationHistory.value.length - 1]
+      emits('backfill:start', {
+        target: targetCount,
+        fetched: masonry.value.length,
+        calls,
+        currentPage: initialCurrentPage,
+        nextPage: initialNextPage
+      })
 
       while (
         masonry.value.length < targetCount &&
@@ -189,20 +197,24 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
         !hasReachedEnd.value &&
         backfillActive
       ) {
+        const tickCurrentPage = currentPage.value
+        const tickNextPage = paginationHistory.value[paginationHistory.value.length - 1]
         await waitWithProgress(backfillDelayMs, (remaining, total) => {
           emits('backfill:tick', {
             fetched: masonry.value.length,
             target: targetCount,
             calls,
             remainingMs: remaining,
-            totalMs: total
+            totalMs: total,
+            currentPage: tickCurrentPage,
+            nextPage: tickNextPage
           })
         })
 
         if (cancelRequested.value || !backfillActive) break
 
-        const currentPage = paginationHistory.value[paginationHistory.value.length - 1]
-        if (currentPage == null) {
+        const currentPageToLoad = paginationHistory.value[paginationHistory.value.length - 1]
+        if (currentPageToLoad == null) {
           hasReachedEnd.value = true
           break
         }
@@ -210,10 +222,11 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
           // Don't toggle isLoading here - keep it true throughout backfill
           // Check cancellation before starting getContent to avoid unnecessary requests
           if (cancelRequested.value || !backfillActive) break
-          const response = await getContent(currentPage)
+          const response = await getContent(currentPageToLoad)
           if (cancelRequested.value || !backfillActive) break
           // Clear error on successful load
           loadError.value = null
+          currentPage.value = currentPageToLoad
           paginationHistory.value.push(response.nextPage)
           // Update hasReachedEnd if nextPage is null
           if (response.nextPage == null) {
@@ -228,12 +241,25 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
         calls++
       }
 
-      emits('backfill:stop', { fetched: masonry.value.length, calls })
+      const stopCurrentPage = currentPage.value
+      const stopNextPage = paginationHistory.value[paginationHistory.value.length - 1]
+      emits('backfill:stop', {
+        fetched: masonry.value.length,
+        calls,
+        currentPage: stopCurrentPage,
+        nextPage: stopNextPage
+      })
     } finally {
       backfillActive = false
       // Only set loading to false when backfill completes or is cancelled
       isLoading.value = false
-      emits('loading:stop', { fetched: masonry.value.length })
+      const finalCurrentPage = currentPage.value
+      const finalNextPage = paginationHistory.value[paginationHistory.value.length - 1]
+      emits('loading:stop', {
+        fetched: masonry.value.length,
+        currentPage: finalCurrentPage,
+        nextPage: finalNextPage
+      })
     }
   }
 
@@ -312,7 +338,7 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
             const updatedItems = [...masonry.value, ...newItems]
             masonry.value = updatedItems
             await nextTick()
-            
+
             // Commit DOM updates without forcing sync reflow
             await nextTick()
             // Start FLIP on next tick (same pattern as restore/restoreMany)
@@ -395,7 +421,13 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
       throw error
     } finally {
       isLoading.value = false
-      emits('loading:stop', { fetched: masonry.value.length })
+      const finalCurrentPage = currentPage.value
+      const finalNextPage = paginationHistory.value[paginationHistory.value.length - 1]
+      emits('loading:stop', {
+        fetched: masonry.value.length,
+        currentPage: finalCurrentPage,
+        nextPage: finalNextPage
+      })
     }
   }
 
@@ -449,7 +481,13 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
       throw error
     } finally {
       isLoading.value = false
-      emits('loading:stop', { fetched: masonry.value.length })
+      const finalCurrentPage = currentPage.value
+      const finalNextPage = paginationHistory.value[paginationHistory.value.length - 1]
+      emits('loading:stop', {
+        fetched: masonry.value.length,
+        currentPage: finalCurrentPage,
+        nextPage: finalNextPage
+      })
     }
   }
 
@@ -460,11 +498,23 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
     // Set backfillActive to false to immediately stop backfilling
     // The backfill loop checks this flag and will exit on the next iteration
     backfillActive = false
+    const cancelCurrentPage = currentPage.value
+    const cancelNextPage = paginationHistory.value[paginationHistory.value.length - 1]
     // If backfill was active, emit stop event immediately
     if (wasBackfilling) {
-      emits('backfill:stop', { fetched: masonry.value.length, calls: 0, cancelled: true })
+      emits('backfill:stop', {
+        fetched: masonry.value.length,
+        calls: 0,
+        cancelled: true,
+        currentPage: cancelCurrentPage,
+        nextPage: cancelNextPage
+      })
     }
-    emits('loading:stop', { fetched: masonry.value.length })
+    emits('loading:stop', {
+      fetched: masonry.value.length,
+      currentPage: cancelCurrentPage,
+      nextPage: cancelNextPage
+    })
   }
 
   return {
