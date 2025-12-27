@@ -585,6 +585,7 @@ function initialize(items: any[], page: any, next: any) {
 
   // Set items first (this updates the v-model)
   masonry.value = newItems
+  await nextTick()
 
   if (useSwipeMode.value) {
     // In swipe mode, just set items without layout calculation
@@ -593,6 +594,10 @@ function initialize(items: any[], page: any, next: any) {
       swipeOffset.value = 0
     }
   } else {
+    // Commit DOM updates without forcing sync reflow
+    await nextTick()
+    // Start FLIP on next tick (same pattern as restore/restoreMany)
+    await nextTick()
     refreshLayout(newItems)
 
     // Update viewport state from container's scroll position
@@ -815,7 +820,14 @@ onMounted(async () => {
     }
 
     const initialPage = props.loadAtPage as any
-    paginationHistory.value = [initialPage]
+
+    // Only set paginationHistory in onMounted if:
+    // 1. init is 'auto' (we need it for auto-loading)
+    // 2. paginationHistory is empty (hasn't been set by initialize yet)
+    // If init is 'manual', initialize() will set it, so don't overwrite
+    if (props.init === 'auto' && paginationHistory.value.length === 0) {
+      paginationHistory.value = [initialPage]
+    }
 
     if (props.init === 'auto') {
       // Auto mode: automatically call loadPage on mount

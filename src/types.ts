@@ -59,7 +59,7 @@ export interface MasonryInstance {
   // Boolean indicating if the end of the list has been reached (no more pages to load)
   hasReachedEnd: boolean
   // Initializes the component with items, page, and next page cursor. Use this for manual init mode.
-  initialize: (items: MasonryItem[], page: number | string, next: number | string | null) => void
+  initialize: (items: MasonryItem[], page: number | string, next: number | string | null) => Promise<void> | void
   // Boolean indicating if the component has been initialized (first content has loaded)
   isInitialized: boolean
   // Boolean indicating if a page load or backfill operation is currently in progress
