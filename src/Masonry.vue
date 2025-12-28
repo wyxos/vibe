@@ -398,6 +398,8 @@ defineExpose({
   remove,
   // Removes all items from the masonry
   removeAll,
+  // Clears all items and pagination history (useful when applying filters)
+  clear,
   // Removes multiple items from the masonry in a single operation
   removeMany,
   // Resets the component to initial state (clears items, resets pagination, scrolls to top)
@@ -495,6 +497,12 @@ function onResize() {
 
 // maybeBackfillToTarget, cancelLoad are now in useMasonryPagination composable
 // Removed: backfillActive, cancelRequested - now internal to pagination composable
+
+function clear() {
+  // Clear all items and pagination history (useful when applying filters)
+  masonry.value = []
+  paginationHistory.value = []
+}
 
 function reset() {
   // Cancel ongoing work
