@@ -20,74 +20,66 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="container">
-    <h1>Vibe</h1>
-
-    <p v-if="isLoading">Loading page 1…</p>
-    <p v-else-if="error">Error: {{ error }}</p>
-
-    <div v-else class="grid">
-      <article v-for="item in pageData.items" :key="item.id" class="card">
-        <img
-          v-if="item.type === 'image'"
-          class="media"
-          :src="item.src"
-          :width="item.width"
-          :height="item.height"
-          loading="lazy"
-          :alt="item.id"
-        />
-
-        <video
-          v-else
-          class="media"
-          :poster="item.poster"
-          controls
-          preload="metadata"
-        >
-          <source :src="item.src" type="video/mp4" />
-        </video>
-
-        <div class="meta">
-          <span>{{ item.type }}</span>
-          <span>{{ item.id }}</span>
+  <div class="min-h-screen">
+    <div class="mx-auto max-w-6xl px-6 py-10">
+      <header class="flex items-center gap-4">
+        <img src="/logo.svg" alt="Vibe" class="h-10 w-10" />
+        <div class="min-w-0">
+          <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Vibe</h1>
+          <p class="text-sm text-slate-600">Fake server demo · 100 pages · 20 items/page</p>
         </div>
-      </article>
+      </header>
+
+      <section class="mt-8 rounded-2xl border border-slate-200/70 bg-white/70 p-5 shadow-sm backdrop-blur">
+        <div class="flex items-baseline justify-between gap-4">
+          <h2 class="text-base font-medium text-slate-900">Page 1</h2>
+          <p v-if="pageData" class="text-xs text-slate-600">
+            Showing {{ pageData.items.length }} items
+          </p>
+        </div>
+
+        <p v-if="isLoading" class="mt-4 text-sm text-slate-600">Loading page 1…</p>
+        <p v-else-if="error" class="mt-4 text-sm font-medium text-red-700">Error: {{ error }}</p>
+
+        <div v-else class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <article
+            v-for="item in pageData.items"
+            :key="item.id"
+            class="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm"
+          >
+            <div class="aspect-[4/3] bg-slate-100">
+              <img
+                v-if="item.type === 'image'"
+                class="h-full w-full object-cover"
+                :src="item.src"
+                :width="item.width"
+                :height="item.height"
+                loading="lazy"
+                :alt="item.id"
+              />
+
+              <video
+                v-else
+                class="h-full w-full object-cover"
+                :poster="item.poster"
+                controls
+                preload="metadata"
+              >
+                <source :src="item.src" type="video/mp4" />
+              </video>
+            </div>
+
+            <div class="flex items-center justify-between gap-3 px-4 py-3">
+              <span
+                class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-2 py-0.5 text-xs font-medium text-slate-700"
+              >
+                {{ item.type }}
+              </span>
+              <span class="truncate font-mono text-xs text-slate-500">{{ item.id }}</span>
+            </div>
+          </article>
+        </div>
+      </section>
     </div>
   </div>
 </template>
-
-<style scoped>
-.container {
-  min-height: 100vh;
-  background: red;
-  padding: 24px;
-  box-sizing: border-box;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
-}
-
-.card {
-  background: white;
-  padding: 12px;
-  display: grid;
-  gap: 8px;
-}
-
-.media {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-.meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 12px;
-}
-</style>
