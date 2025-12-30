@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { fetchPage } from './fakeServer'
 
 const scrollContainerEl = ref(null)
@@ -8,9 +8,19 @@ const isLoadingInitial = ref(true)
 const isLoadingNext = ref(false)
 const error = ref('')
 
+const initialPageToken = (() => {
+  const raw = new URLSearchParams(window.location.search).get('page')
+  const trimmed = raw?.trim()
+  return trimmed ? trimmed : 1
+})()
+
 const pagesLoaded = ref([])
 const items = ref([])
 const nextPage = ref(1)
+
+const firstLoadedPageToken = computed(() => {
+  return pagesLoaded.value.length ? pagesLoaded.value[0] : initialPageToken
+})
 
 async function loadNextPage() {
   if (isLoadingInitial.value || isLoadingNext.value) return
@@ -49,8 +59,8 @@ onMounted(async () => {
     isLoadingInitial.value = true
     error.value = ''
 
-    const result = await fetchPage(1)
-    pagesLoaded.value = [1]
+    const result = await fetchPage(initialPageToken)
+    pagesLoaded.value = [initialPageToken]
     items.value = result.items
     nextPage.value = result.nextPage
   } catch (err) {
@@ -76,7 +86,7 @@ onMounted(async () => {
         class="mt-8 flex min-h-0 flex-1 flex-col rounded-2xl border border-slate-200/70 bg-white/70 p-5 shadow-sm backdrop-blur"
       >
         <div class="flex items-baseline justify-between gap-4">
-          <h2 class="text-base font-medium text-slate-900">Page 1</h2>
+          <h2 class="text-base font-medium text-slate-900">Page {{ firstLoadedPageToken }}</h2>
           <p class="text-xs text-slate-600">
             Pages loaded: {{ pagesLoaded.length }}
           </p>
