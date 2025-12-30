@@ -138,9 +138,9 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
 
   async function getContent(page: number) {
     try {
-      const response = await fetchWithRetry(() => getPage(page, context?.value))
+      const pageData = await fetchWithRetry(() => getPage(page, context?.value))
       // Add items to masonry array first (allows Vue transition-group to detect new items)
-      const newItems = [...masonry.value, ...response.items]
+      const newItems = [...masonry.value, ...pageData.items]
       masonry.value = newItems
       await nextTick()
 
@@ -149,7 +149,7 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
       // Start FLIP on next tick (same pattern as restore/restoreMany)
       await nextTick()
       refreshLayout(newItems)
-      return response
+      return pageData
     } catch (error) {
       // Error is handled by callers (loadPage, loadNext, etc.) which set loadError
       throw error
@@ -225,14 +225,14 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
           // Don't toggle isLoading here - keep it true throughout backfill
           // Check cancellation before starting getContent to avoid unnecessary requests
           if (cancelRequested.value || !backfillActive) break
-          const response = await getContent(currentPageToLoad)
+          const pageData = await getContent(currentPageToLoad)
           if (cancelRequested.value || !backfillActive) break
           // Clear error on successful load
           loadError.value = null
           currentPage.value = currentPageToLoad
-          paginationHistory.value.push(response.nextPage)
+          paginationHistory.value.push(pageData.nextPage)
           // Update hasReachedEnd if nextPage is null
-          if (response.nextPage == null) {
+          if (pageData.nextPage == null) {
             hasReachedEnd.value = true
           }
         } catch (error) {
@@ -280,18 +280,18 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
     try {
       const baseline = masonry.value.length
       if (cancelRequested.value) return
-      const response = await getContent(page)
+      const pageData = await getContent(page)
       if (cancelRequested.value) return
       // Clear error on successful load
       loadError.value = null
       currentPage.value = page  // Track the current page
-      paginationHistory.value.push(response.nextPage)
+      paginationHistory.value.push(pageData.nextPage)
       // Update hasReachedEnd if nextPage is null
-      if (response.nextPage == null) {
+      if (pageData.nextPage == null) {
         hasReachedEnd.value = true
       }
       await maybeBackfillToTarget(baseline)
-      return response
+      return pageData
     } catch (error) {
       // Set load error - error is handled and exposed to UI via loadError
       loadError.value = normalizeError(error)
@@ -330,13 +330,13 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
 
         // If current page has fewer items than pageSize, refresh it first
         if (currentPageItemCount < pageSize) {
-          const response = await fetchWithRetry(() => getPage(currentPage.value, context?.value))
+          const pageData = await fetchWithRetry(() => getPage(currentPage.value, context?.value))
           if (cancelRequested.value) return
 
           // Get only new items that don't already exist
           // We need to check against the current masonry state at this moment
           const currentMasonrySnapshot = [...masonry.value]
-          const newItems = response.items.filter((item: any) => {
+          const newItems = pageData.items.filter((item: any) => {
             if (!item || item.id == null || item.page == null) return false
             return !currentMasonrySnapshot.some((existing: any) => {
               return existing && existing.id === item.id && existing.page === item.page
@@ -400,8 +400,8 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
             await maybeBackfillToTarget(baseline)
             return nextResponse
           } else {
-            // Still not enough items, but we refreshed - return the refresh response
-            return response
+            // Still not enough items, but we refreshed - return the refresh pageData
+            return pageData
           }
         }
       }
@@ -413,18 +413,18 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
         hasReachedEnd.value = true
         return
       }
-      const response = await getContent(nextPageToLoad)
+      const pageData = await getContent(nextPageToLoad)
       if (cancelRequested.value) return
       // Clear error on successful load
       loadError.value = null
       currentPage.value = nextPageToLoad  // Track the current page
-      paginationHistory.value.push(response.nextPage)
+      paginationHistory.value.push(pageData.nextPage)
       // Update hasReachedEnd if nextPage is null
-      if (response.nextPage == null) {
+      if (pageData.nextPage == null) {
         hasReachedEnd.value = true
       }
       await maybeBackfillToTarget(baseline)
-      return response
+      return pageData
     } catch (error) {
       // Set load error - error is handled and exposed to UI via loadError
       loadError.value = normalizeError(error)
@@ -467,16 +467,16 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
       paginationHistory.value = [pageToRefresh]
 
       // Reload the current page
-      const response = await getContent(pageToRefresh)
+      const pageData = await getContent(pageToRefresh)
       if (cancelRequested.value) return
 
       // Clear error on successful load
       loadError.value = null
       // Update pagination state
       currentPage.value = pageToRefresh
-      paginationHistory.value.push(response.nextPage)
+      paginationHistory.value.push(pageData.nextPage)
       // Update hasReachedEnd if nextPage is null
-      if (response.nextPage == null) {
+      if (pageData.nextPage == null) {
         hasReachedEnd.value = true
       }
 
@@ -484,7 +484,7 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
       const baseline = masonry.value.length
       await maybeBackfillToTarget(baseline)
 
-      return response
+      return pageData
     } catch (error) {
       // Set load error - error is handled and exposed to UI via loadError
       loadError.value = normalizeError(error)
