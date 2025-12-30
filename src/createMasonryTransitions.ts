@@ -86,8 +86,14 @@ export function createMasonryTransitions(
       return
     }
 
+    // For new items entering, start from 0,0 (top-left) before animating to final position
+    // This provides a clean FLIP animation for items that don't have a previous position
+    // If data attributes are 0,0, the item is likely new (or actually at 0,0, which is fine)
+    const initialLeft = left === 0 && top === 0 ? 0 : left
+    const initialTop = left === 0 && top === 0 ? 0 : top
+
     el.style.opacity = '0'
-    el.style.transform = `translate3d(${left}px, ${top + 10}px, 0) scale(0.985)`
+    el.style.transform = `translate3d(${initialLeft}px, ${initialTop + 10}px, 0) scale(0.985)`
   }
 
   function onBeforeLeave(el: HTMLElement) {

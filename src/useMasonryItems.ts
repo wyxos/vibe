@@ -21,6 +21,9 @@ export function useMasonryItems(options: UseMasonryItemsOptions) {
     paginationHistory
   } = options
 
+  // Race condition protection: prevent concurrent item operations
+  let isProcessingItems = false
+
   // Batch remove operations to prevent visual glitches from rapid successive calls
   let pendingRemoves = new Set<any>()
   let removeTimeoutId: ReturnType<typeof setTimeout> | null = null
@@ -71,9 +74,7 @@ export function useMasonryItems(options: UseMasonryItemsOptions) {
       return
     }
 
-    // Commit DOM updates without forcing sync reflow
-    await nextTick()
-    // Start FLIP on next tick
+    // Wait for DOM update, then calculate layout for FLIP animation
     await nextTick()
     refreshLayout(next)
   }
@@ -104,27 +105,31 @@ export function useMasonryItems(options: UseMasonryItemsOptions) {
    */
   async function restore(item: any, index: number) {
     if (!item) return
+    if (isProcessingItems) return // Prevent concurrent operations
 
-    const current = masonry.value
-    const existingIndex = current.findIndex(i => i.id === item.id)
-    if (existingIndex !== -1) return // Item already exists
+    isProcessingItems = true
+    try {
+      const current = masonry.value
+      const existingIndex = current.findIndex(i => i.id === item.id)
+      if (existingIndex !== -1) return // Item already exists
 
-    // Insert at the original index (clamped to valid range)
-    const newItems = [...current]
-    const targetIndex = Math.min(index, newItems.length)
-    newItems.splice(targetIndex, 0, item)
+      // Insert at the original index (clamped to valid range)
+      const newItems = [...current]
+      const targetIndex = Math.min(index, newItems.length)
+      newItems.splice(targetIndex, 0, item)
 
-    // Update the masonry array
-    masonry.value = newItems
-    await nextTick()
-
-    // Trigger layout recalculation (same pattern as remove)
-    if (!useSwipeMode.value) {
-      // Commit DOM updates without forcing sync reflow
+      // Update the masonry array
+      masonry.value = newItems
       await nextTick()
-      // Start FLIP on next tick
-      await nextTick()
-      refreshLayout(newItems)
+
+      // Trigger layout recalculation (same pattern as remove)
+      if (!useSwipeMode.value) {
+        // Wait for DOM update, then calculate layout for FLIP animation
+        await nextTick()
+        refreshLayout(newItems)
+      }
+    } finally {
+      isProcessingItems = false
     }
   }
 
@@ -141,77 +146,82 @@ export function useMasonryItems(options: UseMasonryItemsOptions) {
       console.warn('[Masonry] restoreMany: items and indices arrays must have the same length')
       return
     }
+    if (isProcessingItems) return // Prevent concurrent operations
 
-    const current = masonry.value
-    const existingIds = new Set(current.map(i => i.id))
+    isProcessingItems = true
+    try {
 
-    // Filter out items that already exist and pair with their indices
-    const itemsToRestore: Array<{ item: any; index: number }> = []
-    for (let i = 0; i < items.length; i++) {
-      if (!existingIds.has(items[i]?.id)) {
-        itemsToRestore.push({ item: items[i], index: indices[i] })
-      }
-    }
+      const current = masonry.value
+      const existingIds = new Set(current.map(i => i.id))
 
-    if (itemsToRestore.length === 0) return
-
-    // Build the final array by merging current items and restored items
-    // Strategy: Build position by position - for each position, decide if it should be
-    // a restored item (at its original index) or a current item (accounting for shifts)
-
-    // Create a map of restored items by their original index for O(1) lookup
-    const restoredByIndex = new Map<number, any>()
-    for (const { item, index } of itemsToRestore) {
-      restoredByIndex.set(index, item)
-    }
-
-    // Find the maximum position we need to consider
-    const maxRestoredIndex = itemsToRestore.length > 0
-      ? Math.max(...itemsToRestore.map(({ index }) => index))
-      : -1
-    const maxPosition = Math.max(current.length - 1, maxRestoredIndex)
-
-    // Build the final array position by position
-    // Key insight: Current array items are in "shifted" positions (missing the removed items).
-    // When we restore items at their original positions, current items naturally shift back.
-    // We can build the final array by iterating positions and using items sequentially.
-    const newItems: any[] = []
-    let currentArrayIndex = 0 // Track which current item we should use next
-
-    // Iterate through all positions up to the maximum we need
-    for (let position = 0; position <= maxPosition; position++) {
-      // If there's a restored item that belongs at this position, use it
-      if (restoredByIndex.has(position)) {
-        newItems.push(restoredByIndex.get(position)!)
-      } else {
-        // Otherwise, this position should be filled by the next current item
-        // Since current array is missing restored items, items are shifted left.
-        // By using them sequentially, they naturally end up in the correct positions.
-        if (currentArrayIndex < current.length) {
-          newItems.push(current[currentArrayIndex])
-          currentArrayIndex++
+      // Filter out items that already exist and pair with their indices
+      const itemsToRestore: Array<{ item: any; index: number }> = []
+      for (let i = 0; i < items.length; i++) {
+        if (!existingIds.has(items[i]?.id)) {
+          itemsToRestore.push({ item: items[i], index: indices[i] })
         }
       }
-    }
 
-    // Add any remaining current items that come after the last restored position
-    // (These are items that were originally after maxRestoredIndex)
-    while (currentArrayIndex < current.length) {
-      newItems.push(current[currentArrayIndex])
-      currentArrayIndex++
-    }
+      if (itemsToRestore.length === 0) return
 
-    // Update the masonry array
-    masonry.value = newItems
-    await nextTick()
+      // Build the final array by merging current items and restored items
+      // Strategy: Build position by position - for each position, decide if it should be
+      // a restored item (at its original index) or a current item (accounting for shifts)
 
-    // Trigger layout recalculation (same pattern as removeMany)
-    if (!useSwipeMode.value) {
-      // Commit DOM updates without forcing sync reflow
+      // Create a map of restored items by their original index for O(1) lookup
+      const restoredByIndex = new Map<number, any>()
+      for (const { item, index } of itemsToRestore) {
+        restoredByIndex.set(index, item)
+      }
+
+      // Find the maximum position we need to consider
+      const maxRestoredIndex = itemsToRestore.length > 0
+        ? Math.max(...itemsToRestore.map(({ index }) => index))
+        : -1
+      const maxPosition = Math.max(current.length - 1, maxRestoredIndex)
+
+      // Build the final array position by position
+      // Key insight: Current array items are in "shifted" positions (missing the removed items).
+      // When we restore items at their original positions, current items naturally shift back.
+      // We can build the final array by iterating positions and using items sequentially.
+      const newItems: any[] = []
+      let currentArrayIndex = 0 // Track which current item we should use next
+
+      // Iterate through all positions up to the maximum we need
+      for (let position = 0; position <= maxPosition; position++) {
+        // If there's a restored item that belongs at this position, use it
+        if (restoredByIndex.has(position)) {
+          newItems.push(restoredByIndex.get(position)!)
+        } else {
+          // Otherwise, this position should be filled by the next current item
+          // Since current array is missing restored items, items are shifted left.
+          // By using them sequentially, they naturally end up in the correct positions.
+          if (currentArrayIndex < current.length) {
+            newItems.push(current[currentArrayIndex])
+            currentArrayIndex++
+          }
+        }
+      }
+
+      // Add any remaining current items that come after the last restored position
+      // (These are items that were originally after maxRestoredIndex)
+      while (currentArrayIndex < current.length) {
+        newItems.push(current[currentArrayIndex])
+        currentArrayIndex++
+      }
+
+      // Update the masonry array
+      masonry.value = newItems
       await nextTick()
-      // Start FLIP on next tick
-      await nextTick()
-      refreshLayout(newItems)
+
+      // Trigger layout recalculation (same pattern as removeMany)
+      if (!useSwipeMode.value) {
+        // Wait for DOM update, then calculate layout for FLIP animation
+        await nextTick()
+        refreshLayout(newItems)
+      }
+    } finally {
+      isProcessingItems = false
     }
   }
 

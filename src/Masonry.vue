@@ -604,9 +604,7 @@ async function initialize(items: any[], page: any, next: any) {
       swipeOffset.value = 0
     }
   } else {
-    // Commit DOM updates without forcing sync reflow
-    await nextTick()
-    // Start FLIP on next tick (same pattern as restore/restoreMany)
+    // Wait for DOM update, then calculate layout for FLIP animation
     await nextTick()
     refreshLayout(newItems)
 

@@ -142,11 +142,8 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
       // Add items to masonry array first (allows Vue transition-group to detect new items)
       const newItems = [...masonry.value, ...pageData.items]
       masonry.value = newItems
+      // Wait for DOM update, then calculate layout for FLIP animation
       await nextTick()
-
-      // Commit DOM updates without forcing sync reflow
-      await nextTick()
-      // Start FLIP on next tick (same pattern as restore/restoreMany)
       await nextTick()
       refreshLayout(newItems)
       return pageData
@@ -347,11 +344,8 @@ export function useMasonryPagination(options: UseMasonryPaginationOptions) {
           if (newItems.length > 0) {
             const updatedItems = [...masonry.value, ...newItems]
             masonry.value = updatedItems
+            // Wait for DOM update, then calculate layout for FLIP animation
             await nextTick()
-
-            // Commit DOM updates without forcing sync reflow
-            await nextTick()
-            // Start FLIP on next tick (same pattern as restore/restoreMany)
             await nextTick()
             refreshLayout(updatedItems)
           }
