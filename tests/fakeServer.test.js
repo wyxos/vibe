@@ -1,0 +1,33 @@
+import { describe, expect, it } from 'vitest'
+import { fetchPage } from '../src/fakeServer'
+
+describe('fakeServer.fetchPage', () => {
+  it('returns only { items, nextPage }', async () => {
+    const result = await fetchPage(1)
+
+    expect(Object.keys(result).sort()).toEqual(['items', 'nextPage'])
+    expect(Array.isArray(result.items)).toBe(true)
+    expect(result.items).toHaveLength(20)
+  })
+
+  it('accepts a numeric string page token', async () => {
+    const result = await fetchPage('1')
+    expect(result.items).toHaveLength(20)
+  })
+
+  it('returns nextPage token that may be number or string', async () => {
+    const result = await fetchPage(1)
+    expect([typeof result.nextPage, result.nextPage]).toSatisfy(
+      ([t, v]) => v === null || t === 'number' || t === 'string',
+    )
+  })
+
+  it('throws on out-of-range page', async () => {
+    await expect(fetchPage(0)).rejects.toThrow(/out of range/i)
+    await expect(fetchPage(101)).rejects.toThrow(/out of range/i)
+  })
+
+  it('throws on non-number-like page token', async () => {
+    await expect(fetchPage('nope')).rejects.toThrow(/number-like/i)
+  })
+})

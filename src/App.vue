@@ -94,6 +94,7 @@ onMounted(async () => {
 
         <div
           ref="scrollContainerEl"
+          data-testid="items-scroll-container"
           class="mt-4 min-h-0 flex-1 overflow-auto"
           @scroll="maybeLoadMoreOnScroll"
         >
@@ -104,6 +105,7 @@ onMounted(async () => {
             <article
               v-for="item in items"
               :key="item.id"
+              data-testid="item-card"
               class="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm"
             >
               <div class="aspect-[4/3] bg-slate-100">
