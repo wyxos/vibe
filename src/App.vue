@@ -2,19 +2,64 @@
 import { onMounted, ref } from 'vue'
 import { fetchPage } from './fakeServer'
 
-const isLoading = ref(true)
-const error = ref('')
-const pageData = ref(null)
+const scrollContainerEl = ref(null)
 
-onMounted(async () => {
+const isLoadingInitial = ref(true)
+const isLoadingNext = ref(false)
+const error = ref('')
+
+const pagesLoaded = ref([])
+const items = ref([])
+const nextPage = ref(1)
+const totalPages = ref(0)
+
+async function loadNextPage() {
+  if (isLoadingInitial.value || isLoadingNext.value) return
+  if (nextPage.value == null) return
+
   try {
-    isLoading.value = true
+    isLoadingNext.value = true
     error.value = ''
-    pageData.value = await fetchPage(1)
+
+    const pageToLoad = nextPage.value
+    const result = await fetchPage(pageToLoad)
+
+    pagesLoaded.value = [...pagesLoaded.value, result.page]
+    items.value = [...items.value, ...result.items]
+    nextPage.value = result.nextPage
+    totalPages.value = result.totalPages
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err)
   } finally {
-    isLoading.value = false
+    isLoadingNext.value = false
+  }
+}
+
+function maybeLoadMoreOnScroll() {
+  const el = scrollContainerEl.value
+  if (!el) return
+
+  const thresholdPx = 200
+  const distanceFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight)
+  if (distanceFromBottom <= thresholdPx) {
+    void loadNextPage()
+  }
+}
+
+onMounted(async () => {
+  try {
+    isLoadingInitial.value = true
+    error.value = ''
+
+    const result = await fetchPage(1)
+    pagesLoaded.value = [result.page]
+    items.value = result.items
+    nextPage.value = result.nextPage
+    totalPages.value = result.totalPages
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    isLoadingInitial.value = false
   }
 })
 </script>
@@ -35,18 +80,22 @@ onMounted(async () => {
       >
         <div class="flex items-baseline justify-between gap-4">
           <h2 class="text-base font-medium text-slate-900">Page 1</h2>
-          <p v-if="pageData" class="text-xs text-slate-600">
-            Showing {{ pageData.items.length }} items
+          <p class="text-xs text-slate-600">
+            Pages loaded: {{ pagesLoaded.length }}<span v-if="totalPages">/{{ totalPages }}</span>
           </p>
         </div>
 
-        <div class="mt-4 min-h-0 flex-1 overflow-auto">
-          <p v-if="isLoading" class="text-sm text-slate-600">Loading page 1…</p>
+        <div
+          ref="scrollContainerEl"
+          class="mt-4 min-h-0 flex-1 overflow-auto"
+          @scroll="maybeLoadMoreOnScroll"
+        >
+          <p v-if="isLoadingInitial" class="text-sm text-slate-600">Loading page 1…</p>
           <p v-else-if="error" class="text-sm font-medium text-red-700">Error: {{ error }}</p>
 
           <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <article
-              v-for="item in pageData.items"
+              v-for="item in items"
               :key="item.id"
               class="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm"
             >
@@ -81,6 +130,12 @@ onMounted(async () => {
                 <span class="truncate font-mono text-xs text-slate-500">{{ item.id }}</span>
               </div>
             </article>
+          </div>
+
+          <div class="mt-4 pb-2 text-center text-xs text-slate-600">
+            <span v-if="isLoadingNext">Loading more…</span>
+            <span v-else-if="nextPage == null">End of list</span>
+            <span v-else>Scroll to load page {{ nextPage }}</span>
           </div>
         </div>
       </section>
