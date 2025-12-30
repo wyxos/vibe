@@ -6,6 +6,27 @@ const VIDEO_SOURCES = [
   'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/bee.mp4',
 ]
 
+function normalizePageToken(pageToken) {
+  if (typeof pageToken === 'number') {
+    if (!Number.isInteger(pageToken)) throw new Error('page must be an integer')
+    return pageToken
+  }
+
+  if (typeof pageToken === 'string') {
+    const trimmed = pageToken.trim()
+    const parsed = Number.parseInt(trimmed, 10)
+    if (!Number.isFinite(parsed)) throw new Error('page must be a number-like string')
+    return parsed
+  }
+
+  throw new Error('page must be a number or string')
+}
+
+function createNextPageToken(nextPageNumber) {
+  if (nextPageNumber == null) return null
+  return nextPageNumber % 2 === 0 ? String(nextPageNumber) : nextPageNumber
+}
+
 function createRng(seed) {
   let state = seed >>> 0
   return () => {
@@ -52,8 +73,8 @@ function createItem({ page, index }) {
   }
 }
 
-export async function fetchPage(page) {
-  if (!Number.isInteger(page)) throw new Error('page must be an integer')
+export async function fetchPage(pageToken) {
+  const page = normalizePageToken(pageToken)
   if (page < 1 || page > TOTAL_PAGES) throw new Error('page out of range')
 
   const rng = createRng(page)
@@ -65,11 +86,10 @@ export async function fetchPage(page) {
     createItem({ page, index }),
   )
 
+  const nextPageNumber = page < TOTAL_PAGES ? page + 1 : null
+
   return {
-    page,
     items,
-    nextPage: page < TOTAL_PAGES ? page + 1 : null,
-    totalPages: TOTAL_PAGES,
-    itemsPerPage: ITEMS_PER_PAGE,
+    nextPage: createNextPageToken(nextPageNumber),
   }
 }

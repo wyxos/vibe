@@ -11,7 +11,6 @@ const error = ref('')
 const pagesLoaded = ref([])
 const items = ref([])
 const nextPage = ref(1)
-const totalPages = ref(0)
 
 async function loadNextPage() {
   if (isLoadingInitial.value || isLoadingNext.value) return
@@ -24,10 +23,9 @@ async function loadNextPage() {
     const pageToLoad = nextPage.value
     const result = await fetchPage(pageToLoad)
 
-    pagesLoaded.value = [...pagesLoaded.value, result.page]
+    pagesLoaded.value = [...pagesLoaded.value, pageToLoad]
     items.value = [...items.value, ...result.items]
     nextPage.value = result.nextPage
-    totalPages.value = result.totalPages
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err)
   } finally {
@@ -52,10 +50,9 @@ onMounted(async () => {
     error.value = ''
 
     const result = await fetchPage(1)
-    pagesLoaded.value = [result.page]
+    pagesLoaded.value = [1]
     items.value = result.items
     nextPage.value = result.nextPage
-    totalPages.value = result.totalPages
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err)
   } finally {
@@ -81,7 +78,7 @@ onMounted(async () => {
         <div class="flex items-baseline justify-between gap-4">
           <h2 class="text-base font-medium text-slate-900">Page 1</h2>
           <p class="text-xs text-slate-600">
-            Pages loaded: {{ pagesLoaded.length }}<span v-if="totalPages">/{{ totalPages }}</span>
+            Pages loaded: {{ pagesLoaded.length }}
           </p>
         </div>
 
