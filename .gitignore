@@ -27,3 +27,5 @@ dist-ssr
 .gh-pages
 .cursor/commands
 .zephyr/
+
+test-results/
