@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils'
 import { defineComponent, h, ref } from 'vue'
 
 import Masonry from '../src/Masonry.vue'
+import type { MasonryItemBase } from '../src/Masonry.vue'
 
 function flushPromises() {
   return new Promise((resolve) => setTimeout(resolve, 0))
@@ -10,10 +11,10 @@ function flushPromises() {
 
 describe('Masonry v-model:items', () => {
   it('keeps parent items in sync (initial load, append, remove)', async () => {
-    const getContent = vi.fn(async (pageToken) => {
+    const getContent = vi.fn(async (pageToken: unknown) => {
       const token = String(pageToken)
 
-      const makeItem = (id) => ({
+      const makeItem = (id: string): MasonryItemBase => ({
         id,
         type: 'image',
         reaction: null,
@@ -42,7 +43,7 @@ describe('Masonry v-model:items', () => {
 
     const Harness = defineComponent({
       setup() {
-        const items = ref([])
+        const items = ref<MasonryItemBase[]>([])
         return () =>
           h('div', [
             h('div', { 'data-testid': 'items-length' }, String(items.value.length)),
@@ -54,11 +55,11 @@ describe('Masonry v-model:items', () => {
                 itemWidth: 300,
                 items: items.value,
                 'onUpdate:items': (next) => {
-                  items.value = next
+                  items.value = next as MasonryItemBase[]
                 },
               },
               {
-                itemFooter: ({ item, remove }) =>
+                itemFooter: ({ item, remove }: any) =>
                   h(
                     'button',
                     {

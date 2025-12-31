@@ -28,9 +28,10 @@ describe('fakeServer.fetchPage', () => {
 
   it('returns nextPage token that may be number or string', async () => {
     const result = await fetchPage(1)
-    expect([typeof result.nextPage, result.nextPage]).toSatisfy(
-      ([t, v]) => v === null || t === 'number' || t === 'string',
-    )
+    expect([typeof result.nextPage, result.nextPage]).toSatisfy((value) => {
+      const [t, v] = value as [string, unknown]
+      return v === null || t === 'number' || t === 'string'
+    })
   })
 
   it('throws on out-of-range page', async () => {

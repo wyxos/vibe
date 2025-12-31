@@ -39,9 +39,9 @@ describe('Masonry slots + media rendering', () => {
     const wrapper = mount(Masonry, {
       props: { getContent, page: 1, itemWidth: 300 },
       slots: {
-        itemHeader: ({ item }) =>
+        itemHeader: ({ item }: any) =>
           h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
-        itemFooter: ({ item, remove }) =>
+        itemFooter: ({ item, remove }: any) =>
           h('button', { 'data-testid': 'slot-item-footer', type: 'button', onClick: remove }, `F:${item.id}`),
       },
       attachTo: document.body,
@@ -99,8 +99,8 @@ describe('Masonry slots + media rendering', () => {
     const wrapper = mount(Masonry, {
       props: { getContent, page: 1, itemWidth: 300, headerHeight: 10, footerHeight: 20 },
       slots: {
-        itemHeader: ({ item }) => h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
-        itemFooter: ({ item }) => h('div', { 'data-testid': 'slot-item-footer' }, `F:${item.id}`),
+        itemHeader: ({ item }: any) => h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
+        itemFooter: ({ item }: any) => h('div', { 'data-testid': 'slot-item-footer' }, `F:${item.id}`),
       },
       attachTo: document.body,
     })
@@ -118,15 +118,21 @@ describe('Masonry slots + media rendering', () => {
   })
 
   it('animates removal as reverse of enter and moves remaining items smoothly', async () => {
-    const roCallbacks = []
+    const roCallbacks: ResizeObserverCallback[] = []
     const originalResizeObserver = globalThis.ResizeObserver
     globalThis.ResizeObserver = class {
-      constructor(cb) {
+      private _cb: ResizeObserverCallback
+      constructor(cb: ResizeObserverCallback) {
+        this._cb = cb
         roCallbacks.push(cb)
       }
       observe() {}
+      unobserve() {}
       disconnect() {}
-    }
+      takeRecords() {
+        return []
+      }
+    } as unknown as typeof ResizeObserver
 
     const getContent = vi.fn(async () => {
       return {
@@ -157,7 +163,7 @@ describe('Masonry slots + media rendering', () => {
     const wrapper = mount(Masonry, {
       props: { getContent, page: 1, itemWidth: 300, gapX: 16 },
       slots: {
-        itemFooter: ({ item, remove }) =>
+        itemFooter: ({ item, remove }: any) =>
           h('button', { type: 'button', 'data-testid': `remove-${item.id}`, onClick: remove }, 'Remove'),
       },
       attachTo: document.body,
@@ -169,7 +175,7 @@ describe('Masonry slots + media rendering', () => {
     // Force multi-column so item 'b' lands at x > 0 and will move to x=0 when 'a' is removed.
     const scroller = wrapper.get('[data-testid="items-scroll-container"]')
     Object.defineProperty(scroller.element, 'clientWidth', { value: 900, configurable: true })
-    if (roCallbacks.length) roCallbacks[0]()
+    if (roCallbacks.length) roCallbacks[0]([] as any, {} as any)
     await wrapper.vm.$nextTick()
 
     const cardsBefore = wrapper.findAll('[data-testid="item-card"]')
@@ -183,9 +189,10 @@ describe('Masonry slots + media rendering', () => {
     expect(wrapper.findAll('[data-testid="item-card"]').length).toBe(1)
 
     const leaving = wrapper.get('[data-testid="item-card-leaving"]')
-    const leavingStartStyle = leaving.attributes('style')
+    const leavingStartStyle = leaving.attributes('style') ?? ''
     const widthMatch = /width:\s*([\d.]+)px/i.exec(leavingStartStyle)
     expect(widthMatch).toBeTruthy()
+    if (!widthMatch) throw new Error('Expected width in leaving card style')
     expect(leavingStartStyle).toContain('translate3d(') // starts at fromX
 
     // Move transition is enabled on the next frame; assert it while active.
@@ -241,12 +248,12 @@ describe('Masonry slots + media rendering', () => {
   })
 
   it('animates initial load from container left (-width, finalY) to (finalX, finalY)', async () => {
-    const rafCallbacks = []
+    const rafCallbacks: FrameRequestCallback[] = []
     const originalRaf = globalThis.requestAnimationFrame
-    globalThis.requestAnimationFrame = (cb) => {
+    globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) => {
       rafCallbacks.push(cb)
       return 0
-    }
+    }) as unknown as typeof globalThis.requestAnimationFrame
 
     const getContent = vi.fn(async () => {
       return {
@@ -274,13 +281,17 @@ describe('Masonry slots + media rendering', () => {
     await wrapper.vm.$nextTick()
 
     const card = wrapper.get('[data-testid="item-card"]')
-    const startStyle = card.attributes('style')
+    const startStyle = card.attributes('style') ?? ''
     const widthMatch = /width:\s*([\d.]+)px/i.exec(startStyle)
     expect(widthMatch).toBeTruthy()
+    if (!widthMatch) throw new Error('Expected width in start style')
     expect(startStyle).toContain(`translate3d(-${widthMatch[1]}px,0px,0)`) 
 
     // Run a few RAF ticks to advance the two-RAF animation schedule.
-    for (let i = 0; i < 6 && rafCallbacks.length; i += 1) rafCallbacks.shift()()
+    for (let i = 0; i < 6 && rafCallbacks.length; i += 1) {
+      const cb = rafCallbacks.shift()
+      if (cb) cb(0)
+    }
     await wrapper.vm.$nextTick()
 
     expect(card.attributes('style')).toContain('translate3d(0px,0px,0)')
@@ -290,27 +301,33 @@ describe('Masonry slots + media rendering', () => {
   })
 
   it('animates appended items from container left (-width, finalY) to (finalX, finalY)', async () => {
-    const roCallbacks = []
+    const roCallbacks: ResizeObserverCallback[] = []
     const originalResizeObserver = globalThis.ResizeObserver
-    const rafCallbacks = []
+    const rafCallbacks: FrameRequestCallback[] = []
     const originalRaf = globalThis.requestAnimationFrame
 
-    globalThis.requestAnimationFrame = (cb) => {
+    globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) => {
       rafCallbacks.push(cb)
       return 0
-    }
+    }) as unknown as typeof globalThis.requestAnimationFrame
 
     globalThis.ResizeObserver = class {
-      constructor(cb) {
+      private _cb: ResizeObserverCallback
+      constructor(cb: ResizeObserverCallback) {
+        this._cb = cb
         roCallbacks.push(cb)
       }
       observe() {}
+      unobserve() {}
       disconnect() {}
-    }
+      takeRecords() {
+        return []
+      }
+    } as unknown as typeof ResizeObserver
 
-    const getContent = vi.fn(async (pageToken) => {
+    const getContent = vi.fn(async (pageToken: unknown) => {
       const token = String(pageToken)
-      const makeItem = (id) => ({
+      const makeItem = (id: string) => ({
         id,
         type: 'image',
         reaction: null,
@@ -336,11 +353,14 @@ describe('Masonry slots + media rendering', () => {
     // Force multi-column layout so appended item can land at x > 0.
     const scroller = wrapper.get('[data-testid="items-scroll-container"]')
     Object.defineProperty(scroller.element, 'clientWidth', { value: 900, configurable: true })
-    if (roCallbacks.length) roCallbacks[0]()
+    if (roCallbacks.length) roCallbacks[0]([] as any, {} as any)
     await wrapper.vm.$nextTick()
 
     // Clear initial animation.
-    for (let i = 0; i < 6 && rafCallbacks.length; i += 1) rafCallbacks.shift()()
+    for (let i = 0; i < 6 && rafCallbacks.length; i += 1) {
+      const cb = rafCallbacks.shift()
+      if (cb) cb(0)
+    }
     await wrapper.vm.$nextTick()
 
     // Trigger load of next page via scroll near bottom.
@@ -357,18 +377,23 @@ describe('Masonry slots + media rendering', () => {
 
     // The appended item should first paint at x = -width (not finalX - width).
     const entering = cards[1]
-    const enteringStyle = entering.attributes('style')
+    const enteringStyle = entering.attributes('style') ?? ''
     const enteringWidthMatch = /width:\s*([\d.]+)px/i.exec(enteringStyle)
     expect(enteringWidthMatch).toBeTruthy()
+    if (!enteringWidthMatch) throw new Error('Expected width in entering style')
     expect(enteringStyle).toContain(`translate3d(-${enteringWidthMatch[1]}px,0px,0)`) 
 
     // Advance animation.
-    for (let i = 0; i < 6 && rafCallbacks.length; i += 1) rafCallbacks.shift()()
+    for (let i = 0; i < 6 && rafCallbacks.length; i += 1) {
+      const cb = rafCallbacks.shift()
+      if (cb) cb(0)
+    }
     await wrapper.vm.$nextTick()
 
-    const endStyle = entering.attributes('style')
+    const endStyle = entering.attributes('style') ?? ''
     const endXMatch = /translate3d\(\s*([\-\d.]+)px\s*,\s*0px\s*,\s*0\s*\)/i.exec(endStyle)
     expect(endXMatch).toBeTruthy()
+    if (!endXMatch) throw new Error('Expected translate3d in end style')
     expect(Number(endXMatch[1])).toBeGreaterThan(0)
 
     wrapper.unmount()

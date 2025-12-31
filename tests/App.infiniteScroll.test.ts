@@ -10,9 +10,9 @@ function flushPromises() {
 
 vi.mock('../src/fakeServer', () => {
   return {
-    fetchPage: vi.fn(async (pageToken) => {
+    fetchPage: vi.fn(async (pageToken: unknown) => {
       const tokenStr = String(pageToken)
-      const makeItem = (n) => ({
+      const makeItem = (n: number) => ({
         id: `${tokenStr}-${n}`,
         type: 'image',
         reaction: null,
