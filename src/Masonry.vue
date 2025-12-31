@@ -44,7 +44,7 @@ const passthroughAttrs = computed(() => {
   return rest
 })
 
-const scrollContainerEl = ref<HTMLElement | null>(null)
+const scrollViewportRef = ref<HTMLElement | null>(null)
 
 const containerWidth = ref(0)
 const viewportHeight = ref(0)
@@ -476,7 +476,7 @@ async function loadNextPage() {
 }
 
 function maybeLoadMoreOnScroll() {
-  const el = scrollContainerEl.value
+  const el = scrollViewportRef.value
   if (!el) return
 
   scrollTop.value = el.scrollTop
@@ -488,20 +488,27 @@ function maybeLoadMoreOnScroll() {
   }
 }
 
-onMounted(async () => {
-  if (typeof ResizeObserver !== 'undefined') {
-    resizeObserver = new ResizeObserver(() => {
-      const el = scrollContainerEl.value
-      if (!el) return
-      containerWidth.value = getMeasuredContainerWidth(el)
-      viewportHeight.value = el.clientHeight
-    })
-  }
+function getViewportEl(): HTMLElement | null {
+  return scrollViewportRef.value
+}
 
-  // Seed initial load
-  nextPage.value = props.page
-  backfillBuffer.value = []
-  backfillStats.value = {
+function syncViewportMeasures(el: HTMLElement) {
+  containerWidth.value = getMeasuredContainerWidth(el)
+  viewportHeight.value = el.clientHeight
+}
+
+function setupResizeObserver() {
+  if (typeof ResizeObserver === 'undefined') return
+
+  resizeObserver = new ResizeObserver(() => {
+    const el = getViewportEl()
+    if (!el) return
+    syncViewportMeasures(el)
+  })
+}
+
+function makeInitialBackfillStats(): BackfillStats {
+  return {
     enabled: props.mode === 'backfill',
     isBackfillActive: false,
     isRequestInFlight: false,
@@ -520,19 +527,29 @@ onMounted(async () => {
       itemsFetchedFromNetwork: 0,
     },
   }
+}
 
+function resetFeedState(startPage: PageToken) {
+  pagesLoaded.value = []
+  itemsState.value = []
+  nextPage.value = startPage
+  backfillBuffer.value = []
+  backfillStats.value = makeInitialBackfillStats()
+  isLoadingInitial.value = true
+  isLoadingNext.value = false
+  error.value = ''
+}
+
+async function loadFirstPage(startPage: PageToken) {
   try {
-    isLoadingInitial.value = true
-    error.value = ''
-
     if (props.mode === 'backfill') {
-      const result = await backfillLoader.loadBackfillBatch(props.page)
-      pagesLoaded.value = result.pages.length ? result.pages : [props.page]
+      const result = await backfillLoader.loadBackfillBatch(startPage)
+      pagesLoaded.value = result.pages.length ? result.pages : [startPage]
       itemsState.value = result.batchItems
       nextPage.value = result.nextPage
     } else {
-      const result = await loadDefaultPage(props.page)
-      pagesLoaded.value = [props.page]
+      const result = await loadDefaultPage(startPage)
+      pagesLoaded.value = [startPage]
       itemsState.value = result.items
       nextPage.value = result.nextPage
     }
@@ -541,15 +558,22 @@ onMounted(async () => {
   } finally {
     isLoadingInitial.value = false
   }
+}
 
+function connectViewport() {
+  const el = getViewportEl()
+  if (!el) return
+  syncViewportMeasures(el)
+  scrollTop.value = el.scrollTop
+  resizeObserver?.observe(el)
+}
+
+onMounted(async () => {
+  setupResizeObserver()
+  resetFeedState(props.page)
+  await loadFirstPage(props.page)
   await nextTick()
-  const el = scrollContainerEl.value
-  if (el) {
-    containerWidth.value = getMeasuredContainerWidth(el)
-    viewportHeight.value = el.clientHeight
-    scrollTop.value = el.scrollTop
-    resizeObserver?.observe(el)
-  }
+  connectViewport()
 })
 
 onUnmounted(() => {
@@ -560,57 +584,15 @@ watch(
   () => props.page,
   async (newPage) => {
     // If the starting page changes, restart the feed.
-    pagesLoaded.value = []
-    itemsState.value = []
-    nextPage.value = newPage
-    backfillBuffer.value = []
-    backfillStats.value = {
-      enabled: props.mode === 'backfill',
-      isBackfillActive: false,
-      isRequestInFlight: false,
-      requestPage: null,
-      progress: {
-        collected: 0,
-        target: 0,
-      },
-      cooldownMsRemaining: 0,
-      cooldownMsTotal: clampDelayMs(props.backfillRequestDelayMs),
-      pageSize: clampPageSize(props.pageSize),
-      bufferSize: 0,
-      lastBatch: null,
-      totals: {
-        pagesFetched: 0,
-        itemsFetchedFromNetwork: 0,
-      },
-    }
-    isLoadingInitial.value = true
-    isLoadingNext.value = false
-    error.value = ''
-
-    try {
-      if (props.mode === 'backfill') {
-        const result = await backfillLoader.loadBackfillBatch(newPage)
-        pagesLoaded.value = result.pages.length ? result.pages : [newPage]
-        itemsState.value = result.batchItems
-        nextPage.value = result.nextPage
-      } else {
-        const result = await loadDefaultPage(newPage)
-        pagesLoaded.value = [newPage]
-        itemsState.value = result.items
-        nextPage.value = result.nextPage
-      }
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : String(err)
-    } finally {
-      isLoadingInitial.value = false
-    }
+    resetFeedState(newPage)
+    await loadFirstPage(newPage)
   }
 )
 
 watch(
   gapX,
   () => {
-    const el = scrollContainerEl.value
+    const el = scrollViewportRef.value
     if (!el) return
     containerWidth.value = getMeasuredContainerWidth(el)
   },
@@ -657,7 +639,7 @@ const sectionClass = computed(() => {
     </div>
 
     <div
-      ref="scrollContainerEl"
+      ref="scrollViewportRef"
       data-testid="items-scroll-container"
       class="mt-4 min-h-0 flex-1 overflow-auto"
       :style="{ paddingRight: gapX + 'px' }"
