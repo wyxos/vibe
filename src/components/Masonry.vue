@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/* eslint-disable max-lines */
 import {
   masonryDefaults,
   type BackfillStats,
@@ -157,6 +158,12 @@ function raf2(cb: () => void) {
   raf(() => raf(cb))
 }
 
+const warnedInvalidDimensionsById = new Set<string>()
+
+function isValidDimension(n: unknown): n is number {
+  return typeof n === 'number' && Number.isFinite(n) && n > 0
+}
+
 function markEnterFromTop(items: MasonryItemBase[]) {
   if (!Array.isArray(items) || items.length === 0) return
   const next = new Set(enterStartIds.value)
@@ -164,6 +171,21 @@ function markEnterFromTop(items: MasonryItemBase[]) {
   for (const it of items) {
     const id = it?.id
     if (!id) continue
+
+    // Diagnostics: warn once per malformed item.
+    if (!warnedInvalidDimensionsById.has(id)) {
+      const w = (it as MasonryItemBase | undefined)?.width
+      const h = (it as MasonryItemBase | undefined)?.height
+      if (!isValidDimension(w) || !isValidDimension(h)) {
+        warnedInvalidDimensionsById.add(id)
+        console.warn(
+          `[Masonry] Item "${id}" has invalid dimensions (width=${String(w)}, height=${String(
+            h
+          )}); layout expects { id, width, height }.`
+        )
+      }
+    }
+
     if (!next.has(id)) {
       next.add(id)
       changed = true
@@ -232,11 +254,51 @@ const isLoadingInitial = ref(true)
 const isLoadingNext = ref(false)
 const error = ref('')
 
+// Network resilience
+// Retry policy: retry up to 5 times with linear backoff 1s..5s.
+// (Total attempts: 1 initial + up to 5 retries)
+const MAX_GETCONTENT_RETRIES = 5
+const BASE_RETRY_DELAY_MS = 1000
+
+let feedGeneration = 0
+
+function isAbortError(err: unknown): boolean {
+  return err instanceof Error && err.name === 'AbortError'
+}
+
+function abortError(): Error {
+  const e = new Error('aborted')
+  e.name = 'AbortError'
+  return e
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function getContentWithRetry(pageToken: PageToken, generation: number) {
+  let retry = 0
+  while (true) {
+    if (generation !== feedGeneration) throw abortError()
+    try {
+      return await props.getContent(pageToken)
+    } catch (err) {
+      if (generation !== feedGeneration) throw abortError()
+      if (retry >= MAX_GETCONTENT_RETRIES) throw err
+      retry += 1
+      await sleep(retry * BASE_RETRY_DELAY_MS)
+    }
+  }
+}
+
 const pagesLoaded = ref<PageToken[]>([])
 const internalItems = ref<MasonryItemBase[]>([])
 const controlledItemsMirror = ref<MasonryItemBase[]>([])
 const nextPage = ref<PageToken | null>(props.page)
 const backfillBuffer = ref<MasonryItemBase[]>([])
+
+let loadNextInFlight: Promise<void> | null = null
+let loadFirstInFlight: Promise<void> | null = null
 
 let nextOriginalIndex = 0
 
@@ -415,7 +477,7 @@ const backfillStats = shallowRef<BackfillStats>({
 })
 
 const backfillLoader = createBackfillBatchLoader<MasonryItemBase, PageToken>({
-  getContent: (pageToken) => props.getContent(pageToken),
+  getContent: (pageToken) => getContentWithRetry(pageToken, feedGeneration),
   markEnterFromLeft: markEnterFromTop,
   buffer: backfillBuffer,
   stats: backfillStats as unknown as typeof backfillStats & {
@@ -453,7 +515,7 @@ const itemsState = computed({
 
 
 async function loadDefaultPage(pageToLoad: PageToken) {
-  const result = await props.getContent(pageToLoad)
+  const result = await getContentWithRetry(pageToLoad, feedGeneration)
   assignOriginalIndices(result.items)
   markEnterFromTop(result.items)
   return { items: result.items, nextPage: result.nextPage }
@@ -637,38 +699,52 @@ watch(
 )
 
 async function loadNextPage() {
+  if (loadNextInFlight) return loadNextInFlight
   if (isLoadingInitial.value || isLoadingNext.value) return
   if (props.mode !== 'backfill' && nextPage.value == null) return
   if (props.mode === 'backfill' && nextPage.value == null && backfillBuffer.value.length === 0) {
     return
   }
 
-  try {
-    isLoadingNext.value = true
-    error.value = ''
+  const generation = feedGeneration
+  let p: Promise<void> | null = null
+  p = (async () => {
+    try {
+      isLoadingNext.value = true
+      error.value = ''
 
-    if (props.mode === 'backfill') {
-      const result = await backfillLoader.loadBackfillBatch(nextPage.value)
-      if (result.pages.length) pagesLoaded.value = [...pagesLoaded.value, ...result.pages]
-      assignOriginalIndices(result.batchItems)
-      itemsState.value = [...itemsState.value, ...result.batchItems]
+      if (props.mode === 'backfill') {
+        const result = await backfillLoader.loadBackfillBatch(nextPage.value)
+        if (generation !== feedGeneration) return
+        if (result.pages.length) pagesLoaded.value = [...pagesLoaded.value, ...result.pages]
+        assignOriginalIndices(result.batchItems)
+        itemsState.value = [...itemsState.value, ...result.batchItems]
+        nextPage.value = result.nextPage
+        return
+      }
+
+      const pageToLoad = nextPage.value
+      if (pageToLoad == null) return
+
+      const result = await loadDefaultPage(pageToLoad)
+      if (generation !== feedGeneration) return
+      pagesLoaded.value = [...pagesLoaded.value, pageToLoad]
+      assignOriginalIndices(result.items)
+      itemsState.value = [...itemsState.value, ...result.items]
       nextPage.value = result.nextPage
-      return
+    } catch (err) {
+      if (generation !== feedGeneration) return
+      if (isAbortError(err)) return
+      error.value = err instanceof Error ? err.message : String(err)
+    } finally {
+      if (generation === feedGeneration) isLoadingNext.value = false
+      if (loadNextInFlight === p) loadNextInFlight = null
     }
+  })()
 
-    const pageToLoad = nextPage.value
-    if (pageToLoad == null) return
+  loadNextInFlight = p
 
-    const result = await loadDefaultPage(pageToLoad)
-    pagesLoaded.value = [...pagesLoaded.value, pageToLoad]
-    assignOriginalIndices(result.items)
-    itemsState.value = [...itemsState.value, ...result.items]
-    nextPage.value = result.nextPage
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : String(err)
-  } finally {
-    isLoadingNext.value = false
-  }
+  return p
 }
 
 function maybeLoadMoreOnScroll() {
@@ -726,9 +802,18 @@ function makeInitialBackfillStats(): BackfillStats {
 }
 
 function resetFeedState(startPage: PageToken) {
+  feedGeneration += 1
+  loadNextInFlight = null
+  loadFirstInFlight = null
   nextOriginalIndex = 0
   removedPoolById.clear()
   removalHistory.length = 0
+  enterStartIds.value = new Set()
+  enterAnimatingIds.value = new Set()
+  scheduledEnterIds.clear()
+  moveOffsets.value = new Map()
+  moveTransitionIds.value = new Set()
+  leavingClones.value = []
   pagesLoaded.value = []
   itemsState.value = []
   nextPage.value = startPage
@@ -740,25 +825,39 @@ function resetFeedState(startPage: PageToken) {
 }
 
 async function loadFirstPage(startPage: PageToken) {
-  try {
-    if (props.mode === 'backfill') {
-      const result = await backfillLoader.loadBackfillBatch(startPage)
-      pagesLoaded.value = result.pages.length ? result.pages : [startPage]
-      assignOriginalIndices(result.batchItems)
-      itemsState.value = result.batchItems
-      nextPage.value = result.nextPage
-    } else {
-      const result = await loadDefaultPage(startPage)
-      pagesLoaded.value = [startPage]
-      assignOriginalIndices(result.items)
-      itemsState.value = result.items
-      nextPage.value = result.nextPage
+  if (loadFirstInFlight) return loadFirstInFlight
+
+  const generation = feedGeneration
+  let p: Promise<void> | null = null
+  p = (async () => {
+    try {
+      if (props.mode === 'backfill') {
+        const result = await backfillLoader.loadBackfillBatch(startPage)
+        if (generation !== feedGeneration) return
+        pagesLoaded.value = result.pages.length ? result.pages : [startPage]
+        assignOriginalIndices(result.batchItems)
+        itemsState.value = result.batchItems
+        nextPage.value = result.nextPage
+      } else {
+        const result = await loadDefaultPage(startPage)
+        if (generation !== feedGeneration) return
+        pagesLoaded.value = [startPage]
+        assignOriginalIndices(result.items)
+        itemsState.value = result.items
+        nextPage.value = result.nextPage
+      }
+    } catch (err) {
+      if (generation !== feedGeneration) return
+      if (isAbortError(err)) return
+      error.value = err instanceof Error ? err.message : String(err)
+    } finally {
+      if (generation === feedGeneration) isLoadingInitial.value = false
+      if (loadFirstInFlight === p) loadFirstInFlight = null
     }
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : String(err)
-  } finally {
-    isLoadingInitial.value = false
-  }
+  })()
+
+  loadFirstInFlight = p
+  return p
 }
 
 function connectViewport() {

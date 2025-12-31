@@ -8,6 +8,14 @@ const items = ref<BackfillFeedItem[]>([])
 const itemIndexById = shallowRef<Map<string, number>>(new Map())
 const masonryRef = ref<{ backfillStats?: unknown } | null>(null)
 
+watch(
+  masonryRef,
+  (next) => {
+    ;(window as any).__vibeMasonry = next
+  },
+  { immediate: true }
+)
+
 const backfillStats = computed(() => {
   const inst = masonryRef.value as null | {
     backfillStats?: BackfillStats | { value: BackfillStats }
@@ -117,7 +125,7 @@ async function getContent(pageToken: PageToken) {
             class="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
           >
             <span class="text-slate-600">Pages loaded:</span>
-            <span class="ml-2 tabular-nums text-slate-900">{{ pagesLoadedLabel }}</span>
+            <span data-testid="pages-loaded" class="ml-2 tabular-nums text-slate-900">{{ pagesLoadedLabel }}</span>
           </span>
 
           <button

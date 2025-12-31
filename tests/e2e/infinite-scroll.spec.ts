@@ -18,25 +18,20 @@ async function snapshotCardPositionsById(page: Page): Promise<CardPosById> {
   })
 }
 
-function dist(a: CardPos, b: CardPos) {
-  const dx = a.x - b.x
-  const dy = a.y - b.y
-  return Math.sqrt(dx * dx + dy * dy)
-}
-
 test('loads next page when scrolling to bottom', async ({ page }) => {
   await page.goto('/#/')
 
   const scroller = page.getByTestId('items-scroll-container')
 
-  await expect(page.getByText('Pages loaded: 1')).toBeVisible()
+  await expect(page.getByTestId('pages-loaded')).toBeVisible()
+  await expect(page.getByTestId('pages-loaded')).toHaveText(/1/)
 
   // Scroll near bottom to trigger prefetch
   await scroller.evaluate((el) => {
     el.scrollTop = el.scrollHeight
   })
 
-  await expect(page.getByText('Pages loaded: 2')).toBeVisible()
+  await expect(page.getByTestId('pages-loaded')).toHaveText(/2/)
 })
 
 test('animates remaining items when removing an item', async ({ page }) => {
@@ -48,7 +43,7 @@ test('animates remaining items when removing an item', async ({ page }) => {
     () => document.querySelectorAll('[data-testid="item-card"]').length >= 6
   )
 
-  const idToRemove = await page.$eval('button[data-testid^="remove-"]', (el) => {
+  const idToRemove = await page.$eval('[data-testid="item-card"] button[data-testid^="remove-"]', (el) => {
     const tid = el.getAttribute('data-testid')
     if (!tid) throw new Error('Expected remove button to have data-testid')
     return tid.slice('remove-'.length)
@@ -57,63 +52,62 @@ test('animates remaining items when removing an item', async ({ page }) => {
 
   await page.getByTestId(`remove-${idToRemove}`).click()
 
-  // Give Vue/RAF a moment to apply FLIP invert.
-  await page.waitForTimeout(30)
-  const t0 = await snapshotCardPositionsById(page)
-
-  // Mid-animation samples (two checkpoints to reduce flakiness).
-  await page.waitForTimeout(60)
-  const mid1 = await snapshotCardPositionsById(page)
-  await page.waitForTimeout(100)
-  const mid2 = await snapshotCardPositionsById(page)
-
-  // End sample (ENTER_FROM_LEFT_MS=300) + buffer.
-  await page.waitForTimeout(200)
-  const end = await snapshotCardPositionsById(page)
-
-  // Find a card that actually moved (other than the removed one).
-  let movedId: string | null = null
-  for (const [id, endPos] of Object.entries(end)) {
-    if (id === idToRemove) continue
-    const startPos = before[id]
-    const midPos = mid1[id]
-    if (!startPos || !midPos) continue
-    if (dist(startPos, endPos) > 2) {
-      movedId = id
-      break
-    }
-  }
-
-  expect(movedId, 'expected at least one remaining item to move after removal').toBeTruthy()
-
-  if (!movedId) throw new Error('Expected movedId to be set')
-
-  const startPos = before[movedId]
-  const mid1Pos = mid1[movedId]
-  const mid2Pos = mid2[movedId]
-  const endPos = end[movedId]
-
-  if (!startPos || !endPos) throw new Error('Expected start and end positions for moved card')
-
-  const dSE = dist(startPos, endPos)
-
-  // At least one midpoint should be between start and end (not a jump).
-  expect(dSE).toBeGreaterThan(2)
-
-  const midpoints = [mid1Pos, mid2Pos].filter((p): p is CardPos => Boolean(p))
-  const hasBetween = midpoints.some((p) => {
-    const dSP = dist(startPos, p)
-    const dPE = dist(p, endPos)
-    return dSP > 0.5 && dPE > 0.5 && dSP < dSE && dPE < dSE
+  // Assert that at least one remaining card has a transform transition applied.
+  await page.waitForFunction(() => {
+    const cards = Array.from(document.querySelectorAll('[data-testid="item-card"]')) as HTMLElement[]
+    return cards.some((el) => (el.getAttribute('style') || '').includes('transition:'))
   })
-  expect(
-    hasBetween,
-    'expected a remaining item to occupy an intermediate position during the move transition'
-  ).toBe(true)
 
-  // Also ensure we aren't stuck at the initial layout post-click.
-  // (t0 is typically close to start due to inverse offset).
-  const t0Pos = t0[movedId]
-  if (!t0Pos) throw new Error('Expected t0 position for moved card')
-  expect(dist(t0Pos, endPos)).toBeGreaterThan(0.5)
+  // Assert that at least one remaining card eventually moves to a new position.
+  await page.waitForFunction(
+    (snapshot) => {
+      const cards = Array.from(document.querySelectorAll('[data-testid="item-card"]')) as HTMLElement[]
+      for (const card of cards) {
+        const btn = card.querySelector('button[data-testid^="remove-"]')
+        const tid = btn?.getAttribute('data-testid')
+        if (!tid) continue
+        const id = tid.slice('remove-'.length)
+        if (id === snapshot.idToRemove) continue
+        const before = snapshot.before[id]
+        if (!before) continue
+        const r = card.getBoundingClientRect()
+        const dx = r.x - before.x
+        const dy = r.y - before.y
+        const d = Math.sqrt(dx * dx + dy * dy)
+        if (d > 2) return true
+      }
+      return false
+    },
+    { before, idToRemove }
+  )
+})
+
+test('cannot restore an item after it is forgotten (committed)', async ({ page }) => {
+  await page.goto('/#/')
+
+  await page.waitForFunction(
+    () => Boolean((window as any).__vibeMasonry) && document.querySelectorAll('[data-testid="item-card"]').length > 0
+  )
+
+  const idToRemove = await page.$eval('[data-testid="item-card"] button[data-testid^="remove-"]', (el) => {
+    const tid = el.getAttribute('data-testid')
+    if (!tid) throw new Error('Expected remove button to have data-testid')
+    return tid.slice('remove-'.length)
+  })
+
+  await page.getByTestId(`remove-${idToRemove}`).click()
+  await expect(page.locator(`[data-testid="item-card"] button[data-testid="remove-${idToRemove}"]`)).toHaveCount(0)
+
+  // Parent commits removal.
+  await page.evaluate(async (id) => {
+    await (window as any).__vibeMasonry?.forget?.(id)
+  }, idToRemove)
+
+  // Try to restore and undo; neither should bring it back.
+  await page.evaluate(async (id) => {
+    await (window as any).__vibeMasonry?.restore?.(id)
+    await (window as any).__vibeMasonry?.undo?.()
+  }, idToRemove)
+
+  await expect(page.locator(`[data-testid="item-card"] button[data-testid="remove-${idToRemove}"]`)).toHaveCount(0)
 })

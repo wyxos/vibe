@@ -1,3 +1,5 @@
+/* eslint-disable max-lines */
+
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { h } from 'vue'
@@ -136,6 +138,24 @@ describe('Masonry slots + media rendering', () => {
   })
 
   it('animates removal as reverse of enter and moves remaining items smoothly', async () => {
+    vi.useFakeTimers()
+
+    const rafCallbacks: FrameRequestCallback[] = []
+    const originalRaf = globalThis.requestAnimationFrame
+    globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) => {
+      rafCallbacks.push(cb)
+      return 0
+    }) as unknown as typeof globalThis.requestAnimationFrame
+
+    const flushRaf = (max = 10) => {
+      let i = 0
+      while (rafCallbacks.length && i < max) {
+        const cb = rafCallbacks.shift()
+        if (cb) cb(0)
+        i += 1
+      }
+    }
+
     const roCallbacks: ResizeObserverCallback[] = []
     const originalResizeObserver = globalThis.ResizeObserver
     globalThis.ResizeObserver = class {
@@ -191,67 +211,72 @@ describe('Masonry slots + media rendering', () => {
       attachTo: document.body,
     })
 
-    await flushPromises()
-    await wrapper.vm.$nextTick()
+    try {
+      // With fake timers, avoid setTimeout-based helpers.
+      await Promise.resolve()
+      await wrapper.vm.$nextTick()
 
-    // Force multi-column so item 'b' lands at x > 0 and will move to x=0 when 'a' is removed.
-    const scroller = wrapper.get('[data-testid="items-scroll-container"]')
-    Object.defineProperty(scroller.element, 'clientWidth', { value: 900, configurable: true })
-    if (roCallbacks.length) {
-      roCallbacks[0]([] as unknown as ResizeObserverEntry[], {} as unknown as ResizeObserver)
+      // Force multi-column so item 'b' lands at x > 0 and will move to x=0 when 'a' is removed.
+      const scroller = wrapper.get('[data-testid="items-scroll-container"]')
+      Object.defineProperty(scroller.element, 'clientWidth', { value: 900, configurable: true })
+      if (roCallbacks.length) {
+        roCallbacks[0]([] as unknown as ResizeObserverEntry[], {} as unknown as ResizeObserver)
+      }
+      await wrapper.vm.$nextTick()
+
+      const cardsBefore = wrapper.findAll('[data-testid="item-card"]')
+      expect(cardsBefore).toHaveLength(2)
+      expect(cardsBefore[1].attributes('style')).toContain('translate3d(')
+
+      await wrapper.get('[data-testid="remove-a"]').trigger('click')
+      await wrapper.vm.$nextTick()
+
+      // Data cards should drop immediately.
+      expect(wrapper.findAll('[data-testid="item-card"]').length).toBe(1)
+
+      const leaving = wrapper.get('[data-testid="item-card-leaving"]')
+      const leavingStartStyle = leaving.attributes('style') ?? ''
+      const widthMatch = /width:\s*([\d.]+)px/i.exec(leavingStartStyle)
+      expect(widthMatch).toBeTruthy()
+      if (!widthMatch) throw new Error('Expected width in leaving card style')
+      expect(leavingStartStyle).toContain('translate3d(') // starts at fromX
+
+      const translateMatch = /translate3d\(([-\d.]+)px,\s*([-\d.]+)px,\s*0\)/i.exec(leavingStartStyle)
+      expect(translateMatch).toBeTruthy()
+      if (!translateMatch) throw new Error('Expected translate3d in leaving card style')
+      const startX = Number.parseFloat(translateMatch[1])
+      const startY = Number.parseFloat(translateMatch[2])
+
+      // Advance RAF scheduling deterministically.
+      flushRaf()
+      flushRaf()
+      await wrapper.vm.$nextTick()
+
+      // Leave animation should move upward (y decreases) and keep x the same.
+      const leavingDuring = wrapper.get('[data-testid="item-card-leaving"]')
+      const leavingDuringStyle = leavingDuring.attributes('style') ?? ''
+      const duringMatch = /translate3d\(([-\d.]+)px,\s*([-\d.]+)px,\s*0\)/i.exec(leavingDuringStyle)
+      expect(duringMatch).toBeTruthy()
+      if (!duringMatch) throw new Error('Expected translate3d in leaving card style')
+      const endX = Number.parseFloat(duringMatch[1])
+      const endY = Number.parseFloat(duringMatch[2])
+      expect(endX).toBeCloseTo(startX)
+      expect(endY).toBeLessThan(startY)
+
+      const remainingDuringMove = wrapper.get('[data-testid="item-card"]')
+      expect(remainingDuringMove.attributes('style')).toContain('transition:')
+
+      // Wait for the leave animation timer (LEAVE_MOTION_MS=600) + buffer.
+      vi.advanceTimersByTime(650)
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.findAll('[data-testid="item-card-leaving"]').length).toBe(0)
+    } finally {
+      wrapper.unmount()
+      globalThis.ResizeObserver = originalResizeObserver
+      globalThis.requestAnimationFrame = originalRaf
+      vi.useRealTimers()
     }
-    await wrapper.vm.$nextTick()
-
-    const cardsBefore = wrapper.findAll('[data-testid="item-card"]')
-    expect(cardsBefore).toHaveLength(2)
-    expect(cardsBefore[1].attributes('style')).toContain('translate3d(')
-
-    await wrapper.get('[data-testid="remove-a"]').trigger('click')
-    await wrapper.vm.$nextTick()
-
-    // Data cards should drop immediately.
-    expect(wrapper.findAll('[data-testid="item-card"]').length).toBe(1)
-
-    const leaving = wrapper.get('[data-testid="item-card-leaving"]')
-    const leavingStartStyle = leaving.attributes('style') ?? ''
-    const widthMatch = /width:\s*([\d.]+)px/i.exec(leavingStartStyle)
-    expect(widthMatch).toBeTruthy()
-    if (!widthMatch) throw new Error('Expected width in leaving card style')
-    expect(leavingStartStyle).toContain('translate3d(') // starts at fromX
-
-    const translateMatch = /translate3d\(([-\d.]+)px,\s*([-\d.]+)px,\s*0\)/i.exec(leavingStartStyle)
-    expect(translateMatch).toBeTruthy()
-    if (!translateMatch) throw new Error('Expected translate3d in leaving card style')
-    const startX = Number.parseFloat(translateMatch[1])
-    const startY = Number.parseFloat(translateMatch[2])
-
-    // Move transition is enabled on the next frame; assert it while active.
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    await wrapper.vm.$nextTick()
-
-    // Leave animation should move upward (y decreases) and keep x the same.
-    const leavingDuring = wrapper.get('[data-testid="item-card-leaving"]')
-    const leavingDuringStyle = leavingDuring.attributes('style') ?? ''
-    const duringMatch = /translate3d\(([-\d.]+)px,\s*([-\d.]+)px,\s*0\)/i.exec(leavingDuringStyle)
-    expect(duringMatch).toBeTruthy()
-    if (!duringMatch) throw new Error('Expected translate3d in leaving card style')
-    const endX = Number.parseFloat(duringMatch[1])
-    const endY = Number.parseFloat(duringMatch[2])
-    expect(endX).toBeCloseTo(startX)
-    expect(endY).toBeLessThan(startY)
-
-    const remainingDuringMove = wrapper.get('[data-testid="item-card"]')
-    expect(remainingDuringMove.attributes('style')).toContain('transition:')
-
-    // Wait for the leave animation timer.
-    await new Promise((resolve) => setTimeout(resolve, 650))
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.findAll('[data-testid="item-card-leaving"]').length).toBe(0)
-
-    wrapper.unmount()
-    globalThis.ResizeObserver = originalResizeObserver
   })
 
   it('can undo and restore removed items to their originalIndex order', async () => {
