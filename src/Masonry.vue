@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, useAttrs, watch } from 'vue'
 
 import {
-  distributeItemsIntoColumns,
+  estimateItemHeight,
   getColumnCount,
   getColumnWidth,
 } from './masonryLayout.js'
@@ -47,6 +47,11 @@ const scrollContainerEl = ref(null)
 const containerWidth = ref(0)
 let resizeObserver
 
+// Keep a stable per-item column assignment to avoid remounting lots of items
+// (and reloading images) when the items array changes.
+const columnsState = ref([])
+let itemIdToColumnIndex = new Map()
+
 const isLoadingInitial = ref(true)
 const isLoadingNext = ref(false)
 const error = ref('')
@@ -71,6 +76,32 @@ function removeItem(itemOrId) {
   const id = typeof itemOrId === 'string' ? itemOrId : itemOrId?.id
   if (!id) return
   itemsState.value = itemsState.value.filter((it) => it?.id !== id)
+}
+
+function rebuildColumns() {
+  const count = columnCount.value
+  const colWidth = columnWidth.value
+
+  const nextColumns = Array.from({ length: count }, () => ({ height: 0, items: [] }))
+
+  for (const item of itemsState.value) {
+    const id = item?.id
+    let index = id ? itemIdToColumnIndex.get(id) : undefined
+
+    if (typeof index !== 'number' || index < 0 || index >= count) {
+      let bestIndex = 0
+      for (let i = 1; i < nextColumns.length; i += 1) {
+        if (nextColumns[i].height < nextColumns[bestIndex].height) bestIndex = i
+      }
+      index = bestIndex
+      if (id) itemIdToColumnIndex.set(id, index)
+    }
+
+    nextColumns[index].items.push(item)
+    nextColumns[index].height += estimateItemHeight(item, colWidth)
+  }
+
+  columnsState.value = nextColumns.map((c) => c.items)
 }
 
 const firstLoadedPageToken = computed(() => {
@@ -151,6 +182,7 @@ watch(
   () => props.page,
   async (newPage) => {
     // If the starting page changes, restart the feed.
+    itemIdToColumnIndex = new Map()
     pagesLoaded.value = []
     itemsState.value = []
     nextPage.value = newPage
@@ -176,11 +208,22 @@ const columnWidth = computed(() =>
   getColumnWidth(containerWidth.value, columnCount.value, props.itemWidth),
 )
 
-const columns = computed(() =>
-  distributeItemsIntoColumns(itemsState.value, {
-    columnCount: columnCount.value,
-    columnWidth: columnWidth.value,
-  }),
+watch(
+  [columnCount, columnWidth],
+  () => {
+    // Resizing changes the number/size of columns; allow reassignment.
+    itemIdToColumnIndex = new Map()
+    rebuildColumns()
+  },
+  { immediate: true },
+)
+
+watch(
+  () => itemsState.value,
+  () => {
+    rebuildColumns()
+  },
+  { deep: true, immediate: true },
 )
 
 const sectionClass = computed(() => {
@@ -210,7 +253,7 @@ const sectionClass = computed(() => {
 
       <div v-else class="flex gap-4">
         <div
-          v-for="(col, colIndex) in columns"
+          v-for="(col, colIndex) in columnsState"
           :key="colIndex"
           class="flex min-w-0 flex-1 flex-col gap-4"
         >
