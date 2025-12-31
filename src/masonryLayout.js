@@ -4,10 +4,16 @@ export function getColumnCount(containerWidth, itemWidth) {
   return Math.max(1, Math.floor(containerWidth / itemWidth))
 }
 
-export function getColumnWidth(containerWidth, columnCount, fallbackItemWidth) {
+export function getColumnWidth(containerWidth, columnCount, fallbackItemWidth, gapX = 0) {
   if (!containerWidth || containerWidth <= 0) return fallbackItemWidth
   if (!columnCount || columnCount <= 0) return fallbackItemWidth
-  return containerWidth / columnCount
+
+  const gx = typeof gapX === 'number' && gapX > 0 ? gapX : 0
+  const totalGaps = Math.max(0, columnCount - 1) * gx
+  const usableWidth = containerWidth - totalGaps
+
+  if (!usableWidth || usableWidth <= 0) return fallbackItemWidth
+  return usableWidth / columnCount
 }
 
 export function estimateItemHeight(item, columnWidth) {

@@ -19,6 +19,10 @@ describe('masonryLayout', () => {
   it('computes column width', () => {
     expect(getColumnWidth(0, 3, 300)).toBe(300)
     expect(getColumnWidth(900, 3, 300)).toBe(300)
+
+    // When gaps are used in x layout, column width must shrink so total
+    // (columns + gaps) fits exactly within the container.
+    expect(getColumnWidth(1000, 3, 300, 16)).toBeCloseTo((1000 - 32) / 3, 8)
   })
 
   it('distributes items to the shortest column', () => {

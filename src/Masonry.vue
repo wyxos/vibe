@@ -334,7 +334,7 @@ watch(
 
 const columnCount = computed(() => getColumnCount(containerWidth.value, props.itemWidth))
 const columnWidth = computed(() =>
-  getColumnWidth(containerWidth.value, columnCount.value, props.itemWidth),
+  getColumnWidth(containerWidth.value, columnCount.value, props.itemWidth, gapX.value),
 )
 
 watch(
