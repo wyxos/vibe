@@ -56,10 +56,19 @@ let resizeObserver
 // Tailwind `gap-4` = 1rem by default.
 const ITEM_GAP_PX = 16
 
-// Keep a stable per-item column assignment to avoid remounting lots of items
-// (and reloading images) when the items array changes.
-const columnsState = ref([])
-let itemIdToColumnIndex = new Map()
+// Buffer at the bottom to ensure there's always enough scroll room to trigger
+// loading the next page.
+const SCROLL_BUFFER_PX = 200
+
+// Bucketed index for virtualization.
+const BUCKET_PX = 600
+
+// Absolute-position masonry layout state. We keep arrays indexed by item index
+// to avoid heavy map lookups during render.
+const layoutPositions = ref([])
+const layoutHeights = ref([])
+const layoutBuckets = ref(new Map())
+const layoutContentHeight = ref(0)
 
 const isLoadingInitial = ref(true)
 const isLoadingNext = ref(false)
@@ -105,134 +114,81 @@ defineExpose({
   remove: removeItem,
 })
 
-function rebuildColumns() {
+function rebuildLayout() {
   const count = columnCount.value
   const colWidth = columnWidth.value
 
-  const nextColumns = Array.from({ length: count }, () => ({ height: 0, items: [] }))
+  const colHeights = Array.from({ length: count }, () => 0)
+  const positions = new Array(itemsState.value.length)
+  const heights = new Array(itemsState.value.length)
+  const buckets = new Map()
 
-  for (const item of itemsState.value) {
-    const id = item?.id
-    let index = id ? itemIdToColumnIndex.get(id) : undefined
+  let maxY = 0
 
-    if (typeof index !== 'number' || index < 0 || index >= count) {
-      let bestIndex = 0
-      for (let i = 1; i < nextColumns.length; i += 1) {
-        if (nextColumns[i].height < nextColumns[bestIndex].height) bestIndex = i
-      }
-      index = bestIndex
-      if (id) itemIdToColumnIndex.set(id, index)
+  // Sequential placement into the shortest column gives a masonry layout while
+  // preserving a single DOM sequence (no re-parenting on removal).
+  for (let index = 0; index < itemsState.value.length; index += 1) {
+    const item = itemsState.value[index]
+
+    let bestCol = 0
+    for (let c = 1; c < colHeights.length; c += 1) {
+      if (colHeights[c] < colHeights[bestCol]) bestCol = c
     }
 
-    nextColumns[index].items.push(item)
-    const itemHeight = estimateItemHeight(item, colWidth)
-    nextColumns[index].height += itemHeight + ITEM_GAP_PX
+    const x = bestCol * (colWidth + ITEM_GAP_PX)
+    const y = colHeights[bestCol]
+    const h = estimateItemHeight(item, colWidth)
+
+    positions[index] = { x, y }
+    heights[index] = h
+
+    colHeights[bestCol] = y + h + ITEM_GAP_PX
+    maxY = Math.max(maxY, y + h)
+
+    // Virtualization buckets by y-range.
+    const startBucket = Math.floor(y / BUCKET_PX)
+    const endBucket = Math.floor((y + h) / BUCKET_PX)
+    for (let b = startBucket; b <= endBucket; b += 1) {
+      const arr = buckets.get(b)
+      if (arr) arr.push(index)
+      else buckets.set(b, [index])
+    }
   }
 
-  columnsState.value = nextColumns.map((c) => {
-    const heights = []
-    const tops = []
-    let y = 0
-
-    for (const item of c.items) {
-      tops.push(y)
-      const h = estimateItemHeight(item, colWidth)
-      heights.push(h)
-      y += h + ITEM_GAP_PX
-    }
-
-    return {
-      items: c.items,
-      tops,
-      heights,
-      totalHeight: Math.max(0, y - ITEM_GAP_PX),
-    }
-  })
+  layoutPositions.value = positions
+  layoutHeights.value = heights
+  layoutBuckets.value = buckets
+  layoutContentHeight.value = maxY
 }
 
-function findStartIndex(tops, y) {
-  // First index whose start is <= y, i.e. last top <= y.
-  let lo = 0
-  let hi = tops.length - 1
-  let best = 0
+const containerHeight = computed(() => {
+  const base = Math.max(layoutContentHeight.value, viewportHeight.value)
+  return base + SCROLL_BUFFER_PX
+})
 
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1
-    if (tops[mid] <= y) {
-      best = mid
-      lo = mid + 1
-    } else {
-      hi = mid - 1
-    }
-  }
+const visibleIndices = computed(() => {
+  const len = itemsState.value.length
+  if (!len) return []
 
-  return best
-}
-
-function findEndIndex(tops, heights, yEnd) {
-  // First index whose start is >= yEnd, then step back one.
-  let lo = 0
-  let hi = tops.length - 1
-  let firstGE = tops.length
-
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1
-    if (tops[mid] >= yEnd) {
-      firstGE = mid
-      hi = mid - 1
-    } else {
-      lo = mid + 1
-    }
-  }
-
-  let end = Math.max(0, firstGE - 1)
-
-  // Ensure the end includes any item whose box overlaps yEnd.
-  while (end + 1 < tops.length && tops[end] + heights[end] + ITEM_GAP_PX < yEnd) {
-    end += 1
-  }
-
-  return end
-}
-
-const visibleColumns = computed(() => {
-  const cols = columnsState.value
-  // In jsdom/tests, element sizing is often 0. Fall back to rendering all.
-  if (viewportHeight.value <= 0) {
-    return cols.map((c) => ({
-      items: c.items,
-      topPad: 0,
-      bottomPad: 0,
-      startIndex: 0,
-      endIndex: Math.max(0, c.items.length - 1),
-    }))
-  }
+  // In jsdom/tests, element sizing is often 0. Render all items.
+  if (viewportHeight.value <= 0) return Array.from({ length: len }, (_, i) => i)
 
   const startY = Math.max(0, scrollTop.value - props.overscanPx)
   const endY = scrollTop.value + viewportHeight.value + props.overscanPx
 
-  return cols.map((c) => {
-    if (!c.items.length) {
-      return { items: [], topPad: 0, bottomPad: 0, startIndex: 0, endIndex: 0 }
-    }
+  const startBucket = Math.floor(startY / BUCKET_PX)
+  const endBucket = Math.floor(endY / BUCKET_PX)
 
-    const startIndex = findStartIndex(c.tops, startY)
-    const endIndex = Math.min(c.items.length - 1, findEndIndex(c.tops, c.heights, endY))
+  const picked = new Set()
+  for (let b = startBucket; b <= endBucket; b += 1) {
+    const bucket = layoutBuckets.value.get(b)
+    if (!bucket) continue
+    for (const idx of bucket) picked.add(idx)
+  }
 
-    const topPad = c.tops[startIndex] ?? 0
-    const lastTop = c.tops[endIndex] ?? 0
-    const lastHeight = c.heights[endIndex] ?? 0
-    const bottomStart = lastTop + lastHeight
-    const bottomPad = Math.max(0, c.totalHeight - bottomStart)
-
-    return {
-      items: c.items.slice(startIndex, endIndex + 1),
-      topPad,
-      bottomPad,
-      startIndex,
-      endIndex,
-    }
-  })
+  const ordered = Array.from(picked)
+  ordered.sort((a, b) => a - b)
+  return ordered
 })
 
 const firstLoadedPageToken = computed(() => {
@@ -319,7 +275,6 @@ watch(
   () => props.page,
   async (newPage) => {
     // If the starting page changes, restart the feed.
-    itemIdToColumnIndex = new Map()
     pagesLoaded.value = []
     itemsState.value = []
     nextPage.value = newPage
@@ -348,9 +303,7 @@ const columnWidth = computed(() =>
 watch(
   [columnCount, columnWidth],
   () => {
-    // Resizing changes the number/size of columns; allow reassignment.
-    itemIdToColumnIndex = new Map()
-    rebuildColumns()
+    rebuildLayout()
   },
   { immediate: true },
 )
@@ -361,7 +314,7 @@ watch(
   // changes (new array reference or length change). This keeps metadata-only
   // updates (e.g. reactions) cheap.
   () => [itemsState.value, itemsState.value.length],
-  () => rebuildColumns(),
+  () => rebuildLayout(),
   { immediate: true },
 )
 
@@ -390,56 +343,55 @@ const sectionClass = computed(() => {
       <p v-if="isLoadingInitial" class="text-sm text-slate-600">Loading…</p>
       <p v-else-if="error" class="text-sm font-medium text-red-700">Error: {{ error }}</p>
 
-      <div v-else class="flex gap-4">
-        <div
-          v-for="(col, colIndex) in visibleColumns"
-          :key="colIndex"
-          class="flex min-w-0 flex-1 flex-col gap-4"
+      <div v-else class="relative" :style="{ height: containerHeight + 'px' }">
+        <article
+          v-for="idx in visibleIndices"
+          :key="itemsState[idx].id"
+          data-testid="item-card"
+          class="absolute overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm"
+          :style="{
+            width: columnWidth + 'px',
+            transform: 'translate3d(' + (layoutPositions[idx]?.x ?? 0) + 'px,' + (layoutPositions[idx]?.y ?? 0) + 'px,0)',
+          }"
         >
-          <div v-if="col.topPad" :style="{ height: col.topPad + 'px' }" />
-          <article
-            v-for="item in col.items"
-            :key="item.id"
-            data-testid="item-card"
-            class="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm"
+          <slot name="itemHeader" :item="itemsState[idx]" :remove="() => removeItem(itemsState[idx])" />
+
+          <div
+            class="bg-slate-100"
+            :style="{ aspectRatio: itemsState[idx].width + ' / ' + itemsState[idx].height }"
           >
-            <slot name="itemHeader" :item="item" :remove="() => removeItem(item)" />
+            <img
+              v-if="itemsState[idx].type === 'image'"
+              class="h-full w-full object-cover"
+              :src="itemsState[idx].preview"
+              :width="itemsState[idx].width"
+              :height="itemsState[idx].height"
+              loading="lazy"
+              :alt="itemsState[idx].id"
+            />
 
-            <div class="bg-slate-100" :style="{ aspectRatio: item.width + ' / ' + item.height }">
-              <img
-                v-if="item.type === 'image'"
-                class="h-full w-full object-cover"
-                :src="item.preview"
-                :width="item.width"
-                :height="item.height"
-                loading="lazy"
-                :alt="item.id"
-              />
+            <video
+              v-else
+              class="h-full w-full object-cover"
+              :poster="itemsState[idx].preview"
+              controls
+              preload="metadata"
+            >
+              <source :src="itemsState[idx].original" type="video/mp4" />
+            </video>
+          </div>
 
-              <video
-                v-else
-                class="h-full w-full object-cover"
-                :poster="item.preview"
-                controls
-                preload="metadata"
+          <slot name="itemFooter" :item="itemsState[idx]" :remove="() => removeItem(itemsState[idx])">
+            <div class="flex items-center justify-between gap-3 px-4 py-3">
+              <span
+                class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-2 py-0.5 text-xs font-medium text-slate-700"
               >
-                <source :src="item.original" type="video/mp4" />
-              </video>
+                {{ itemsState[idx].type }}
+              </span>
+              <span class="truncate font-mono text-xs text-slate-500">{{ itemsState[idx].id }}</span>
             </div>
-
-            <slot name="itemFooter" :item="item" :remove="() => removeItem(item)">
-              <div class="flex items-center justify-between gap-3 px-4 py-3">
-                <span
-                  class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-2 py-0.5 text-xs font-medium text-slate-700"
-                >
-                  {{ item.type }}
-                </span>
-                <span class="truncate font-mono text-xs text-slate-500">{{ item.id }}</span>
-              </div>
-            </slot>
-          </article>
-          <div v-if="col.bottomPad" :style="{ height: col.bottomPad + 'px' }" />
-        </div>
+          </slot>
+        </article>
       </div>
 
       <div class="mt-4 pb-2 text-center text-xs text-slate-600">
