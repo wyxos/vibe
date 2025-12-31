@@ -104,7 +104,7 @@ function removeRandomItems() {
     >
       <header class="flex items-center gap-4">
         <div class="min-w-0">
-          <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Vibe</h1>
+          <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Demo</h1>
           <p class="text-sm text-slate-600">
             Fake server demo · 100 pages · 20 items/page
           </p>

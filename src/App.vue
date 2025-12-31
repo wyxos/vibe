@@ -17,6 +17,8 @@ const npmUrl = `https://www.npmjs.com/package/${encodeURIComponent(pkg.name)}`
           <span class="text-sm font-semibold tracking-tight text-slate-900">Vibe</span>
         </RouterLink>
 
+        <span class="text-sm text-slate-600">v{{ pkg.version }}</span>
+
         <nav class="flex items-center gap-2" aria-label="Primary">
           <details class="relative">
             <summary
@@ -37,8 +39,6 @@ const npmUrl = `https://www.npmjs.com/package/${encodeURIComponent(pkg.name)}`
             </div>
           </details>
         </nav>
-
-        <span class="text-sm text-slate-600">v{{ pkg.version }}</span>
 
         <div class="ml-auto flex items-center gap-2">
           <a
