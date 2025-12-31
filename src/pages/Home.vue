@@ -119,6 +119,13 @@ function removeRandomItems() {
           </span>
           <button
             type="button"
+            class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            @click="(masonryRef as any)?.undoLastRemoval?.()"
+          >
+            Undo last remove
+          </button>
+          <button
+            type="button"
             data-testid="remove-random"
             class="inline-flex items-center justify-center rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
             @click="removeRandomItems"

@@ -166,6 +166,62 @@ function markEnterFromTop(items: MasonryItemBase[]) {
   if (changed) enterStartIds.value = next
 }
 
+function snapshotVisiblePositions(): Map<string, { x: number; y: number }> {
+  const oldPosById = new Map<string, { x: number; y: number }>()
+  for (const vi of visibleIndices.value) {
+    const it = itemsState.value[vi]
+    const itId = it?.id
+    if (!itId) continue
+    const p = layoutPositions.value[vi]
+    if (!p) continue
+    oldPosById.set(itId, { x: p.x, y: p.y })
+  }
+  return oldPosById
+}
+
+function playFlipMoveAnimation(oldPosById: Map<string, { x: number; y: number }>, skipIds?: Set<string>) {
+  if (!oldPosById.size) return
+
+  const offsets = new Map<string, { dx: number; dy: number }>()
+  const animIds: string[] = []
+
+  for (const [itId, oldPos] of oldPosById.entries()) {
+    if (skipIds?.has(itId)) continue
+    const newIdx = layoutIndexById.value.get(itId)
+    if (newIdx == null) continue
+    const newPos = layoutPositions.value[newIdx]
+    if (!newPos) continue
+    const dx = oldPos.x - newPos.x
+    const dy = oldPos.y - newPos.y
+    if (dx || dy) {
+      offsets.set(itId, { dx, dy })
+      animIds.push(itId)
+    }
+  }
+
+  if (!offsets.size) return
+
+  // Invert (no transition): keep items visually at old positions.
+  moveOffsets.value = offsets
+  const withoutThese = new Set(moveTransitionIds.value)
+  for (const mid of animIds) withoutThese.delete(mid)
+  moveTransitionIds.value = withoutThese
+
+  // Play: enable transition next frame, then clear offsets the following frame.
+  raf(() => {
+    moveTransitionIds.value = new Set([...moveTransitionIds.value, ...animIds])
+    raf(() => {
+      moveOffsets.value = new Map()
+    })
+  })
+
+  setTimeout(() => {
+    const next = new Set(moveTransitionIds.value)
+    for (const mid of animIds) next.delete(mid)
+    moveTransitionIds.value = next
+  }, CARD_MOTION_MS)
+}
+
 const isLoadingInitial = ref(true)
 const isLoadingNext = ref(false)
 const error = ref('')
@@ -185,6 +241,123 @@ function assignOriginalIndices(newItems: MasonryItemBase[]) {
     if (it.originalIndex != null) continue
     it.originalIndex = nextOriginalIndex
     nextOriginalIndex += 1
+  }
+}
+
+const removedPoolById = new Map<string, MasonryItemBase>()
+const removalHistory: string[][] = []
+
+function isFiniteNumber(n: unknown): n is number {
+  return typeof n === 'number' && Number.isFinite(n)
+}
+
+function insertItemsByOriginalIndex(
+  current: MasonryItemBase[],
+  itemsToInsert: MasonryItemBase[]
+): MasonryItemBase[] {
+  if (!itemsToInsert.length) return current
+
+  const existingIds = new Set<string>()
+  for (const it of current) {
+    const id = it?.id
+    if (id) existingIds.add(id)
+  }
+
+  const uniqueToInsert: MasonryItemBase[] = []
+  for (const it of itemsToInsert) {
+    const id = it?.id
+    if (!id) continue
+    if (existingIds.has(id)) continue
+    uniqueToInsert.push(it)
+    existingIds.add(id)
+  }
+
+  if (!uniqueToInsert.length) return current
+
+  const sorted = uniqueToInsert.slice().sort((a, b) => {
+    const ao = isFiniteNumber(a.originalIndex) ? a.originalIndex : Number.POSITIVE_INFINITY
+    const bo = isFiniteNumber(b.originalIndex) ? b.originalIndex : Number.POSITIVE_INFINITY
+    return ao - bo
+  })
+
+  const next = current.slice()
+  for (const it of sorted) {
+    const oi = it.originalIndex
+    if (!isFiniteNumber(oi)) {
+      next.push(it)
+      continue
+    }
+
+    // Insert after the last item with originalIndex <= oi.
+    let lo = 0
+    let hi = next.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      const midOi = next[mid]?.originalIndex
+      const midVal = isFiniteNumber(midOi) ? midOi : Number.POSITIVE_INFINITY
+      if (midVal <= oi) lo = mid + 1
+      else hi = mid
+    }
+    next.splice(lo, 0, it)
+  }
+
+  return next
+}
+
+async function restoreItems(itemsToRestore: MasonryItemBase[]) {
+  if (!itemsToRestore.length) return
+
+  // Animate restored cards the same way as new appends.
+  markEnterFromTop(itemsToRestore)
+
+  // Snapshot current positions for FLIP move animation.
+  const oldPosById = snapshotVisiblePositions()
+
+  itemsState.value = insertItemsByOriginalIndex(itemsState.value, itemsToRestore)
+
+  // Wait for Vue + layout watcher to apply the new layout/indices.
+  await nextTick()
+
+  // Move existing items smoothly into their new positions.
+  playFlipMoveAnimation(oldPosById)
+}
+
+async function restoreRemoved(itemsOrIds: string | MasonryItemBase | Array<string | MasonryItemBase>) {
+  const raw = Array.isArray(itemsOrIds) ? itemsOrIds : [itemsOrIds]
+  const ids = raw.map(toId).filter(Boolean)
+  if (!ids.length) return
+
+  const items: MasonryItemBase[] = []
+  for (const id of ids as string[]) {
+    const it = removedPoolById.get(id)
+    if (!it) continue
+    items.push(it)
+  }
+  if (!items.length) return
+
+  await restoreItems(items)
+
+  for (const it of items) {
+    if (it?.id) removedPoolById.delete(it.id)
+  }
+}
+
+async function undoLastRemoval() {
+  const last = removalHistory.pop()
+  if (!last?.length) return
+
+  const items: MasonryItemBase[] = []
+  for (const id of last) {
+    const it = removedPoolById.get(id)
+    if (!it) continue
+    items.push(it)
+  }
+  if (!items.length) return
+
+  await restoreItems(items)
+
+  for (const it of items) {
+    if (it?.id) removedPoolById.delete(it.id)
   }
 }
 
@@ -265,16 +438,20 @@ async function removeItems(itemsOrIds: string | MasonryItemBase | Array<string |
 
   const removeSet = new Set(ids as string[])
 
-  // Snapshot positions for the currently rendered subset.
-  const oldPosById = new Map()
-  for (const vi of visibleIndices.value) {
-    const it = itemsState.value[vi]
-    const itId = it?.id
-    if (!itId) continue
-    const p = layoutPositions.value[vi]
-    if (!p) continue
-    oldPosById.set(itId, { x: p.x, y: p.y })
+  // Track removed items (as a batch) so callers can undo/restore.
+  const batchIds: string[] = []
+  for (const id of removeSet) {
+    const idx = layoutIndexById.value.get(id)
+    if (idx == null) continue
+    const item = itemsState.value[idx]
+    if (!item) continue
+    removedPoolById.set(id, item)
+    batchIds.push(id)
   }
+  if (batchIds.length) removalHistory.push(batchIds)
+
+  // Snapshot positions for the currently rendered subset.
+  const oldPosById = snapshotVisiblePositions()
 
   // Render clones for removed items that are currently in layout.
   const width = columnWidth.value
@@ -313,44 +490,7 @@ async function removeItems(itemsOrIds: string | MasonryItemBase | Array<string |
   await nextTick()
 
   // Animate remaining items into place (FLIP).
-  const offsets = new Map<string, { dx: number; dy: number }>()
-  const animIds: string[] = []
-
-  for (const [itId, oldPos] of oldPosById.entries()) {
-    if (removeSet.has(itId)) continue
-    const newIdx = layoutIndexById.value.get(itId)
-    if (newIdx == null) continue
-    const newPos = layoutPositions.value[newIdx]
-    if (!newPos) continue
-    const dx = oldPos.x - newPos.x
-    const dy = oldPos.y - newPos.y
-    if (dx || dy) {
-      offsets.set(itId, { dx, dy })
-      animIds.push(itId)
-    }
-  }
-
-  if (offsets.size) {
-    // Invert (no transition): keep items visually at old positions.
-    moveOffsets.value = offsets
-    const withoutThese = new Set(moveTransitionIds.value)
-    for (const mid of animIds) withoutThese.delete(mid)
-    moveTransitionIds.value = withoutThese
-
-    // Play: enable transition next frame, then clear offsets the following frame.
-    raf(() => {
-      moveTransitionIds.value = new Set([...moveTransitionIds.value, ...animIds])
-      raf(() => {
-        moveOffsets.value = new Map()
-      })
-    })
-
-    setTimeout(() => {
-      const next = new Set(moveTransitionIds.value)
-      for (const mid of animIds) next.delete(mid)
-      moveTransitionIds.value = next
-    }, CARD_MOTION_MS)
-  }
+  playFlipMoveAnimation(oldPosById, removeSet)
 
   if (clones.length) {
     const cloneIds = new Set(clones.map((c) => c.id))
@@ -372,6 +512,8 @@ async function removeItem(itemOrId: string | MasonryItemBase) {
 
 defineExpose({
   remove: removeItems,
+  restoreRemoved,
+  undoLastRemoval,
   backfillStats,
 })
 
@@ -544,6 +686,8 @@ function makeInitialBackfillStats(): BackfillStats {
 
 function resetFeedState(startPage: PageToken) {
   nextOriginalIndex = 0
+  removedPoolById.clear()
+  removalHistory.length = 0
   pagesLoaded.value = []
   itemsState.value = []
   nextPage.value = startPage

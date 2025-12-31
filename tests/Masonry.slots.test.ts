@@ -237,6 +237,87 @@ describe('Masonry slots + media rendering', () => {
     globalThis.ResizeObserver = originalResizeObserver
   })
 
+  it('can undo and restore removed items to their originalIndex order', async () => {
+    const getContent = vi.fn(async () => {
+      return {
+        items: [
+          {
+            id: 'a',
+            type: 'image',
+            reaction: null,
+            width: 320,
+            height: 240,
+            original: 'https://picsum.photos/seed/a/1600/1200',
+            preview: 'https://picsum.photos/seed/a/320/240',
+          },
+          {
+            id: 'b',
+            type: 'image',
+            reaction: null,
+            width: 320,
+            height: 240,
+            original: 'https://picsum.photos/seed/b/1600/1200',
+            preview: 'https://picsum.photos/seed/b/320/240',
+          },
+          {
+            id: 'c',
+            type: 'image',
+            reaction: null,
+            width: 320,
+            height: 240,
+            original: 'https://picsum.photos/seed/c/1600/1200',
+            preview: 'https://picsum.photos/seed/c/320/240',
+          },
+        ],
+        nextPage: null,
+      }
+    })
+
+    const wrapper = mount(Masonry, {
+      props: { getContent, page: 1, itemWidth: 300 },
+      slots: {
+        itemHeader: ({ item }: SlotItemContext) =>
+          h('div', { 'data-testid': `hdr-${item.id}` }, item.id),
+      },
+      attachTo: document.body,
+    })
+
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    const headerOrder = () => {
+      const cards = wrapper.findAll('[data-testid="item-card"]')
+      return cards
+        .map((card) => card.find('[data-testid^="hdr-"]').text())
+        .join('')
+    }
+
+    expect(headerOrder()).toBe('abc')
+
+    // Remove two items in one action (batch).
+    await (wrapper.vm as any).remove(['b', 'c'])
+    await wrapper.vm.$nextTick()
+    expect(headerOrder()).toBe('a')
+
+    // Restore them individually in "wrong" order; should still end up in original order.
+    await (wrapper.vm as any).restoreRemoved('c')
+    await wrapper.vm.$nextTick()
+    await (wrapper.vm as any).restoreRemoved('b')
+    await wrapper.vm.$nextTick()
+    expect(headerOrder()).toBe('abc')
+
+    // Remove again and undo the last removal action.
+    await (wrapper.vm as any).remove(['b', 'c'])
+    await wrapper.vm.$nextTick()
+    expect(headerOrder()).toBe('a')
+
+    await (wrapper.vm as any).undoLastRemoval()
+    await wrapper.vm.$nextTick()
+    expect(headerOrder()).toBe('abc')
+
+    wrapper.unmount()
+  })
+
   it('renders the default footer when itemFooter slot is not provided', async () => {
     const getContent = vi.fn(async () => {
       return {

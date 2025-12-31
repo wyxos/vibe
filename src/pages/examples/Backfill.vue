@@ -120,6 +120,14 @@ async function getContent(pageToken: PageToken) {
             <span class="ml-2 tabular-nums text-slate-900">{{ pagesLoadedLabel }}</span>
           </span>
 
+          <button
+            type="button"
+            class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            @click="(masonryRef as any)?.undoLastRemoval?.()"
+          >
+            Undo last remove
+          </button>
+
           <span
             class="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
           >
