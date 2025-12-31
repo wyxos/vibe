@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import App from '../src/App.vue'
+import Home from '../src/pages/Home.vue'
 
 function flushPromises() {
   return new Promise((resolve) => setTimeout(resolve, 0))
@@ -35,7 +35,7 @@ vi.mock('../src/fakeServer', () => {
 
 describe('App infinite scroll', () => {
   it('loads the next page when scrolled near the bottom', async () => {
-    const wrapper = mount(App, { attachTo: document.body })
+    const wrapper = mount(Home, { attachTo: document.body })
 
     await flushPromises()
     await wrapper.vm.$nextTick()

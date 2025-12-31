@@ -58,17 +58,31 @@ const error = ref('')
 
 const pagesLoaded = ref([])
 const internalItems = ref([])
+const controlledItemsMirror = ref([])
 const nextPage = ref(props.page)
 
 const isItemsControlled = computed(() => props.items !== undefined)
 
+watch(
+  () => props.items,
+  (next) => {
+    if (!isItemsControlled.value) return
+    controlledItemsMirror.value = Array.isArray(next) ? next : []
+  },
+  { immediate: true },
+)
+
 const itemsState = computed({
   get() {
-    return isItemsControlled.value ? props.items : internalItems.value
+    return isItemsControlled.value ? controlledItemsMirror.value : internalItems.value
   },
   set(next) {
-    if (isItemsControlled.value) emit('update:items', next)
-    else internalItems.value = next
+    if (isItemsControlled.value) {
+      controlledItemsMirror.value = next
+      emit('update:items', next)
+    } else {
+      internalItems.value = next
+    }
   },
 })
 
@@ -77,6 +91,10 @@ function removeItem(itemOrId) {
   if (!id) return
   itemsState.value = itemsState.value.filter((it) => it?.id !== id)
 }
+
+defineExpose({
+  remove: removeItem,
+})
 
 function rebuildColumns() {
   const count = columnCount.value
