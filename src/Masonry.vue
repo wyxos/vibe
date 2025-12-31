@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, useAttrs } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, useAttrs, watch } from 'vue'
 
 defineOptions({ inheritAttrs: false })
 
@@ -11,6 +11,10 @@ const props = defineProps({
   page: {
     type: [String, Number],
     default: 1,
+  },
+  itemWidth: {
+    type: Number,
+    default: 300,
   },
   prefetchThresholdPx: {
     type: Number,
@@ -27,6 +31,9 @@ const passthroughAttrs = computed(() => {
 })
 
 const scrollContainerEl = ref(null)
+
+const containerWidth = ref(0)
+let resizeObserver
 
 const isLoadingInitial = ref(true)
 const isLoadingNext = ref(false)
@@ -72,6 +79,14 @@ function maybeLoadMoreOnScroll() {
 }
 
 onMounted(async () => {
+  if (typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(() => {
+      const el = scrollContainerEl.value
+      if (!el) return
+      containerWidth.value = el.clientWidth
+    })
+  }
+
   // Seed initial load
   nextPage.value = props.page
 
@@ -89,6 +104,83 @@ onMounted(async () => {
   } finally {
     isLoadingInitial.value = false
   }
+
+  await nextTick()
+  const el = scrollContainerEl.value
+  if (el) {
+    containerWidth.value = el.clientWidth
+    resizeObserver?.observe(el)
+  }
+})
+
+onUnmounted(() => {
+  resizeObserver?.disconnect()
+})
+
+watch(
+  () => props.page,
+  async (newPage) => {
+    // If the starting page changes, restart the feed.
+    pagesLoaded.value = []
+    items.value = []
+    nextPage.value = newPage
+    isLoadingInitial.value = true
+    isLoadingNext.value = false
+    error.value = ''
+
+    try {
+      const result = await props.getContent(newPage)
+      pagesLoaded.value = [newPage]
+      items.value = result.items
+      nextPage.value = result.nextPage
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : String(err)
+    } finally {
+      isLoadingInitial.value = false
+    }
+  },
+)
+
+const columnCount = computed(() => {
+  const width = containerWidth.value
+  const target = props.itemWidth
+  if (!width || width <= 0) return 1
+  if (!target || target <= 0) return 1
+  return Math.max(1, Math.floor(width / target))
+})
+
+const columnWidth = computed(() => {
+  const count = columnCount.value
+  const width = containerWidth.value
+  if (!width || width <= 0) return props.itemWidth
+  return width / count
+})
+
+function estimateItemHeight(item) {
+  const w = item?.width
+  const h = item?.height
+  const colW = columnWidth.value
+  if (typeof w === 'number' && typeof h === 'number' && w > 0 && h > 0) {
+    return (h / w) * colW
+  }
+  return colW
+}
+
+const columns = computed(() => {
+  const count = columnCount.value
+  const list = Array.from({ length: count }, () => ({ height: 0, items: [] }))
+
+  for (const item of items.value) {
+    let bestIndex = 0
+    for (let i = 1; i < list.length; i += 1) {
+      if (list[i].height < list[bestIndex].height) bestIndex = i
+    }
+
+    list[bestIndex].items.push(item)
+    list[bestIndex].height += estimateItemHeight(item)
+  }
+
+  return list.map((c) => c.items)
 })
 
 const sectionClass = computed(() => {
@@ -116,44 +208,50 @@ const sectionClass = computed(() => {
       <p v-if="isLoadingInitial" class="text-sm text-slate-600">Loading…</p>
       <p v-else-if="error" class="text-sm font-medium text-red-700">Error: {{ error }}</p>
 
-      <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <article
-          v-for="item in items"
-          :key="item.id"
-          data-testid="item-card"
-          class="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm"
+      <div v-else class="flex gap-4">
+        <div
+          v-for="(col, colIndex) in columns"
+          :key="colIndex"
+          class="flex min-w-0 flex-1 flex-col gap-4"
         >
-          <div class="aspect-[4/3] bg-slate-100">
-            <img
-              v-if="item.type === 'image'"
-              class="h-full w-full object-cover"
-              :src="item.preview"
-              :width="item.width"
-              :height="item.height"
-              loading="lazy"
-              :alt="item.id"
-            />
+          <article
+            v-for="item in col"
+            :key="item.id"
+            data-testid="item-card"
+            class="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm"
+          >
+            <div class="bg-slate-100" :style="{ aspectRatio: item.width + ' / ' + item.height }">
+              <img
+                v-if="item.type === 'image'"
+                class="h-full w-full object-cover"
+                :src="item.preview"
+                :width="item.width"
+                :height="item.height"
+                loading="lazy"
+                :alt="item.id"
+              />
 
-            <video
-              v-else
-              class="h-full w-full object-cover"
-              :poster="item.preview"
-              controls
-              preload="metadata"
-            >
-              <source :src="item.original" type="video/mp4" />
-            </video>
-          </div>
+              <video
+                v-else
+                class="h-full w-full object-cover"
+                :poster="item.preview"
+                controls
+                preload="metadata"
+              >
+                <source :src="item.original" type="video/mp4" />
+              </video>
+            </div>
 
-          <div class="flex items-center justify-between gap-3 px-4 py-3">
-            <span
-              class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-2 py-0.5 text-xs font-medium text-slate-700"
-            >
-              {{ item.type }}
-            </span>
-            <span class="truncate font-mono text-xs text-slate-500">{{ item.id }}</span>
-          </div>
-        </article>
+            <div class="flex items-center justify-between gap-3 px-4 py-3">
+              <span
+                class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-2 py-0.5 text-xs font-medium text-slate-700"
+              >
+                {{ item.type }}
+              </span>
+              <span class="truncate font-mono text-xs text-slate-500">{{ item.id }}</span>
+            </div>
+          </article>
+        </div>
       </div>
 
       <div class="mt-4 pb-2 text-center text-xs text-slate-600">
