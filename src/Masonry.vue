@@ -30,10 +30,6 @@ const props = defineProps({
     type: Number,
     default: 200,
   },
-  virtual: {
-    type: Boolean,
-    default: true,
-  },
   overscanPx: {
     type: Number,
     default: 600,
@@ -201,16 +197,6 @@ function findEndIndex(tops, heights, yEnd) {
 
 const visibleColumns = computed(() => {
   const cols = columnsState.value
-  if (!props.virtual) {
-    return cols.map((c) => ({
-      items: c.items,
-      topPad: 0,
-      bottomPad: 0,
-      startIndex: 0,
-      endIndex: Math.max(0, c.items.length - 1),
-    }))
-  }
-
   // In jsdom/tests, element sizing is often 0. Fall back to rendering all.
   if (viewportHeight.value <= 0) {
     return cols.map((c) => ({
