@@ -219,10 +219,27 @@ describe('Masonry slots + media rendering', () => {
     if (!widthMatch) throw new Error('Expected width in leaving card style')
     expect(leavingStartStyle).toContain('translate3d(') // starts at fromX
 
+    const translateMatch = /translate3d\(([-\d.]+)px,\s*([-\d.]+)px,\s*0\)/i.exec(leavingStartStyle)
+    expect(translateMatch).toBeTruthy()
+    if (!translateMatch) throw new Error('Expected translate3d in leaving card style')
+    const startX = Number.parseFloat(translateMatch[1])
+    const startY = Number.parseFloat(translateMatch[2])
+
     // Move transition is enabled on the next frame; assert it while active.
     await new Promise((resolve) => setTimeout(resolve, 0))
     await new Promise((resolve) => setTimeout(resolve, 0))
     await wrapper.vm.$nextTick()
+
+    // Leave animation should move upward (y decreases) and keep x the same.
+    const leavingDuring = wrapper.get('[data-testid="item-card-leaving"]')
+    const leavingDuringStyle = leavingDuring.attributes('style') ?? ''
+    const duringMatch = /translate3d\(([-\d.]+)px,\s*([-\d.]+)px,\s*0\)/i.exec(leavingDuringStyle)
+    expect(duringMatch).toBeTruthy()
+    if (!duringMatch) throw new Error('Expected translate3d in leaving card style')
+    const endX = Number.parseFloat(duringMatch[1])
+    const endY = Number.parseFloat(duringMatch[2])
+    expect(endX).toBeCloseTo(startX)
+    expect(endY).toBeLessThan(startY)
 
     const remainingDuringMove = wrapper.get('[data-testid="item-card"]')
     expect(remainingDuringMove.attributes('style')).toContain('transition:')

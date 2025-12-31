@@ -111,6 +111,7 @@ const leavingClones = ref<
     fromX: number
     fromY: number
     width: number
+    height: number
     leaving: boolean
   }>
 >([])
@@ -469,6 +470,7 @@ async function removeItems(itemsOrIds: string | MasonryItemBase | Array<string |
     fromX: number
     fromY: number
     width: number
+    height: number
     leaving: boolean
   }> = []
   for (const id of removeSet) {
@@ -477,12 +479,14 @@ async function removeItems(itemsOrIds: string | MasonryItemBase | Array<string |
     const item = itemsState.value[idx]
     if (!item) continue
     const pos = layoutPositions.value[idx] ?? { x: 0, y: 0 }
+    const height = layoutHeights.value[idx] ?? width
     clones.push({
       id,
       item,
       fromX: pos.x,
       fromY: pos.y,
       width,
+      height,
       leaving: true,
     })
   }
@@ -904,7 +908,7 @@ const sectionClass = computed(() => {
             transition: 'transform ' + CARD_MOTION_MS + 'ms ease-out',
             transform: c.leaving
               ? 'translate3d(' + c.fromX + 'px,' + c.fromY + 'px,0)'
-              : 'translate3d(' + -c.width + 'px,' + c.fromY + 'px,0)',
+              : 'translate3d(' + c.fromX + 'px,' + (c.fromY - c.height) + 'px,0)',
           }"
         >
           <div
