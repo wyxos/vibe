@@ -1,16 +1,6 @@
 # @wyxos/vibe
 
-VIBE is a Vue 3 masonry feed component built for large, scroll-heavy image/video feeds.
-
-It exists because most “feed” implementations eventually hit the same problems:
-
-- Long scrolling sessions get slow (too many mounted nodes)
-- Tabs crash (memory grows with the DOM)
-- New content arrives too late (no prefetch)
-- Removing items feels jarring (no smooth removal/move transitions)
-- Column-based DOM re-parenting breaks reading order
-
-VIBE focuses on keeping the DOM small (virtualization), prefetching before you hit the end, and preserving a single DOM sequence while still laying out as masonry.
+Vue 3 masonry feed component with virtualization + infinite loading.
 
 ## Demo
 
@@ -75,7 +65,7 @@ Layout requires:
 - `width: number`
 - `height: number`
 
-The built-in card renderer (current default) expects media fields as well:
+The default renderer expects media fields as well:
 
 - `type: 'image' | 'video'`
 - `preview: string` (URL)
@@ -88,38 +78,22 @@ VIBE provides two optional per-item slots:
 - `#itemHeader="{ item, remove }"`
 - `#itemFooter="{ item, remove }"`
 
-Example:
-
-```vue
-<Masonry v-model:items="items" :get-content="getContent">
-	<template #itemHeader="{ item, remove }">
-		<div class="flex items-center justify-between px-3 py-2">
-			<div class="text-xs text-slate-600">{{ item.id }}</div>
-			<button class="text-xs text-red-600" @click="remove()">Remove</button>
-		</div>
-	</template>
-
-	<template #itemFooter="{ item }">
-		<div class="px-3 py-2 text-xs text-slate-600">{{ item.width }}×{{ item.height }}</div>
-	</template>
-</Masonry>
-```
-
 ### Exposed methods
 
 Using a template ref, you can remove and restore items with transitions:
 
 - `remove(itemOrId | array)`
-- `undo()` (undo the last removal batch)
+- `undo()` (undo last removal batch)
 - `restore(itemOrId | array)`
 
-## Props (high level)
+## Props
 
 - `getContent(pageToken) => { items, nextPage }` (required)
 - `mode`: `'default' | 'backfill'`
-- `pageSize`: target items/page (used for backfill)
-- `prefetchThresholdPx`: prefetch before reaching the end
-- `itemWidth`, `gapX`, `gapY`, `headerHeight`, `footerHeight`, `overscanPx`
+- `pageSize`, `backfillRequestDelayMs`
+- `itemWidth`, `gapX`, `gapY`
+- `prefetchThresholdPx`, `overscanPx`
+- `headerHeight`, `footerHeight`
 
 ## Local library build
 
