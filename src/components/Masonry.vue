@@ -375,6 +375,25 @@ async function undo() {
   return undoLastRemoval()
 }
 
+function forgetRemoved(itemsOrIds: string | MasonryItemBase | Array<string | MasonryItemBase>) {
+  const raw = Array.isArray(itemsOrIds) ? itemsOrIds : [itemsOrIds]
+  const ids = raw.map(toId).filter(Boolean) as string[]
+  if (!ids.length) return
+
+  const idSet = new Set(ids)
+
+  // Remove from the restore pool.
+  for (const id of idSet) removedPoolById.delete(id)
+
+  // Remove from undo history (so undo can't resurrect committed removals).
+  for (let i = removalHistory.length - 1; i >= 0; i -= 1) {
+    const batch = removalHistory[i]
+    const nextBatch = batch.filter((id) => !idSet.has(id))
+    if (nextBatch.length) removalHistory[i] = nextBatch
+    else removalHistory.splice(i, 1)
+  }
+}
+
 const backfillStats = shallowRef<BackfillStats>({
   enabled: false,
   isBackfillActive: false,
@@ -531,9 +550,11 @@ defineExpose({
   remove: removeItems,
   restore,
   undo,
+  forget: forgetRemoved,
   // Aliases (kept for now; can be removed if you want strictly short API only).
   restoreRemoved,
   undoLastRemoval,
+  forgetRemoved,
   backfillStats,
 })
 

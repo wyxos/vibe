@@ -335,6 +335,80 @@ describe('Masonry slots + media rendering', () => {
     wrapper.unmount()
   })
 
+  it('can permanently forget removed items so they cannot be restored/undone after parent commits', async () => {
+    const getContent = vi.fn(async () => {
+      return {
+        items: [
+          {
+            id: 'a',
+            type: 'image',
+            reaction: null,
+            width: 320,
+            height: 240,
+            original: 'https://picsum.photos/seed/a/1600/1200',
+            preview: 'https://picsum.photos/seed/a/320/240',
+          },
+          {
+            id: 'b',
+            type: 'image',
+            reaction: null,
+            width: 320,
+            height: 240,
+            original: 'https://picsum.photos/seed/b/1600/1200',
+            preview: 'https://picsum.photos/seed/b/320/240',
+          },
+          {
+            id: 'c',
+            type: 'image',
+            reaction: null,
+            width: 320,
+            height: 240,
+            original: 'https://picsum.photos/seed/c/1600/1200',
+            preview: 'https://picsum.photos/seed/c/320/240',
+          },
+        ],
+        nextPage: null,
+      }
+    })
+
+    const wrapper = mount(Masonry, {
+      props: { getContent, page: 1, itemWidth: 300 },
+      slots: {
+        itemHeader: ({ item }: SlotItemContext) => h('div', { 'data-testid': `hdr-${item.id}` }, item.id),
+      },
+      attachTo: document.body,
+    })
+
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    const headerOrder = () => {
+      const cards = wrapper.findAll('[data-testid="item-card"]')
+      return cards.map((card) => card.find('[data-testid^="hdr-"]').text()).join('')
+    }
+
+    expect(headerOrder()).toBe('abc')
+
+    // Remove a batch, then parent "commits" only 'b' (no longer restorable).
+    await (wrapper.vm as any).remove(['b', 'c'])
+    await wrapper.vm.$nextTick()
+    expect(headerOrder()).toBe('a')
+
+    await (wrapper.vm as any).forget('b')
+
+    // Restore c works, b should not.
+    await (wrapper.vm as any).restore(['b', 'c'])
+    await wrapper.vm.$nextTick()
+    expect(headerOrder()).toBe('ac')
+
+    // Undo should not resurrect b either.
+    await (wrapper.vm as any).undo()
+    await wrapper.vm.$nextTick()
+    expect(headerOrder()).toBe('ac')
+
+    wrapper.unmount()
+  })
+
   it('renders the default footer when itemFooter slot is not provided', async () => {
     const getContent = vi.fn(async () => {
       return {
