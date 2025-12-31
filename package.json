@@ -1,7 +1,27 @@
 {
   "name": "@wyxos/vibe",
-  "private": true,
   "version": "2.0.0",
+  "description": "A high-performance, responsive masonry layout engine for Vue 3 with built-in infinite scrolling and virtualization.",
+  "keywords": [
+    "vue",
+    "vue3",
+    "masonry",
+    "grid",
+    "layout",
+    "infinite-scroll",
+    "virtualization",
+    "responsive",
+    "performance"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wyxos/vibe.git"
+  },
+  "homepage": "https://vibe.wyxos.com/",
+  "bugs": {
+    "url": "https://github.com/wyxos/vibe/issues"
+  },
   "type": "module",
   "main": "./lib/index.cjs",
   "module": "./lib/index.js",
@@ -11,32 +31,33 @@
       "types": "./lib/index.d.ts",
       "import": "./lib/index.js",
       "require": "./lib/index.cjs"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "lib"
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node write-cname.js",
     "build:lib": "vite build -c vite.config.lib.js",
     "build:types": "vue-tsc -p tsconfig.lib.json",
+    "prepublishOnly": "npm run check && npm run build:lib && npm run build:types",
     "preview": "vite preview",
     "check": "npm -s run lint && npm -s run typecheck && npm -s run test",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "release": "npx @wyxos/zephyr --type=node",
     "test": "vitest run --reporter=dot --silent",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
-    "typecheck": "vue-tsc --noEmit --pretty false",
-    "postinstall": "playwright install chromium"
+    "typecheck": "vue-tsc --noEmit --pretty false"
   },
-  "dependencies": {
-    "@fortawesome/fontawesome-free": "^7.1.0",
-    "vue": "^3.5.13",
-    "vue-router": "^4.6.4"
+  "peerDependencies": {
+    "vue": "^3.0.0"
   },
   "devDependencies": {
+    "@fortawesome/fontawesome-free": "^7.1.0",
     "@playwright/test": "^1.50.0",
     "@tailwindcss/vite": "^4.1.18",
     "@eslint/js": "^9.37.0",
@@ -53,6 +74,8 @@
     "typescript": "^5.9.3",
     "vite": "7.1.11",
     "vitest": "^2.1.8",
+    "vue": "^3.5.13",
+    "vue-router": "^4.6.4",
     "vue-eslint-parser": "^10.0.0",
     "vue-tsc": "^3.2.1"
   }

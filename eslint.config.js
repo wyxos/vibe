@@ -68,6 +68,23 @@ export default [
     },
   },
 
+  // Node ESM scripts at repo root (release helpers, etc.)
+  {
+    files: ["**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      "no-undef": "off",
+      "no-unused-vars": "off",
+      "no-empty": "off",
+    },
+  },
+
   // TypeScript files
   {
     files: ["**/*.{ts,tsx}"],
