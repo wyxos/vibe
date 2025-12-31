@@ -244,8 +244,8 @@ describe('Masonry slots + media rendering', () => {
     const remainingDuringMove = wrapper.get('[data-testid="item-card"]')
     expect(remainingDuringMove.attributes('style')).toContain('transition:')
 
-    // Wait for the leave animation timer (ENTER_FROM_LEFT_MS=300).
-    await new Promise((resolve) => setTimeout(resolve, 350))
+    // Wait for the leave animation timer.
+    await new Promise((resolve) => setTimeout(resolve, 650))
     await wrapper.vm.$nextTick()
 
     expect(wrapper.findAll('[data-testid="item-card-leaving"]').length).toBe(0)

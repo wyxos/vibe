@@ -96,7 +96,7 @@ const layoutIndexById = ref<Map<string, number>>(new Map())
 // Motion timings
 const CARD_MOTION_MS = 300
 const ENTER_MOTION_MS = 600
-const LEAVE_MOTION_MS = CARD_MOTION_MS
+const LEAVE_MOTION_MS = 600
 
 function getOutsideContainerY(height: number): number {
   const h = typeof height === 'number' && Number.isFinite(height) ? height : 0
@@ -518,7 +518,7 @@ async function removeItems(itemsOrIds: string | MasonryItemBase | Array<string |
       )
       setTimeout(() => {
         leavingClones.value = leavingClones.value.filter((c) => !cloneIds.has(c.id))
-      }, CARD_MOTION_MS)
+      }, LEAVE_MOTION_MS)
     })
   }
 }
