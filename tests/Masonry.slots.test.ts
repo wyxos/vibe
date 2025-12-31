@@ -270,7 +270,7 @@ describe('Masonry slots + media rendering', () => {
     wrapper.unmount()
   })
 
-  it('animates initial load from container left (-width, finalY) to (finalX, finalY)', async () => {
+  it('animates initial load from above (finalX, -height) to (finalX, finalY)', async () => {
     const rafCallbacks: FrameRequestCallback[] = []
     const originalRaf = globalThis.requestAnimationFrame
     globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) => {
@@ -305,10 +305,13 @@ describe('Masonry slots + media rendering', () => {
 
     const card = wrapper.get('[data-testid="item-card"]')
     const startStyle = card.attributes('style') ?? ''
-    const widthMatch = /width:\s*([\d.]+)px/i.exec(startStyle)
-    expect(widthMatch).toBeTruthy()
-    if (!widthMatch) throw new Error('Expected width in start style')
-    expect(startStyle).toContain(`translate3d(-${widthMatch[1]}px,0px,0)`)
+    const startMatch = /translate3d\(\s*([-\d.]+)px\s*,\s*([-\d.]+)px\s*,\s*0\s*\)/i.exec(
+      startStyle
+    )
+    expect(startMatch).toBeTruthy()
+    if (!startMatch) throw new Error('Expected translate3d in start style')
+    expect(Number(startMatch[1])).toBe(0)
+    expect(Number(startMatch[2])).toBeLessThan(0)
 
     // Run a few RAF ticks to advance the two-RAF animation schedule.
     for (let i = 0; i < 6 && rafCallbacks.length; i += 1) {
@@ -323,7 +326,7 @@ describe('Masonry slots + media rendering', () => {
     globalThis.requestAnimationFrame = originalRaf
   })
 
-  it('animates appended items from container left (-width, finalY) to (finalX, finalY)', async () => {
+  it('animates appended items from above (finalX, finalY - height) to (finalX, finalY)', async () => {
     const roCallbacks: ResizeObserverCallback[] = []
     const originalResizeObserver = globalThis.ResizeObserver
     const rafCallbacks: FrameRequestCallback[] = []
@@ -400,13 +403,15 @@ describe('Masonry slots + media rendering', () => {
     const cards = wrapper.findAll('[data-testid="item-card"]')
     expect(cards.length).toBe(2)
 
-    // The appended item should first paint at x = -width (not finalX - width).
+    // The appended item should first paint above its final position (same finalX, negative Y offset).
     const entering = cards[1]
     const enteringStyle = entering.attributes('style') ?? ''
-    const enteringWidthMatch = /width:\s*([\d.]+)px/i.exec(enteringStyle)
-    expect(enteringWidthMatch).toBeTruthy()
-    if (!enteringWidthMatch) throw new Error('Expected width in entering style')
-    expect(enteringStyle).toContain(`translate3d(-${enteringWidthMatch[1]}px,0px,0)`)
+    const enteringStartMatch = /translate3d\(\s*([-\d.]+)px\s*,\s*([-\d.]+)px\s*,\s*0\s*\)/i.exec(
+      enteringStyle
+    )
+    expect(enteringStartMatch).toBeTruthy()
+    if (!enteringStartMatch) throw new Error('Expected translate3d in entering start style')
+    expect(Number(enteringStartMatch[2])).toBeLessThan(0)
 
     // Advance animation.
     for (let i = 0; i < 6 && rafCallbacks.length; i += 1) {
@@ -416,10 +421,14 @@ describe('Masonry slots + media rendering', () => {
     await wrapper.vm.$nextTick()
 
     const endStyle = entering.attributes('style') ?? ''
-    const endXMatch = /translate3d\(\s*([-\d.]+)px\s*,\s*0px\s*,\s*0\s*\)/i.exec(endStyle)
-    expect(endXMatch).toBeTruthy()
-    if (!endXMatch) throw new Error('Expected translate3d in end style')
-    expect(Number(endXMatch[1])).toBeGreaterThan(0)
+    const endMatch = /translate3d\(\s*([-\d.]+)px\s*,\s*([-\d.]+)px\s*,\s*0\s*\)/i.exec(endStyle)
+    expect(endMatch).toBeTruthy()
+    if (!endMatch) throw new Error('Expected translate3d in end style')
+    expect(Number(endMatch[1])).toBeGreaterThan(0)
+    expect(Number(endMatch[2])).toBe(0)
+
+    // X should remain stable throughout the enter animation.
+    expect(Number(enteringStartMatch![1])).toBe(Number(endMatch![1]))
 
     wrapper.unmount()
     globalThis.requestAnimationFrame = originalRaf

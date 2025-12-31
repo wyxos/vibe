@@ -120,7 +120,7 @@ function removeRandomItems() {
           <button
             type="button"
             data-testid="remove-random"
-            class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            class="inline-flex items-center justify-center rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
             @click="removeRandomItems"
           >
             Remove random
@@ -199,7 +199,7 @@ function removeRandomItems() {
               <button
                 type="button"
                 :data-testid="'remove-' + item.id"
-                class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                class="inline-flex items-center justify-center rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
                 title="Remove"
                 @click="remove()"
               >

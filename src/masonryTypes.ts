@@ -34,6 +34,7 @@ export type MasonryItemBase = {
   id: string
   width: number
   height: number
+  originalIndex?: number
   type?: string
   preview?: string
   original?: string

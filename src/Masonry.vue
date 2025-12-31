@@ -93,10 +93,10 @@ const layoutBuckets = ref<Map<number, number[]>>(new Map())
 const layoutContentHeight = ref(0)
 const layoutIndexById = ref<Map<string, number>>(new Map())
 
-// Entry animation: items appear from the left edge of the masonry container.
-// For an item with final (x,y), the first paint is at (-width, y) and it
+// Entry animation: items appear from above the masonry container.
+// For an item with final (x,y), the first paint is at (x, y - height) and it
 // animates to (x,y).
-const ENTER_FROM_LEFT_MS = 300
+const CARD_MOTION_MS = 300
 const enterStartIds = ref<Set<string>>(new Set())
 const enterAnimatingIds = ref<Set<string>>(new Set())
 const scheduledEnterIds = new Set<string>()
@@ -122,7 +122,7 @@ function getMoveOffset(id: string): { dx: number; dy: number } {
 
 function getCardTransition(id: string): string | undefined {
   return enterAnimatingIds.value.has(id) || moveTransitionIds.value.has(id)
-    ? `transform ${ENTER_FROM_LEFT_MS}ms ease-out`
+    ? `transform ${CARD_MOTION_MS}ms ease-out`
     : undefined
 }
 
@@ -131,8 +131,10 @@ function getCardTransform(index: number): string {
   const id = item?.id
 
   const pos = layoutPositions.value[index] ?? { x: 0, y: 0 }
-  const startX = id && enterStartIds.value.has(id) ? -columnWidth.value : pos.x
-  const startY = pos.y
+  const enterHeight = layoutHeights.value[index] ?? 0
+  const enterOffset = enterHeight > 0 ? enterHeight : columnWidth.value
+  const startX = pos.x
+  const startY = id && enterStartIds.value.has(id) ? pos.y - enterOffset : pos.y
   const off = id ? getMoveOffset(id) : { dx: 0, dy: 0 }
   return `translate3d(${startX + off.dx}px,${startY + off.dy}px,0)`
 }
@@ -149,7 +151,7 @@ function raf2(cb: () => void) {
   raf(() => raf(cb))
 }
 
-function markEnterFromLeft(items: MasonryItemBase[]) {
+function markEnterFromTop(items: MasonryItemBase[]) {
   if (!Array.isArray(items) || items.length === 0) return
   const next = new Set(enterStartIds.value)
   let changed = false
@@ -174,6 +176,18 @@ const controlledItemsMirror = ref<MasonryItemBase[]>([])
 const nextPage = ref<PageToken | null>(props.page)
 const backfillBuffer = ref<MasonryItemBase[]>([])
 
+let nextOriginalIndex = 0
+
+function assignOriginalIndices(newItems: MasonryItemBase[]) {
+  for (const it of newItems) {
+    if (!it || typeof it !== 'object') continue
+    if (!it.id) continue
+    if (it.originalIndex != null) continue
+    it.originalIndex = nextOriginalIndex
+    nextOriginalIndex += 1
+  }
+}
+
 const backfillStats = shallowRef<BackfillStats>({
   enabled: false,
   isBackfillActive: false,
@@ -196,7 +210,7 @@ const backfillStats = shallowRef<BackfillStats>({
 
 const backfillLoader = createBackfillBatchLoader<MasonryItemBase, PageToken>({
   getContent: (pageToken) => props.getContent(pageToken),
-  markEnterFromLeft,
+  markEnterFromLeft: markEnterFromTop,
   buffer: backfillBuffer,
   stats: backfillStats as unknown as typeof backfillStats & {
     value: BackfillStatsShape<PageToken>
@@ -234,7 +248,8 @@ const itemsState = computed({
 
 async function loadDefaultPage(pageToLoad: PageToken) {
   const result = await props.getContent(pageToLoad)
-  markEnterFromLeft(result.items)
+  assignOriginalIndices(result.items)
+  markEnterFromTop(result.items)
   return { items: result.items, nextPage: result.nextPage }
 }
 
@@ -334,7 +349,7 @@ async function removeItems(itemsOrIds: string | MasonryItemBase | Array<string |
       const next = new Set(moveTransitionIds.value)
       for (const mid of animIds) next.delete(mid)
       moveTransitionIds.value = next
-    }, ENTER_FROM_LEFT_MS)
+    }, CARD_MOTION_MS)
   }
 
   if (clones.length) {
@@ -346,7 +361,7 @@ async function removeItems(itemsOrIds: string | MasonryItemBase | Array<string |
       )
       setTimeout(() => {
         leavingClones.value = leavingClones.value.filter((c) => !cloneIds.has(c.id))
-      }, ENTER_FROM_LEFT_MS)
+      }, CARD_MOTION_MS)
     })
   }
 }
@@ -432,15 +447,11 @@ watch(
           scheduledEnterIds.delete(id)
         }
         enterAnimatingIds.value = nextAnimating
-      }, ENTER_FROM_LEFT_MS)
+      }, CARD_MOTION_MS)
     })
   },
   { flush: 'post' }
 )
-
-const firstLoadedPageToken = computed(() => {
-  return pagesLoaded.value.length ? pagesLoaded.value[0] : props.page
-})
 
 async function loadNextPage() {
   if (isLoadingInitial.value || isLoadingNext.value) return
@@ -456,6 +467,7 @@ async function loadNextPage() {
     if (props.mode === 'backfill') {
       const result = await backfillLoader.loadBackfillBatch(nextPage.value)
       if (result.pages.length) pagesLoaded.value = [...pagesLoaded.value, ...result.pages]
+      assignOriginalIndices(result.batchItems)
       itemsState.value = [...itemsState.value, ...result.batchItems]
       nextPage.value = result.nextPage
       return
@@ -466,6 +478,7 @@ async function loadNextPage() {
 
     const result = await loadDefaultPage(pageToLoad)
     pagesLoaded.value = [...pagesLoaded.value, pageToLoad]
+    assignOriginalIndices(result.items)
     itemsState.value = [...itemsState.value, ...result.items]
     nextPage.value = result.nextPage
   } catch (err) {
@@ -530,6 +543,7 @@ function makeInitialBackfillStats(): BackfillStats {
 }
 
 function resetFeedState(startPage: PageToken) {
+  nextOriginalIndex = 0
   pagesLoaded.value = []
   itemsState.value = []
   nextPage.value = startPage
@@ -545,11 +559,13 @@ async function loadFirstPage(startPage: PageToken) {
     if (props.mode === 'backfill') {
       const result = await backfillLoader.loadBackfillBatch(startPage)
       pagesLoaded.value = result.pages.length ? result.pages : [startPage]
+      assignOriginalIndices(result.batchItems)
       itemsState.value = result.batchItems
       nextPage.value = result.nextPage
     } else {
       const result = await loadDefaultPage(startPage)
       pagesLoaded.value = [startPage]
+      assignOriginalIndices(result.items)
       itemsState.value = result.items
       nextPage.value = result.nextPage
     }
@@ -730,7 +746,7 @@ const sectionClass = computed(() => {
           class="pointer-events-none absolute overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm"
           :style="{
             width: c.width + 'px',
-            transition: 'transform ' + ENTER_FROM_LEFT_MS + 'ms ease-out',
+            transition: 'transform ' + CARD_MOTION_MS + 'ms ease-out',
             transform: c.leaving
               ? 'translate3d(' + c.fromX + 'px,' + c.fromY + 'px,0)'
               : 'translate3d(' + -c.width + 'px,' + c.fromY + 'px,0)',
