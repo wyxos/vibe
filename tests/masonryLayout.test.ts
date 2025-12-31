@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { distributeItemsIntoColumns, getColumnCount, getColumnWidth } from '@/masonryLayout'
+import { distributeItemsIntoColumns, getColumnCount, getColumnWidth } from '@/masonry/layout'
 
 describe('masonryLayout', () => {
   it('computes column count from container width and target item width', () => {

@@ -2,12 +2,12 @@
 
 ## Goal: optimize for large datasets
 
-This repo’s `src/Masonry.vue` is designed with **very large item arrays in mind** (think **10k+ items**). When making changes, prefer solutions that keep updates fast and avoid work that scales with the entire list for small interactions.
+This repo’s `src/components/Masonry.vue` is designed with **very large item arrays in mind** (think **10k+ items**). When making changes, prefer solutions that keep updates fast and avoid work that scales with the entire list for small interactions.
 
 ## Non-negotiables
 
 - **Never edit `lib/`** (generated output). Source of truth is `src/`.
-- Keep the masonry logic centralized in `src/Masonry.vue` and the existing helpers in `src/masonryLayout.js`.
+- Keep the masonry logic centralized in `src/components/Masonry.vue` and the existing helpers under `src/masonry/`.
 
 ## Performance principles (10k items)
 
@@ -30,7 +30,7 @@ This repo’s `src/Masonry.vue` is designed with **very large item arrays in min
 
 - Prefer **descriptive internal helper names** inside the implementation (e.g. `removeItems`, `restoreRemoved`, `undoLastRemoval`).
 - Prefer **short external/public API names** exposed to consumers (e.g. `remove`, `restore`, `undo`).
-  - In `src/Masonry.vue`, this primarily means methods exposed via `defineExpose(...)`.
+  - In `src/components/Masonry.vue`, this primarily means methods exposed via `defineExpose(...)`.
 
 ## Testing expectations
 

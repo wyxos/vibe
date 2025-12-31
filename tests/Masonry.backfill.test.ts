@@ -1,8 +1,8 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { BackfillStats } from '@/masonryTypes'
-import Masonry from '@/Masonry.vue'
+import type { BackfillStats } from '@/masonry/types'
+import Masonry from '@/components/Masonry.vue'
 
 function flushPromises() {
   return new Promise((resolve) => setTimeout(resolve, 0))

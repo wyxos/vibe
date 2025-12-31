@@ -5,7 +5,7 @@ import {
   type MasonryItemBase,
   type MasonryProps,
   type PageToken,
-} from './masonryTypes'
+} from '@/masonry/types'
 import {
   computed,
   nextTick,
@@ -18,18 +18,18 @@ import {
   watch,
 } from 'vue'
 
-import { getColumnCount, getColumnWidth } from './masonryLayout'
+import { getColumnCount, getColumnWidth } from '@/masonry/layout'
 import {
   clampDelayMs,
   clampPageSize,
   createBackfillBatchLoader,
   type BackfillStatsShape,
-} from './masonryBackfill'
-import { buildMasonryLayout, getVisibleIndicesFromBuckets } from './masonryLayoutEngine'
+} from '@/masonry/backfill'
+import { buildMasonryLayout, getVisibleIndicesFromBuckets } from '@/masonry/layoutEngine'
 
 defineOptions({ inheritAttrs: false })
 
-export type { BackfillStats, GetContentFn, GetContentResult, MasonryItemBase, MasonryMode, PageToken } from './masonryTypes'
+export type { BackfillStats, GetContentFn, GetContentResult, MasonryItemBase, MasonryMode, PageToken } from '@/masonry/types'
 
 const props = withDefaults(defineProps<MasonryProps>(), masonryDefaults)
 

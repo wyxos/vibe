@@ -1,4 +1,4 @@
-import { estimateItemHeight } from './masonryLayout'
+import { estimateItemHeight } from './layout'
 
 export type LayoutPosition = { x: number; y: number }
 

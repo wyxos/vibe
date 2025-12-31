@@ -2,7 +2,7 @@
 import { computed, ref, shallowRef, watch } from 'vue'
 
 import { type FeedItem, fetchPage, type PageToken } from '@/fakeServer'
-import Masonry from '@/Masonry.vue'
+import Masonry from '@/components/Masonry.vue'
 
 const items = ref<FeedItem[]>([])
 const itemIndexById = shallowRef<Map<string, number>>(new Map())
