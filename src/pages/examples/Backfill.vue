@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, shallowRef, watch } from 'vue'
 import { type BackfillFeedItem, fetchBackfillPage, type PageToken } from '../../fakeServerBackfill'
-import Masonry, { type BackfillStats } from '../../Masonry.vue'
+import type { BackfillStats } from '../../masonryTypes'
+import Masonry from '../../Masonry.vue'
 
 const items = ref<BackfillFeedItem[]>([])
 const itemIndexById = shallowRef<Map<string, number>>(new Map())

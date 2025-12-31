@@ -1,5 +1,12 @@
 <script setup lang="ts">
 import type { PropType } from 'vue'
+import type {
+  BackfillStats,
+  GetContentFn,
+  MasonryItemBase,
+  MasonryMode,
+  PageToken,
+} from './masonryTypes'
 import {
   computed,
   nextTick,
@@ -23,58 +30,7 @@ import { buildMasonryLayout, getVisibleIndicesFromBuckets } from './masonryLayou
 
 defineOptions({ inheritAttrs: false })
 
-type PageToken = string | number
-
-export type BackfillStats = {
-  enabled: boolean
-  // True only while the component is actively doing additional fetches to reach pageSize.
-  // This is NOT the same as mode=backfill.
-  isBackfillActive: boolean
-  isRequestInFlight: boolean
-  requestPage: PageToken | null
-  progress: {
-    collected: number
-    target: number
-  }
-  cooldownMsRemaining: number
-  cooldownMsTotal: number
-  pageSize: number
-  bufferSize: number
-  lastBatch: {
-    startPage: PageToken | null
-    pages: PageToken[]
-    usedFromBuffer: number
-    fetchedFromNetwork: number
-    collectedTotal: number
-    emitted: number
-    carried: number
-  } | null
-  totals: {
-    pagesFetched: number
-    itemsFetchedFromNetwork: number
-  }
-}
-
-export type MasonryItemBase = {
-  id: string
-  width: number
-  height: number
-  type?: string
-  preview?: string
-  original?: string
-  [key: string]: unknown
-}
-
-type GetContentResult<TItem extends MasonryItemBase> = {
-  items: TItem[]
-  nextPage: PageToken | null
-}
-
-type GetContentFn<TItem extends MasonryItemBase> = (
-  pageToken: PageToken
-) => Promise<GetContentResult<TItem>>
-
-type MasonryMode = 'default' | 'backfill'
+export type { BackfillStats, GetContentFn, GetContentResult, MasonryItemBase, MasonryMode, PageToken } from './masonryTypes'
 
 const props = defineProps({
   getContent: {

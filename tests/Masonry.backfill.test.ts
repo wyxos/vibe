@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { BackfillStats } from '../src/Masonry.vue'
+import type { BackfillStats } from '../src/masonryTypes'
 import Masonry from '../src/Masonry.vue'
 
 function flushPromises() {
