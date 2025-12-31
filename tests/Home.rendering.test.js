@@ -56,4 +56,21 @@ describe('Home rendering + Masonry wiring', () => {
 
     wrapper.unmount()
   })
+
+  it('removes an item via the Remove action', async () => {
+    const wrapper = mount(Home, { attachTo: document.body })
+
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.findAll('[data-testid="item-card"]').length).toBe(1)
+
+    const removeButton = wrapper.get('button[title="Remove"]')
+    await removeButton.trigger('click')
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.findAll('[data-testid="item-card"]').length).toBe(0)
+
+    wrapper.unmount()
+  })
 })
