@@ -16,7 +16,8 @@ vi.mock('../src/fakeServer', () => {
         type: 'image',
         width: 320,
         height: 240,
-        src: 'https://picsum.photos/seed/test/320/240',
+        original: 'https://picsum.photos/seed/test/1600/1200',
+        preview: 'https://picsum.photos/seed/test/320/240',
       })
 
       if (tokenStr === '1') {

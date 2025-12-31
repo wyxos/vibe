@@ -8,6 +8,16 @@ describe('fakeServer.fetchPage', () => {
     expect(Object.keys(result).sort()).toEqual(['items', 'nextPage'])
     expect(Array.isArray(result.items)).toBe(true)
     expect(result.items).toHaveLength(20)
+
+    const [first] = result.items
+    expect(first).toMatchObject({
+      id: expect.any(String),
+      type: expect.any(String),
+      width: expect.any(Number),
+      height: expect.any(Number),
+      original: expect.any(String),
+      preview: expect.any(String),
+    })
   })
 
   it('accepts a numeric string page token', async () => {

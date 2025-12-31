@@ -46,8 +46,13 @@ function createItem({ page, index }) {
   const isForcedVideo = index === 0
   const isVideo = isForcedVideo || rng() < 0.25
 
+  // width/height represent the preview dimensions used for layout.
   const width = randomInt(rng, 240, 520)
   const height = randomInt(rng, 180, 520)
+
+  // "Original" media dimensions are simulated by requesting a much larger resource.
+  const originalWidth = randomInt(rng, 900, 2600)
+  const originalHeight = randomInt(rng, 700, 2200)
 
   const baseId = `p${page}-i${index}`
 
@@ -59,8 +64,8 @@ function createItem({ page, index }) {
       type: 'video',
       width,
       height,
-      src: VIDEO_SOURCES[videoIndex],
-      poster: `https://picsum.photos/seed/vibe-${baseId}/${width}/${height}`,
+      original: VIDEO_SOURCES[videoIndex],
+      preview: `https://picsum.photos/seed/vibe-${baseId}/${width}/${height}`,
     }
   }
 
@@ -69,7 +74,8 @@ function createItem({ page, index }) {
     type: 'image',
     width,
     height,
-    src: `https://picsum.photos/seed/vibe-${baseId}/${width}/${height}`,
+    original: `https://picsum.photos/seed/vibe-${baseId}/${originalWidth}/${originalHeight}`,
+    preview: `https://picsum.photos/seed/vibe-${baseId}/${width}/${height}`,
   }
 }
 
