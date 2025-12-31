@@ -1,8 +1,7 @@
-import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-
-import Home from '../src/pages/Home.vue'
+import { describe, expect, it, vi } from 'vitest'
 import { fetchPage } from '../src/fakeServer'
+import Home from '../src/pages/Home.vue'
 
 function flushPromises() {
   return new Promise((resolve) => setTimeout(resolve, 0))

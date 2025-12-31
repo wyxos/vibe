@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 
 type CardPos = { x: number; y: number }
 type CardPosById = Record<string, CardPos>
@@ -44,7 +44,9 @@ test('animates remaining items when removing an item', async ({ page }) => {
   await page.goto('/#/')
 
   // Wait for initial items to render.
-  await page.waitForFunction(() => document.querySelectorAll('[data-testid="item-card"]').length >= 6)
+  await page.waitForFunction(
+    () => document.querySelectorAll('[data-testid="item-card"]').length >= 6
+  )
 
   const idToRemove = await page.$eval('button[data-testid^="remove-"]', (el) => {
     const tid = el.getAttribute('data-testid')
@@ -104,7 +106,10 @@ test('animates remaining items when removing an item', async ({ page }) => {
     const dPE = dist(p, endPos)
     return dSP > 0.5 && dPE > 0.5 && dSP < dSE && dPE < dSE
   })
-  expect(hasBetween, 'expected a remaining item to occupy an intermediate position during the move transition').toBe(true)
+  expect(
+    hasBetween,
+    'expected a remaining item to occupy an intermediate position during the move transition'
+  ).toBe(true)
 
   // Also ensure we aren't stuck at the initial layout post-click.
   // (t0 is typically close to start due to inverse offset).

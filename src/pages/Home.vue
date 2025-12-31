@@ -2,13 +2,14 @@
 import { ref, shallowRef, watch } from 'vue'
 
 import pkg from '../../package.json'
-
+import { type FeedItem, fetchPage, type PageToken } from '../fakeServer'
 import Masonry from '../Masonry.vue'
-import { fetchPage, type FeedItem, type PageToken } from '../fakeServer'
 
 const items = ref<FeedItem[]>([])
 const itemIndexById = shallowRef<Map<string, number>>(new Map())
-const masonryRef = ref<{ remove: (itemsOrIds: Array<string | FeedItem> | string | FeedItem) => Promise<void> } | null>(null)
+const masonryRef = ref<{
+  remove: (itemsOrIds: Array<string | FeedItem> | string | FeedItem) => Promise<void>
+} | null>(null)
 
 const packageVersion = pkg.version
 
@@ -45,7 +46,7 @@ watch(
     }
     itemIndexById.value = map
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 function getPageLabelFromId(id: string | null | undefined) {

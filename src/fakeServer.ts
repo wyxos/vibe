@@ -110,9 +110,7 @@ export async function fetchPage(pageToken: PageToken): Promise<FetchPageResult> 
 
   await new Promise((resolve) => setTimeout(resolve, delayMs))
 
-  const items = Array.from({ length: ITEMS_PER_PAGE }, (_, index) =>
-    createItem({ page, index }),
-  )
+  const items = Array.from({ length: ITEMS_PER_PAGE }, (_, index) => createItem({ page, index }))
 
   const nextPageNumber = page < TOTAL_PAGES ? page + 1 : null
 

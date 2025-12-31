@@ -1,9 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
-
-import Masonry from '../src/Masonry.vue'
 import type { MasonryItemBase } from '../src/Masonry.vue'
+import Masonry from '../src/Masonry.vue'
 
 function flushPromises() {
   return new Promise((resolve) => setTimeout(resolve, 0))
@@ -59,7 +58,7 @@ describe('Masonry v-model:items', () => {
                 },
               },
               {
-                itemFooter: ({ item, remove }: any) =>
+                itemFooter: ({ item, remove }: { item: MasonryItemBase; remove: () => void }) =>
                   h(
                     'button',
                     {
@@ -67,9 +66,9 @@ describe('Masonry v-model:items', () => {
                       'data-testid': `remove-${item.id}`,
                       onClick: remove,
                     },
-                    'Remove',
+                    'Remove'
                   ),
-              },
+              }
             ),
           ])
       },

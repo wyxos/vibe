@@ -1,8 +1,20 @@
-import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { describe, expect, it, vi } from 'vitest'
 import { h } from 'vue'
-
 import Masonry from '../src/Masonry.vue'
+
+type SlotItem = {
+  id: string
+  width: number
+  height: number
+  type?: string
+  preview?: string
+  original?: string
+  [key: string]: unknown
+}
+
+type SlotItemContext = { item: SlotItem }
+type SlotItemFooterContext = { item: SlotItem; remove: () => void }
 
 function flushPromises() {
   return new Promise((resolve) => setTimeout(resolve, 0))
@@ -39,10 +51,14 @@ describe('Masonry slots + media rendering', () => {
     const wrapper = mount(Masonry, {
       props: { getContent, page: 1, itemWidth: 300 },
       slots: {
-        itemHeader: ({ item }: any) =>
+        itemHeader: ({ item }: SlotItemContext) =>
           h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
-        itemFooter: ({ item, remove }: any) =>
-          h('button', { 'data-testid': 'slot-item-footer', type: 'button', onClick: remove }, `F:${item.id}`),
+        itemFooter: ({ item, remove }: SlotItemFooterContext) =>
+          h(
+            'button',
+            { 'data-testid': 'slot-item-footer', type: 'button', onClick: remove },
+            `F:${item.id}`
+          ),
       },
       attachTo: document.body,
     })
@@ -99,8 +115,10 @@ describe('Masonry slots + media rendering', () => {
     const wrapper = mount(Masonry, {
       props: { getContent, page: 1, itemWidth: 300, headerHeight: 10, footerHeight: 20 },
       slots: {
-        itemHeader: ({ item }: any) => h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
-        itemFooter: ({ item }: any) => h('div', { 'data-testid': 'slot-item-footer' }, `F:${item.id}`),
+        itemHeader: ({ item }: SlotItemContext) =>
+          h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
+        itemFooter: ({ item }: SlotItemContext) =>
+          h('div', { 'data-testid': 'slot-item-footer' }, `F:${item.id}`),
       },
       attachTo: document.body,
     })
@@ -163,8 +181,12 @@ describe('Masonry slots + media rendering', () => {
     const wrapper = mount(Masonry, {
       props: { getContent, page: 1, itemWidth: 300, gapX: 16 },
       slots: {
-        itemFooter: ({ item, remove }: any) =>
-          h('button', { type: 'button', 'data-testid': `remove-${item.id}`, onClick: remove }, 'Remove'),
+        itemFooter: ({ item, remove }: SlotItemFooterContext) =>
+          h(
+            'button',
+            { type: 'button', 'data-testid': `remove-${item.id}`, onClick: remove },
+            'Remove'
+          ),
       },
       attachTo: document.body,
     })
@@ -175,7 +197,9 @@ describe('Masonry slots + media rendering', () => {
     // Force multi-column so item 'b' lands at x > 0 and will move to x=0 when 'a' is removed.
     const scroller = wrapper.get('[data-testid="items-scroll-container"]')
     Object.defineProperty(scroller.element, 'clientWidth', { value: 900, configurable: true })
-    if (roCallbacks.length) roCallbacks[0]([] as any, {} as any)
+    if (roCallbacks.length) {
+      roCallbacks[0]([] as unknown as ResizeObserverEntry[], {} as unknown as ResizeObserver)
+    }
     await wrapper.vm.$nextTick()
 
     const cardsBefore = wrapper.findAll('[data-testid="item-card"]')
@@ -233,8 +257,7 @@ describe('Masonry slots + media rendering', () => {
     const wrapper = mount(Masonry, {
       props: { getContent, page: 1, itemWidth: 300 },
       slots: {
-        itemHeader: ({ item }) =>
-          h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
+        itemHeader: ({ item }) => h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
       },
       attachTo: document.body,
     })
@@ -285,7 +308,7 @@ describe('Masonry slots + media rendering', () => {
     const widthMatch = /width:\s*([\d.]+)px/i.exec(startStyle)
     expect(widthMatch).toBeTruthy()
     if (!widthMatch) throw new Error('Expected width in start style')
-    expect(startStyle).toContain(`translate3d(-${widthMatch[1]}px,0px,0)`) 
+    expect(startStyle).toContain(`translate3d(-${widthMatch[1]}px,0px,0)`)
 
     // Run a few RAF ticks to advance the two-RAF animation schedule.
     for (let i = 0; i < 6 && rafCallbacks.length; i += 1) {
@@ -353,7 +376,9 @@ describe('Masonry slots + media rendering', () => {
     // Force multi-column layout so appended item can land at x > 0.
     const scroller = wrapper.get('[data-testid="items-scroll-container"]')
     Object.defineProperty(scroller.element, 'clientWidth', { value: 900, configurable: true })
-    if (roCallbacks.length) roCallbacks[0]([] as any, {} as any)
+    if (roCallbacks.length) {
+      roCallbacks[0]([] as unknown as ResizeObserverEntry[], {} as unknown as ResizeObserver)
+    }
     await wrapper.vm.$nextTick()
 
     // Clear initial animation.
@@ -381,7 +406,7 @@ describe('Masonry slots + media rendering', () => {
     const enteringWidthMatch = /width:\s*([\d.]+)px/i.exec(enteringStyle)
     expect(enteringWidthMatch).toBeTruthy()
     if (!enteringWidthMatch) throw new Error('Expected width in entering style')
-    expect(enteringStyle).toContain(`translate3d(-${enteringWidthMatch[1]}px,0px,0)`) 
+    expect(enteringStyle).toContain(`translate3d(-${enteringWidthMatch[1]}px,0px,0)`)
 
     // Advance animation.
     for (let i = 0; i < 6 && rafCallbacks.length; i += 1) {
@@ -391,7 +416,7 @@ describe('Masonry slots + media rendering', () => {
     await wrapper.vm.$nextTick()
 
     const endStyle = entering.attributes('style') ?? ''
-    const endXMatch = /translate3d\(\s*([\-\d.]+)px\s*,\s*0px\s*,\s*0\s*\)/i.exec(endStyle)
+    const endXMatch = /translate3d\(\s*([-\d.]+)px\s*,\s*0px\s*,\s*0\s*\)/i.exec(endStyle)
     expect(endXMatch).toBeTruthy()
     if (!endXMatch) throw new Error('Expected translate3d in end style')
     expect(Number(endXMatch[1])).toBeGreaterThan(0)

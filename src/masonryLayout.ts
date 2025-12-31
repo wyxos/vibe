@@ -8,7 +8,7 @@ export function getColumnWidth(
   containerWidth: number,
   columnCount: number,
   fallbackItemWidth: number,
-  gapX = 0,
+  gapX = 0
 ): number {
   if (!containerWidth || containerWidth <= 0) return fallbackItemWidth
   if (!columnCount || columnCount <= 0) return fallbackItemWidth
@@ -23,7 +23,7 @@ export function getColumnWidth(
 
 export function estimateItemHeight(
   item: { width?: number; height?: number } | null | undefined,
-  columnWidth: number,
+  columnWidth: number
 ): number {
   const w = item?.width
   const h = item?.height
@@ -35,7 +35,7 @@ export function estimateItemHeight(
 
 export function distributeItemsIntoColumns<T extends { width?: number; height?: number }>(
   items: T[],
-  { columnCount, columnWidth }: { columnCount: number; columnWidth: number },
+  { columnCount, columnWidth }: { columnCount: number; columnWidth: number }
 ): T[][] {
   const columns = Array.from({ length: columnCount }, () => ({ height: 0, items: [] }))
 

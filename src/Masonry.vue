@@ -1,12 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, useAttrs, useSlots, watch } from 'vue'
 import type { PropType } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, useAttrs, useSlots, watch } from 'vue'
 
-import {
-  estimateItemHeight,
-  getColumnCount,
-  getColumnWidth,
-} from './masonryLayout'
+import { estimateItemHeight, getColumnCount, getColumnWidth } from './masonryLayout'
 
 defineOptions({ inheritAttrs: false })
 
@@ -27,7 +23,9 @@ type GetContentResult<TItem extends MasonryItemBase> = {
   nextPage: PageToken | null
 }
 
-type GetContentFn<TItem extends MasonryItemBase> = (pageToken: PageToken) => Promise<GetContentResult<TItem>>
+type GetContentFn<TItem extends MasonryItemBase> = (
+  pageToken: PageToken
+) => Promise<GetContentResult<TItem>>
 
 const props = defineProps({
   getContent: {
@@ -72,9 +70,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  (e: 'update:items', items: MasonryItemBase[]): void
-}>()
+const emit = defineEmits<(e: 'update:items', items: MasonryItemBase[]) => void>()
 
 const attrs = useAttrs()
 const slots = useSlots()
@@ -110,12 +106,12 @@ const hasHeaderSlot = computed(() => Boolean(slots.itemHeader))
 const hasFooterSlot = computed(() => Boolean(slots.itemFooter))
 
 const headerStyle = computed(() => {
-  if (headerHeight.value > 0) return { height: headerHeight.value + 'px' }
+  if (headerHeight.value > 0) return { height: `${headerHeight.value}px` }
   return undefined
 })
 
 const footerStyle = computed(() => {
-  if (footerHeight.value > 0) return { height: footerHeight.value + 'px' }
+  if (footerHeight.value > 0) return { height: `${footerHeight.value}px` }
   return undefined
 })
 
@@ -145,7 +141,16 @@ const scheduledEnterIds = new Set<string>()
 // Move + leave animations
 const moveOffsets = ref<Map<string, { dx: number; dy: number }>>(new Map())
 const moveTransitionIds = ref<Set<string>>(new Set())
-const leavingClones = ref<Array<{ id: string; item: MasonryItemBase; fromX: number; fromY: number; width: number; leaving: boolean }>>([])
+const leavingClones = ref<
+  Array<{
+    id: string
+    item: MasonryItemBase
+    fromX: number
+    fromY: number
+    width: number
+    leaving: boolean
+  }>
+>([])
 
 function getMoveOffset(id: string): { dx: number; dy: number } {
   const off = moveOffsets.value.get(id)
@@ -153,8 +158,8 @@ function getMoveOffset(id: string): { dx: number; dy: number } {
 }
 
 function getCardTransition(id: string): string | undefined {
-  return (enterAnimatingIds.value.has(id) || moveTransitionIds.value.has(id))
-    ? 'transform ' + ENTER_FROM_LEFT_MS + 'ms ease-out'
+  return enterAnimatingIds.value.has(id) || moveTransitionIds.value.has(id)
+    ? `transform ${ENTER_FROM_LEFT_MS}ms ease-out`
     : undefined
 }
 
@@ -166,13 +171,14 @@ function getCardTransform(index: number): string {
   const startX = id && enterStartIds.value.has(id) ? -columnWidth.value : pos.x
   const startY = pos.y
   const off = id ? getMoveOffset(id) : { dx: 0, dy: 0 }
-  return 'translate3d(' + (startX + off.dx) + 'px,' + (startY + off.dy) + 'px,0)'
+  return `translate3d(${startX + off.dx}px,${startY + off.dy}px,0)`
 }
 
 function raf(cb: () => void) {
-  const fn: (f: FrameRequestCallback) => number = typeof requestAnimationFrame === 'function'
-    ? requestAnimationFrame
-    : (f: FrameRequestCallback) => setTimeout(() => f(0), 0) as unknown as number
+  const fn: (f: FrameRequestCallback) => number =
+    typeof requestAnimationFrame === 'function'
+      ? requestAnimationFrame
+      : (f: FrameRequestCallback) => setTimeout(() => f(0), 0) as unknown as number
   fn(() => cb())
 }
 
@@ -212,7 +218,7 @@ watch(
     if (!isItemsControlled.value) return
     controlledItemsMirror.value = Array.isArray(next) ? next : []
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 const itemsState = computed({
@@ -254,7 +260,14 @@ async function removeItems(itemsOrIds: string | MasonryItemBase | Array<string |
 
   // Render clones for removed items that are currently in layout.
   const width = columnWidth.value
-  const clones: Array<{ id: string; item: MasonryItemBase; fromX: number; fromY: number; width: number; leaving: boolean }> = []
+  const clones: Array<{
+    id: string
+    item: MasonryItemBase
+    fromX: number
+    fromY: number
+    width: number
+    leaving: boolean
+  }> = []
   for (const id of removeSet) {
     const idx = layoutIndexById.value.get(id)
     if (idx == null) continue
@@ -325,7 +338,9 @@ async function removeItems(itemsOrIds: string | MasonryItemBase | Array<string |
     const cloneIds = new Set(clones.map((c) => c.id))
     // Trigger leave transition on the clones, then remove them.
     raf(() => {
-      leavingClones.value = leavingClones.value.map((c) => (cloneIds.has(c.id) ? { ...c, leaving: false } : c))
+      leavingClones.value = leavingClones.value.map((c) =>
+        cloneIds.has(c.id) ? { ...c, leaving: false } : c
+      )
       setTimeout(() => {
         leavingClones.value = leavingClones.value.filter((c) => !cloneIds.has(c.id))
       }, ENTER_FROM_LEFT_MS)
@@ -465,7 +480,7 @@ watch(
       }, ENTER_FROM_LEFT_MS)
     })
   },
-  { flush: 'post' },
+  { flush: 'post' }
 )
 
 const firstLoadedPageToken = computed(() => {
@@ -572,7 +587,7 @@ watch(
     } finally {
       isLoadingInitial.value = false
     }
-  },
+  }
 )
 
 watch(
@@ -582,12 +597,12 @@ watch(
     if (!el) return
     containerWidth.value = getMeasuredContainerWidth(el)
   },
-  { immediate: false },
+  { immediate: false }
 )
 
 const columnCount = computed(() => getColumnCount(containerWidth.value, props.itemWidth))
 const columnWidth = computed(() =>
-  getColumnWidth(containerWidth.value, columnCount.value, props.itemWidth, gapX.value),
+  getColumnWidth(containerWidth.value, columnCount.value, props.itemWidth, gapX.value)
 )
 
 watch(
@@ -595,7 +610,7 @@ watch(
   () => {
     rebuildLayout()
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 watch(
@@ -605,7 +620,7 @@ watch(
   // updates (e.g. reactions) cheap.
   () => [itemsState.value, itemsState.value.length],
   () => rebuildLayout(),
-  { immediate: true },
+  { immediate: true }
 )
 
 const sectionClass = computed(() => {
