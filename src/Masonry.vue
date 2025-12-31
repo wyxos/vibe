@@ -1,6 +1,12 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, useAttrs, watch } from 'vue'
 
+import {
+  distributeItemsIntoColumns,
+  getColumnCount,
+  getColumnWidth,
+} from './masonryLayout.js'
+
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps({
@@ -141,47 +147,17 @@ watch(
   },
 )
 
-const columnCount = computed(() => {
-  const width = containerWidth.value
-  const target = props.itemWidth
-  if (!width || width <= 0) return 1
-  if (!target || target <= 0) return 1
-  return Math.max(1, Math.floor(width / target))
-})
+const columnCount = computed(() => getColumnCount(containerWidth.value, props.itemWidth))
+const columnWidth = computed(() =>
+  getColumnWidth(containerWidth.value, columnCount.value, props.itemWidth),
+)
 
-const columnWidth = computed(() => {
-  const count = columnCount.value
-  const width = containerWidth.value
-  if (!width || width <= 0) return props.itemWidth
-  return width / count
-})
-
-function estimateItemHeight(item) {
-  const w = item?.width
-  const h = item?.height
-  const colW = columnWidth.value
-  if (typeof w === 'number' && typeof h === 'number' && w > 0 && h > 0) {
-    return (h / w) * colW
-  }
-  return colW
-}
-
-const columns = computed(() => {
-  const count = columnCount.value
-  const list = Array.from({ length: count }, () => ({ height: 0, items: [] }))
-
-  for (const item of items.value) {
-    let bestIndex = 0
-    for (let i = 1; i < list.length; i += 1) {
-      if (list[i].height < list[bestIndex].height) bestIndex = i
-    }
-
-    list[bestIndex].items.push(item)
-    list[bestIndex].height += estimateItemHeight(item)
-  }
-
-  return list.map((c) => c.items)
-})
+const columns = computed(() =>
+  distributeItemsIntoColumns(items.value, {
+    columnCount: columnCount.value,
+    columnWidth: columnWidth.value,
+  }),
+)
 
 const sectionClass = computed(() => {
   const userClass = attrs.class
