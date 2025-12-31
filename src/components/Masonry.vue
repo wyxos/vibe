@@ -93,11 +93,15 @@ const layoutBuckets = ref<Map<number, number[]>>(new Map())
 const layoutContentHeight = ref(0)
 const layoutIndexById = ref<Map<string, number>>(new Map())
 
-// Entry animation: items appear from above the masonry container.
-// For an item with final (x,y), the first paint is at (x, y - height) and it
-// animates to (x,y).
+// Motion timings
 const CARD_MOTION_MS = 300
 const ENTER_MOTION_MS = 600
+const LEAVE_MOTION_MS = CARD_MOTION_MS
+
+function getOutsideContainerY(height: number): number {
+  const h = typeof height === 'number' && Number.isFinite(height) ? height : 0
+  return -Math.max(0, h)
+}
 const enterStartIds = ref<Set<string>>(new Set())
 const enterAnimatingIds = ref<Set<string>>(new Set())
 const scheduledEnterIds = new Set<string>()
@@ -136,7 +140,7 @@ function getCardTransform(index: number): string {
   const enterHeight = layoutHeights.value[index] ?? 0
   const enterOffset = enterHeight > 0 ? enterHeight : columnWidth.value
   const startX = pos.x
-  const startY = id && enterStartIds.value.has(id) ? -enterOffset : pos.y
+  const startY = id && enterStartIds.value.has(id) ? getOutsideContainerY(enterOffset) : pos.y
   const off = id ? getMoveOffset(id) : { dx: 0, dy: 0 }
   return `translate3d(${startX + off.dx}px,${startY + off.dy}px,0)`
 }
@@ -906,10 +910,10 @@ const sectionClass = computed(() => {
           class="pointer-events-none absolute overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm"
           :style="{
             width: c.width + 'px',
-            transition: 'transform ' + CARD_MOTION_MS + 'ms ease-out',
+            transition: 'transform ' + LEAVE_MOTION_MS + 'ms ease-out',
             transform: c.leaving
               ? 'translate3d(' + c.fromX + 'px,' + c.fromY + 'px,0)'
-              : 'translate3d(' + c.fromX + 'px,' + -c.height + 'px,0)',
+              : 'translate3d(' + c.fromX + 'px,' + getOutsideContainerY(c.height) + 'px,0)',
           }"
         >
           <div
