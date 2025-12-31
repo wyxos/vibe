@@ -771,10 +771,9 @@ function connectViewport() {
 
 onMounted(async () => {
   setupResizeObserver()
+  connectViewport()
   resetFeedState(props.page)
   await loadFirstPage(props.page)
-  await nextTick()
-  connectViewport()
 })
 
 onUnmounted(() => {
