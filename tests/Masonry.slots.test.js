@@ -117,6 +117,91 @@ describe('Masonry slots + media rendering', () => {
     wrapper.unmount()
   })
 
+  it('animates removal as reverse of enter and moves remaining items smoothly', async () => {
+    const roCallbacks = []
+    const originalResizeObserver = globalThis.ResizeObserver
+    globalThis.ResizeObserver = class {
+      constructor(cb) {
+        roCallbacks.push(cb)
+      }
+      observe() {}
+      disconnect() {}
+    }
+
+    const getContent = vi.fn(async () => {
+      return {
+        items: [
+          {
+            id: 'a',
+            type: 'image',
+            reaction: null,
+            width: 320,
+            height: 240,
+            original: 'https://picsum.photos/seed/original/1600/1200',
+            preview: 'https://picsum.photos/seed/preview/320/240',
+          },
+          {
+            id: 'b',
+            type: 'image',
+            reaction: null,
+            width: 320,
+            height: 240,
+            original: 'https://picsum.photos/seed/original/1600/1200',
+            preview: 'https://picsum.photos/seed/preview/320/240',
+          },
+        ],
+        nextPage: null,
+      }
+    })
+
+    const wrapper = mount(Masonry, {
+      props: { getContent, page: 1, itemWidth: 300, gapX: 16 },
+      slots: {
+        itemFooter: ({ item, remove }) =>
+          h('button', { type: 'button', 'data-testid': `remove-${item.id}`, onClick: remove }, 'Remove'),
+      },
+      attachTo: document.body,
+    })
+
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    // Force multi-column so item 'b' lands at x > 0 and will move to x=0 when 'a' is removed.
+    const scroller = wrapper.get('[data-testid="items-scroll-container"]')
+    Object.defineProperty(scroller.element, 'clientWidth', { value: 900, configurable: true })
+    if (roCallbacks.length) roCallbacks[0]()
+    await wrapper.vm.$nextTick()
+
+    const cardsBefore = wrapper.findAll('[data-testid="item-card"]')
+    expect(cardsBefore).toHaveLength(2)
+    expect(cardsBefore[1].attributes('style')).toContain('translate3d(')
+
+    await wrapper.get('[data-testid="remove-a"]').trigger('click')
+    await wrapper.vm.$nextTick()
+
+    // Data cards should drop immediately.
+    expect(wrapper.findAll('[data-testid="item-card"]').length).toBe(1)
+
+    const leaving = wrapper.get('[data-testid="item-card-leaving"]')
+    const leavingStartStyle = leaving.attributes('style')
+    const widthMatch = /width:\s*([\d.]+)px/i.exec(leavingStartStyle)
+    expect(widthMatch).toBeTruthy()
+    expect(leavingStartStyle).toContain('translate3d(') // starts at fromX
+
+    // Wait for the leave animation timer (ENTER_FROM_LEFT_MS=300).
+    await new Promise((resolve) => setTimeout(resolve, 350))
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.findAll('[data-testid="item-card-leaving"]').length).toBe(0)
+
+    // Remaining card should have had a transform transition for the move.
+    const remaining = wrapper.get('[data-testid="item-card"]')
+    expect(remaining.attributes('style')).toContain('transition:')
+
+    wrapper.unmount()
+    globalThis.ResizeObserver = originalResizeObserver
+  })
+
   it('renders the default footer when itemFooter slot is not provided', async () => {
     const getContent = vi.fn(async () => {
       return {

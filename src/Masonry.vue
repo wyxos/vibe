@@ -110,6 +110,7 @@ const layoutPositions = ref([])
 const layoutHeights = ref([])
 const layoutBuckets = ref(new Map())
 const layoutContentHeight = ref(0)
+const layoutIndexById = ref(new Map())
 
 // Entry animation: items appear from the left edge of the masonry container.
 // For an item with final (x,y), the first paint is at (-width, y) and it
@@ -118,6 +119,36 @@ const ENTER_FROM_LEFT_MS = 300
 const enterStartIds = ref(new Set())
 const enterAnimatingIds = ref(new Set())
 const scheduledEnterIds = new Set()
+
+// Move + leave animations
+const moveOffsets = ref(new Map())
+const moveAnimatingIds = ref(new Set())
+const leavingClones = ref([])
+
+function getMoveOffset(id) {
+  const off = moveOffsets.value.get(id)
+  return off ? off : { dx: 0, dy: 0 }
+}
+
+function getCardTransition(id) {
+  return (enterAnimatingIds.value.has(id) || moveAnimatingIds.value.has(id))
+    ? 'transform ' + ENTER_FROM_LEFT_MS + 'ms ease-out'
+    : undefined
+}
+
+function getCardTransform(index) {
+  const item = itemsState.value[index]
+  const id = item?.id
+
+  const pos = layoutPositions.value[index] ?? { x: 0, y: 0 }
+  const baseX = id && enterStartIds.value.has(id) ? -columnWidth.value : pos.x
+  const baseY = pos.y
+  const off = id ? getMoveOffset(id) : { dx: 0, dy: 0 }
+  return (
+    'translate3d(' + baseX + 'px,' + baseY + 'px,0) ' +
+    'translate3d(' + off.dx + 'px,' + off.dy + 'px,0)'
+  )
+}
 
 function raf(cb) {
   const fn = typeof requestAnimationFrame === 'function'
@@ -182,7 +213,86 @@ const itemsState = computed({
 function removeItem(itemOrId) {
   const id = typeof itemOrId === 'string' ? itemOrId : itemOrId?.id
   if (!id) return
+
+  const idx = layoutIndexById.value.get(id)
+  if (idx == null) {
+    itemsState.value = itemsState.value.filter((it) => it?.id !== id)
+    return
+  }
+
+  const item = itemsState.value[idx]
+  const pos = layoutPositions.value[idx] ?? { x: 0, y: 0 }
+  const width = columnWidth.value
+
+  // Snapshot positions for the currently rendered subset.
+  const oldPosById = new Map()
+  for (const vi of visibleIndices.value) {
+    const it = itemsState.value[vi]
+    const itId = it?.id
+    if (!itId) continue
+    const p = layoutPositions.value[vi]
+    if (!p) continue
+    oldPosById.set(itId, { x: p.x, y: p.y })
+  }
+
+  // Render a clone at the current position, then animate it left out of view.
+  leavingClones.value = [
+    ...leavingClones.value,
+    {
+      id,
+      item,
+      fromX: pos.x,
+      fromY: pos.y,
+      width,
+      leaving: true,
+    },
+  ]
+
+  // Remove from data immediately so remaining items compute their new layout.
   itemsState.value = itemsState.value.filter((it) => it?.id !== id)
+
+  // Animate remaining items into place (FLIP).
+  raf2(() => {
+    const offsets = new Map()
+    const animIds = new Set()
+
+    for (const [itId, oldPos] of oldPosById.entries()) {
+      if (itId === id) continue
+      const newIdx = layoutIndexById.value.get(itId)
+      if (newIdx == null) continue
+      const newPos = layoutPositions.value[newIdx]
+      if (!newPos) continue
+      const dx = oldPos.x - newPos.x
+      const dy = oldPos.y - newPos.y
+      if (dx || dy) {
+        offsets.set(itId, { dx, dy })
+        animIds.add(itId)
+      }
+    }
+
+    if (!offsets.size) return
+
+    moveOffsets.value = offsets
+    moveAnimatingIds.value = animIds
+
+    raf(() => {
+      // Drop offsets so transition animates to 0.
+      moveOffsets.value = new Map()
+      setTimeout(() => {
+        const next = new Set(moveAnimatingIds.value)
+        for (const itId of animIds) next.delete(itId)
+        moveAnimatingIds.value = next
+      }, ENTER_FROM_LEFT_MS)
+    })
+  })
+
+  // Trigger leave transition on the clone, then remove it.
+  raf(() => {
+    leavingClones.value = leavingClones.value.map((c) => (c.id === id ? { ...c, leaving: false } : c))
+    setTimeout(() => {
+      leavingClones.value = leavingClones.value.filter((c) => c.id !== id)
+    }, ENTER_FROM_LEFT_MS)
+  })
 }
 
 defineExpose({
@@ -201,6 +311,7 @@ function rebuildLayout() {
   const positions = new Array(itemsState.value.length)
   const heights = new Array(itemsState.value.length)
   const buckets = new Map()
+  const indexById = new Map()
 
   let maxY = 0
 
@@ -208,6 +319,7 @@ function rebuildLayout() {
   // preserving a single DOM sequence (no re-parenting on removal).
   for (let index = 0; index < itemsState.value.length; index += 1) {
     const item = itemsState.value[index]
+    if (item?.id) indexById.set(item.id, index)
 
     let bestCol = 0
     for (let c = 1; c < colHeights.length; c += 1) {
@@ -238,6 +350,7 @@ function rebuildLayout() {
   layoutHeights.value = heights
   layoutBuckets.value = buckets
   layoutContentHeight.value = maxY
+  layoutIndexById.value = indexById
 }
 
 const containerHeight = computed(() => {
@@ -409,6 +522,7 @@ watch(
     try {
       const result = await props.getContent(newPage)
       pagesLoaded.value = [newPage]
+      markEnterFromLeft(result.items)
       itemsState.value = result.items
       nextPage.value = result.nextPage
     } catch (err) {
@@ -510,10 +624,8 @@ const sectionClass = computed(() => {
           class="absolute overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm"
           :style="{
             width: columnWidth + 'px',
-            transition: enterAnimatingIds.has(itemsState[idx].id) ? 'transform ' + ENTER_FROM_LEFT_MS + 'ms ease-out' : undefined,
-            transform: enterStartIds.has(itemsState[idx].id)
-              ? 'translate3d(' + -columnWidth + 'px,' + (layoutPositions[idx]?.y ?? 0) + 'px,0)'
-              : 'translate3d(' + (layoutPositions[idx]?.x ?? 0) + 'px,' + (layoutPositions[idx]?.y ?? 0) + 'px,0)',
+            transition: getCardTransition(itemsState[idx].id),
+            transform: getCardTransform(idx),
           }"
         >
           <div
@@ -557,6 +669,63 @@ const sectionClass = computed(() => {
             :style="footerStyle"
           >
             <slot name="itemFooter" :item="itemsState[idx]" :remove="() => removeItem(itemsState[idx])"></slot>
+          </div>
+        </article>
+
+        <article
+          v-for="c in leavingClones"
+          :key="c.id + ':leaving'"
+          data-testid="item-card-leaving"
+          class="pointer-events-none absolute overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm"
+          :style="{
+            width: c.width + 'px',
+            transition: 'transform ' + ENTER_FROM_LEFT_MS + 'ms ease-out',
+            transform: c.leaving
+              ? 'translate3d(' + c.fromX + 'px,' + c.fromY + 'px,0)'
+              : 'translate3d(' + -c.width + 'px,' + c.fromY + 'px,0)',
+          }"
+        >
+          <div
+            v-if="hasHeaderSlot || headerHeight > 0"
+            data-testid="item-header-container"
+            class="w-full"
+            :style="headerStyle"
+          >
+            <slot name="itemHeader" :item="c.item" :remove="() => {}" />
+          </div>
+
+          <div
+            class="bg-slate-100"
+            :style="{ aspectRatio: c.item.width + ' / ' + c.item.height }"
+          >
+            <img
+              v-if="c.item.type === 'image'"
+              class="h-full w-full object-cover"
+              :src="c.item.preview"
+              :width="c.item.width"
+              :height="c.item.height"
+              loading="lazy"
+              :alt="c.item.id"
+            />
+
+            <video
+              v-else
+              class="h-full w-full object-cover"
+              :poster="c.item.preview"
+              controls
+              preload="metadata"
+            >
+              <source :src="c.item.original" type="video/mp4" />
+            </video>
+          </div>
+
+          <div
+            v-if="hasFooterSlot || footerHeight > 0"
+            data-testid="item-footer-container"
+            class="w-full"
+            :style="footerStyle"
+          >
+            <slot name="itemFooter" :item="c.item" :remove="() => {}"></slot>
           </div>
         </article>
       </div>
