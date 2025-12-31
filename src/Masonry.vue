@@ -122,7 +122,7 @@ const scheduledEnterIds = new Set()
 
 // Move + leave animations
 const moveOffsets = ref(new Map())
-const moveAnimatingIds = ref(new Set())
+const moveTransitionIds = ref(new Set())
 const leavingClones = ref([])
 
 function getMoveOffset(id) {
@@ -131,7 +131,7 @@ function getMoveOffset(id) {
 }
 
 function getCardTransition(id) {
-  return (enterAnimatingIds.value.has(id) || moveAnimatingIds.value.has(id))
+  return (enterAnimatingIds.value.has(id) || moveTransitionIds.value.has(id))
     ? 'transform ' + ENTER_FROM_LEFT_MS + 'ms ease-out'
     : undefined
 }
@@ -141,13 +141,10 @@ function getCardTransform(index) {
   const id = item?.id
 
   const pos = layoutPositions.value[index] ?? { x: 0, y: 0 }
-  const baseX = id && enterStartIds.value.has(id) ? -columnWidth.value : pos.x
-  const baseY = pos.y
+  const startX = id && enterStartIds.value.has(id) ? -columnWidth.value : pos.x
+  const startY = pos.y
   const off = id ? getMoveOffset(id) : { dx: 0, dy: 0 }
-  return (
-    'translate3d(' + baseX + 'px,' + baseY + 'px,0) ' +
-    'translate3d(' + off.dx + 'px,' + off.dy + 'px,0)'
-  )
+  return 'translate3d(' + (startX + off.dx) + 'px,' + (startY + off.dy) + 'px,0)'
 }
 
 function raf(cb) {
@@ -210,7 +207,7 @@ const itemsState = computed({
   },
 })
 
-function removeItem(itemOrId) {
+async function removeItem(itemOrId) {
   const id = typeof itemOrId === 'string' ? itemOrId : itemOrId?.id
   if (!id) return
 
@@ -251,40 +248,48 @@ function removeItem(itemOrId) {
   // Remove from data immediately so remaining items compute their new layout.
   itemsState.value = itemsState.value.filter((it) => it?.id !== id)
 
+  // Wait for Vue + layout watcher to apply the new layout/indices.
+  await nextTick()
+
   // Animate remaining items into place (FLIP).
-  raf2(() => {
-    const offsets = new Map()
-    const animIds = new Set()
+  const offsets = new Map()
+  const animIds = []
 
-    for (const [itId, oldPos] of oldPosById.entries()) {
-      if (itId === id) continue
-      const newIdx = layoutIndexById.value.get(itId)
-      if (newIdx == null) continue
-      const newPos = layoutPositions.value[newIdx]
-      if (!newPos) continue
-      const dx = oldPos.x - newPos.x
-      const dy = oldPos.y - newPos.y
-      if (dx || dy) {
-        offsets.set(itId, { dx, dy })
-        animIds.add(itId)
-      }
+  for (const [itId, oldPos] of oldPosById.entries()) {
+    if (itId === id) continue
+    const newIdx = layoutIndexById.value.get(itId)
+    if (newIdx == null) continue
+    const newPos = layoutPositions.value[newIdx]
+    if (!newPos) continue
+    const dx = oldPos.x - newPos.x
+    const dy = oldPos.y - newPos.y
+    if (dx || dy) {
+      offsets.set(itId, { dx, dy })
+      animIds.push(itId)
     }
+  }
 
-    if (!offsets.size) return
-
+  if (offsets.size) {
+    // Invert (no transition): keep items visually at old positions.
     moveOffsets.value = offsets
-    moveAnimatingIds.value = animIds
+    const withoutThese = new Set(moveTransitionIds.value)
+    for (const mid of animIds) withoutThese.delete(mid)
+    moveTransitionIds.value = withoutThese
 
+    // Play: enable transition next frame, then clear offsets the following frame.
     raf(() => {
-      // Drop offsets so transition animates to 0.
-      moveOffsets.value = new Map()
-      setTimeout(() => {
-        const next = new Set(moveAnimatingIds.value)
-        for (const itId of animIds) next.delete(itId)
-        moveAnimatingIds.value = next
-      }, ENTER_FROM_LEFT_MS)
+      moveTransitionIds.value = new Set([...moveTransitionIds.value, ...animIds])
+      raf(() => {
+        moveOffsets.value = new Map()
+      })
     })
-  })
+
+    setTimeout(() => {
+      const next = new Set(moveTransitionIds.value)
+      for (const mid of animIds) next.delete(mid)
+      moveTransitionIds.value = next
+    }, ENTER_FROM_LEFT_MS)
+  }
 
   // Trigger leave transition on the clone, then remove it.
   raf(() => {

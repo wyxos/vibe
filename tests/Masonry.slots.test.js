@@ -188,15 +188,19 @@ describe('Masonry slots + media rendering', () => {
     expect(widthMatch).toBeTruthy()
     expect(leavingStartStyle).toContain('translate3d(') // starts at fromX
 
+    // Move transition is enabled on the next frame; assert it while active.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await wrapper.vm.$nextTick()
+
+    const remainingDuringMove = wrapper.get('[data-testid="item-card"]')
+    expect(remainingDuringMove.attributes('style')).toContain('transition:')
+
     // Wait for the leave animation timer (ENTER_FROM_LEFT_MS=300).
     await new Promise((resolve) => setTimeout(resolve, 350))
     await wrapper.vm.$nextTick()
 
     expect(wrapper.findAll('[data-testid="item-card-leaving"]').length).toBe(0)
-
-    // Remaining card should have had a transform transition for the move.
-    const remaining = wrapper.get('[data-testid="item-card"]')
-    expect(remaining.attributes('style')).toContain('transition:')
 
     wrapper.unmount()
     globalThis.ResizeObserver = originalResizeObserver
