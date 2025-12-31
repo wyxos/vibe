@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import type { PropType } from 'vue'
-import type {
-  BackfillStats,
-  GetContentFn,
-  MasonryItemBase,
-  MasonryMode,
-  PageToken,
+import {
+  masonryDefaults,
+  type BackfillStats,
+  type MasonryItemBase,
+  type MasonryProps,
+  type PageToken,
 } from './masonryTypes'
 import {
   computed,
@@ -32,60 +31,7 @@ defineOptions({ inheritAttrs: false })
 
 export type { BackfillStats, GetContentFn, GetContentResult, MasonryItemBase, MasonryMode, PageToken } from './masonryTypes'
 
-const props = defineProps({
-  getContent: {
-    type: Function as PropType<GetContentFn<MasonryItemBase>>,
-    required: true,
-  },
-  mode: {
-    type: String as PropType<MasonryMode>,
-    default: 'default',
-  },
-  pageSize: {
-    type: Number,
-    default: 20,
-  },
-  backfillRequestDelayMs: {
-    type: Number,
-    default: 2000,
-  },
-  items: {
-    type: Array as PropType<MasonryItemBase[] | undefined>,
-    default: undefined,
-  },
-  page: {
-    type: [String, Number] as PropType<PageToken>,
-    default: 1,
-  },
-  itemWidth: {
-    type: Number,
-    default: 300,
-  },
-  prefetchThresholdPx: {
-    type: Number,
-    default: 200,
-  },
-  gapX: {
-    type: Number,
-    default: 16,
-  },
-  gapY: {
-    type: Number,
-    default: 16,
-  },
-  headerHeight: {
-    type: Number,
-    default: 0,
-  },
-  footerHeight: {
-    type: Number,
-    default: 0,
-  },
-  overscanPx: {
-    type: Number,
-    default: 600,
-  },
-})
+const props = withDefaults(defineProps<MasonryProps>(), masonryDefaults)
 
 const emit = defineEmits<(e: 'update:items', items: MasonryItemBase[]) => void>()
 
