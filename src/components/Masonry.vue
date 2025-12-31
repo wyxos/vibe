@@ -135,7 +135,7 @@ function getCardTransform(index: number): string {
   const enterHeight = layoutHeights.value[index] ?? 0
   const enterOffset = enterHeight > 0 ? enterHeight : columnWidth.value
   const startX = pos.x
-  const startY = id && enterStartIds.value.has(id) ? pos.y - enterOffset : pos.y
+  const startY = id && enterStartIds.value.has(id) ? -enterOffset : pos.y
   const off = id ? getMoveOffset(id) : { dx: 0, dy: 0 }
   return `translate3d(${startX + off.dx}px,${startY + off.dy}px,0)`
 }
@@ -908,7 +908,7 @@ const sectionClass = computed(() => {
             transition: 'transform ' + CARD_MOTION_MS + 'ms ease-out',
             transform: c.leaving
               ? 'translate3d(' + c.fromX + 'px,' + c.fromY + 'px,0)'
-              : 'translate3d(' + c.fromX + 'px,' + (c.fromY - c.height) + 'px,0)',
+              : 'translate3d(' + c.fromX + 'px,' + -c.height + 'px,0)',
           }"
         >
           <div
