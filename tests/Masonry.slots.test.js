@@ -39,8 +39,8 @@ describe('Masonry slots + media rendering', () => {
       slots: {
         itemHeader: ({ item }) =>
           h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
-        itemFooter: ({ item }) =>
-          h('div', { 'data-testid': 'slot-item-footer' }, `F:${item.id}`),
+        itemFooter: ({ item, remove }) =>
+          h('button', { 'data-testid': 'slot-item-footer', type: 'button', onClick: remove }, `F:${item.id}`),
       },
       attachTo: document.body,
     })
@@ -67,6 +67,11 @@ describe('Masonry slots + media rendering', () => {
     const source = wrapper.find('video source')
     expect(source.exists()).toBe(true)
     expect(source.attributes('src')).toBe('https://example.com/video.mp4')
+
+    // Remove one item via the exposed helper.
+    await wrapper.findAll('[data-testid="slot-item-footer"]')[0].trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.findAll('[data-testid="item-card"]').length).toBe(1)
 
     wrapper.unmount()
   })

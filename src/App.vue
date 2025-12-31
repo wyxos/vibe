@@ -27,25 +27,24 @@ async function getContent(pageToken) {
       </header>
 
       <Masonry :get-content="getContent" :page="initialPageToken">
-        <template #itemHeader="{ item }">
-          <div class="flex items-center justify-between gap-3 px-4 pt-3">
-            <span
-              class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-2 py-0.5 text-xs font-medium text-slate-700"
-            >
-              {{ item.type }}
-            </span>
-            <span class="truncate font-mono text-xs text-slate-500">{{ item.id }}</span>
-          </div>
-        </template>
-
-        <template #itemFooter="{ item }">
+        <template #itemFooter="{ item, remove }">
           <div class="flex items-center justify-between gap-3 px-4 py-3">
-            <span
-              class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-2 py-0.5 text-xs font-medium text-slate-700"
+            <div class="flex min-w-0 items-center gap-2">
+              <span
+                class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-2 py-0.5 text-xs font-medium text-slate-700"
+              >
+                {{ item.type }}
+              </span>
+              <span class="truncate font-mono text-xs text-slate-500">{{ item.id }}</span>
+            </div>
+
+            <button
+              type="button"
+              class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              @click="remove()"
             >
-              {{ item.type }}
-            </span>
-            <span class="truncate font-mono text-xs text-slate-500">{{ item.id }}</span>
+              Remove
+            </button>
           </div>
         </template>
       </Masonry>

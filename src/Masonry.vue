@@ -14,6 +14,10 @@ const props = defineProps({
     type: Function,
     required: true,
   },
+  items: {
+    type: Array,
+    default: undefined,
+  },
   page: {
     type: [String, Number],
     default: 1,
@@ -27,6 +31,8 @@ const props = defineProps({
     default: 200,
   },
 })
+
+const emit = defineEmits(['update:items'])
 
 const attrs = useAttrs()
 
@@ -46,8 +52,26 @@ const isLoadingNext = ref(false)
 const error = ref('')
 
 const pagesLoaded = ref([])
-const items = ref([])
+const internalItems = ref([])
 const nextPage = ref(props.page)
+
+const isItemsControlled = computed(() => props.items !== undefined)
+
+const itemsState = computed({
+  get() {
+    return isItemsControlled.value ? props.items : internalItems.value
+  },
+  set(next) {
+    if (isItemsControlled.value) emit('update:items', next)
+    else internalItems.value = next
+  },
+})
+
+function removeItem(itemOrId) {
+  const id = typeof itemOrId === 'string' ? itemOrId : itemOrId?.id
+  if (!id) return
+  itemsState.value = itemsState.value.filter((it) => it?.id !== id)
+}
 
 const firstLoadedPageToken = computed(() => {
   return pagesLoaded.value.length ? pagesLoaded.value[0] : props.page
@@ -65,7 +89,7 @@ async function loadNextPage() {
     const result = await props.getContent(pageToLoad)
 
     pagesLoaded.value = [...pagesLoaded.value, pageToLoad]
-    items.value = [...items.value, ...result.items]
+    itemsState.value = [...itemsState.value, ...result.items]
     nextPage.value = result.nextPage
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err)
@@ -103,7 +127,7 @@ onMounted(async () => {
     const result = await props.getContent(props.page)
 
     pagesLoaded.value = [props.page]
-    items.value = result.items
+    itemsState.value = result.items
     nextPage.value = result.nextPage
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err)
@@ -128,7 +152,7 @@ watch(
   async (newPage) => {
     // If the starting page changes, restart the feed.
     pagesLoaded.value = []
-    items.value = []
+    itemsState.value = []
     nextPage.value = newPage
     isLoadingInitial.value = true
     isLoadingNext.value = false
@@ -137,7 +161,7 @@ watch(
     try {
       const result = await props.getContent(newPage)
       pagesLoaded.value = [newPage]
-      items.value = result.items
+      itemsState.value = result.items
       nextPage.value = result.nextPage
     } catch (err) {
       error.value = err instanceof Error ? err.message : String(err)
@@ -153,7 +177,7 @@ const columnWidth = computed(() =>
 )
 
 const columns = computed(() =>
-  distributeItemsIntoColumns(items.value, {
+  distributeItemsIntoColumns(itemsState.value, {
     columnCount: columnCount.value,
     columnWidth: columnWidth.value,
   }),
@@ -196,7 +220,7 @@ const sectionClass = computed(() => {
             data-testid="item-card"
             class="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm"
           >
-            <slot name="itemHeader" :item="item" />
+            <slot name="itemHeader" :item="item" :remove="() => removeItem(item)" />
 
             <div class="bg-slate-100" :style="{ aspectRatio: item.width + ' / ' + item.height }">
               <img
@@ -220,7 +244,7 @@ const sectionClass = computed(() => {
               </video>
             </div>
 
-            <slot name="itemFooter" :item="item">
+            <slot name="itemFooter" :item="item" :remove="() => removeItem(item)">
               <div class="flex items-center justify-between gap-3 px-4 py-3">
                 <span
                   class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-2 py-0.5 text-xs font-medium text-slate-700"
