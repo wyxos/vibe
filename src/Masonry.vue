@@ -73,6 +73,14 @@ let resizeObserver
 const gapX = computed(() => props.gapX)
 const gapY = computed(() => props.gapY)
 
+function getMeasuredContainerWidth(el) {
+  if (!el) return 0
+  const pr = Math.max(0, gapX.value)
+  // clientWidth includes padding but excludes scrollbar. Subtract padding-right
+  // so layout math uses the true content width.
+  return Math.max(1, el.clientWidth - pr)
+}
+
 const headerHeight = computed(() => props.headerHeight)
 const footerHeight = computed(() => props.footerHeight)
 
@@ -271,7 +279,7 @@ onMounted(async () => {
     resizeObserver = new ResizeObserver(() => {
       const el = scrollContainerEl.value
       if (!el) return
-      containerWidth.value = el.clientWidth
+      containerWidth.value = getMeasuredContainerWidth(el)
       viewportHeight.value = el.clientHeight
     })
   }
@@ -297,7 +305,7 @@ onMounted(async () => {
   await nextTick()
   const el = scrollContainerEl.value
   if (el) {
-    containerWidth.value = el.clientWidth
+    containerWidth.value = getMeasuredContainerWidth(el)
     viewportHeight.value = el.clientHeight
     scrollTop.value = el.scrollTop
     resizeObserver?.observe(el)
@@ -330,6 +338,16 @@ watch(
       isLoadingInitial.value = false
     }
   },
+)
+
+watch(
+  gapX,
+  () => {
+    const el = scrollContainerEl.value
+    if (!el) return
+    containerWidth.value = getMeasuredContainerWidth(el)
+  },
+  { immediate: false },
 )
 
 const columnCount = computed(() => getColumnCount(containerWidth.value, props.itemWidth))
@@ -375,6 +393,7 @@ const sectionClass = computed(() => {
       ref="scrollContainerEl"
       data-testid="items-scroll-container"
       class="mt-4 min-h-0 flex-1 overflow-auto"
+      :style="{ paddingRight: gapX + 'px' }"
       @scroll="maybeLoadMoreOnScroll"
     >
       <p v-if="isLoadingInitial" class="text-sm text-slate-600">Loading…</p>
