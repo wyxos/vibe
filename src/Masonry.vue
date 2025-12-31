@@ -12,13 +12,14 @@ import {
   watch,
 } from 'vue'
 
-import { estimateItemHeight, getColumnCount, getColumnWidth } from './masonryLayout'
+import { getColumnCount, getColumnWidth } from './masonryLayout'
 import {
   clampDelayMs,
   clampPageSize,
   createBackfillBatchLoader,
   type BackfillStatsShape,
 } from './masonryBackfill'
+import { buildMasonryLayout, getVisibleIndicesFromBuckets } from './masonryLayoutEngine'
 
 defineOptions({ inheritAttrs: false })
 
@@ -458,57 +459,22 @@ defineExpose({
 })
 
 function rebuildLayout() {
-  const count = columnCount.value
-  const colWidth = columnWidth.value
-  const gx = gapX.value
-  const gy = gapY.value
-  const hh = headerHeight.value
-  const fh = footerHeight.value
+  const next = buildMasonryLayout<MasonryItemBase>({
+    items: itemsState.value,
+    columnCount: columnCount.value,
+    columnWidth: columnWidth.value,
+    gapX: gapX.value,
+    gapY: gapY.value,
+    headerHeight: headerHeight.value,
+    footerHeight: footerHeight.value,
+    bucketPx: BUCKET_PX,
+  })
 
-  const colHeights = Array.from({ length: count }, () => 0)
-  const positions = new Array(itemsState.value.length)
-  const heights = new Array(itemsState.value.length)
-  const buckets = new Map()
-  const indexById = new Map()
-
-  let maxY = 0
-
-  // Sequential placement into the shortest column gives a masonry layout while
-  // preserving a single DOM sequence (no re-parenting on removal).
-  for (let index = 0; index < itemsState.value.length; index += 1) {
-    const item = itemsState.value[index]
-    if (item?.id) indexById.set(item.id, index)
-
-    let bestCol = 0
-    for (let c = 1; c < colHeights.length; c += 1) {
-      if (colHeights[c] < colHeights[bestCol]) bestCol = c
-    }
-
-    const x = bestCol * (colWidth + gx)
-    const y = colHeights[bestCol]
-    const h = estimateItemHeight(item, colWidth) + hh + fh
-
-    positions[index] = { x, y }
-    heights[index] = h
-
-    colHeights[bestCol] = y + h + gy
-    maxY = Math.max(maxY, y + h)
-
-    // Virtualization buckets by y-range.
-    const startBucket = Math.floor(y / BUCKET_PX)
-    const endBucket = Math.floor((y + h) / BUCKET_PX)
-    for (let b = startBucket; b <= endBucket; b += 1) {
-      const arr = buckets.get(b)
-      if (arr) arr.push(index)
-      else buckets.set(b, [index])
-    }
-  }
-
-  layoutPositions.value = positions
-  layoutHeights.value = heights
-  layoutBuckets.value = buckets
-  layoutContentHeight.value = maxY
-  layoutIndexById.value = indexById
+  layoutPositions.value = next.positions
+  layoutHeights.value = next.heights
+  layoutBuckets.value = next.buckets
+  layoutContentHeight.value = next.contentHeight
+  layoutIndexById.value = next.indexById
 }
 
 const containerHeight = computed(() => {
@@ -517,28 +483,14 @@ const containerHeight = computed(() => {
 })
 
 const visibleIndices = computed<number[]>(() => {
-  const len = itemsState.value.length
-  if (!len) return []
-
-  // In jsdom/tests, element sizing is often 0. Render all items.
-  if (viewportHeight.value <= 0) return Array.from({ length: len }, (_, i) => i)
-
-  const startY = Math.max(0, scrollTop.value - props.overscanPx)
-  const endY = scrollTop.value + viewportHeight.value + props.overscanPx
-
-  const startBucket = Math.floor(startY / BUCKET_PX)
-  const endBucket = Math.floor(endY / BUCKET_PX)
-
-  const picked = new Set<number>()
-  for (let b = startBucket; b <= endBucket; b += 1) {
-    const bucket = layoutBuckets.value.get(b)
-    if (!bucket) continue
-    for (const idx of bucket) picked.add(idx)
-  }
-
-  const ordered = Array.from(picked) as number[]
-  ordered.sort((a, b) => a - b)
-  return ordered
+  return getVisibleIndicesFromBuckets({
+    itemCount: itemsState.value.length,
+    viewportHeight: viewportHeight.value,
+    scrollTop: scrollTop.value,
+    overscanPx: props.overscanPx,
+    bucketPx: BUCKET_PX,
+    buckets: layoutBuckets.value,
+  })
 })
 
 watch(
