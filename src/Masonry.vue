@@ -13,6 +13,12 @@ import {
 } from 'vue'
 
 import { estimateItemHeight, getColumnCount, getColumnWidth } from './masonryLayout'
+import {
+  clampDelayMs,
+  clampPageSize,
+  createBackfillBatchLoader,
+  type BackfillStatsShape,
+} from './masonryBackfill'
 
 defineOptions({ inheritAttrs: false })
 
@@ -285,6 +291,18 @@ const backfillStats = shallowRef<BackfillStats>({
   },
 })
 
+const backfillLoader = createBackfillBatchLoader<MasonryItemBase, PageToken>({
+  getContent: (pageToken) => props.getContent(pageToken),
+  markEnterFromLeft,
+  buffer: backfillBuffer,
+  stats: backfillStats as unknown as typeof backfillStats & {
+    value: BackfillStatsShape<PageToken>
+  },
+  isEnabled: () => props.mode === 'backfill',
+  getPageSize: () => props.pageSize,
+  getRequestDelayMs: () => props.backfillRequestDelayMs,
+})
+
 const isItemsControlled = computed(() => props.items !== undefined)
 
 watch(
@@ -310,197 +328,6 @@ const itemsState = computed({
   },
 })
 
-function clampPageSize(n: number): number {
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1
-}
-
-function clampDelayMs(n: number): number {
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
-}
-
-async function sleepWithCountdown(ms: number) {
-  const total = clampDelayMs(ms)
-  if (total <= 0) return
-
-  backfillStats.value = {
-    ...backfillStats.value,
-    cooldownMsTotal: total,
-    cooldownMsRemaining: total,
-  }
-
-  const start = Date.now()
-  const tickMs = 100
-
-  await new Promise<void>((resolve) => {
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - start
-      const remaining = Math.max(0, total - elapsed)
-
-      backfillStats.value = {
-        ...backfillStats.value,
-        cooldownMsTotal: total,
-        cooldownMsRemaining: remaining,
-      }
-
-      if (remaining <= 0) {
-        clearInterval(interval)
-        resolve()
-      }
-    }, tickMs)
-  })
-}
-
-async function loadBackfillBatch(startPage: PageToken | null) {
-  const target = clampPageSize(props.pageSize)
-
-  const enabled = props.mode === 'backfill'
-  const delayMs = clampDelayMs(props.backfillRequestDelayMs)
-
-  // First, use any carryover items from previous backfill fetches.
-  const collected: MasonryItemBase[] = []
-  let usedFromBuffer = 0
-  if (backfillBuffer.value.length) {
-    usedFromBuffer = backfillBuffer.value.length
-    collected.push(...backfillBuffer.value)
-    backfillBuffer.value = []
-  }
-
-  backfillStats.value = {
-    ...backfillStats.value,
-    enabled,
-    isBackfillActive: false,
-    isRequestInFlight: false,
-    requestPage: null,
-    cooldownMsTotal: delayMs,
-    cooldownMsRemaining: 0,
-    progress: {
-      collected: 0,
-      target: 0,
-    },
-    pageSize: target,
-    bufferSize: 0,
-  }
-
-  const pages: PageToken[] = []
-  let next = startPage
-  let fetchedFromNetwork = 0
-
-  let isBackfillActive = false
-
-  while (collected.length < target && next != null) {
-    const pageToLoad = next
-
-    // Only consider these as "backfill requests" after we have actually
-    // determined we're short and need extra pages.
-    if (isBackfillActive) {
-      backfillStats.value = {
-        ...backfillStats.value,
-        enabled,
-        isBackfillActive: true,
-        isRequestInFlight: true,
-        requestPage: pageToLoad,
-        progress: {
-          collected: Math.min(collected.length, target),
-          target,
-        },
-        cooldownMsTotal: delayMs,
-        cooldownMsRemaining: 0,
-        pageSize: target,
-      }
-    }
-
-    const result = await props.getContent(pageToLoad)
-
-    pages.push(pageToLoad)
-
-    if (isBackfillActive) {
-      backfillStats.value = {
-        ...backfillStats.value,
-        enabled,
-        isBackfillActive: true,
-        isRequestInFlight: false,
-        requestPage: null,
-      }
-    }
-
-    fetchedFromNetwork += result.items.length
-
-    // Mark for entry animation when these items are eventually rendered.
-    markEnterFromLeft(result.items)
-
-    collected.push(...result.items)
-    next = result.nextPage
-
-    // If we're still short after the first fetch, that is when backfill becomes active.
-    if (!isBackfillActive && collected.length < target && next != null) {
-      isBackfillActive = true
-      backfillStats.value = {
-        ...backfillStats.value,
-        enabled,
-        isBackfillActive: true,
-        isRequestInFlight: false,
-        requestPage: null,
-        progress: {
-          collected: Math.min(collected.length, target),
-          target,
-        },
-        cooldownMsTotal: delayMs,
-        cooldownMsRemaining: 0,
-        pageSize: target,
-      }
-    } else if (isBackfillActive) {
-      backfillStats.value = {
-        ...backfillStats.value,
-        enabled,
-        isBackfillActive: true,
-        progress: {
-          collected: Math.min(collected.length, target),
-          target,
-        },
-      }
-    }
-
-    if (isBackfillActive && collected.length < target && next != null) {
-      await sleepWithCountdown(delayMs)
-    }
-  }
-
-  const batchItems = collected.slice(0, target)
-  const carry = collected.slice(target)
-  backfillBuffer.value = carry
-
-  backfillStats.value = {
-    ...backfillStats.value,
-    enabled,
-    isBackfillActive: false,
-    isRequestInFlight: false,
-    requestPage: null,
-    progress: {
-      collected: 0,
-      target: 0,
-    },
-    cooldownMsTotal: delayMs,
-    cooldownMsRemaining: 0,
-    pageSize: target,
-    bufferSize: carry.length,
-    lastBatch: {
-      startPage,
-      pages,
-      usedFromBuffer,
-      fetchedFromNetwork,
-      collectedTotal: collected.length,
-      emitted: batchItems.length,
-      carried: carry.length,
-    },
-    totals: {
-      pagesFetched: backfillStats.value.totals.pagesFetched + pages.length,
-      itemsFetchedFromNetwork:
-        backfillStats.value.totals.itemsFetchedFromNetwork + fetchedFromNetwork,
-    },
-  }
-
-  return { batchItems, pages, nextPage: next }
-}
 
 async function loadDefaultPage(pageToLoad: PageToken) {
   const result = await props.getContent(pageToLoad)
@@ -773,7 +600,7 @@ async function loadNextPage() {
     error.value = ''
 
     if (props.mode === 'backfill') {
-      const result = await loadBackfillBatch(nextPage.value)
+      const result = await backfillLoader.loadBackfillBatch(nextPage.value)
       if (result.pages.length) pagesLoaded.value = [...pagesLoaded.value, ...result.pages]
       itemsState.value = [...itemsState.value, ...result.batchItems]
       nextPage.value = result.nextPage
@@ -845,7 +672,7 @@ onMounted(async () => {
     error.value = ''
 
     if (props.mode === 'backfill') {
-      const result = await loadBackfillBatch(props.page)
+      const result = await backfillLoader.loadBackfillBatch(props.page)
       pagesLoaded.value = result.pages.length ? result.pages : [props.page]
       itemsState.value = result.batchItems
       nextPage.value = result.nextPage
@@ -908,7 +735,7 @@ watch(
 
     try {
       if (props.mode === 'backfill') {
-        const result = await loadBackfillBatch(newPage)
+        const result = await backfillLoader.loadBackfillBatch(newPage)
         pagesLoaded.value = result.pages.length ? result.pages : [newPage]
         itemsState.value = result.batchItems
         nextPage.value = result.nextPage

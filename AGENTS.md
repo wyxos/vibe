@@ -30,3 +30,7 @@ This repo’s `src/Masonry.vue` is designed with **very large item arrays in min
 
 - Update unit tests in `tests/` when item contracts change.
 - Prefer deterministic fixtures and cheap DOM updates in tests.
+
+## Local validation
+
+- Prefer running `npm run check` after changes (lint + typecheck + tests) instead of running each command separately.
