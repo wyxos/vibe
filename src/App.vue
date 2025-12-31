@@ -38,6 +38,8 @@ const npmUrl = `https://www.npmjs.com/package/${encodeURIComponent(pkg.name)}`
           </details>
         </nav>
 
+        <span class="text-sm text-slate-600">v{{ pkg.version }}</span>
+
         <div class="ml-auto flex items-center gap-2">
           <a
             :href="githubUrl"

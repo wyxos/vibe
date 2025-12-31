@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, shallowRef, watch } from 'vue'
 
-import pkg from '../../package.json'
 import { type FeedItem, fetchPage, type PageToken } from '@/fakeServer'
 import Masonry from '@/Masonry.vue'
 
@@ -10,8 +9,6 @@ const itemIndexById = shallowRef<Map<string, number>>(new Map())
 const masonryRef = ref<{
   remove: (itemsOrIds: Array<string | FeedItem> | string | FeedItem) => Promise<void>
 } | null>(null)
-
-const packageVersion = pkg.version
 
 const initialPageToken = (() => {
   const raw = new URLSearchParams(window.location.search).get('page')
@@ -102,13 +99,6 @@ function removeRandomItems() {
 
 <template>
   <div class="h-full min-h-0 overflow-hidden">
-    <div class="border-b border-slate-200 bg-white">
-      <div class="mx-auto max-w-7xl px-6 py-3 text-sm text-slate-700 2xl:max-w-screen-2xl 2xl:px-10 min-[1920px]:!max-w-[1800px] min-[1920px]:!px-12 min-[2560px]:!max-w-[2200px]">
-        <span class="font-medium text-slate-900">Pages loaded:</span>
-        <span class="ml-2 tabular-nums">{{ pagesLoadedLabel }}</span>
-      </div>
-    </div>
-
     <div
       class="mx-auto flex h-full min-h-0 max-w-7xl flex-col px-6 py-10 2xl:max-w-screen-2xl 2xl:px-10 min-[1920px]:!max-w-[1800px] min-[1920px]:!px-12 min-[2560px]:!max-w-[2200px]"
     >
@@ -116,11 +106,17 @@ function removeRandomItems() {
         <div class="min-w-0">
           <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Vibe</h1>
           <p class="text-sm text-slate-600">
-            v{{ packageVersion }} · Fake server demo · 100 pages · 20 items/page
+            Fake server demo · 100 pages · 20 items/page
           </p>
         </div>
 
         <div class="ml-auto flex items-center gap-2">
+          <span
+            class="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
+          >
+            <span class="text-slate-600">Pages loaded:</span>
+            <span class="ml-2 tabular-nums text-slate-900">{{ pagesLoadedLabel }}</span>
+          </span>
           <button
             type="button"
             data-testid="remove-random"

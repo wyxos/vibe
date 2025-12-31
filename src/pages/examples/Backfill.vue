@@ -100,13 +100,6 @@ async function getContent(pageToken: PageToken) {
 
 <template>
   <div class="h-full min-h-0 overflow-hidden">
-    <div class="border-b border-slate-200 bg-white">
-      <div class="mx-auto max-w-7xl px-6 py-3 text-sm text-slate-700 2xl:max-w-screen-2xl 2xl:px-10 min-[1920px]:!max-w-[1800px] min-[1920px]:!px-12 min-[2560px]:!max-w-[2200px]">
-        <span class="font-medium text-slate-900">Pages loaded:</span>
-        <span class="ml-2 tabular-nums">{{ pagesLoadedLabel }}</span>
-      </div>
-    </div>
-
     <div
       class="mx-auto flex h-full min-h-0 max-w-7xl flex-col px-6 py-10 2xl:max-w-screen-2xl 2xl:px-10 min-[1920px]:!max-w-[1800px] min-[1920px]:!px-12 min-[2560px]:!max-w-[2200px]"
     >
@@ -120,6 +113,13 @@ async function getContent(pageToken: PageToken) {
         </div>
 
         <div class="ml-auto flex flex-wrap items-center justify-end gap-2">
+          <span
+            class="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
+          >
+            <span class="text-slate-600">Pages loaded:</span>
+            <span class="ml-2 tabular-nums text-slate-900">{{ pagesLoadedLabel }}</span>
+          </span>
+
           <span
             class="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
           >
