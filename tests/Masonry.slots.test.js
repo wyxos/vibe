@@ -150,4 +150,140 @@ describe('Masonry slots + media rendering', () => {
 
     wrapper.unmount()
   })
+
+  it('animates initial load from container left (-width, finalY) to (finalX, finalY)', async () => {
+    const rafCallbacks = []
+    const originalRaf = globalThis.requestAnimationFrame
+    globalThis.requestAnimationFrame = (cb) => {
+      rafCallbacks.push(cb)
+      return 0
+    }
+
+    const getContent = vi.fn(async () => {
+      return {
+        items: [
+          {
+            id: 'img-1',
+            type: 'image',
+            reaction: null,
+            width: 320,
+            height: 240,
+            original: 'https://picsum.photos/seed/original/1600/1200',
+            preview: 'https://picsum.photos/seed/preview/320/240',
+          },
+        ],
+        nextPage: null,
+      }
+    })
+
+    const wrapper = mount(Masonry, {
+      props: { getContent, page: 1, itemWidth: 300 },
+      attachTo: document.body,
+    })
+
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    const card = wrapper.get('[data-testid="item-card"]')
+    const startStyle = card.attributes('style')
+    const widthMatch = /width:\s*([\d.]+)px/i.exec(startStyle)
+    expect(widthMatch).toBeTruthy()
+    expect(startStyle).toContain(`translate3d(-${widthMatch[1]}px,0px,0)`) 
+
+    // Run a few RAF ticks to advance the two-RAF animation schedule.
+    for (let i = 0; i < 6 && rafCallbacks.length; i += 1) rafCallbacks.shift()()
+    await wrapper.vm.$nextTick()
+
+    expect(card.attributes('style')).toContain('translate3d(0px,0px,0)')
+
+    wrapper.unmount()
+    globalThis.requestAnimationFrame = originalRaf
+  })
+
+  it('animates appended items from container left (-width, finalY) to (finalX, finalY)', async () => {
+    const roCallbacks = []
+    const originalResizeObserver = globalThis.ResizeObserver
+    const rafCallbacks = []
+    const originalRaf = globalThis.requestAnimationFrame
+
+    globalThis.requestAnimationFrame = (cb) => {
+      rafCallbacks.push(cb)
+      return 0
+    }
+
+    globalThis.ResizeObserver = class {
+      constructor(cb) {
+        roCallbacks.push(cb)
+      }
+      observe() {}
+      disconnect() {}
+    }
+
+    const getContent = vi.fn(async (pageToken) => {
+      const token = String(pageToken)
+      const makeItem = (id) => ({
+        id,
+        type: 'image',
+        reaction: null,
+        width: 320,
+        height: 240,
+        original: 'https://picsum.photos/seed/original/1600/1200',
+        preview: 'https://picsum.photos/seed/preview/320/240',
+      })
+
+      if (token === '1') return { items: [makeItem('1-0')], nextPage: '2' }
+      if (token === '2') return { items: [makeItem('2-0')], nextPage: null }
+      return { items: [], nextPage: null }
+    })
+
+    const wrapper = mount(Masonry, {
+      props: { getContent, page: 1, itemWidth: 300, gapX: 16 },
+      attachTo: document.body,
+    })
+
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    // Force multi-column layout so appended item can land at x > 0.
+    const scroller = wrapper.get('[data-testid="items-scroll-container"]')
+    Object.defineProperty(scroller.element, 'clientWidth', { value: 900, configurable: true })
+    if (roCallbacks.length) roCallbacks[0]()
+    await wrapper.vm.$nextTick()
+
+    // Clear initial animation.
+    for (let i = 0; i < 6 && rafCallbacks.length; i += 1) rafCallbacks.shift()()
+    await wrapper.vm.$nextTick()
+
+    // Trigger load of next page via scroll near bottom.
+    Object.defineProperty(scroller.element, 'scrollHeight', { value: 2000, configurable: true })
+    Object.defineProperty(scroller.element, 'clientHeight', { value: 1000, configurable: true })
+    Object.defineProperty(scroller.element, 'scrollTop', { value: 900, configurable: true })
+    await scroller.trigger('scroll')
+
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    const cards = wrapper.findAll('[data-testid="item-card"]')
+    expect(cards.length).toBe(2)
+
+    // The appended item should first paint at x = -width (not finalX - width).
+    const entering = cards[1]
+    const enteringStyle = entering.attributes('style')
+    const enteringWidthMatch = /width:\s*([\d.]+)px/i.exec(enteringStyle)
+    expect(enteringWidthMatch).toBeTruthy()
+    expect(enteringStyle).toContain(`translate3d(-${enteringWidthMatch[1]}px,0px,0)`) 
+
+    // Advance animation.
+    for (let i = 0; i < 6 && rafCallbacks.length; i += 1) rafCallbacks.shift()()
+    await wrapper.vm.$nextTick()
+
+    const endStyle = entering.attributes('style')
+    const endXMatch = /translate3d\(\s*([\-\d.]+)px\s*,\s*0px\s*,\s*0\s*\)/i.exec(endStyle)
+    expect(endXMatch).toBeTruthy()
+    expect(Number(endXMatch[1])).toBeGreaterThan(0)
+
+    wrapper.unmount()
+    globalThis.requestAnimationFrame = originalRaf
+    globalThis.ResizeObserver = originalResizeObserver
+  })
 })

@@ -78,7 +78,7 @@ function getMeasuredContainerWidth(el) {
   const pr = Math.max(0, gapX.value)
   // clientWidth includes padding but excludes scrollbar. Subtract padding-right
   // so layout math uses the true content width.
-  return Math.max(1, el.clientWidth - pr)
+  return Math.max(0, el.clientWidth - pr)
 }
 
 const headerHeight = computed(() => props.headerHeight)
@@ -110,6 +110,40 @@ const layoutPositions = ref([])
 const layoutHeights = ref([])
 const layoutBuckets = ref(new Map())
 const layoutContentHeight = ref(0)
+
+// Entry animation: items appear from the left edge of the masonry container.
+// For an item with final (x,y), the first paint is at (-width, y) and it
+// animates to (x,y).
+const ENTER_FROM_LEFT_MS = 300
+const enterStartIds = ref(new Set())
+const enterAnimatingIds = ref(new Set())
+const scheduledEnterIds = new Set()
+
+function raf(cb) {
+  const fn = typeof requestAnimationFrame === 'function'
+    ? requestAnimationFrame
+    : (f) => setTimeout(f, 0)
+  fn(cb)
+}
+
+function raf2(cb) {
+  raf(() => raf(cb))
+}
+
+function markEnterFromLeft(items) {
+  if (!Array.isArray(items) || items.length === 0) return
+  const next = new Set(enterStartIds.value)
+  let changed = false
+  for (const it of items) {
+    const id = it?.id
+    if (!id) continue
+    if (!next.has(id)) {
+      next.add(id)
+      changed = true
+    }
+  }
+  if (changed) enterStartIds.value = next
+}
 
 const isLoadingInitial = ref(true)
 const isLoadingNext = ref(false)
@@ -236,6 +270,49 @@ const visibleIndices = computed(() => {
   return ordered
 })
 
+watch(
+  visibleIndices,
+  (indices) => {
+    if (!indices?.length) return
+
+    const idsToSchedule = []
+    for (const idx of indices) {
+      const id = itemsState.value[idx]?.id
+      if (!id) continue
+      if (!enterStartIds.value.has(id)) continue
+      if (scheduledEnterIds.has(id)) continue
+      scheduledEnterIds.add(id)
+      idsToSchedule.push(id)
+    }
+
+    if (!idsToSchedule.length) return
+
+    // 1) ensure transition is enabled in its own frame
+    raf(() => {
+      const next = new Set(enterAnimatingIds.value)
+      for (const id of idsToSchedule) next.add(id)
+      enterAnimatingIds.value = next
+    })
+
+    // 2) then move from start -> final position (transition applies)
+    raf2(() => {
+      const nextStart = new Set(enterStartIds.value)
+      for (const id of idsToSchedule) nextStart.delete(id)
+      enterStartIds.value = nextStart
+
+      setTimeout(() => {
+        const nextAnimating = new Set(enterAnimatingIds.value)
+        for (const id of idsToSchedule) {
+          nextAnimating.delete(id)
+          scheduledEnterIds.delete(id)
+        }
+        enterAnimatingIds.value = nextAnimating
+      }, ENTER_FROM_LEFT_MS)
+    })
+  },
+  { flush: 'post' },
+)
+
 const firstLoadedPageToken = computed(() => {
   return pagesLoaded.value.length ? pagesLoaded.value[0] : props.page
 })
@@ -252,6 +329,7 @@ async function loadNextPage() {
     const result = await props.getContent(pageToLoad)
 
     pagesLoaded.value = [...pagesLoaded.value, pageToLoad]
+    markEnterFromLeft(result.items)
     itemsState.value = [...itemsState.value, ...result.items]
     nextPage.value = result.nextPage
   } catch (err) {
@@ -294,6 +372,7 @@ onMounted(async () => {
     const result = await props.getContent(props.page)
 
     pagesLoaded.value = [props.page]
+    markEnterFromLeft(result.items)
     itemsState.value = result.items
     nextPage.value = result.nextPage
   } catch (err) {
@@ -431,7 +510,10 @@ const sectionClass = computed(() => {
           class="absolute overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm"
           :style="{
             width: columnWidth + 'px',
-            transform: 'translate3d(' + (layoutPositions[idx]?.x ?? 0) + 'px,' + (layoutPositions[idx]?.y ?? 0) + 'px,0)',
+            transition: enterAnimatingIds.has(itemsState[idx].id) ? 'transform ' + ENTER_FROM_LEFT_MS + 'ms ease-out' : undefined,
+            transform: enterStartIds.has(itemsState[idx].id)
+              ? 'translate3d(' + -columnWidth + 'px,' + (layoutPositions[idx]?.y ?? 0) + 'px,0)'
+              : 'translate3d(' + (layoutPositions[idx]?.x ?? 0) + 'px,' + (layoutPositions[idx]?.y ?? 0) + 'px,0)',
           }"
         >
           <div
