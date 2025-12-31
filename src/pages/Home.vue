@@ -46,6 +46,21 @@ watch(
   },
   { immediate: true },
 )
+
+function getPageLabelFromId(id) {
+  if (!id) return null
+  const s = String(id)
+
+  // Demo ids are often like: p12-i3
+  const m1 = /^p(\d+)-i\d+/.exec(s)
+  if (m1) return m1[1]
+
+  // Test/demo ids may be like: 12-3
+  const m2 = /^(\d+)-/.exec(s)
+  if (m2) return m2[1]
+
+  return null
+}
 </script>
 
 <template>
@@ -64,18 +79,23 @@ watch(
       </header>
 
       <Masonry v-model:items="items" :get-content="getContent" :page="initialPageToken">
-        <template #itemFooter="{ item, remove }">
-          <div class="flex items-center justify-between gap-3 px-4 py-3">
-            <div class="flex min-w-0 items-center gap-2">
-              <span
-                class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-2 py-0.5 text-xs font-medium text-slate-700"
-              >
-                {{ item.type }}
-              </span>
-              <span class="truncate font-mono text-xs text-slate-500">{{ item.id }}</span>
-            </div>
+        <template #itemHeader="{ item }">
+          <div class="flex items-center justify-between gap-3 border-b border-slate-200/60 px-4 py-3">
+            <span
+              class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-2 py-0.5 text-xs font-medium text-slate-700"
+            >
+              {{ item.type }}
+            </span>
 
-            <div class="flex items-center gap-2">
+            <span class="truncate font-mono text-xs text-slate-500">
+              <span v-if="getPageLabelFromId(item.id)">p{{ getPageLabelFromId(item.id) }} · </span>
+              {{ item.id }}
+            </span>
+          </div>
+        </template>
+
+        <template #itemFooter="{ item, remove }">
+          <div class="flex items-center justify-end gap-2 px-4 py-3">
               <button
                 type="button"
                 class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium hover:bg-slate-50"
@@ -121,12 +141,13 @@ watch(
 
               <button
                 type="button"
-                class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                title="Remove"
                 @click="remove()"
               >
-                Remove
+                <i class="fa-solid fa-trash" aria-hidden="true" />
+                <span class="sr-only">Remove</span>
               </button>
-            </div>
           </div>
         </template>
       </Masonry>
