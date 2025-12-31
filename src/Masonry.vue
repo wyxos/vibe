@@ -396,7 +396,31 @@ const sectionClass = computed(() => {
       :style="{ paddingRight: gapX + 'px' }"
       @scroll="maybeLoadMoreOnScroll"
     >
-      <p v-if="isLoadingInitial" class="text-sm text-slate-600">Loading…</p>
+      <div v-if="isLoadingInitial" class="flex h-full items-center justify-center">
+        <div class="inline-flex items-center gap-3 text-sm text-slate-600">
+          <svg
+            class="h-5 w-5 animate-spin text-slate-500"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="4"
+            />
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"
+            />
+          </svg>
+          <span>Loading…</span>
+        </div>
+      </div>
       <p v-else-if="error" class="text-sm font-medium text-red-700">Error: {{ error }}</p>
 
       <div v-else class="relative" :style="{ height: containerHeight + 'px' }">
@@ -456,7 +480,29 @@ const sectionClass = computed(() => {
       </div>
 
       <div class="mt-4 pb-2 text-center text-xs text-slate-600">
-        <span v-if="isLoadingNext">Loading more…</span>
+        <span v-if="isLoadingNext" class="inline-flex items-center justify-center gap-2">
+          <svg
+            class="h-4 w-4 animate-spin text-slate-500"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="4"
+            />
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"
+            />
+          </svg>
+          <span>Loading more…</span>
+        </span>
         <span v-else-if="nextPage == null">End of list</span>
         <span v-else>Scroll to load page {{ nextPage }}</span>
       </div>
