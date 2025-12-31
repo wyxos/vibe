@@ -33,6 +33,43 @@ const cooldownProgressPct = computed(() => {
   return Math.max(0, Math.min(100, pct))
 })
 
+const initialPageToken = computed<PageToken>(() => {
+  // Supports hash-mode urls like: /#/examples/backfill?page=2
+  // (also supports non-hash urls like: /examples/backfill?page=2)
+  const hash = window.location.hash || ''
+  const hashQuery = hash.includes('?') ? hash.split('?').slice(1).join('?') : ''
+  const searchQuery = window.location.search?.startsWith('?')
+    ? window.location.search.slice(1)
+    : window.location.search
+  const queryString = hashQuery || searchQuery || ''
+  const raw = new URLSearchParams(queryString).get('page')
+  const trimmed = raw?.trim() ?? ''
+  return trimmed ? trimmed : 1
+})
+
+function getPageLabelFromId(id: string | null | undefined) {
+  if (!id) return null
+  const s = String(id)
+  const m = /^bf-p(\d+)-i\d+/.exec(s)
+  return m ? m[1] : null
+}
+
+const pagesLoadedLabel = computed(() => {
+  const list = items.value
+  if (!Array.isArray(list) || list.length === 0) return '—'
+
+  const pages = new Set<number>()
+  for (let i = 0; i < list.length; i += 1) {
+    const pageLabel = getPageLabelFromId(list[i]?.id)
+    if (!pageLabel) continue
+    const n = Number.parseInt(pageLabel, 10)
+    if (Number.isFinite(n)) pages.add(n)
+  }
+
+  const sorted = Array.from(pages).sort((a, b) => a - b)
+  return sorted.length ? sorted.join(', ') : '—'
+})
+
 watch(
   items,
   (next) => {
@@ -63,11 +100,17 @@ async function getContent(pageToken: PageToken) {
 
 <template>
   <div class="h-full min-h-0 overflow-hidden">
+    <div class="border-b border-slate-200 bg-white">
+      <div class="mx-auto max-w-7xl px-6 py-3 text-sm text-slate-700 2xl:max-w-screen-2xl 2xl:px-10 min-[1920px]:!max-w-[1800px] min-[1920px]:!px-12 min-[2560px]:!max-w-[2200px]">
+        <span class="font-medium text-slate-900">Pages loaded:</span>
+        <span class="ml-2 tabular-nums">{{ pagesLoadedLabel }}</span>
+      </div>
+    </div>
+
     <div
       class="mx-auto flex h-full min-h-0 max-w-7xl flex-col px-6 py-10 2xl:max-w-screen-2xl 2xl:px-10 min-[1920px]:!max-w-[1800px] min-[1920px]:!px-12 min-[2560px]:!max-w-[2200px]"
     >
       <header class="flex items-center gap-4">
-        <img src="/logo.svg" alt="Vibe" class="h-10 w-10" />
         <div class="min-w-0">
           <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Backfill</h1>
           <p class="text-sm text-slate-600">
@@ -117,7 +160,7 @@ async function getContent(pageToken: PageToken) {
         :page-size="20"
         :backfill-request-delay-ms="2000"
         :get-content="getContent"
-        :page="1"
+        :page="initialPageToken"
         :header-height="45"
         :footer-height="54"
       >

@@ -18,20 +18,24 @@ const npmUrl = `https://www.npmjs.com/package/${encodeURIComponent(pkg.name)}`
         </RouterLink>
 
         <nav class="flex items-center gap-2" aria-label="Primary">
-          <RouterLink
-            to="/"
-            class="inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            active-class="bg-slate-100 text-slate-900"
-          >
-            Home
-          </RouterLink>
-          <RouterLink
-            to="/examples/backfill"
-            class="inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            active-class="bg-slate-100 text-slate-900"
-          >
-            Backfill
-          </RouterLink>
+          <details class="relative">
+            <summary
+              class="inline-flex cursor-pointer list-none items-center justify-center rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Examples
+              <i class="fa-solid fa-chevron-down ml-2 text-xs" aria-hidden="true" />
+            </summary>
+
+            <div class="absolute left-0 z-10 mt-2 w-48 rounded-md border border-slate-200 bg-white p-1">
+              <RouterLink
+                to="/examples/backfill"
+                class="flex items-center rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                active-class="bg-slate-100 text-slate-900"
+              >
+                Backfill
+              </RouterLink>
+            </div>
+          </details>
         </nav>
 
         <div class="ml-auto flex items-center gap-2">

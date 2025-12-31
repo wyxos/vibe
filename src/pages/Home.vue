@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, shallowRef, watch } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 
 import pkg from '../../package.json'
 import { type FeedItem, fetchPage, type PageToken } from '@/fakeServer'
@@ -18,6 +18,37 @@ const initialPageToken = (() => {
   const trimmed = raw?.trim()
   return trimmed ? trimmed : 1
 })()
+
+function getPageLabelFromId(id: string | null | undefined) {
+  if (!id) return null
+  const s = String(id)
+
+  // Demo ids are often like: p12-i3
+  const m1 = /^p(\d+)-i\d+/.exec(s)
+  if (m1) return m1[1]
+
+  // Test/demo ids may be like: 12-3
+  const m2 = /^(\d+)-/.exec(s)
+  if (m2) return m2[1]
+
+  return null
+}
+
+const pagesLoadedLabel = computed(() => {
+  const list = items.value
+  if (!Array.isArray(list) || list.length === 0) return '—'
+
+  const pages = new Set<number>()
+  for (let i = 0; i < list.length; i += 1) {
+    const pageLabel = getPageLabelFromId(list[i]?.id)
+    if (!pageLabel) continue
+    const n = Number.parseInt(pageLabel, 10)
+    if (Number.isFinite(n)) pages.add(n)
+  }
+
+  const sorted = Array.from(pages).sort((a, b) => a - b)
+  return sorted.length ? sorted.join(', ') : '—'
+})
 
 async function getContent(pageToken: PageToken) {
   return fetchPage(pageToken)
@@ -49,21 +80,6 @@ watch(
   { immediate: true }
 )
 
-function getPageLabelFromId(id: string | null | undefined) {
-  if (!id) return null
-  const s = String(id)
-
-  // Demo ids are often like: p12-i3
-  const m1 = /^p(\d+)-i\d+/.exec(s)
-  if (m1) return m1[1]
-
-  // Test/demo ids may be like: 12-3
-  const m2 = /^(\d+)-/.exec(s)
-  if (m2) return m2[1]
-
-  return null
-}
-
 function removeRandomItems() {
   const list = items.value
   if (!Array.isArray(list) || list.length === 0) return
@@ -86,11 +102,17 @@ function removeRandomItems() {
 
 <template>
   <div class="h-full min-h-0 overflow-hidden">
+    <div class="border-b border-slate-200 bg-white">
+      <div class="mx-auto max-w-7xl px-6 py-3 text-sm text-slate-700 2xl:max-w-screen-2xl 2xl:px-10 min-[1920px]:!max-w-[1800px] min-[1920px]:!px-12 min-[2560px]:!max-w-[2200px]">
+        <span class="font-medium text-slate-900">Pages loaded:</span>
+        <span class="ml-2 tabular-nums">{{ pagesLoadedLabel }}</span>
+      </div>
+    </div>
+
     <div
       class="mx-auto flex h-full min-h-0 max-w-7xl flex-col px-6 py-10 2xl:max-w-screen-2xl 2xl:px-10 min-[1920px]:!max-w-[1800px] min-[1920px]:!px-12 min-[2560px]:!max-w-[2200px]"
     >
       <header class="flex items-center gap-4">
-        <img src="/logo.svg" alt="Vibe" class="h-10 w-10" />
         <div class="min-w-0">
           <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Vibe</h1>
           <p class="text-sm text-slate-600">
@@ -99,13 +121,6 @@ function removeRandomItems() {
         </div>
 
         <div class="ml-auto flex items-center gap-2">
-          <RouterLink
-            to="/examples/backfill"
-            data-testid="nav-backfill"
-            class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Backfill example
-          </RouterLink>
           <button
             type="button"
             data-testid="remove-random"
