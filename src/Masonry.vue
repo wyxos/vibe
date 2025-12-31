@@ -194,20 +194,10 @@ const sectionClass = computed(() => {
 
 <template>
   <section v-bind="passthroughAttrs" :class="sectionClass">
-    <slot
-      name="header"
-      :page="firstLoadedPageToken"
-      :pagesLoaded="pagesLoaded"
-      :isLoadingInitial="isLoadingInitial"
-      :isLoadingNext="isLoadingNext"
-      :error="error"
-      :nextPage="nextPage"
-    >
-      <div class="flex items-baseline justify-between gap-4">
-        <h2 class="text-base font-medium text-slate-900">Page {{ firstLoadedPageToken }}</h2>
-        <p class="text-xs text-slate-600">Pages loaded: {{ pagesLoaded.length }}</p>
-      </div>
-    </slot>
+    <div class="flex items-baseline justify-between gap-4">
+      <h2 class="text-base font-medium text-slate-900">Page {{ firstLoadedPageToken }}</h2>
+      <p class="text-xs text-slate-600">Pages loaded: {{ pagesLoaded.length }}</p>
+    </div>
 
     <div
       ref="scrollContainerEl"
@@ -230,6 +220,8 @@ const sectionClass = computed(() => {
             data-testid="item-card"
             class="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm"
           >
+            <slot name="itemHeader" :item="item" />
+
             <div class="bg-slate-100" :style="{ aspectRatio: item.width + ' / ' + item.height }">
               <img
                 v-if="item.type === 'image'"

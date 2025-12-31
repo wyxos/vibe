@@ -27,10 +27,14 @@ async function getContent(pageToken) {
       </header>
 
       <Masonry :get-content="getContent" :page="initialPageToken">
-        <template #header="{ page, pagesLoaded }">
-          <div class="flex items-baseline justify-between gap-4">
-            <h2 class="text-base font-medium text-slate-900">Page {{ page }}</h2>
-            <p class="text-xs text-slate-600">Pages loaded: {{ pagesLoaded.length }}</p>
+        <template #itemHeader="{ item }">
+          <div class="flex items-center justify-between gap-3 px-4 pt-3">
+            <span
+              class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-2 py-0.5 text-xs font-medium text-slate-700"
+            >
+              {{ item.type }}
+            </span>
+            <span class="truncate font-mono text-xs text-slate-500">{{ item.id }}</span>
           </div>
         </template>
 
