@@ -38,10 +38,6 @@ const props = defineProps({
     type: Number,
     default: 600,
   },
-  virtualMinItems: {
-    type: Number,
-    default: 200,
-  },
 })
 
 const emit = defineEmits(['update:items'])
@@ -206,18 +202,6 @@ function findEndIndex(tops, heights, yEnd) {
 const visibleColumns = computed(() => {
   const cols = columnsState.value
   if (!props.virtual) {
-    return cols.map((c) => ({
-      items: c.items,
-      topPad: 0,
-      bottomPad: 0,
-      startIndex: 0,
-      endIndex: Math.max(0, c.items.length - 1),
-    }))
-  }
-
-  // For smaller lists, the overhead/complexity of windowing isn't worth it.
-  // This also keeps behavior intuitive (and test-friendly) for short feeds.
-  if (itemsState.value.length < props.virtualMinItems) {
     return cols.map((c) => ({
       items: c.items,
       topPad: 0,

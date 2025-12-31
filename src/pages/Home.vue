@@ -64,7 +64,7 @@ function getPageLabelFromId(id) {
 </script>
 
 <template>
-  <div class="h-full min-h-0">
+  <div class="h-full min-h-0 overflow-hidden">
     <div
       class="mx-auto flex h-full min-h-0 max-w-7xl flex-col px-6 py-10 2xl:max-w-screen-2xl 2xl:px-10 min-[1920px]:!max-w-[1800px] min-[1920px]:!px-12 min-[2560px]:!max-w-[2200px]"
     >

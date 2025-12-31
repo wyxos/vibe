@@ -44,30 +44,33 @@ describe('Masonry v-model:items', () => {
       setup() {
         const items = ref([])
         return () =>
-          h(
-            Masonry,
-            {
-              getContent,
-              page: 1,
-              itemWidth: 300,
-              items: items.value,
-              'onUpdate:items': (next) => {
-                items.value = next
+          h('div', [
+            h('div', { 'data-testid': 'items-length' }, String(items.value.length)),
+            h(
+              Masonry,
+              {
+                getContent,
+                page: 1,
+                itemWidth: 300,
+                items: items.value,
+                'onUpdate:items': (next) => {
+                  items.value = next
+                },
               },
-            },
-            {
-              itemFooter: ({ item, remove }) =>
-                h(
-                  'button',
-                  {
-                    type: 'button',
-                    'data-testid': `remove-${item.id}`,
-                    onClick: remove,
-                  },
-                  'Remove',
-                ),
-            },
-          )
+              {
+                itemFooter: ({ item, remove }) =>
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      'data-testid': `remove-${item.id}`,
+                      onClick: remove,
+                    },
+                    'Remove',
+                  ),
+              },
+            ),
+          ])
       },
     })
 
@@ -77,7 +80,7 @@ describe('Masonry v-model:items', () => {
     await wrapper.vm.$nextTick()
 
     expect(getContent).toHaveBeenCalledTimes(1)
-    expect(wrapper.findAll('[data-testid="item-card"]').length).toBe(20)
+    expect(wrapper.get('[data-testid="items-length"]').text()).toBe('20')
 
     // Trigger load of next page via scroll near bottom.
     const scroller = wrapper.get('[data-testid="items-scroll-container"]')
@@ -91,13 +94,17 @@ describe('Masonry v-model:items', () => {
     await wrapper.vm.$nextTick()
 
     expect(getContent).toHaveBeenCalledTimes(2)
-    expect(wrapper.findAll('[data-testid="item-card"]').length).toBe(40)
+    expect(wrapper.get('[data-testid="items-length"]').text()).toBe('40')
 
-    // Remove one item via slot helper; should update parent items via v-model.
-    await wrapper.get('[data-testid="remove-1-0"]').trigger('click')
+    // Under virtualization, the first item may not be in the render window.
+    // Remove any visible item via the slot helper; should still update parent
+    // items via v-model.
+    const removeButtons = wrapper.findAll('[data-testid^="remove-"]')
+    expect(removeButtons.length).toBeGreaterThan(0)
+    await removeButtons[0].trigger('click')
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.findAll('[data-testid="item-card"]').length).toBe(39)
+    expect(wrapper.get('[data-testid="items-length"]').text()).toBe('39')
 
     wrapper.unmount()
   })

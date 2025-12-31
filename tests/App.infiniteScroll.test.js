@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
 import Home from '../src/pages/Home.vue'
+import { fetchPage } from '../src/fakeServer'
 
 function flushPromises() {
   return new Promise((resolve) => setTimeout(resolve, 0))
@@ -40,7 +41,7 @@ describe('App infinite scroll', () => {
 
     await flushPromises()
     await wrapper.vm.$nextTick()
-    expect(wrapper.findAll('[data-testid="item-card"]').length).toBe(20)
+    expect(fetchPage).toHaveBeenCalledTimes(1)
 
     const scroller = wrapper.get('[data-testid="items-scroll-container"]')
 
@@ -54,8 +55,7 @@ describe('App infinite scroll', () => {
     await flushPromises()
     await wrapper.vm.$nextTick()
 
-    // Should append another page worth of items (total 40)
-    expect(wrapper.findAll('[data-testid="item-card"]').length).toBe(40)
+    expect(fetchPage).toHaveBeenCalledTimes(2)
 
     wrapper.unmount()
   })
