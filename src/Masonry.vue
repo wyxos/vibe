@@ -48,9 +48,6 @@ export type BackfillStats = {
   }
 }
 
-// Backwards-compat alias: existing consumers may still refer to "debug".
-export type BackfillDebugState = BackfillStats
-
 export type MasonryItemBase = {
   id: string
   width: number
@@ -268,7 +265,7 @@ const controlledItemsMirror = ref<MasonryItemBase[]>([])
 const nextPage = ref<PageToken | null>(props.page)
 const backfillBuffer = ref<MasonryItemBase[]>([])
 
-const backfillDebugState = shallowRef<BackfillDebugState>({
+const backfillStats = shallowRef<BackfillStats>({
   enabled: false,
   isBackfillActive: false,
   isRequestInFlight: false,
@@ -287,8 +284,6 @@ const backfillDebugState = shallowRef<BackfillDebugState>({
     itemsFetchedFromNetwork: 0,
   },
 })
-
-const backfillStats = backfillDebugState
 
 const isItemsControlled = computed(() => props.items !== undefined)
 
@@ -327,8 +322,8 @@ async function sleepWithCountdown(ms: number) {
   const total = clampDelayMs(ms)
   if (total <= 0) return
 
-  backfillDebugState.value = {
-    ...backfillDebugState.value,
+  backfillStats.value = {
+    ...backfillStats.value,
     cooldownMsTotal: total,
     cooldownMsRemaining: total,
   }
@@ -341,8 +336,8 @@ async function sleepWithCountdown(ms: number) {
       const elapsed = Date.now() - start
       const remaining = Math.max(0, total - elapsed)
 
-      backfillDebugState.value = {
-        ...backfillDebugState.value,
+      backfillStats.value = {
+        ...backfillStats.value,
         cooldownMsTotal: total,
         cooldownMsRemaining: remaining,
       }
@@ -370,8 +365,8 @@ async function loadBackfillBatch(startPage: PageToken | null) {
     backfillBuffer.value = []
   }
 
-  backfillDebugState.value = {
-    ...backfillDebugState.value,
+  backfillStats.value = {
+    ...backfillStats.value,
     enabled,
     isBackfillActive: false,
     isRequestInFlight: false,
@@ -398,8 +393,8 @@ async function loadBackfillBatch(startPage: PageToken | null) {
     // Only consider these as "backfill requests" after we have actually
     // determined we're short and need extra pages.
     if (isBackfillActive) {
-      backfillDebugState.value = {
-        ...backfillDebugState.value,
+      backfillStats.value = {
+        ...backfillStats.value,
         enabled,
         isBackfillActive: true,
         isRequestInFlight: true,
@@ -419,8 +414,8 @@ async function loadBackfillBatch(startPage: PageToken | null) {
     pages.push(pageToLoad)
 
     if (isBackfillActive) {
-      backfillDebugState.value = {
-        ...backfillDebugState.value,
+      backfillStats.value = {
+        ...backfillStats.value,
         enabled,
         isBackfillActive: true,
         isRequestInFlight: false,
@@ -439,8 +434,8 @@ async function loadBackfillBatch(startPage: PageToken | null) {
     // If we're still short after the first fetch, that is when backfill becomes active.
     if (!isBackfillActive && collected.length < target && next != null) {
       isBackfillActive = true
-      backfillDebugState.value = {
-        ...backfillDebugState.value,
+      backfillStats.value = {
+        ...backfillStats.value,
         enabled,
         isBackfillActive: true,
         isRequestInFlight: false,
@@ -454,8 +449,8 @@ async function loadBackfillBatch(startPage: PageToken | null) {
         pageSize: target,
       }
     } else if (isBackfillActive) {
-      backfillDebugState.value = {
-        ...backfillDebugState.value,
+      backfillStats.value = {
+        ...backfillStats.value,
         enabled,
         isBackfillActive: true,
         progress: {
@@ -474,8 +469,8 @@ async function loadBackfillBatch(startPage: PageToken | null) {
   const carry = collected.slice(target)
   backfillBuffer.value = carry
 
-  backfillDebugState.value = {
-    ...backfillDebugState.value,
+  backfillStats.value = {
+    ...backfillStats.value,
     enabled,
     isBackfillActive: false,
     isRequestInFlight: false,
@@ -498,9 +493,9 @@ async function loadBackfillBatch(startPage: PageToken | null) {
       carried: carry.length,
     },
     totals: {
-      pagesFetched: backfillDebugState.value.totals.pagesFetched + pages.length,
+      pagesFetched: backfillStats.value.totals.pagesFetched + pages.length,
       itemsFetchedFromNetwork:
-        backfillDebugState.value.totals.itemsFetchedFromNetwork + fetchedFromNetwork,
+        backfillStats.value.totals.itemsFetchedFromNetwork + fetchedFromNetwork,
     },
   }
 
@@ -632,7 +627,6 @@ async function removeItem(itemOrId: string | MasonryItemBase) {
 
 defineExpose({
   remove: removeItems,
-  backfillDebugState,
   backfillStats,
 })
 
@@ -826,7 +820,7 @@ onMounted(async () => {
   // Seed initial load
   nextPage.value = props.page
   backfillBuffer.value = []
-  backfillDebugState.value = {
+  backfillStats.value = {
     enabled: props.mode === 'backfill',
     isBackfillActive: false,
     isRequestInFlight: false,
@@ -889,7 +883,7 @@ watch(
     itemsState.value = []
     nextPage.value = newPage
     backfillBuffer.value = []
-    backfillDebugState.value = {
+    backfillStats.value = {
       enabled: props.mode === 'backfill',
       isBackfillActive: false,
       isRequestInFlight: false,

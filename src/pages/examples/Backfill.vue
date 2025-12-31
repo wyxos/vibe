@@ -5,14 +5,13 @@ import Masonry, { type BackfillStats } from '../../Masonry.vue'
 
 const items = ref<BackfillFeedItem[]>([])
 const itemIndexById = shallowRef<Map<string, number>>(new Map())
-const masonryRef = ref<{ backfillStats?: unknown; backfillDebugState?: unknown } | null>(null)
+const masonryRef = ref<{ backfillStats?: unknown } | null>(null)
 
 const backfillStats = computed(() => {
   const inst = masonryRef.value as null | {
     backfillStats?: BackfillStats | { value: BackfillStats }
-    backfillDebugState?: BackfillStats | { value: BackfillStats }
   }
-  const state = inst?.backfillStats ?? inst?.backfillDebugState
+  const state = inst?.backfillStats
   if (!state) return null
   if (typeof state === 'object' && state && 'value' in state)
     return (state as { value: BackfillStats }).value
