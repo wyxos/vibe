@@ -97,7 +97,7 @@ const layoutIndexById = ref<Map<string, number>>(new Map())
 // For an item with final (x,y), the first paint is at (x, y - height) and it
 // animates to (x,y).
 const CARD_MOTION_MS = 300
-const ENTER_MOTION_MS = 420
+const ENTER_MOTION_MS = 600
 const enterStartIds = ref<Set<string>>(new Set())
 const enterAnimatingIds = ref<Set<string>>(new Set())
 const scheduledEnterIds = new Set<string>()
