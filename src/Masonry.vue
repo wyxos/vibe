@@ -207,19 +207,17 @@ const itemsState = computed({
   },
 })
 
-async function removeItem(itemOrId) {
-  const id = typeof itemOrId === 'string' ? itemOrId : itemOrId?.id
-  if (!id) return
+function toId(itemOrId) {
+  if (!itemOrId) return null
+  return typeof itemOrId === 'string' ? itemOrId : itemOrId?.id
+}
 
-  const idx = layoutIndexById.value.get(id)
-  if (idx == null) {
-    itemsState.value = itemsState.value.filter((it) => it?.id !== id)
-    return
-  }
+async function removeItems(itemsOrIds) {
+  const raw = Array.isArray(itemsOrIds) ? itemsOrIds : [itemsOrIds]
+  const ids = raw.map(toId).filter(Boolean)
+  if (!ids.length) return
 
-  const item = itemsState.value[idx]
-  const pos = layoutPositions.value[idx] ?? { x: 0, y: 0 }
-  const width = columnWidth.value
+  const removeSet = new Set(ids)
 
   // Snapshot positions for the currently rendered subset.
   const oldPosById = new Map()
@@ -232,21 +230,31 @@ async function removeItem(itemOrId) {
     oldPosById.set(itId, { x: p.x, y: p.y })
   }
 
-  // Render a clone at the current position, then animate it left out of view.
-  leavingClones.value = [
-    ...leavingClones.value,
-    {
+  // Render clones for removed items that are currently in layout.
+  const width = columnWidth.value
+  const clones = []
+  for (const id of removeSet) {
+    const idx = layoutIndexById.value.get(id)
+    if (idx == null) continue
+    const item = itemsState.value[idx]
+    if (!item) continue
+    const pos = layoutPositions.value[idx] ?? { x: 0, y: 0 }
+    clones.push({
       id,
       item,
       fromX: pos.x,
       fromY: pos.y,
       width,
       leaving: true,
-    },
-  ]
+    })
+  }
+  if (clones.length) leavingClones.value = [...leavingClones.value, ...clones]
 
-  // Remove from data immediately so remaining items compute their new layout.
-  itemsState.value = itemsState.value.filter((it) => it?.id !== id)
+  // Remove from data in one pass so remaining items compute their new layout.
+  itemsState.value = itemsState.value.filter((it) => {
+    const id = it?.id
+    return !id || !removeSet.has(id)
+  })
 
   // Wait for Vue + layout watcher to apply the new layout/indices.
   await nextTick()
@@ -256,7 +264,7 @@ async function removeItem(itemOrId) {
   const animIds = []
 
   for (const [itId, oldPos] of oldPosById.entries()) {
-    if (itId === id) continue
+    if (removeSet.has(itId)) continue
     const newIdx = layoutIndexById.value.get(itId)
     if (newIdx == null) continue
     const newPos = layoutPositions.value[newIdx]
@@ -291,17 +299,24 @@ async function removeItem(itemOrId) {
     }, ENTER_FROM_LEFT_MS)
   }
 
-  // Trigger leave transition on the clone, then remove it.
-  raf(() => {
-    leavingClones.value = leavingClones.value.map((c) => (c.id === id ? { ...c, leaving: false } : c))
-    setTimeout(() => {
-      leavingClones.value = leavingClones.value.filter((c) => c.id !== id)
-    }, ENTER_FROM_LEFT_MS)
-  })
+  if (clones.length) {
+    const cloneIds = new Set(clones.map((c) => c.id))
+    // Trigger leave transition on the clones, then remove them.
+    raf(() => {
+      leavingClones.value = leavingClones.value.map((c) => (cloneIds.has(c.id) ? { ...c, leaving: false } : c))
+      setTimeout(() => {
+        leavingClones.value = leavingClones.value.filter((c) => !cloneIds.has(c.id))
+      }, ENTER_FROM_LEFT_MS)
+    })
+  }
+}
+
+async function removeItem(itemOrId) {
+  return removeItems(itemOrId)
 }
 
 defineExpose({
-  remove: removeItem,
+  remove: removeItems,
 })
 
 function rebuildLayout() {

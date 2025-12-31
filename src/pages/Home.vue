@@ -8,6 +8,7 @@ import { fetchPage } from '../fakeServer'
 
 const items = ref([])
 const itemIndexById = shallowRef(new Map())
+const masonryRef = ref(null)
 
 const packageVersion = pkg.version
 
@@ -61,6 +62,25 @@ function getPageLabelFromId(id) {
 
   return null
 }
+
+function removeRandomItems() {
+  const list = items.value
+  if (!Array.isArray(list) || list.length === 0) return
+
+  const max = Math.min(5, list.length)
+  const count = Math.max(1, Math.floor(Math.random() * max) + 1)
+  const picked = new Set()
+
+  while (picked.size < count) {
+    const idx = Math.floor(Math.random() * list.length)
+    const id = list[idx]?.id
+    if (id) picked.add(id)
+    else break
+  }
+
+  if (!picked.size) return
+  masonryRef.value?.remove(Array.from(picked))
+}
 </script>
 
 <template>
@@ -76,9 +96,21 @@ function getPageLabelFromId(id) {
             v{{ packageVersion }} · Fake server demo · 100 pages · 20 items/page
           </p>
         </div>
+
+        <div class="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            data-testid="remove-random"
+            class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            @click="removeRandomItems"
+          >
+            Remove random
+          </button>
+        </div>
       </header>
 
       <Masonry
+        ref="masonryRef"
         v-model:items="items"
         :get-content="getContent"
         :page="initialPageToken"
@@ -147,6 +179,7 @@ function getPageLabelFromId(id) {
 
               <button
                 type="button"
+                :data-testid="'remove-' + item.id"
                 class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
                 title="Remove"
                 @click="remove()"
