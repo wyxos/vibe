@@ -78,6 +78,45 @@ describe('Masonry slots + media rendering', () => {
     wrapper.unmount()
   })
 
+  it('supports fixed header/footer heights via props', async () => {
+    const getContent = vi.fn(async () => {
+      return {
+        items: [
+          {
+            id: 'img-1',
+            type: 'image',
+            reaction: null,
+            width: 320,
+            height: 240,
+            original: 'https://picsum.photos/seed/original/1600/1200',
+            preview: 'https://picsum.photos/seed/preview/320/240',
+          },
+        ],
+        nextPage: null,
+      }
+    })
+
+    const wrapper = mount(Masonry, {
+      props: { getContent, page: 1, itemWidth: 300, headerHeight: 10, footerHeight: 20 },
+      slots: {
+        itemHeader: ({ item }) => h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
+        itemFooter: ({ item }) => h('div', { 'data-testid': 'slot-item-footer' }, `F:${item.id}`),
+      },
+      attachTo: document.body,
+    })
+
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    const header = wrapper.get('[data-testid="item-header-container"]')
+    const footer = wrapper.get('[data-testid="item-footer-container"]')
+
+    expect(header.attributes('style')).toContain('height: 10px')
+    expect(footer.attributes('style')).toContain('height: 20px')
+
+    wrapper.unmount()
+  })
+
   it('renders the default footer when itemFooter slot is not provided', async () => {
     const getContent = vi.fn(async () => {
       return {

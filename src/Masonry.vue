@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, useAttrs, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, useAttrs, useSlots, watch } from 'vue'
 
 import {
   estimateItemHeight,
@@ -38,6 +38,14 @@ const props = defineProps({
     type: Number,
     default: 16,
   },
+  headerHeight: {
+    type: Number,
+    default: 0,
+  },
+  footerHeight: {
+    type: Number,
+    default: 0,
+  },
   overscanPx: {
     type: Number,
     default: 600,
@@ -47,6 +55,7 @@ const props = defineProps({
 const emit = defineEmits(['update:items'])
 
 const attrs = useAttrs()
+const slots = useSlots()
 
 const passthroughAttrs = computed(() => {
   // Avoid double-applying class by stripping it from v-bind.
@@ -63,6 +72,22 @@ let resizeObserver
 
 const gapX = computed(() => props.gapX)
 const gapY = computed(() => props.gapY)
+
+const headerHeight = computed(() => props.headerHeight)
+const footerHeight = computed(() => props.footerHeight)
+
+const hasHeaderSlot = computed(() => Boolean(slots.itemHeader))
+const hasFooterSlot = computed(() => Boolean(slots.itemFooter))
+
+const headerStyle = computed(() => {
+  if (headerHeight.value > 0) return { height: headerHeight.value + 'px' }
+  return undefined
+})
+
+const footerStyle = computed(() => {
+  if (footerHeight.value > 0) return { height: footerHeight.value + 'px' }
+  return undefined
+})
 
 // Buffer at the bottom to ensure there's always enough scroll room to trigger
 // loading the next page.
@@ -127,6 +152,8 @@ function rebuildLayout() {
   const colWidth = columnWidth.value
   const gx = gapX.value
   const gy = gapY.value
+  const hh = headerHeight.value
+  const fh = footerHeight.value
 
   const colHeights = Array.from({ length: count }, () => 0)
   const positions = new Array(itemsState.value.length)
@@ -147,7 +174,7 @@ function rebuildLayout() {
 
     const x = bestCol * (colWidth + gx)
     const y = colHeights[bestCol]
-    const h = estimateItemHeight(item, colWidth)
+    const h = estimateItemHeight(item, colWidth) + hh + fh
 
     positions[index] = { x, y }
     heights[index] = h
@@ -311,7 +338,7 @@ const columnWidth = computed(() =>
 )
 
 watch(
-  [columnCount, columnWidth, gapX, gapY],
+  [columnCount, columnWidth, gapX, gapY, headerHeight, footerHeight],
   () => {
     rebuildLayout()
   },
@@ -364,7 +391,14 @@ const sectionClass = computed(() => {
             transform: 'translate3d(' + (layoutPositions[idx]?.x ?? 0) + 'px,' + (layoutPositions[idx]?.y ?? 0) + 'px,0)',
           }"
         >
-          <slot name="itemHeader" :item="itemsState[idx]" :remove="() => removeItem(itemsState[idx])" />
+          <div
+            v-if="hasHeaderSlot || headerHeight > 0"
+            data-testid="item-header-container"
+            class="w-full"
+            :style="headerStyle"
+          >
+            <slot name="itemHeader" :item="itemsState[idx]" :remove="() => removeItem(itemsState[idx])" />
+          </div>
 
           <div
             class="bg-slate-100"
@@ -391,16 +425,14 @@ const sectionClass = computed(() => {
             </video>
           </div>
 
-          <slot name="itemFooter" :item="itemsState[idx]" :remove="() => removeItem(itemsState[idx])">
-            <div class="flex items-center justify-between gap-3 px-4 py-3">
-              <span
-                class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-2 py-0.5 text-xs font-medium text-slate-700"
-              >
-                {{ itemsState[idx].type }}
-              </span>
-              <span class="truncate font-mono text-xs text-slate-500">{{ itemsState[idx].id }}</span>
-            </div>
-          </slot>
+          <div
+            v-if="hasFooterSlot || footerHeight > 0"
+            data-testid="item-footer-container"
+            class="w-full"
+            :style="footerStyle"
+          >
+            <slot name="itemFooter" :item="itemsState[idx]" :remove="() => removeItem(itemsState[idx])"></slot>
+          </div>
         </article>
       </div>
 

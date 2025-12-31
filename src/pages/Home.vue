@@ -78,9 +78,15 @@ function getPageLabelFromId(id) {
         </div>
       </header>
 
-      <Masonry v-model:items="items" :get-content="getContent" :page="initialPageToken">
+      <Masonry
+        v-model:items="items"
+        :get-content="getContent"
+        :page="initialPageToken"
+        :header-height="45"
+        :footer-height="54"
+      >
         <template #itemHeader="{ item }">
-          <div class="flex items-center justify-between gap-3 border-b border-slate-200/60 px-4 py-3">
+          <div class="flex h-full items-center justify-between gap-3 border-b border-slate-200/60 px-4">
             <span
               class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-2 py-0.5 text-xs font-medium text-slate-700"
             >
@@ -95,7 +101,7 @@ function getPageLabelFromId(id) {
         </template>
 
         <template #itemFooter="{ item, remove }">
-          <div class="flex items-center justify-end gap-2 px-4 py-3">
+          <div class="flex h-full items-center justify-end gap-2 px-4">
               <button
                 type="button"
                 class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium hover:bg-slate-50"
