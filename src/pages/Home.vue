@@ -1,10 +1,14 @@
 <script setup>
 import { ref } from 'vue'
 
+import pkg from '../../package.json'
+
 import Masonry from '../Masonry.vue'
 import { fetchPage } from '../fakeServer'
 
 const items = ref([])
+
+const packageVersion = pkg.version
 
 const initialPageToken = (() => {
   const raw = new URLSearchParams(window.location.search).get('page')
@@ -26,7 +30,9 @@ async function getContent(pageToken) {
         <img src="/logo.svg" alt="Vibe" class="h-10 w-10" />
         <div class="min-w-0">
           <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Vibe</h1>
-          <p class="text-sm text-slate-600">Fake server demo · 100 pages · 20 items/page</p>
+          <p class="text-sm text-slate-600">
+            v{{ packageVersion }} · Fake server demo · 100 pages · 20 items/page
+          </p>
         </div>
       </header>
 
