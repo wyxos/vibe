@@ -30,6 +30,14 @@ const props = defineProps({
     type: Number,
     default: 200,
   },
+  gapX: {
+    type: Number,
+    default: 16,
+  },
+  gapY: {
+    type: Number,
+    default: 16,
+  },
   overscanPx: {
     type: Number,
     default: 600,
@@ -53,8 +61,8 @@ const viewportHeight = ref(0)
 const scrollTop = ref(0)
 let resizeObserver
 
-// Tailwind `gap-4` = 1rem by default.
-const ITEM_GAP_PX = 16
+const gapX = computed(() => props.gapX)
+const gapY = computed(() => props.gapY)
 
 // Buffer at the bottom to ensure there's always enough scroll room to trigger
 // loading the next page.
@@ -117,6 +125,8 @@ defineExpose({
 function rebuildLayout() {
   const count = columnCount.value
   const colWidth = columnWidth.value
+  const gx = gapX.value
+  const gy = gapY.value
 
   const colHeights = Array.from({ length: count }, () => 0)
   const positions = new Array(itemsState.value.length)
@@ -135,14 +145,14 @@ function rebuildLayout() {
       if (colHeights[c] < colHeights[bestCol]) bestCol = c
     }
 
-    const x = bestCol * (colWidth + ITEM_GAP_PX)
+    const x = bestCol * (colWidth + gx)
     const y = colHeights[bestCol]
     const h = estimateItemHeight(item, colWidth)
 
     positions[index] = { x, y }
     heights[index] = h
 
-    colHeights[bestCol] = y + h + ITEM_GAP_PX
+    colHeights[bestCol] = y + h + gy
     maxY = Math.max(maxY, y + h)
 
     // Virtualization buckets by y-range.
@@ -301,7 +311,7 @@ const columnWidth = computed(() =>
 )
 
 watch(
-  [columnCount, columnWidth],
+  [columnCount, columnWidth, gapX, gapY],
   () => {
     rebuildLayout()
   },
