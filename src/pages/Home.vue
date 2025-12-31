@@ -99,6 +99,13 @@ function removeRandomItems() {
         </div>
 
         <div class="ml-auto flex items-center gap-2">
+          <RouterLink
+            to="/examples/backfill"
+            data-testid="nav-backfill"
+            class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Backfill example
+          </RouterLink>
           <button
             type="button"
             data-testid="remove-random"

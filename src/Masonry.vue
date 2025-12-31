@@ -1,12 +1,55 @@
 <script setup lang="ts">
 import type { PropType } from 'vue'
-import { computed, nextTick, onMounted, onUnmounted, ref, useAttrs, useSlots, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  ref,
+  shallowRef,
+  useAttrs,
+  useSlots,
+  watch,
+} from 'vue'
 
 import { estimateItemHeight, getColumnCount, getColumnWidth } from './masonryLayout'
 
 defineOptions({ inheritAttrs: false })
 
 type PageToken = string | number
+
+export type BackfillStats = {
+  enabled: boolean
+  // True only while the component is actively doing additional fetches to reach pageSize.
+  // This is NOT the same as mode=backfill.
+  isBackfillActive: boolean
+  isRequestInFlight: boolean
+  requestPage: PageToken | null
+  progress: {
+    collected: number
+    target: number
+  }
+  cooldownMsRemaining: number
+  cooldownMsTotal: number
+  pageSize: number
+  bufferSize: number
+  lastBatch: {
+    startPage: PageToken | null
+    pages: PageToken[]
+    usedFromBuffer: number
+    fetchedFromNetwork: number
+    collectedTotal: number
+    emitted: number
+    carried: number
+  } | null
+  totals: {
+    pagesFetched: number
+    itemsFetchedFromNetwork: number
+  }
+}
+
+// Backwards-compat alias: existing consumers may still refer to "debug".
+export type BackfillDebugState = BackfillStats
 
 export type MasonryItemBase = {
   id: string
@@ -27,10 +70,24 @@ type GetContentFn<TItem extends MasonryItemBase> = (
   pageToken: PageToken
 ) => Promise<GetContentResult<TItem>>
 
+type MasonryMode = 'default' | 'backfill'
+
 const props = defineProps({
   getContent: {
     type: Function as PropType<GetContentFn<MasonryItemBase>>,
     required: true,
+  },
+  mode: {
+    type: String as PropType<MasonryMode>,
+    default: 'default',
+  },
+  pageSize: {
+    type: Number,
+    default: 20,
+  },
+  backfillRequestDelayMs: {
+    type: Number,
+    default: 2000,
   },
   items: {
     type: Array as PropType<MasonryItemBase[] | undefined>,
@@ -209,6 +266,29 @@ const pagesLoaded = ref<PageToken[]>([])
 const internalItems = ref<MasonryItemBase[]>([])
 const controlledItemsMirror = ref<MasonryItemBase[]>([])
 const nextPage = ref<PageToken | null>(props.page)
+const backfillBuffer = ref<MasonryItemBase[]>([])
+
+const backfillDebugState = shallowRef<BackfillDebugState>({
+  enabled: false,
+  isBackfillActive: false,
+  isRequestInFlight: false,
+  requestPage: null,
+  progress: {
+    collected: 0,
+    target: 0,
+  },
+  cooldownMsRemaining: 0,
+  cooldownMsTotal: 2000,
+  pageSize: 20,
+  bufferSize: 0,
+  lastBatch: null,
+  totals: {
+    pagesFetched: 0,
+    itemsFetchedFromNetwork: 0,
+  },
+})
+
+const backfillStats = backfillDebugState
 
 const isItemsControlled = computed(() => props.items !== undefined)
 
@@ -234,6 +314,204 @@ const itemsState = computed({
     }
   },
 })
+
+function clampPageSize(n: number): number {
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1
+}
+
+function clampDelayMs(n: number): number {
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
+}
+
+async function sleepWithCountdown(ms: number) {
+  const total = clampDelayMs(ms)
+  if (total <= 0) return
+
+  backfillDebugState.value = {
+    ...backfillDebugState.value,
+    cooldownMsTotal: total,
+    cooldownMsRemaining: total,
+  }
+
+  const start = Date.now()
+  const tickMs = 100
+
+  await new Promise<void>((resolve) => {
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - start
+      const remaining = Math.max(0, total - elapsed)
+
+      backfillDebugState.value = {
+        ...backfillDebugState.value,
+        cooldownMsTotal: total,
+        cooldownMsRemaining: remaining,
+      }
+
+      if (remaining <= 0) {
+        clearInterval(interval)
+        resolve()
+      }
+    }, tickMs)
+  })
+}
+
+async function loadBackfillBatch(startPage: PageToken | null) {
+  const target = clampPageSize(props.pageSize)
+
+  const enabled = props.mode === 'backfill'
+  const delayMs = clampDelayMs(props.backfillRequestDelayMs)
+
+  // First, use any carryover items from previous backfill fetches.
+  const collected: MasonryItemBase[] = []
+  let usedFromBuffer = 0
+  if (backfillBuffer.value.length) {
+    usedFromBuffer = backfillBuffer.value.length
+    collected.push(...backfillBuffer.value)
+    backfillBuffer.value = []
+  }
+
+  backfillDebugState.value = {
+    ...backfillDebugState.value,
+    enabled,
+    isBackfillActive: false,
+    isRequestInFlight: false,
+    requestPage: null,
+    cooldownMsTotal: delayMs,
+    cooldownMsRemaining: 0,
+    progress: {
+      collected: 0,
+      target: 0,
+    },
+    pageSize: target,
+    bufferSize: 0,
+  }
+
+  const pages: PageToken[] = []
+  let next = startPage
+  let fetchedFromNetwork = 0
+
+  let isBackfillActive = false
+
+  while (collected.length < target && next != null) {
+    const pageToLoad = next
+
+    // Only consider these as "backfill requests" after we have actually
+    // determined we're short and need extra pages.
+    if (isBackfillActive) {
+      backfillDebugState.value = {
+        ...backfillDebugState.value,
+        enabled,
+        isBackfillActive: true,
+        isRequestInFlight: true,
+        requestPage: pageToLoad,
+        progress: {
+          collected: Math.min(collected.length, target),
+          target,
+        },
+        cooldownMsTotal: delayMs,
+        cooldownMsRemaining: 0,
+        pageSize: target,
+      }
+    }
+
+    const result = await props.getContent(pageToLoad)
+
+    pages.push(pageToLoad)
+
+    if (isBackfillActive) {
+      backfillDebugState.value = {
+        ...backfillDebugState.value,
+        enabled,
+        isBackfillActive: true,
+        isRequestInFlight: false,
+        requestPage: null,
+      }
+    }
+
+    fetchedFromNetwork += result.items.length
+
+    // Mark for entry animation when these items are eventually rendered.
+    markEnterFromLeft(result.items)
+
+    collected.push(...result.items)
+    next = result.nextPage
+
+    // If we're still short after the first fetch, that is when backfill becomes active.
+    if (!isBackfillActive && collected.length < target && next != null) {
+      isBackfillActive = true
+      backfillDebugState.value = {
+        ...backfillDebugState.value,
+        enabled,
+        isBackfillActive: true,
+        isRequestInFlight: false,
+        requestPage: null,
+        progress: {
+          collected: Math.min(collected.length, target),
+          target,
+        },
+        cooldownMsTotal: delayMs,
+        cooldownMsRemaining: 0,
+        pageSize: target,
+      }
+    } else if (isBackfillActive) {
+      backfillDebugState.value = {
+        ...backfillDebugState.value,
+        enabled,
+        isBackfillActive: true,
+        progress: {
+          collected: Math.min(collected.length, target),
+          target,
+        },
+      }
+    }
+
+    if (isBackfillActive && collected.length < target && next != null) {
+      await sleepWithCountdown(delayMs)
+    }
+  }
+
+  const batchItems = collected.slice(0, target)
+  const carry = collected.slice(target)
+  backfillBuffer.value = carry
+
+  backfillDebugState.value = {
+    ...backfillDebugState.value,
+    enabled,
+    isBackfillActive: false,
+    isRequestInFlight: false,
+    requestPage: null,
+    progress: {
+      collected: 0,
+      target: 0,
+    },
+    cooldownMsTotal: delayMs,
+    cooldownMsRemaining: 0,
+    pageSize: target,
+    bufferSize: carry.length,
+    lastBatch: {
+      startPage,
+      pages,
+      usedFromBuffer,
+      fetchedFromNetwork,
+      collectedTotal: collected.length,
+      emitted: batchItems.length,
+      carried: carry.length,
+    },
+    totals: {
+      pagesFetched: backfillDebugState.value.totals.pagesFetched + pages.length,
+      itemsFetchedFromNetwork:
+        backfillDebugState.value.totals.itemsFetchedFromNetwork + fetchedFromNetwork,
+    },
+  }
+
+  return { batchItems, pages, nextPage: next }
+}
+
+async function loadDefaultPage(pageToLoad: PageToken) {
+  const result = await props.getContent(pageToLoad)
+  markEnterFromLeft(result.items)
+  return { items: result.items, nextPage: result.nextPage }
+}
 
 function toId(itemOrId: string | MasonryItemBase | null | undefined): string | null {
   if (!itemOrId) return null
@@ -354,6 +632,8 @@ async function removeItem(itemOrId: string | MasonryItemBase) {
 
 defineExpose({
   remove: removeItems,
+  backfillDebugState,
+  backfillStats,
 })
 
 function rebuildLayout() {
@@ -489,17 +769,28 @@ const firstLoadedPageToken = computed(() => {
 
 async function loadNextPage() {
   if (isLoadingInitial.value || isLoadingNext.value) return
-  if (nextPage.value == null) return
+  if (props.mode !== 'backfill' && nextPage.value == null) return
+  if (props.mode === 'backfill' && nextPage.value == null && backfillBuffer.value.length === 0) {
+    return
+  }
 
   try {
     isLoadingNext.value = true
     error.value = ''
 
-    const pageToLoad = nextPage.value
-    const result = await props.getContent(pageToLoad)
+    if (props.mode === 'backfill') {
+      const result = await loadBackfillBatch(nextPage.value)
+      if (result.pages.length) pagesLoaded.value = [...pagesLoaded.value, ...result.pages]
+      itemsState.value = [...itemsState.value, ...result.batchItems]
+      nextPage.value = result.nextPage
+      return
+    }
 
+    const pageToLoad = nextPage.value
+    if (pageToLoad == null) return
+
+    const result = await loadDefaultPage(pageToLoad)
     pagesLoaded.value = [...pagesLoaded.value, pageToLoad]
-    markEnterFromLeft(result.items)
     itemsState.value = [...itemsState.value, ...result.items]
     nextPage.value = result.nextPage
   } catch (err) {
@@ -534,17 +825,42 @@ onMounted(async () => {
 
   // Seed initial load
   nextPage.value = props.page
+  backfillBuffer.value = []
+  backfillDebugState.value = {
+    enabled: props.mode === 'backfill',
+    isBackfillActive: false,
+    isRequestInFlight: false,
+    requestPage: null,
+    progress: {
+      collected: 0,
+      target: 0,
+    },
+    cooldownMsRemaining: 0,
+    cooldownMsTotal: clampDelayMs(props.backfillRequestDelayMs),
+    pageSize: clampPageSize(props.pageSize),
+    bufferSize: 0,
+    lastBatch: null,
+    totals: {
+      pagesFetched: 0,
+      itemsFetchedFromNetwork: 0,
+    },
+  }
 
   try {
     isLoadingInitial.value = true
     error.value = ''
 
-    const result = await props.getContent(props.page)
-
-    pagesLoaded.value = [props.page]
-    markEnterFromLeft(result.items)
-    itemsState.value = result.items
-    nextPage.value = result.nextPage
+    if (props.mode === 'backfill') {
+      const result = await loadBackfillBatch(props.page)
+      pagesLoaded.value = result.pages.length ? result.pages : [props.page]
+      itemsState.value = result.batchItems
+      nextPage.value = result.nextPage
+    } else {
+      const result = await loadDefaultPage(props.page)
+      pagesLoaded.value = [props.page]
+      itemsState.value = result.items
+      nextPage.value = result.nextPage
+    }
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err)
   } finally {
@@ -572,16 +888,42 @@ watch(
     pagesLoaded.value = []
     itemsState.value = []
     nextPage.value = newPage
+    backfillBuffer.value = []
+    backfillDebugState.value = {
+      enabled: props.mode === 'backfill',
+      isBackfillActive: false,
+      isRequestInFlight: false,
+      requestPage: null,
+      progress: {
+        collected: 0,
+        target: 0,
+      },
+      cooldownMsRemaining: 0,
+      cooldownMsTotal: clampDelayMs(props.backfillRequestDelayMs),
+      pageSize: clampPageSize(props.pageSize),
+      bufferSize: 0,
+      lastBatch: null,
+      totals: {
+        pagesFetched: 0,
+        itemsFetchedFromNetwork: 0,
+      },
+    }
     isLoadingInitial.value = true
     isLoadingNext.value = false
     error.value = ''
 
     try {
-      const result = await props.getContent(newPage)
-      pagesLoaded.value = [newPage]
-      markEnterFromLeft(result.items)
-      itemsState.value = result.items
-      nextPage.value = result.nextPage
+      if (props.mode === 'backfill') {
+        const result = await loadBackfillBatch(newPage)
+        pagesLoaded.value = result.pages.length ? result.pages : [newPage]
+        itemsState.value = result.batchItems
+        nextPage.value = result.nextPage
+      } else {
+        const result = await loadDefaultPage(newPage)
+        pagesLoaded.value = [newPage]
+        itemsState.value = result.items
+        nextPage.value = result.nextPage
+      }
     } catch (err) {
       error.value = err instanceof Error ? err.message : String(err)
     } finally {

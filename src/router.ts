@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-
+import Backfill from './pages/examples/Backfill.vue'
 import Home from './pages/Home.vue'
 
 export const router = createRouter({
@@ -9,6 +9,11 @@ export const router = createRouter({
       path: '/',
       name: 'home',
       component: Home,
+    },
+    {
+      path: '/examples/backfill',
+      name: 'examples-backfill',
+      component: Backfill,
     },
   ],
 })
