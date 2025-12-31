@@ -97,6 +97,7 @@ const layoutIndexById = ref<Map<string, number>>(new Map())
 // For an item with final (x,y), the first paint is at (x, y - height) and it
 // animates to (x,y).
 const CARD_MOTION_MS = 300
+const ENTER_MOTION_MS = 420
 const enterStartIds = ref<Set<string>>(new Set())
 const enterAnimatingIds = ref<Set<string>>(new Set())
 const scheduledEnterIds = new Set<string>()
@@ -122,9 +123,9 @@ function getMoveOffset(id: string): { dx: number; dy: number } {
 }
 
 function getCardTransition(id: string): string | undefined {
-  return enterAnimatingIds.value.has(id) || moveTransitionIds.value.has(id)
-    ? `transform ${CARD_MOTION_MS}ms ease-out`
-    : undefined
+  if (enterAnimatingIds.value.has(id)) return `transform ${ENTER_MOTION_MS}ms ease-out`
+  if (moveTransitionIds.value.has(id)) return `transform ${CARD_MOTION_MS}ms ease-out`
+  return undefined
 }
 
 function getCardTransform(index: number): string {
@@ -604,7 +605,7 @@ watch(
           scheduledEnterIds.delete(id)
         }
         enterAnimatingIds.value = nextAnimating
-      }, CARD_MOTION_MS)
+      }, ENTER_MOTION_MS)
     })
   },
   { flush: 'post' }
