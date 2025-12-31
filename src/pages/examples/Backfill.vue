@@ -123,7 +123,7 @@ async function getContent(pageToken: PageToken) {
           <button
             type="button"
             class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-            @click="(masonryRef as any)?.undoLastRemoval?.()"
+            @click="(masonryRef as any)?.undo?.()"
           >
             Undo last remove
           </button>

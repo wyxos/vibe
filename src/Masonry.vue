@@ -361,6 +361,14 @@ async function undoLastRemoval() {
   }
 }
 
+async function restore(itemsOrIds: string | MasonryItemBase | Array<string | MasonryItemBase>) {
+  return restoreRemoved(itemsOrIds)
+}
+
+async function undo() {
+  return undoLastRemoval()
+}
+
 const backfillStats = shallowRef<BackfillStats>({
   enabled: false,
   isBackfillActive: false,
@@ -512,6 +520,9 @@ async function removeItem(itemOrId: string | MasonryItemBase) {
 
 defineExpose({
   remove: removeItems,
+  restore,
+  undo,
+  // Aliases (kept for now; can be removed if you want strictly short API only).
   restoreRemoved,
   undoLastRemoval,
   backfillStats,

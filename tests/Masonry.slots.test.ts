@@ -300,9 +300,9 @@ describe('Masonry slots + media rendering', () => {
     expect(headerOrder()).toBe('a')
 
     // Restore them individually in "wrong" order; should still end up in original order.
-    await (wrapper.vm as any).restoreRemoved('c')
+    await (wrapper.vm as any).restore('c')
     await wrapper.vm.$nextTick()
-    await (wrapper.vm as any).restoreRemoved('b')
+    await (wrapper.vm as any).restore('b')
     await wrapper.vm.$nextTick()
     expect(headerOrder()).toBe('abc')
 
@@ -311,7 +311,7 @@ describe('Masonry slots + media rendering', () => {
     await wrapper.vm.$nextTick()
     expect(headerOrder()).toBe('a')
 
-    await (wrapper.vm as any).undoLastRemoval()
+    await (wrapper.vm as any).undo()
     await wrapper.vm.$nextTick()
     expect(headerOrder()).toBe('abc')
 
