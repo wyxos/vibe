@@ -633,11 +633,6 @@ const sectionClass = computed(() => {
 
 <template>
   <section v-bind="passthroughAttrs" :class="sectionClass">
-    <div class="flex items-baseline justify-between gap-4">
-      <h2 class="text-base font-medium text-slate-900">Page {{ firstLoadedPageToken }}</h2>
-      <p class="text-xs text-slate-600">Pages loaded: {{ pagesLoaded.length }}</p>
-    </div>
-
     <div
       ref="scrollViewportRef"
       data-testid="items-scroll-container"
