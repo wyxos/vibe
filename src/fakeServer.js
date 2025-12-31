@@ -62,6 +62,7 @@ function createItem({ page, index }) {
     return {
       id: baseId,
       type: 'video',
+      reaction: null,
       width,
       height,
       original: VIDEO_SOURCES[videoIndex],
@@ -72,6 +73,7 @@ function createItem({ page, index }) {
   return {
     id: baseId,
     type: 'image',
+    reaction: null,
     width,
     height,
     original: `https://picsum.photos/seed/vibe-${baseId}/${originalWidth}/${originalHeight}`,

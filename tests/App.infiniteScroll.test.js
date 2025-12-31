@@ -14,6 +14,7 @@ vi.mock('../src/fakeServer', () => {
       const makeItem = (n) => ({
         id: `${tokenStr}-${n}`,
         type: 'image',
+        reaction: null,
         width: 320,
         height: 240,
         original: 'https://picsum.photos/seed/test/1600/1200',

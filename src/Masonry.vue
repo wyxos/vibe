@@ -237,11 +237,13 @@ watch(
 )
 
 watch(
-  () => itemsState.value,
-  () => {
-    rebuildColumns()
-  },
-  { deep: true, immediate: true },
+  // Performance note: this component targets very large arrays (e.g. 10k items).
+  // Avoid deep watchers over items; rebuild layout only when the list structure
+  // changes (new array reference or length change). This keeps metadata-only
+  // updates (e.g. reactions) cheap.
+  () => [itemsState.value, itemsState.value.length],
+  () => rebuildColumns(),
+  { immediate: true },
 )
 
 const sectionClass = computed(() => {

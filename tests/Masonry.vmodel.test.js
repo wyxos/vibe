@@ -16,6 +16,7 @@ describe('Masonry v-model:items', () => {
       const makeItem = (id) => ({
         id,
         type: 'image',
+        reaction: null,
         width: 320,
         height: 240,
         original: 'https://picsum.photos/seed/test/1600/1200',

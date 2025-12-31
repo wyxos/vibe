@@ -13,6 +13,7 @@ describe('fakeServer.fetchPage', () => {
     expect(first).toMatchObject({
       id: expect.any(String),
       type: expect.any(String),
+      reaction: null,
       width: expect.any(Number),
       height: expect.any(Number),
       original: expect.any(String),

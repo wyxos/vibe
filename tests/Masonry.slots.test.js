@@ -16,6 +16,7 @@ describe('Masonry slots + media rendering', () => {
           {
             id: 'img-1',
             type: 'image',
+            reaction: null,
             width: 320,
             height: 240,
             original: 'https://picsum.photos/seed/original/1600/1200',
@@ -24,6 +25,7 @@ describe('Masonry slots + media rendering', () => {
           {
             id: 'vid-1',
             type: 'video',
+            reaction: null,
             width: 320,
             height: 240,
             original: 'https://example.com/video.mp4',
