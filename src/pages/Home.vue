@@ -1,14 +1,14 @@
-<script setup>
+<script setup lang="ts">
 import { ref, shallowRef, watch } from 'vue'
 
 import pkg from '../../package.json'
 
 import Masonry from '../Masonry.vue'
-import { fetchPage } from '../fakeServer'
+import { fetchPage, type FeedItem, type PageToken } from '../fakeServer'
 
-const items = ref([])
-const itemIndexById = shallowRef(new Map())
-const masonryRef = ref(null)
+const items = ref<FeedItem[]>([])
+const itemIndexById = shallowRef<Map<string, number>>(new Map())
+const masonryRef = ref<{ remove: (itemsOrIds: Array<string | FeedItem> | string | FeedItem) => Promise<void> } | null>(null)
 
 const packageVersion = pkg.version
 
@@ -18,11 +18,11 @@ const initialPageToken = (() => {
   return trimmed ? trimmed : 1
 })()
 
-async function getContent(pageToken) {
+async function getContent(pageToken: PageToken) {
   return fetchPage(pageToken)
 }
 
-function setReaction(itemId, reaction) {
+function setReaction(itemId: string, reaction: string) {
   // Performance note: this demo is meant to stay responsive even with very large
   // item arrays (e.g. 10k). Keep reaction updates O(1) by mutating only the
   // affected item, and avoid copying the full array.
@@ -48,7 +48,7 @@ watch(
   { immediate: true },
 )
 
-function getPageLabelFromId(id) {
+function getPageLabelFromId(id: string | null | undefined) {
   if (!id) return null
   const s = String(id)
 
@@ -69,7 +69,7 @@ function removeRandomItems() {
 
   const max = Math.min(5, list.length)
   const count = Math.max(1, Math.floor(Math.random() * max) + 1)
-  const picked = new Set()
+  const picked = new Set<string>()
 
   while (picked.size < count) {
     const idx = Math.floor(Math.random() * list.length)
@@ -79,7 +79,7 @@ function removeRandomItems() {
   }
 
   if (!picked.size) return
-  masonryRef.value?.remove(Array.from(picked))
+  void masonryRef.value?.remove(Array.from(picked))
 }
 </script>
 

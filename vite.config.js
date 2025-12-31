@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [tailwindcss(), vue()],
   test: {
     environment: 'jsdom',
-    include: ['tests/**/*.test.js'],
+    include: ['tests/**/*.test.{js,ts}'],
     exclude: ['tests/e2e/**', '**/node_modules/**'],
   },
 })

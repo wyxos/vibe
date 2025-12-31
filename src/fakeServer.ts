@@ -6,7 +6,27 @@ const VIDEO_SOURCES = [
   'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/bee.mp4',
 ]
 
-function normalizePageToken(pageToken) {
+export type PageToken = string | number
+
+export type FeedItemType = 'image' | 'video'
+
+export interface FeedItem {
+  id: string
+  type: FeedItemType
+  reaction: string | null
+  width: number
+  height: number
+  original: string
+  preview: string
+  [key: string]: unknown
+}
+
+export interface FetchPageResult {
+  items: FeedItem[]
+  nextPage: PageToken | null
+}
+
+function normalizePageToken(pageToken: PageToken): number {
   if (typeof pageToken === 'number') {
     if (!Number.isInteger(pageToken)) throw new Error('page must be an integer')
     return pageToken
@@ -22,12 +42,12 @@ function normalizePageToken(pageToken) {
   throw new Error('page must be a number or string')
 }
 
-function createNextPageToken(nextPageNumber) {
+function createNextPageToken(nextPageNumber: number | null): PageToken | null {
   if (nextPageNumber == null) return null
   return nextPageNumber % 2 === 0 ? String(nextPageNumber) : nextPageNumber
 }
 
-function createRng(seed) {
+function createRng(seed: number): () => number {
   let state = seed >>> 0
   return () => {
     state = (1664525 * state + 1013904223) >>> 0
@@ -35,11 +55,11 @@ function createRng(seed) {
   }
 }
 
-function randomInt(rng, minInclusive, maxInclusive) {
+function randomInt(rng: () => number, minInclusive: number, maxInclusive: number): number {
   return Math.floor(rng() * (maxInclusive - minInclusive + 1)) + minInclusive
 }
 
-function createItem({ page, index }) {
+function createItem({ page, index }: { page: number; index: number }): FeedItem {
   const seed = page * 1000 + index
   const rng = createRng(seed)
 
@@ -81,7 +101,7 @@ function createItem({ page, index }) {
   }
 }
 
-export async function fetchPage(pageToken) {
+export async function fetchPage(pageToken: PageToken): Promise<FetchPageResult> {
   const page = normalizePageToken(pageToken)
   if (page < 1 || page > TOTAL_PAGES) throw new Error('page out of range')
 

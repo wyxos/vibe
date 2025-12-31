@@ -1,10 +1,15 @@
-export function getColumnCount(containerWidth, itemWidth) {
+export function getColumnCount(containerWidth: number, itemWidth: number): number {
   if (!containerWidth || containerWidth <= 0) return 1
   if (!itemWidth || itemWidth <= 0) return 1
   return Math.max(1, Math.floor(containerWidth / itemWidth))
 }
 
-export function getColumnWidth(containerWidth, columnCount, fallbackItemWidth, gapX = 0) {
+export function getColumnWidth(
+  containerWidth: number,
+  columnCount: number,
+  fallbackItemWidth: number,
+  gapX = 0,
+): number {
   if (!containerWidth || containerWidth <= 0) return fallbackItemWidth
   if (!columnCount || columnCount <= 0) return fallbackItemWidth
 
@@ -16,7 +21,10 @@ export function getColumnWidth(containerWidth, columnCount, fallbackItemWidth, g
   return usableWidth / columnCount
 }
 
-export function estimateItemHeight(item, columnWidth) {
+export function estimateItemHeight(
+  item: { width?: number; height?: number } | null | undefined,
+  columnWidth: number,
+): number {
   const w = item?.width
   const h = item?.height
   if (typeof w === 'number' && typeof h === 'number' && w > 0 && h > 0) {
@@ -25,7 +33,10 @@ export function estimateItemHeight(item, columnWidth) {
   return columnWidth
 }
 
-export function distributeItemsIntoColumns(items, { columnCount, columnWidth }) {
+export function distributeItemsIntoColumns<T extends { width?: number; height?: number }>(
+  items: T[],
+  { columnCount, columnWidth }: { columnCount: number; columnWidth: number },
+): T[][] {
   const columns = Array.from({ length: columnCount }, () => ({ height: 0, items: [] }))
 
   for (const item of items) {
@@ -34,9 +45,9 @@ export function distributeItemsIntoColumns(items, { columnCount, columnWidth }) 
       if (columns[i].height < columns[bestIndex].height) bestIndex = i
     }
 
-    columns[bestIndex].items.push(item)
+    ;(columns[bestIndex].items as T[]).push(item)
     columns[bestIndex].height += estimateItemHeight(item, columnWidth)
   }
 
-  return columns.map((c) => c.items)
+  return columns.map((c) => c.items as T[])
 }

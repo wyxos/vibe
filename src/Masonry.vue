@@ -1,25 +1,45 @@
-<script setup>
+<script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, useAttrs, useSlots, watch } from 'vue'
+import type { PropType } from 'vue'
 
 import {
   estimateItemHeight,
   getColumnCount,
   getColumnWidth,
-} from './masonryLayout.js'
+} from './masonryLayout'
 
 defineOptions({ inheritAttrs: false })
 
+type PageToken = string | number
+
+export type MasonryItemBase = {
+  id: string
+  width: number
+  height: number
+  type?: string
+  preview?: string
+  original?: string
+  [key: string]: unknown
+}
+
+type GetContentResult<TItem extends MasonryItemBase> = {
+  items: TItem[]
+  nextPage: PageToken | null
+}
+
+type GetContentFn<TItem extends MasonryItemBase> = (pageToken: PageToken) => Promise<GetContentResult<TItem>>
+
 const props = defineProps({
   getContent: {
-    type: Function,
+    type: Function as PropType<GetContentFn<MasonryItemBase>>,
     required: true,
   },
   items: {
-    type: Array,
+    type: Array as PropType<MasonryItemBase[] | undefined>,
     default: undefined,
   },
   page: {
-    type: [String, Number],
+    type: [String, Number] as PropType<PageToken>,
     default: 1,
   },
   itemWidth: {
@@ -52,28 +72,30 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:items'])
+const emit = defineEmits<{
+  (e: 'update:items', items: MasonryItemBase[]): void
+}>()
 
 const attrs = useAttrs()
 const slots = useSlots()
 
 const passthroughAttrs = computed(() => {
   // Avoid double-applying class by stripping it from v-bind.
-  const { class: _class, ...rest } = attrs
+  const { class: _class, ...rest } = attrs as Record<string, unknown>
   return rest
 })
 
-const scrollContainerEl = ref(null)
+const scrollContainerEl = ref<HTMLElement | null>(null)
 
 const containerWidth = ref(0)
 const viewportHeight = ref(0)
 const scrollTop = ref(0)
-let resizeObserver
+let resizeObserver: ResizeObserver | undefined
 
 const gapX = computed(() => props.gapX)
 const gapY = computed(() => props.gapY)
 
-function getMeasuredContainerWidth(el) {
+function getMeasuredContainerWidth(el: HTMLElement | null): number {
   if (!el) return 0
   const pr = Math.max(0, gapX.value)
   // clientWidth includes padding but excludes scrollbar. Subtract padding-right
@@ -106,37 +128,37 @@ const BUCKET_PX = 600
 
 // Absolute-position masonry layout state. We keep arrays indexed by item index
 // to avoid heavy map lookups during render.
-const layoutPositions = ref([])
-const layoutHeights = ref([])
-const layoutBuckets = ref(new Map())
+const layoutPositions = ref<Array<{ x: number; y: number }>>([])
+const layoutHeights = ref<number[]>([])
+const layoutBuckets = ref<Map<number, number[]>>(new Map())
 const layoutContentHeight = ref(0)
-const layoutIndexById = ref(new Map())
+const layoutIndexById = ref<Map<string, number>>(new Map())
 
 // Entry animation: items appear from the left edge of the masonry container.
 // For an item with final (x,y), the first paint is at (-width, y) and it
 // animates to (x,y).
 const ENTER_FROM_LEFT_MS = 300
-const enterStartIds = ref(new Set())
-const enterAnimatingIds = ref(new Set())
-const scheduledEnterIds = new Set()
+const enterStartIds = ref<Set<string>>(new Set())
+const enterAnimatingIds = ref<Set<string>>(new Set())
+const scheduledEnterIds = new Set<string>()
 
 // Move + leave animations
-const moveOffsets = ref(new Map())
-const moveTransitionIds = ref(new Set())
-const leavingClones = ref([])
+const moveOffsets = ref<Map<string, { dx: number; dy: number }>>(new Map())
+const moveTransitionIds = ref<Set<string>>(new Set())
+const leavingClones = ref<Array<{ id: string; item: MasonryItemBase; fromX: number; fromY: number; width: number; leaving: boolean }>>([])
 
-function getMoveOffset(id) {
+function getMoveOffset(id: string): { dx: number; dy: number } {
   const off = moveOffsets.value.get(id)
   return off ? off : { dx: 0, dy: 0 }
 }
 
-function getCardTransition(id) {
+function getCardTransition(id: string): string | undefined {
   return (enterAnimatingIds.value.has(id) || moveTransitionIds.value.has(id))
     ? 'transform ' + ENTER_FROM_LEFT_MS + 'ms ease-out'
     : undefined
 }
 
-function getCardTransform(index) {
+function getCardTransform(index: number): string {
   const item = itemsState.value[index]
   const id = item?.id
 
@@ -147,18 +169,18 @@ function getCardTransform(index) {
   return 'translate3d(' + (startX + off.dx) + 'px,' + (startY + off.dy) + 'px,0)'
 }
 
-function raf(cb) {
-  const fn = typeof requestAnimationFrame === 'function'
+function raf(cb: () => void) {
+  const fn: (f: FrameRequestCallback) => number = typeof requestAnimationFrame === 'function'
     ? requestAnimationFrame
-    : (f) => setTimeout(f, 0)
-  fn(cb)
+    : (f: FrameRequestCallback) => setTimeout(() => f(0), 0) as unknown as number
+  fn(() => cb())
 }
 
-function raf2(cb) {
+function raf2(cb: () => void) {
   raf(() => raf(cb))
 }
 
-function markEnterFromLeft(items) {
+function markEnterFromLeft(items: MasonryItemBase[]) {
   if (!Array.isArray(items) || items.length === 0) return
   const next = new Set(enterStartIds.value)
   let changed = false
@@ -177,10 +199,10 @@ const isLoadingInitial = ref(true)
 const isLoadingNext = ref(false)
 const error = ref('')
 
-const pagesLoaded = ref([])
-const internalItems = ref([])
-const controlledItemsMirror = ref([])
-const nextPage = ref(props.page)
+const pagesLoaded = ref<PageToken[]>([])
+const internalItems = ref<MasonryItemBase[]>([])
+const controlledItemsMirror = ref<MasonryItemBase[]>([])
+const nextPage = ref<PageToken | null>(props.page)
 
 const isItemsControlled = computed(() => props.items !== undefined)
 
@@ -197,7 +219,7 @@ const itemsState = computed({
   get() {
     return isItemsControlled.value ? controlledItemsMirror.value : internalItems.value
   },
-  set(next) {
+  set(next: MasonryItemBase[]) {
     if (isItemsControlled.value) {
       controlledItemsMirror.value = next
       emit('update:items', next)
@@ -207,17 +229,17 @@ const itemsState = computed({
   },
 })
 
-function toId(itemOrId) {
+function toId(itemOrId: string | MasonryItemBase | null | undefined): string | null {
   if (!itemOrId) return null
   return typeof itemOrId === 'string' ? itemOrId : itemOrId?.id
 }
 
-async function removeItems(itemsOrIds) {
+async function removeItems(itemsOrIds: string | MasonryItemBase | Array<string | MasonryItemBase>) {
   const raw = Array.isArray(itemsOrIds) ? itemsOrIds : [itemsOrIds]
   const ids = raw.map(toId).filter(Boolean)
   if (!ids.length) return
 
-  const removeSet = new Set(ids)
+  const removeSet = new Set(ids as string[])
 
   // Snapshot positions for the currently rendered subset.
   const oldPosById = new Map()
@@ -232,7 +254,7 @@ async function removeItems(itemsOrIds) {
 
   // Render clones for removed items that are currently in layout.
   const width = columnWidth.value
-  const clones = []
+  const clones: Array<{ id: string; item: MasonryItemBase; fromX: number; fromY: number; width: number; leaving: boolean }> = []
   for (const id of removeSet) {
     const idx = layoutIndexById.value.get(id)
     if (idx == null) continue
@@ -260,8 +282,8 @@ async function removeItems(itemsOrIds) {
   await nextTick()
 
   // Animate remaining items into place (FLIP).
-  const offsets = new Map()
-  const animIds = []
+  const offsets = new Map<string, { dx: number; dy: number }>()
+  const animIds: string[] = []
 
   for (const [itId, oldPos] of oldPosById.entries()) {
     if (removeSet.has(itId)) continue
@@ -311,7 +333,7 @@ async function removeItems(itemsOrIds) {
   }
 }
 
-async function removeItem(itemOrId) {
+async function removeItem(itemOrId: string | MasonryItemBase) {
   return removeItems(itemOrId)
 }
 
@@ -378,7 +400,7 @@ const containerHeight = computed(() => {
   return base + SCROLL_BUFFER_PX
 })
 
-const visibleIndices = computed(() => {
+const visibleIndices = computed<number[]>(() => {
   const len = itemsState.value.length
   if (!len) return []
 
@@ -391,14 +413,14 @@ const visibleIndices = computed(() => {
   const startBucket = Math.floor(startY / BUCKET_PX)
   const endBucket = Math.floor(endY / BUCKET_PX)
 
-  const picked = new Set()
+  const picked = new Set<number>()
   for (let b = startBucket; b <= endBucket; b += 1) {
     const bucket = layoutBuckets.value.get(b)
     if (!bucket) continue
     for (const idx of bucket) picked.add(idx)
   }
 
-  const ordered = Array.from(picked)
+  const ordered = Array.from(picked) as number[]
   ordered.sort((a, b) => a - b)
   return ordered
 })
@@ -408,7 +430,7 @@ watch(
   (indices) => {
     if (!indices?.length) return
 
-    const idsToSchedule = []
+    const idsToSchedule: string[] = []
     for (const idx of indices) {
       const id = itemsState.value[idx]?.id
       if (!id) continue
