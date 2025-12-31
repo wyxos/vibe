@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { h } from 'vue'
-import Masonry from '../src/Masonry.vue'
+import Masonry from '@/Masonry.vue'
 
 type SlotItem = {
   id: string

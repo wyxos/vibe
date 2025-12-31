@@ -1,8 +1,8 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
-import type { MasonryItemBase } from '../src/masonryTypes'
-import Masonry from '../src/Masonry.vue'
+import type { MasonryItemBase } from '@/masonryTypes'
+import Masonry from '@/Masonry.vue'
 
 function flushPromises() {
   return new Promise((resolve) => setTimeout(resolve, 0))

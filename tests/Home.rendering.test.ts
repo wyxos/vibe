@@ -1,13 +1,13 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 
-import Home from '../src/pages/Home.vue'
+import Home from '@/pages/Home.vue'
 
 function flushPromises() {
   return new Promise((resolve) => setTimeout(resolve, 0))
 }
 
-vi.mock('../src/fakeServer', () => {
+vi.mock('@/fakeServer', () => {
   return {
     fetchPage: vi.fn(async () => {
       const makeItem = (id: string) => ({
