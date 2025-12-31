@@ -2,7 +2,7 @@
 
 ## Project Overview
 - Library project exporting a Vue 3 masonry component; source of truth lives in `src/`, while `lib/` is generated during publishes—never edit files under `lib/` manually.
-- The demo app (`src/App.vue`, `examples/`, `pages.json`) exists only for showcase and manual verification; keep library logic isolated from demo-specific concerns.
+- The demo app (`src/App.vue`, `examples/`) exists only for showcase and manual verification; keep library logic isolated from demo-specific concerns.
 
 ## Key Architecture
 - `src/Masonry.vue` is the primary component: it composes layout (`calculateLayout.ts`), scroll orchestration (`useMasonryScroll.ts`), and transition helpers (`useMasonryTransitions.ts`). Any feature work should integrate through these composables instead of duplicating logic.
@@ -14,7 +14,7 @@
 - Keep new state in `Masonry.vue` inside the Composition API `setup` function, and expose capabilities via `defineExpose` so downstream users receive them. When you add an exposed method, mirror it in the type declarations if hand-maintained.
 - Use the provided composables: for scroll-triggered loading call `handleScroll` from `useMasonryScroll`; for animations hook into `useMasonryTransitions`. This prevents inconsistencies in timing and data flow.
 - Diagnostics such as `checkItemDimensions` log once per malformed item (`Set`-based dedupe). Preserve that pattern for future warnings.
-- Treat `pages.json` as fixture data—avoid bloating diffs by rewriting the file unless intentionally updating sample content.
+
 
 ## Commands & Tooling
 - Install deps with `npm install`. Key scripts: `npm run dev` (Vite dev server), `npm run build:lib` (library bundle + declarations), `npm test` (Vitest unit suite), `npm run build` (demo site + CNAME). There is no lint script.
