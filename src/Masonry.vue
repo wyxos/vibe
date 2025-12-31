@@ -30,6 +30,18 @@ const props = defineProps({
     type: Number,
     default: 200,
   },
+  virtual: {
+    type: Boolean,
+    default: true,
+  },
+  overscanPx: {
+    type: Number,
+    default: 600,
+  },
+  virtualMinItems: {
+    type: Number,
+    default: 200,
+  },
 })
 
 const emit = defineEmits(['update:items'])
@@ -45,7 +57,12 @@ const passthroughAttrs = computed(() => {
 const scrollContainerEl = ref(null)
 
 const containerWidth = ref(0)
+const viewportHeight = ref(0)
+const scrollTop = ref(0)
 let resizeObserver
+
+// Tailwind `gap-4` = 1rem by default.
+const ITEM_GAP_PX = 16
 
 // Keep a stable per-item column assignment to avoid remounting lots of items
 // (and reloading images) when the items array changes.
@@ -116,11 +133,137 @@ function rebuildColumns() {
     }
 
     nextColumns[index].items.push(item)
-    nextColumns[index].height += estimateItemHeight(item, colWidth)
+    const itemHeight = estimateItemHeight(item, colWidth)
+    nextColumns[index].height += itemHeight + ITEM_GAP_PX
   }
 
-  columnsState.value = nextColumns.map((c) => c.items)
+  columnsState.value = nextColumns.map((c) => {
+    const heights = []
+    const tops = []
+    let y = 0
+
+    for (const item of c.items) {
+      tops.push(y)
+      const h = estimateItemHeight(item, colWidth)
+      heights.push(h)
+      y += h + ITEM_GAP_PX
+    }
+
+    return {
+      items: c.items,
+      tops,
+      heights,
+      totalHeight: Math.max(0, y - ITEM_GAP_PX),
+    }
+  })
 }
+
+function findStartIndex(tops, y) {
+  // First index whose start is <= y, i.e. last top <= y.
+  let lo = 0
+  let hi = tops.length - 1
+  let best = 0
+
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (tops[mid] <= y) {
+      best = mid
+      lo = mid + 1
+    } else {
+      hi = mid - 1
+    }
+  }
+
+  return best
+}
+
+function findEndIndex(tops, heights, yEnd) {
+  // First index whose start is >= yEnd, then step back one.
+  let lo = 0
+  let hi = tops.length - 1
+  let firstGE = tops.length
+
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (tops[mid] >= yEnd) {
+      firstGE = mid
+      hi = mid - 1
+    } else {
+      lo = mid + 1
+    }
+  }
+
+  let end = Math.max(0, firstGE - 1)
+
+  // Ensure the end includes any item whose box overlaps yEnd.
+  while (end + 1 < tops.length && tops[end] + heights[end] + ITEM_GAP_PX < yEnd) {
+    end += 1
+  }
+
+  return end
+}
+
+const visibleColumns = computed(() => {
+  const cols = columnsState.value
+  if (!props.virtual) {
+    return cols.map((c) => ({
+      items: c.items,
+      topPad: 0,
+      bottomPad: 0,
+      startIndex: 0,
+      endIndex: Math.max(0, c.items.length - 1),
+    }))
+  }
+
+  // For smaller lists, the overhead/complexity of windowing isn't worth it.
+  // This also keeps behavior intuitive (and test-friendly) for short feeds.
+  if (itemsState.value.length < props.virtualMinItems) {
+    return cols.map((c) => ({
+      items: c.items,
+      topPad: 0,
+      bottomPad: 0,
+      startIndex: 0,
+      endIndex: Math.max(0, c.items.length - 1),
+    }))
+  }
+
+  // In jsdom/tests, element sizing is often 0. Fall back to rendering all.
+  if (viewportHeight.value <= 0) {
+    return cols.map((c) => ({
+      items: c.items,
+      topPad: 0,
+      bottomPad: 0,
+      startIndex: 0,
+      endIndex: Math.max(0, c.items.length - 1),
+    }))
+  }
+
+  const startY = Math.max(0, scrollTop.value - props.overscanPx)
+  const endY = scrollTop.value + viewportHeight.value + props.overscanPx
+
+  return cols.map((c) => {
+    if (!c.items.length) {
+      return { items: [], topPad: 0, bottomPad: 0, startIndex: 0, endIndex: 0 }
+    }
+
+    const startIndex = findStartIndex(c.tops, startY)
+    const endIndex = Math.min(c.items.length - 1, findEndIndex(c.tops, c.heights, endY))
+
+    const topPad = c.tops[startIndex] ?? 0
+    const lastTop = c.tops[endIndex] ?? 0
+    const lastHeight = c.heights[endIndex] ?? 0
+    const bottomStart = lastTop + lastHeight
+    const bottomPad = Math.max(0, c.totalHeight - bottomStart)
+
+    return {
+      items: c.items.slice(startIndex, endIndex + 1),
+      topPad,
+      bottomPad,
+      startIndex,
+      endIndex,
+    }
+  })
+})
 
 const firstLoadedPageToken = computed(() => {
   return pagesLoaded.value.length ? pagesLoaded.value[0] : props.page
@@ -151,6 +294,9 @@ function maybeLoadMoreOnScroll() {
   const el = scrollContainerEl.value
   if (!el) return
 
+  scrollTop.value = el.scrollTop
+  viewportHeight.value = el.clientHeight
+
   const distanceFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight)
   if (distanceFromBottom <= props.prefetchThresholdPx) {
     void loadNextPage()
@@ -163,6 +309,7 @@ onMounted(async () => {
       const el = scrollContainerEl.value
       if (!el) return
       containerWidth.value = el.clientWidth
+      viewportHeight.value = el.clientHeight
     })
   }
 
@@ -188,6 +335,8 @@ onMounted(async () => {
   const el = scrollContainerEl.value
   if (el) {
     containerWidth.value = el.clientWidth
+    viewportHeight.value = el.clientHeight
+    scrollTop.value = el.scrollTop
     resizeObserver?.observe(el)
   }
 })
@@ -273,12 +422,13 @@ const sectionClass = computed(() => {
 
       <div v-else class="flex gap-4">
         <div
-          v-for="(col, colIndex) in columnsState"
+          v-for="(col, colIndex) in visibleColumns"
           :key="colIndex"
           class="flex min-w-0 flex-1 flex-col gap-4"
         >
+          <div v-if="col.topPad" :style="{ height: col.topPad + 'px' }" />
           <article
-            v-for="item in col"
+            v-for="item in col.items"
             :key="item.id"
             data-testid="item-card"
             class="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm"
@@ -318,6 +468,7 @@ const sectionClass = computed(() => {
               </div>
             </slot>
           </article>
+          <div v-if="col.bottomPad" :style="{ height: col.bottomPad + 'px' }" />
         </div>
       </div>
 
