@@ -26,6 +26,12 @@ This repo’s `src/Masonry.vue` is designed with **very large item arrays in min
 - If a feature changes **layout**, it should trigger a layout rebuild (append/remove/reload, width/height changes, container resize).
 - If a feature changes **metadata only**, it should not trigger full layout recalculation.
 
+## API naming
+
+- Prefer **descriptive internal helper names** inside the implementation (e.g. `removeItems`, `restoreRemoved`, `undoLastRemoval`).
+- Prefer **short external/public API names** exposed to consumers (e.g. `remove`, `restore`, `undo`).
+  - In `src/Masonry.vue`, this primarily means methods exposed via `defineExpose(...)`.
+
 ## Testing expectations
 
 - Update unit tests in `tests/` when item contracts change.
