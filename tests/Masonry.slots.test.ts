@@ -23,77 +23,106 @@ function flushPromises() {
 }
 
 describe('Masonry slots + media rendering', () => {
-  it('renders itemHeader and itemFooter slots and keeps media rendering internal', async () => {
-    const getContent = vi.fn(async () => {
-      return {
-        items: [
+  class ImmediateIntersectionObserver {
+    private cb: IntersectionObserverCallback
+    constructor(cb: IntersectionObserverCallback) {
+      this.cb = cb
+    }
+    observe(target: Element) {
+      this.cb(
+        [
           {
-            id: 'img-1',
-            type: 'image',
-            reaction: null,
-            width: 320,
-            height: 240,
-            original: 'https://picsum.photos/seed/original/1600/1200',
-            preview: 'https://picsum.photos/seed/preview/320/240',
-          },
-          {
-            id: 'vid-1',
-            type: 'video',
-            reaction: null,
-            width: 320,
-            height: 240,
-            original: 'https://example.com/video.mp4',
-            preview: 'https://picsum.photos/seed/poster/320/240',
-          },
+            target,
+            isIntersecting: true,
+            intersectionRatio: 1,
+          } as unknown as IntersectionObserverEntry,
         ],
-        nextPage: null,
-      }
-    })
+        this as unknown as IntersectionObserver
+      )
+    }
+    unobserve() {}
+    disconnect() {}
+    takeRecords() {
+      return []
+    }
+  }
 
-    const wrapper = mount(Masonry, {
-      props: { getContent, page: 1, itemWidth: 300 },
-      slots: {
-        itemHeader: ({ item }: SlotItemContext) =>
-          h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
-        itemFooter: ({ item, remove }: SlotItemFooterContext) =>
-          h(
-            'button',
-            { 'data-testid': 'slot-item-footer', type: 'button', onClick: remove },
-            `F:${item.id}`
-          ),
-      },
-      attachTo: document.body,
-    })
+  it('renders itemHeader and itemFooter slots and keeps media rendering internal', async () => {
+    vi.stubGlobal('IntersectionObserver', ImmediateIntersectionObserver as unknown as typeof IntersectionObserver)
 
-    await flushPromises()
-    await wrapper.vm.$nextTick()
+    try {
+      const getContent = vi.fn(async () => {
+        return {
+          items: [
+            {
+              id: 'img-1',
+              type: 'image',
+              reaction: null,
+              width: 320,
+              height: 240,
+              original: 'https://picsum.photos/seed/original/1600/1200',
+              preview: 'https://picsum.photos/seed/preview/320/240',
+            },
+            {
+              id: 'vid-1',
+              type: 'video',
+              reaction: null,
+              width: 320,
+              height: 240,
+              original: 'https://example.com/video.mp4',
+              preview: 'https://picsum.photos/seed/poster/320/240',
+            },
+          ],
+          nextPage: null,
+        }
+      })
 
-    expect(getContent).toHaveBeenCalledTimes(1)
+      const wrapper = mount(Masonry, {
+        props: { getContent, page: 1, itemWidth: 300 },
+        slots: {
+          itemHeader: ({ item }: SlotItemContext) => h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
+          itemFooter: ({ item, remove }: SlotItemFooterContext) =>
+            h(
+              'button',
+              { 'data-testid': 'slot-item-footer', type: 'button', onClick: remove },
+              `F:${item.id}`
+            ),
+        },
+        attachTo: document.body,
+      })
 
-    const cards = wrapper.findAll('[data-testid="item-card"]')
-    expect(cards).toHaveLength(2)
+      await flushPromises()
+      await wrapper.vm.$nextTick()
 
-    expect(wrapper.findAll('[data-testid="slot-item-header"]').length).toBe(2)
-    expect(wrapper.findAll('[data-testid="slot-item-footer"]').length).toBe(2)
+      expect(getContent).toHaveBeenCalledTimes(1)
 
-    const img = wrapper.find('img')
-    expect(img.exists()).toBe(true)
-    expect(img.attributes('src')).toBe('https://picsum.photos/seed/preview/320/240')
+      const cards = wrapper.findAll('[data-testid="item-card"]')
+      expect(cards).toHaveLength(2)
 
-    const video = wrapper.find('video')
-    expect(video.exists()).toBe(true)
-    expect(video.attributes('poster')).toBe('https://picsum.photos/seed/poster/320/240')
+      expect(wrapper.findAll('[data-testid="slot-item-header"]').length).toBe(2)
+      expect(wrapper.findAll('[data-testid="slot-item-footer"]').length).toBe(2)
 
-    const source = wrapper.find('video source')
-    expect(source.exists()).toBe(true)
-    expect(source.attributes('src')).toBe('https://example.com/video.mp4')
+      const img = wrapper.find('img')
+      expect(img.exists()).toBe(true)
+      expect(img.attributes('src')).toBe('https://picsum.photos/seed/preview/320/240')
 
-    // Remove one item via the exposed helper.
-    await wrapper.findAll('[data-testid="slot-item-footer"]')[0].trigger('click')
-    await wrapper.vm.$nextTick()
-    expect(wrapper.findAll('[data-testid="item-card"]').length).toBe(1)
+      const video = wrapper.find('video')
+      expect(video.exists()).toBe(true)
+      expect(video.attributes('poster')).toBe('https://picsum.photos/seed/poster/320/240')
 
-    wrapper.unmount()
+      const source = wrapper.find('video source')
+      expect(source.exists()).toBe(true)
+      expect(source.attributes('src')).toBe('https://example.com/video.mp4')
+
+      // Remove one item via the exposed helper.
+      await wrapper.findAll('[data-testid="slot-item-footer"]')[0].trigger('click')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.findAll('[data-testid="item-card"]').length).toBe(1)
+
+      wrapper.unmount()
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
   it('supports fixed header/footer heights via props', async () => {

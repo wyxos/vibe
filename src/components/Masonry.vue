@@ -19,6 +19,8 @@ import {
   watch,
 } from 'vue'
 
+import MasonryLoader from '@/components/MasonryLoader.vue'
+
 import { getColumnCount, getColumnWidth } from '@/masonry/layout'
 import {
   clampDelayMs,
@@ -987,30 +989,7 @@ const sectionClass = computed(() => {
             <slot name="itemHeader" :item="itemsState[idx]" :remove="() => removeItem(itemsState[idx])" />
           </div>
 
-          <div
-            class="bg-slate-100"
-            :style="{ aspectRatio: itemsState[idx].width + ' / ' + itemsState[idx].height }"
-          >
-            <img
-              v-if="itemsState[idx].type === 'image'"
-              class="h-full w-full object-cover"
-              :src="itemsState[idx].preview"
-              :width="itemsState[idx].width"
-              :height="itemsState[idx].height"
-              loading="lazy"
-              :alt="itemsState[idx].id"
-            />
-
-            <video
-              v-else
-              class="h-full w-full object-cover"
-              :poster="itemsState[idx].preview"
-              controls
-              preload="metadata"
-            >
-              <source :src="itemsState[idx].original" type="video/mp4" />
-            </video>
-          </div>
+          <MasonryLoader :item="itemsState[idx]" />
 
           <div
             v-if="hasFooterSlot || footerHeight > 0"
@@ -1044,30 +1023,7 @@ const sectionClass = computed(() => {
             <slot name="itemHeader" :item="c.item" :remove="() => {}" />
           </div>
 
-          <div
-            class="bg-slate-100"
-            :style="{ aspectRatio: c.item.width + ' / ' + c.item.height }"
-          >
-            <img
-              v-if="c.item.type === 'image'"
-              class="h-full w-full object-cover"
-              :src="c.item.preview"
-              :width="c.item.width"
-              :height="c.item.height"
-              loading="lazy"
-              :alt="c.item.id"
-            />
-
-            <video
-              v-else
-              class="h-full w-full object-cover"
-              :poster="c.item.preview"
-              controls
-              preload="metadata"
-            >
-              <source :src="c.item.original" type="video/mp4" />
-            </video>
-          </div>
+          <MasonryLoader :item="c.item" />
 
           <div
             v-if="hasFooterSlot || footerHeight > 0"

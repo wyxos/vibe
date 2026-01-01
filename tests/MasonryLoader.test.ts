@@ -1,0 +1,144 @@
+import { mount } from '@vue/test-utils'
+import { describe, expect, it, vi } from 'vitest'
+import MasonryLoader from '@/components/MasonryLoader.vue'
+import type { MasonryItemBase } from '@/masonry/types'
+
+type IOInstance = {
+  trigger: (ratio: number) => void
+}
+
+function installMockIntersectionObserver() {
+  const instances: Array<MockIntersectionObserver & IOInstance> = []
+
+  class MockIntersectionObserver {
+    cb: IntersectionObserverCallback
+    el: Element | null = null
+
+    constructor(cb: IntersectionObserverCallback) {
+      this.cb = cb
+      instances.push(this as MockIntersectionObserver & IOInstance)
+    }
+
+    observe(el: Element) {
+      this.el = el
+    }
+
+    unobserve() {}
+
+    disconnect() {}
+
+    takeRecords() {
+      return []
+    }
+
+    trigger(ratio: number) {
+      if (!this.el) throw new Error('No element observed')
+      this.cb(
+        [
+          {
+            target: this.el,
+            isIntersecting: ratio > 0,
+            intersectionRatio: ratio,
+          } as unknown as IntersectionObserverEntry,
+        ],
+        this as unknown as IntersectionObserver
+      )
+    }
+  }
+
+  vi.stubGlobal('IntersectionObserver', MockIntersectionObserver as unknown as typeof IntersectionObserver)
+
+  return { instances }
+}
+
+describe('MasonryLoader', () => {
+  it('starts rendering media only after >= 50% intersection', async () => {
+    const { instances } = installMockIntersectionObserver()
+
+    const item: MasonryItemBase = {
+      id: 'img-1',
+      type: 'image',
+      width: 320,
+      height: 240,
+      preview: 'https://example.com/preview.jpg',
+      original: 'https://example.com/original.jpg',
+    }
+
+    const wrapper = mount(MasonryLoader, { props: { item } })
+
+    expect(wrapper.find('img').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="masonry-loader-spinner"]').exists()).toBe(false)
+
+    // Below the threshold: should not render.
+    const io = instances[0]
+    expect(io).toBeTruthy()
+    io.trigger(0.49)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('img').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="masonry-loader-spinner"]').exists()).toBe(false)
+
+    // At threshold: should render.
+    io.trigger(0.5)
+    await wrapper.vm.$nextTick()
+
+    const img = wrapper.find('img')
+    expect(img.exists()).toBe(true)
+    expect(img.attributes('src')).toBe(item.preview)
+
+    // Shows spinner until the media fires success.
+    expect(wrapper.find('[data-testid="masonry-loader-spinner"]').exists()).toBe(true)
+
+    // Emit success on load.
+    await img.trigger('load')
+    expect(wrapper.emitted('success')).toBeTruthy()
+    expect(wrapper.find('[data-testid="masonry-loader-spinner"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('emits error when media fails to load and allows retry', async () => {
+    const { instances } = installMockIntersectionObserver()
+
+    const item: MasonryItemBase = {
+      id: 'img-err',
+      type: 'image',
+      width: 320,
+      height: 240,
+      preview: 'https://example.com/broken.jpg',
+      original: 'https://example.com/original.jpg',
+    }
+
+    const wrapper = mount(MasonryLoader, { props: { item } })
+
+    const io = instances[0]
+    io.trigger(1)
+    await wrapper.vm.$nextTick()
+
+    const img = wrapper.find('img')
+    expect(img.exists()).toBe(true)
+
+    // In loading state initially.
+    expect(wrapper.find('[data-testid="masonry-loader-spinner"]').exists()).toBe(true)
+
+    const previousImgEl = img.element
+
+    await img.trigger('error')
+    expect(wrapper.emitted('error')).toBeTruthy()
+
+    // Error UI visible, retry button offered.
+    expect(wrapper.find('[data-testid="masonry-loader-error"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="masonry-loader-retry"]').exists()).toBe(true)
+
+    await wrapper.get('[data-testid="masonry-loader-retry"]').trigger('click')
+    await wrapper.vm.$nextTick()
+
+    // Back to loading state and media should be re-created.
+    expect(wrapper.find('[data-testid="masonry-loader-error"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="masonry-loader-spinner"]').exists()).toBe(true)
+    expect(wrapper.find('img').exists()).toBe(true)
+    expect(wrapper.find('img').element).not.toBe(previousImgEl)
+
+    wrapper.unmount()
+  })
+})
