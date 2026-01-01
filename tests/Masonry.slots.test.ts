@@ -281,7 +281,7 @@ describe('Masonry slots + media rendering', () => {
       flushRaf()
       await wrapper.vm.$nextTick()
 
-      // Leave animation should move upward (y decreases) and keep x the same.
+      // Leave animation should move downward (y increases) and keep x the same.
       const leavingDuring = wrapper.get('[data-testid="item-card-leaving"]')
       const leavingDuringStyle = leavingDuring.attributes('style') ?? ''
       const duringMatch = /translate3d\(([-\d.]+)px,\s*([-\d.]+)px,\s*0\)/i.exec(leavingDuringStyle)
@@ -290,7 +290,7 @@ describe('Masonry slots + media rendering', () => {
       const endX = Number.parseFloat(duringMatch[1])
       const endY = Number.parseFloat(duringMatch[2])
       expect(endX).toBeCloseTo(startX)
-      expect(endY).toBeLessThan(startY)
+      expect(endY).toBeGreaterThan(startY)
 
       const remainingDuringMove = wrapper.get('[data-testid="item-card"]')
       expect(remainingDuringMove.attributes('style')).toContain('transition:')
@@ -537,7 +537,7 @@ describe('Masonry slots + media rendering', () => {
     expect(startMatch).toBeTruthy()
     if (!startMatch) throw new Error('Expected translate3d in start style')
     expect(Number(startMatch[1])).toBe(0)
-    expect(Number(startMatch[2])).toBeLessThan(0)
+    expect(Number(startMatch[2])).toBeGreaterThan(0)
 
     // Run a few RAF ticks to advance the two-RAF animation schedule.
     for (let i = 0; i < 6 && rafCallbacks.length; i += 1) {
@@ -552,7 +552,7 @@ describe('Masonry slots + media rendering', () => {
     globalThis.requestAnimationFrame = originalRaf
   })
 
-  it('animates appended items from above (finalX, finalY - height) to (finalX, finalY)', async () => {
+  it('animates appended items from below into view', async () => {
     const roCallbacks: ResizeObserverCallback[] = []
     const originalResizeObserver = globalThis.ResizeObserver
     const rafCallbacks: FrameRequestCallback[] = []
@@ -629,7 +629,7 @@ describe('Masonry slots + media rendering', () => {
     const cards = wrapper.findAll('[data-testid="item-card"]')
     expect(cards.length).toBe(2)
 
-    // The appended item should first paint above its final position (same finalX, negative Y offset).
+    // The appended item should first paint below its final position (same finalX, positive Y offset).
     const entering = cards[1]
     const enteringStyle = entering.attributes('style') ?? ''
     const enteringStartMatch = /translate3d\(\s*([-\d.]+)px\s*,\s*([-\d.]+)px\s*,\s*0\s*\)/i.exec(
@@ -637,7 +637,7 @@ describe('Masonry slots + media rendering', () => {
     )
     expect(enteringStartMatch).toBeTruthy()
     if (!enteringStartMatch) throw new Error('Expected translate3d in entering start style')
-    expect(Number(enteringStartMatch[2])).toBeLessThan(0)
+    expect(Number(enteringStartMatch[2])).toBeGreaterThan(0)
 
     // Advance animation.
     for (let i = 0; i < 6 && rafCallbacks.length; i += 1) {

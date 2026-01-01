@@ -101,9 +101,9 @@ const CARD_MOTION_MS = 300
 const ENTER_MOTION_MS = 600
 const LEAVE_MOTION_MS = 600
 
-function getOutsideContainerY(height: number): number {
+function getOutsideContainerBottomY(height: number): number {
   const h = typeof height === 'number' && Number.isFinite(height) ? height : 0
-  return -Math.max(0, h)
+  return containerHeight.value + Math.max(0, h)
 }
 const enterStartIds = ref<Set<string>>(new Set())
 const enterAnimatingIds = ref<Set<string>>(new Set())
@@ -143,7 +143,7 @@ function getCardTransform(index: number): string {
   const enterHeight = layoutHeights.value[index] ?? 0
   const enterOffset = enterHeight > 0 ? enterHeight : columnWidth.value
   const startX = pos.x
-  const startY = id && enterStartIds.value.has(id) ? getOutsideContainerY(enterOffset) : pos.y
+  const startY = id && enterStartIds.value.has(id) ? getOutsideContainerBottomY(enterOffset) : pos.y
   const off = id ? getMoveOffset(id) : { dx: 0, dy: 0 }
   return `translate3d(${startX + off.dx}px,${startY + off.dy}px,0)`
 }
@@ -1011,7 +1011,7 @@ const sectionClass = computed(() => {
             transition: 'transform ' + LEAVE_MOTION_MS + 'ms ease-out',
             transform: c.leaving
               ? 'translate3d(' + c.fromX + 'px,' + c.fromY + 'px,0)'
-              : 'translate3d(' + c.fromX + 'px,' + getOutsideContainerY(c.height) + 'px,0)',
+              : 'translate3d(' + c.fromX + 'px,' + getOutsideContainerBottomY(c.height) + 'px,0)',
           }"
         >
           <div
