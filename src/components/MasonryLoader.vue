@@ -135,7 +135,10 @@ function retry() {
     <img
       v-if="shouldRenderMedia && isImage && !isError"
       :key="props.item.id + ':img:' + loadAttempt"
-      class="h-full w-full object-cover"
+      :class="[
+        'h-full w-full object-cover transition-opacity duration-300',
+        isLoaded ? 'opacity-100' : 'opacity-0',
+      ]"
       :src="props.item.preview as string"
       :width="props.item.width"
       :height="props.item.height"
@@ -148,7 +151,10 @@ function retry() {
     <video
       v-else-if="shouldRenderMedia && !isError"
       :key="props.item.id + ':vid:' + loadAttempt"
-      class="h-full w-full object-cover"
+      :class="[
+        'h-full w-full object-cover transition-opacity duration-300',
+        isLoaded ? 'opacity-100' : 'opacity-0',
+      ]"
       :poster="props.item.preview as string"
       controls
       preload="metadata"
