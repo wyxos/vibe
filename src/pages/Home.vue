@@ -1,30 +1,23 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import { type FeedItem, fetchPage, type PageToken } from '@/fakeServer'
 import Masonry from '@/components/Masonry.vue'
+import {
+  buildPagesLoadedLabel,
+  getInitialPageToken,
+  setReaction,
+  useExposeDebugRef,
+} from '@/pages/demoUtils'
 
 const items = ref<FeedItem[]>([])
 const masonryRef = ref<{
   remove: (itemsOrIds: Array<string | FeedItem> | string | FeedItem) => Promise<void>
 } | null>(null)
 
-onMounted(async () => {
-  await nextTick()
-  ;(window as any).__vibeMasonry = masonryRef.value
-})
+useExposeDebugRef(masonryRef)
 
-onUnmounted(() => {
-  if ((window as any).__vibeMasonry === masonryRef.value) {
-    ;(window as any).__vibeMasonry = null
-  }
-})
-
-const initialPageToken = (() => {
-  const raw = new URLSearchParams(window.location.search).get('page')
-  const trimmed = raw?.trim()
-  return trimmed ? trimmed : 1
-})()
+const initialPageToken = getInitialPageToken('page', 1)
 
 function getPageLabelFromId(id: string | null | undefined) {
   if (!id) return null
@@ -42,29 +35,11 @@ function getPageLabelFromId(id: string | null | undefined) {
 }
 
 const pagesLoadedLabel = computed(() => {
-  const list = items.value
-  if (!Array.isArray(list) || list.length === 0) return '—'
-
-  const pages = new Set<number>()
-  for (let i = 0; i < list.length; i += 1) {
-    const pageLabel = getPageLabelFromId(list[i]?.id)
-    if (!pageLabel) continue
-    const n = Number.parseInt(pageLabel, 10)
-    if (Number.isFinite(n)) pages.add(n)
-  }
-
-  const sorted = Array.from(pages).sort((a, b) => a - b)
-  return sorted.length ? sorted.join(', ') : '—'
+  return buildPagesLoadedLabel(items.value, getPageLabelFromId)
 })
 
 async function getContent(pageToken: PageToken) {
   return fetchPage(pageToken)
-}
-
-function setReaction(item: FeedItem, reaction: string) {
-  if (!item) return
-  if (item.reaction === reaction) return
-  item.reaction = reaction
 }
 
 function removeRandomItems() {

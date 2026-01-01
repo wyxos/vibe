@@ -1,22 +1,19 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { type BackfillFeedItem, fetchBackfillPage, type PageToken } from '@/fakeServerBackfill'
 import type { BackfillStats } from '@/masonry/types'
 import Masonry from '@/components/Masonry.vue'
+import {
+  buildPagesLoadedLabel,
+  getInitialPageToken,
+  setReaction,
+  useExposeDebugRef,
+} from '@/pages/demoUtils'
 
 const items = ref<BackfillFeedItem[]>([])
 const masonryRef = ref<{ backfillStats?: unknown } | null>(null)
 
-onMounted(async () => {
-  await nextTick()
-  ;(window as any).__vibeMasonry = masonryRef.value
-})
-
-onUnmounted(() => {
-  if ((window as any).__vibeMasonry === masonryRef.value) {
-    ;(window as any).__vibeMasonry = null
-  }
-})
+useExposeDebugRef(masonryRef)
 
 const backfillStats = computed(() => {
   const inst = masonryRef.value as null | {
@@ -43,19 +40,7 @@ const cooldownProgressPct = computed(() => {
   return Math.max(0, Math.min(100, pct))
 })
 
-const initialPageToken = computed<PageToken>(() => {
-  // Supports hash-mode urls like: /#/examples/backfill?page=2
-  // (also supports non-hash urls like: /examples/backfill?page=2)
-  const hash = window.location.hash || ''
-  const hashQuery = hash.includes('?') ? hash.split('?').slice(1).join('?') : ''
-  const searchQuery = window.location.search?.startsWith('?')
-    ? window.location.search.slice(1)
-    : window.location.search
-  const queryString = hashQuery || searchQuery || ''
-  const raw = new URLSearchParams(queryString).get('page')
-  const trimmed = raw?.trim() ?? ''
-  return trimmed ? trimmed : 1
-})
+const initialPageToken = computed<PageToken>(() => getInitialPageToken('page', 1))
 
 function getPageLabelFromId(id: string | null | undefined) {
   if (!id) return null
@@ -65,26 +50,8 @@ function getPageLabelFromId(id: string | null | undefined) {
 }
 
 const pagesLoadedLabel = computed(() => {
-  const list = items.value
-  if (!Array.isArray(list) || list.length === 0) return '—'
-
-  const pages = new Set<number>()
-  for (let i = 0; i < list.length; i += 1) {
-    const pageLabel = getPageLabelFromId(list[i]?.id)
-    if (!pageLabel) continue
-    const n = Number.parseInt(pageLabel, 10)
-    if (Number.isFinite(n)) pages.add(n)
-  }
-
-  const sorted = Array.from(pages).sort((a, b) => a - b)
-  return sorted.length ? sorted.join(', ') : '—'
+  return buildPagesLoadedLabel(items.value, getPageLabelFromId)
 })
-
-function setReaction(item: BackfillFeedItem, reaction: string) {
-  if (!item) return
-  if (item.reaction === reaction) return
-  item.reaction = reaction
-}
 
 async function getContent(pageToken: PageToken) {
   return fetchBackfillPage(pageToken)
