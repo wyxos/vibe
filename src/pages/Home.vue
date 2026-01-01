@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 
 import { type FeedItem, fetchPage, type PageToken } from '@/fakeServer'
 import Masonry from '@/components/Masonry.vue'
@@ -9,13 +9,16 @@ const masonryRef = ref<{
   remove: (itemsOrIds: Array<string | FeedItem> | string | FeedItem) => Promise<void>
 } | null>(null)
 
-watch(
-  masonryRef,
-  (next) => {
-    ;(window as any).__vibeMasonry = next
-  },
-  { immediate: true }
-)
+onMounted(async () => {
+  await nextTick()
+  ;(window as any).__vibeMasonry = masonryRef.value
+})
+
+onUnmounted(() => {
+  if ((window as any).__vibeMasonry === masonryRef.value) {
+    ;(window as any).__vibeMasonry = null
+  }
+})
 
 const initialPageToken = (() => {
   const raw = new URLSearchParams(window.location.search).get('page')

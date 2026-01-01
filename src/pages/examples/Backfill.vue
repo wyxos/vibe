@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { type BackfillFeedItem, fetchBackfillPage, type PageToken } from '@/fakeServerBackfill'
 import type { BackfillStats } from '@/masonry/types'
 import Masonry from '@/components/Masonry.vue'
@@ -7,13 +7,16 @@ import Masonry from '@/components/Masonry.vue'
 const items = ref<BackfillFeedItem[]>([])
 const masonryRef = ref<{ backfillStats?: unknown } | null>(null)
 
-watch(
-  masonryRef,
-  (next) => {
-    ;(window as any).__vibeMasonry = next
-  },
-  { immediate: true }
-)
+onMounted(async () => {
+  await nextTick()
+  ;(window as any).__vibeMasonry = masonryRef.value
+})
+
+onUnmounted(() => {
+  if ((window as any).__vibeMasonry === masonryRef.value) {
+    ;(window as any).__vibeMasonry = null
+  }
+})
 
 const backfillStats = computed(() => {
   const inst = masonryRef.value as null | {
