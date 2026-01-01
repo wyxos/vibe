@@ -26,6 +26,92 @@ export interface FetchPageResult {
   nextPage: PageToken | null
 }
 
+export type SearchPageToken = string
+
+export function makeSearchPageToken({ page, query }: { page: number; query: string }): SearchPageToken {
+  const p = Math.max(1, Math.trunc(page))
+  const q = query?.trim() ?? ''
+  const params = new URLSearchParams({ page: String(p), q })
+  return params.toString()
+}
+
+function parseSearchPageToken(pageToken: PageToken): { page: number; query: string } {
+  if (typeof pageToken === 'number') {
+    return { page: normalizePageToken(pageToken), query: '' }
+  }
+
+  const raw = String(pageToken ?? '').trim()
+  if (!raw) return { page: 1, query: '' }
+
+  // Support both raw numbers and querystring tokens.
+  if (/^\d+$/.test(raw)) {
+    return { page: normalizePageToken(raw), query: '' }
+  }
+
+  const params = new URLSearchParams(raw)
+  const page = normalizePageToken(params.get('page') ?? 1)
+  const query = (params.get('q') ?? '').trim()
+  return { page, query }
+}
+
+function hashStringToSeed(s: string): number {
+  let h = 2166136261
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+
+let allItemsCache: FeedItem[] | null = null
+
+function getAllItems(): FeedItem[] {
+  if (allItemsCache) return allItemsCache
+  const all: FeedItem[] = []
+  for (let page = 1; page <= TOTAL_PAGES; page += 1) {
+    for (let index = 0; index < ITEMS_PER_PAGE; index += 1) {
+      all.push(createItem({ page, index }))
+    }
+  }
+  allItemsCache = all
+  return all
+}
+
+export async function fetchSearchPage(pageToken: PageToken): Promise<FetchPageResult> {
+  const { page, query } = parseSearchPageToken(pageToken)
+  if (page < 1) throw new Error('page out of range')
+
+  const seed = (page * 1000 + hashStringToSeed(query)) >>> 0
+  const rng = createRng(seed)
+  const delayMs = randomInt(rng, 250, 800)
+  await new Promise((resolve) => setTimeout(resolve, delayMs))
+
+  const q = query.toLowerCase()
+  const all = getAllItems()
+
+  const filtered = q
+    ? all.filter((it) => {
+        return (
+          it.id.toLowerCase().includes(q) ||
+          it.type.toLowerCase().includes(q) ||
+          it.preview.toLowerCase().includes(q) ||
+          it.original.toLowerCase().includes(q)
+        )
+      })
+    : all
+
+  const start = (page - 1) * ITEMS_PER_PAGE
+  const end = start + ITEMS_PER_PAGE
+  const items = filtered.slice(start, end)
+
+  const nextPageNumber = end < filtered.length ? page + 1 : null
+
+  return {
+    items,
+    nextPage: nextPageNumber == null ? null : makeSearchPageToken({ page: nextPageNumber, query }),
+  }
+}
+
 function normalizePageToken(pageToken: PageToken): number {
   if (typeof pageToken === 'number') {
     if (!Number.isInteger(pageToken)) throw new Error('page must be an integer')
