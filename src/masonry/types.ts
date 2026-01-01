@@ -1,5 +1,10 @@
 export type PageToken = string | number
 
+export type MasonryResumeState = {
+  pagesLoaded: PageToken[]
+  nextPage: PageToken | null
+}
+
 export type BackfillStats = {
   enabled: boolean
   // True only while the component is actively doing additional fetches to reach pageSize.
@@ -59,6 +64,7 @@ export type MasonryProps = {
   backfillRequestDelayMs?: number
   items?: MasonryItemBase[]
   page?: PageToken
+  resume?: MasonryResumeState
   itemWidth?: number
   prefetchThresholdPx?: number
   gapX?: number
@@ -80,4 +86,4 @@ export const masonryDefaults = {
   headerHeight: 0,
   footerHeight: 0,
   overscanPx: 600,
-} as const satisfies Omit<Required<MasonryProps>, 'getContent' | 'items'>
+} as const satisfies Omit<Required<MasonryProps>, 'getContent' | 'items' | 'resume'>

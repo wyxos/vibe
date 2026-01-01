@@ -3,6 +3,7 @@
 import {
   masonryDefaults,
   type BackfillStats,
+  type MasonryResumeState,
   type MasonryItemBase,
   type MasonryProps,
   type PageToken,
@@ -32,7 +33,15 @@ import { buildMasonryLayout, getVisibleIndicesFromBuckets } from '@/masonry/layo
 
 defineOptions({ inheritAttrs: false })
 
-export type { BackfillStats, GetContentFn, GetContentResult, MasonryItemBase, MasonryMode, PageToken } from '@/masonry/types'
+export type {
+  BackfillStats,
+  GetContentFn,
+  GetContentResult,
+  MasonryItemBase,
+  MasonryMode,
+  MasonryResumeState,
+  PageToken,
+} from '@/masonry/types'
 
 const props = withDefaults(defineProps<MasonryProps>(), masonryDefaults)
 
@@ -303,6 +312,15 @@ let loadNextInFlight: Promise<void> | null = null
 let loadFirstInFlight: Promise<void> | null = null
 
 let nextOriginalIndex = 0
+
+function syncNextOriginalIndexFromItems(list: MasonryItemBase[]) {
+  let max = -1
+  for (const it of list) {
+    const oi = it?.originalIndex
+    if (isFiniteNumber(oi) && oi > max) max = oi
+  }
+  nextOriginalIndex = max + 1
+}
 
 function assignOriginalIndices(newItems: MasonryItemBase[]) {
   for (const it of newItems) {
@@ -803,7 +821,7 @@ function makeInitialBackfillStats(): BackfillStats {
   }
 }
 
-function resetFeedState(startPage: PageToken) {
+function resetRuntimeState() {
   feedGeneration += 1
   loadNextInFlight = null
   loadFirstInFlight = null
@@ -817,13 +835,32 @@ function resetFeedState(startPage: PageToken) {
   moveTransitionIds.value = new Set()
   leavingClones.value = []
   pagesLoaded.value = []
-  itemsState.value = []
-  nextPage.value = startPage
+  nextPage.value = null
   backfillBuffer.value = []
   backfillStats.value = makeInitialBackfillStats()
   isLoadingInitial.value = true
   isLoadingNext.value = false
   error.value = ''
+}
+
+function resetFeedState(startPage: PageToken) {
+  resetRuntimeState()
+  itemsState.value = []
+  nextPage.value = startPage
+}
+
+function applyResumeState(resume: MasonryResumeState) {
+  resetRuntimeState()
+  pagesLoaded.value = Array.isArray(resume.pagesLoaded) ? resume.pagesLoaded : []
+  nextPage.value = resume.nextPage
+
+  // We assume parent has already restored items in controlled mode.
+  // Avoid showing the initial loader and wait for user scroll.
+  isLoadingInitial.value = false
+
+  // Ensure originalIndex invariants for remove/restore ordering.
+  syncNextOriginalIndexFromItems(itemsState.value)
+  assignOriginalIndices(itemsState.value)
 }
 
 async function loadFirstPage(startPage: PageToken) {
@@ -873,6 +910,12 @@ function connectViewport() {
 onMounted(async () => {
   setupResizeObserver()
   connectViewport()
+
+  if (props.resume) {
+    applyResumeState(props.resume)
+    return
+  }
+
   resetFeedState(props.page)
   await loadFirstPage(props.page)
 })
@@ -884,9 +927,18 @@ onUnmounted(() => {
 watch(
   () => props.page,
   async (newPage) => {
+    if (props.resume) return
     // If the starting page changes, restart the feed.
     resetFeedState(newPage)
     await loadFirstPage(newPage)
+  }
+)
+
+watch(
+  () => props.resume,
+  (next) => {
+    if (!next) return
+    applyResumeState(next)
   }
 )
 

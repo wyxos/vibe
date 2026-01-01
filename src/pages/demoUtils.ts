@@ -2,23 +2,27 @@ import { nextTick, onMounted, onUnmounted, type Ref } from 'vue'
 
 import type { PageToken } from '@/masonry/types'
 
+type WindowRecord = Window & Record<string, unknown>
+
 export function useExposeDebugRef<T>(refToExpose: Ref<T | null>, globalKey = '__vibeMasonry') {
   onMounted(async () => {
     await nextTick()
-    ;(window as any)[globalKey] = refToExpose.value
+    const w = window as unknown as WindowRecord
+    w[globalKey] = refToExpose.value as unknown
   })
 
   onUnmounted(() => {
-    if ((window as any)[globalKey] === refToExpose.value) {
-      ;(window as any)[globalKey] = null
+    const w = window as unknown as WindowRecord
+    if (w[globalKey] === (refToExpose.value as unknown)) {
+      w[globalKey] = null
     }
   })
 }
 
-export function setReaction<T extends { reaction?: unknown }>(item: T, reaction: string) {
+export function setReaction<T extends { reaction: string | null }>(item: T, reaction: string) {
   if (!item) return
-  if ((item as any).reaction === reaction) return
-  ;(item as any).reaction = reaction
+  if (item.reaction === reaction) return
+  item.reaction = reaction
 }
 
 export function getQueryParamFromLocation(name: string): string | null {
