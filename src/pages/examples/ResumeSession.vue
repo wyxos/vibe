@@ -3,24 +3,35 @@ import { computed, onMounted, ref } from 'vue'
 
 import Masonry from '@/components/Masonry.vue'
 import { type FeedItem, fetchPage, type PageToken } from '@/fakeServer'
-import type { MasonryResumeState } from '@/masonry/types'
-import {
-  buildPagesLoadedLabel,
-  getInitialPageToken,
-  setReaction,
-  useExposeDebugRef,
-} from '@/pages/demoUtils'
+import type { MasonryRestoredPagesLoaded } from '@/masonry/types'
+import { setReaction, useExposeDebugRef } from '@/pages/demoUtils'
 
 const items = ref<FeedItem[]>([])
-const resume = ref<MasonryResumeState | null>(null)
+const restoredPagesLoaded = ref<MasonryRestoredPagesLoaded | null>(null)
 
 const masonryRef = ref<{
   remove?: (itemsOrIds: Array<string | FeedItem> | string | FeedItem) => Promise<void>
+  nextPage?: unknown
 } | null>(null)
 
 useExposeDebugRef(masonryRef)
 
-const initialPageToken = computed<PageToken>(() => getInitialPageToken('page', 1))
+const initialPageToken: PageToken = 1
+
+const pagesLoadedLabel = computed(() => {
+  const v = restoredPagesLoaded.value
+  if (!v) return '—'
+  return Array.isArray(v) ? v.join(', ') : String(v)
+})
+
+const nextPageLabel = computed(() => {
+  const inst = masonryRef.value as null | { nextPage?: unknown }
+  const state = inst?.nextPage
+  if (!state) return '—'
+  if (typeof state === 'object' && state && 'value' in state)
+    return String((state as { value: PageToken | null }).value ?? '—')
+  return String(state)
+})
 
 function getPageLabelFromId(id: string | null | undefined) {
   if (!id) return null
@@ -37,8 +48,6 @@ function getPageLabelFromId(id: string | null | undefined) {
   return null
 }
 
-const pagesLoadedLabel = computed(() => buildPagesLoadedLabel(items.value, getPageLabelFromId))
-
 async function getContent(pageToken: PageToken) {
   return fetchPage(pageToken)
 }
@@ -46,15 +55,15 @@ async function getContent(pageToken: PageToken) {
 onMounted(async () => {
   // Simulate "app re-open": parent eagerly restores items from persistence.
   // Here we just fetch pages 1..5 up front before mounting Masonry.
-  const restoredPages = [1, 2, 3, 4, 5]
-  const results = await Promise.all(restoredPages.map((p) => fetchPage(p)))
+  const lastLoadedPage = 5
+  const pagesToRestore = Array.from({ length: lastLoadedPage }, (_, i) => i + 1)
+  const results = await Promise.all(pagesToRestore.map((p) => fetchPage(p)))
 
   items.value = results.flatMap((r) => r.items)
 
-  resume.value = {
-    pagesLoaded: restoredPages,
-    nextPage: 6,
-  }
+  // Parent provides pagesLoaded. Sometimes this is full history (e.g. [1..5]),
+  // sometimes just the last loaded page (e.g. 5).
+  restoredPagesLoaded.value = lastLoadedPage
 })
 </script>
 
@@ -83,12 +92,12 @@ onMounted(async () => {
             class="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
           >
             <span class="text-slate-600">Next page:</span>
-            <span data-testid="next-page" class="ml-2 tabular-nums text-slate-900">{{ resume?.nextPage ?? '—' }}</span>
+            <span data-testid="next-page" class="ml-2 tabular-nums text-slate-900">{{ nextPageLabel }}</span>
           </span>
         </div>
       </header>
 
-      <div v-if="!resume" class="mt-8 flex flex-1 items-center justify-center">
+      <div v-if="!restoredPagesLoaded" class="mt-8 flex flex-1 items-center justify-center">
         <div class="inline-flex items-center gap-3 text-sm text-slate-600">
           <svg class="h-5 w-5 animate-spin text-slate-500" viewBox="0 0 24 24" aria-hidden="true">
             <circle
@@ -116,7 +125,7 @@ onMounted(async () => {
         v-model:items="items"
         :get-content="getContent"
         :page="initialPageToken"
-        :resume="resume"
+        :restored-pages-loaded="restoredPagesLoaded"
         :header-height="45"
         :footer-height="54"
       >

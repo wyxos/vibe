@@ -3,7 +3,7 @@
 import {
   masonryDefaults,
   type BackfillStats,
-  type MasonryResumeState,
+  type MasonryRestoredPagesLoaded,
   type MasonryItemBase,
   type MasonryProps,
   type PageToken,
@@ -39,7 +39,7 @@ export type {
   GetContentResult,
   MasonryItemBase,
   MasonryMode,
-  MasonryResumeState,
+  MasonryRestoredPagesLoaded,
   PageToken,
 } from '@/masonry/types'
 
@@ -633,6 +633,8 @@ defineExpose({
   restore,
   undo,
   forget: forgetRemoved,
+  pagesLoaded,
+  nextPage,
   // Aliases (kept for now; can be removed if you want strictly short API only).
   restoreRemoved,
   undoLastRemoval,
@@ -849,10 +851,43 @@ function resetFeedState(startPage: PageToken) {
   nextPage.value = startPage
 }
 
-function applyResumeState(resume: MasonryResumeState) {
+function normalizeRestoredPagesLoaded(input: MasonryRestoredPagesLoaded): PageToken[] {
+  const raw = Array.isArray(input) ? input : [input]
+  const unique: PageToken[] = []
+  const seen = new Set<string>()
+  for (const p of raw) {
+    if (p == null) continue
+    const key = typeof p === 'string' ? `s:${p}` : `n:${String(p)}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    unique.push(p)
+  }
+  return unique
+}
+
+function inferNextPageFromPagesLoaded(pages: PageToken[]): PageToken | null {
+  const nums: number[] = []
+  for (const p of pages) {
+    if (typeof p === 'number' && Number.isFinite(p)) {
+      nums.push(p)
+      continue
+    }
+    if (typeof p === 'string') {
+      const n = Number.parseInt(p, 10)
+      if (Number.isFinite(n)) nums.push(n)
+    }
+  }
+
+  if (!nums.length) return null
+  return Math.max(...nums) + 1
+}
+
+function applyRestoredPagesLoaded(restored: MasonryRestoredPagesLoaded) {
   resetRuntimeState()
-  pagesLoaded.value = Array.isArray(resume.pagesLoaded) ? resume.pagesLoaded : []
-  nextPage.value = resume.nextPage
+
+  const normalized = normalizeRestoredPagesLoaded(restored)
+  pagesLoaded.value = normalized
+  nextPage.value = inferNextPageFromPagesLoaded(normalized)
 
   // We assume parent has already restored items in controlled mode.
   // Avoid showing the initial loader and wait for user scroll.
@@ -911,8 +946,8 @@ onMounted(async () => {
   setupResizeObserver()
   connectViewport()
 
-  if (props.resume) {
-    applyResumeState(props.resume)
+  if (props.restoredPagesLoaded != null) {
+    applyRestoredPagesLoaded(props.restoredPagesLoaded)
     return
   }
 
@@ -927,7 +962,7 @@ onUnmounted(() => {
 watch(
   () => props.page,
   async (newPage) => {
-    if (props.resume) return
+    if (props.restoredPagesLoaded != null) return
     // If the starting page changes, restart the feed.
     resetFeedState(newPage)
     await loadFirstPage(newPage)
@@ -935,10 +970,10 @@ watch(
 )
 
 watch(
-  () => props.resume,
+  () => props.restoredPagesLoaded,
   (next) => {
     if (!next) return
-    applyResumeState(next)
+    applyRestoredPagesLoaded(next)
   }
 )
 
