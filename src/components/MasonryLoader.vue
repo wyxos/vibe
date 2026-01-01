@@ -4,9 +4,12 @@ import type { MasonryItemBase } from '@/masonry/types'
 
 type Props = {
   item: MasonryItemBase
+  timeoutMs?: number
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  timeoutMs: 15_000,
+})
 
 const emit = defineEmits<{
   (e: 'success', item: MasonryItemBase): void
@@ -28,12 +31,32 @@ const aspectRatioStyle = computed(() => {
 const isImage = computed(() => props.item?.type === 'image')
 
 let io: IntersectionObserver | null = null
+let loadTimeoutId: number | null = null
+
+function clearLoadTimeout() {
+  if (loadTimeoutId == null) return
+  window.clearTimeout(loadTimeoutId)
+  loadTimeoutId = null
+}
+
+function scheduleLoadTimeout() {
+  clearLoadTimeout()
+  const ms = typeof props.timeoutMs === 'number' && Number.isFinite(props.timeoutMs) ? props.timeoutMs : 0
+  if (ms <= 0) return
+
+  loadTimeoutId = window.setTimeout(() => {
+    if (!shouldRenderMedia.value) return
+    if (isLoaded.value || isError.value) return
+    onError(new Error('timeout'))
+  }, ms)
+}
 
 function startIfNeeded() {
   if (shouldRenderMedia.value) return
   shouldRenderMedia.value = true
   isLoaded.value = false
   isError.value = false
+  scheduleLoadTimeout()
 }
 
 onMounted(() => {
@@ -62,12 +85,14 @@ onMounted(() => {
 onUnmounted(() => {
   io?.disconnect()
   io = null
+  clearLoadTimeout()
 })
 
 function onSuccess() {
   if (isLoaded.value) return
   isLoaded.value = true
   isError.value = false
+  clearLoadTimeout()
   emit('success', props.item)
 }
 
@@ -75,6 +100,7 @@ function onError(err: unknown) {
   if (isError.value) return
   isLoaded.value = false
   isError.value = true
+  clearLoadTimeout()
   emit('error', { item: props.item, error: err })
 }
 
@@ -84,6 +110,7 @@ function retry() {
   isLoaded.value = false
   isError.value = false
   loadAttempt.value += 1
+  scheduleLoadTimeout()
 }
 </script>
 

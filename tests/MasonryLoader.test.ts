@@ -103,6 +103,45 @@ describe('MasonryLoader', () => {
     wrapper.unmount()
   })
 
+  it('fails with error UI if media does not load within timeout and allows retry', async () => {
+    vi.useFakeTimers()
+    const { instances } = installMockIntersectionObserver()
+
+    const item: MasonryItemBase = {
+      id: 'img-timeout',
+      type: 'image',
+      width: 320,
+      height: 240,
+      preview: 'https://example.com/slow.jpg',
+      original: 'https://example.com/original.jpg',
+    }
+
+    const wrapper = mount(MasonryLoader, { props: { item, timeoutMs: 1000 } })
+
+    const io = instances[0]
+    io.trigger(1)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="masonry-loader-spinner"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="masonry-loader-error"]').exists()).toBe(false)
+
+    vi.advanceTimersByTime(1000)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('error')).toBeTruthy()
+    expect(wrapper.find('[data-testid="masonry-loader-error"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="masonry-loader-retry"]').exists()).toBe(true)
+
+    await wrapper.get('[data-testid="masonry-loader-retry"]').trigger('click')
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="masonry-loader-error"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="masonry-loader-spinner"]').exists()).toBe(true)
+
+    wrapper.unmount()
+    vi.useRealTimers()
+  })
+
   it('emits error when media fails to load and allows retry', async () => {
     const { instances } = installMockIntersectionObserver()
 
