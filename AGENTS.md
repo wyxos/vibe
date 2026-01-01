@@ -1,43 +1,54 @@
-# AGENTS.md
+# AGENTS.md (root)
 
-## Goal: optimize for large datasets
+## Project Snapshot
 
-This repo’s `src/components/Masonry.vue` is designed with **very large item arrays in mind** (think **10k+ items**). When making changes, prefer solutions that keep updates fast and avoid work that scales with the entire list for small interactions.
+**Repo type**: single package (Vue 3 library + demo app)
 
-## Non-negotiables
+**Stack**: Vue 3 + TypeScript + Vite; tests via Vitest and Playwright; lint via ESLint.
+
+**Nearest-wins docs**: detailed guidance lives in sub-folder AGENTS.md files.
+
+## Root Setup Commands
+
+```bash
+npm install
+npm run dev
+npm run check
+npm run build
+npm run build:lib
+npm run build:types
+npm run test:e2e
+```
+
+## Universal Conventions
 
 - **Never edit `lib/`** (generated output). Source of truth is `src/`.
-- Keep the masonry logic centralized in `src/components/Masonry.vue` and the existing helpers under `src/masonry/`.
-- Do not add backward compatibility (aliases, deprecated fallbacks, dual APIs) unless the user explicitly requests it.
+- Prefer `@/` imports (Vite alias) for internal modules.
+- Keep library logic in `src/components/` + `src/masonry/`; demo-only code stays in `src/demo/` and `src/pages/`.
+- Avoid backward-compat shims (aliases/deprecated fallbacks) unless explicitly requested.
 
-## Performance principles (10k items)
+## Security & Secrets
 
-- Avoid `watch(..., { deep: true })` on the full `items` array.
-  - Rebuild layout only on **structural changes** (new array reference, length change, resize / column count change).
-- Avoid O(n) work for single-item interactions.
-  - Example: reaction toggles should **mutate the one item in-place**, not `items.map(...)` across 10k entries.
-- Preserve stable DOM identity.
-  - Keys should be stable (`:key="item.id"`).
-  - Avoid re-parenting large numbers of nodes when not necessary (causes remounts and media reloads).
-- Keep layout math focused on layout-relevant fields.
-  - Layout depends on `id`, `width`, `height` (and container width), not metadata like `reaction`.
+- Don’t commit tokens/keys. If secrets are introduced, put them in `.env` (gitignored) and document required vars in README.
 
-## How to implement new features
+## JIT Index (what to open, not what to paste)
 
-- If a feature changes **layout**, it should trigger a layout rebuild (append/remove/reload, width/height changes, container resize).
-- If a feature changes **metadata only**, it should not trigger full layout recalculation.
+- Source overview: `src/` → see `src/AGENTS.md`
+- Public components: `src/components/` → see `src/components/AGENTS.md`
+- Layout/backfill engine: `src/masonry/` → see `src/masonry/AGENTS.md`
+- Demo/fake server: `src/demo/` → see `src/demo/AGENTS.md`
+- Unit/integration tests: `tests/` → see `tests/AGENTS.md`
+- Playwright tests: `tests/e2e/` → see `tests/e2e/AGENTS.md`
 
-## API naming
+### Quick Find Commands
 
-- Prefer **descriptive internal helper names** inside the implementation (e.g. `removeItems`, `restoreRemoved`, `undoLastRemoval`).
-- Prefer **short external/public API names** exposed to consumers (e.g. `remove`, `restore`, `undo`).
-  - In `src/components/Masonry.vue`, this primarily means methods exposed via `defineExpose(...)`.
+- Find exposed public API: `rg -n "defineExpose" src/components/Masonry.vue`
+- Find item contract: `rg -n "export type MasonryItemBase" src/masonry/types.ts`
+- Find virtualization logic: `rg -n "BUCKET_PX|overscanPx|getVisibleIndicesFromBuckets" src/components src/masonry`
+- Find Masonry tests: `rg -n "mount\(Masonry" tests`
 
-## Testing expectations
+## Definition of Done
 
-- Update unit tests in `tests/` when item contracts change.
-- Prefer deterministic fixtures and cheap DOM updates in tests.
-
-## Local validation
-
-- Prefer running `npm run check` after changes (lint + typecheck + tests) instead of running each command separately.
+- `npm run check` passes
+- `npm run build && npm run build:lib && npm run build:types` pass
+- If you touched UI/scrolling behavior: `npm run test:e2e`

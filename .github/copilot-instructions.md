@@ -20,6 +20,10 @@
 - Install deps with `npm install`. Key scripts: `npm run dev` (Vite dev server), `npm run build:lib` (library bundle + declarations), `npm test` (Vitest unit suite), `npm run build` (demo site + CNAME). There is no lint script.
 - Release workflow is scripted via `npm run release <major|minor|patch>`; it enforces a clean git state, runs tests/builds, bumps versions, tags, publishes to npm, and redeploys the demo. Use flags like `--skip-build` only when you understand the implications.
 
+## MCP & Terminal Usage
+- Prefer MCP Git tools (diff/log/add/commit/checkout) over manual `git` commands in the terminal when an MCP tool exists.
+- Use the terminal for non-Git commands (npm/vite/vitest/playwright) and for Git operations that MCP cannot express cleanly.
+
 ## Testing Expectations
 - Unit tests live in `tests/` and exercise both pure utilities (`calculateLayout.test.js`, `masonryDistribution.test.js`) and the component (`Masonry.test.js`) via `@vue/test-utils`. Add similar tests when introducing behaviours, especially around pagination/backfill edge cases.
 - Prefer deterministic fixtures rather than random data; see existing tests for how items are shaped.
