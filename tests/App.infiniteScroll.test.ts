@@ -1,13 +1,13 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
-import { fetchPage } from '@/fakeServer'
+import { fetchPage } from '@/demo/fakeServer'
 import Home from '@/pages/Home.vue'
 
 function flushPromises() {
   return new Promise((resolve) => setTimeout(resolve, 0))
 }
 
-vi.mock('@/fakeServer', () => {
+vi.mock('@/demo/fakeServer', () => {
   return {
     fetchPage: vi.fn(async (pageToken: unknown) => {
       const tokenStr = String(pageToken)

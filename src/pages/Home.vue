@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
-import { type FeedItem, fetchPage, type PageToken } from '@/fakeServer'
+import { type FeedItem, fetchPage, type PageToken } from '@/demo/fakeServer'
 import Masonry from '@/components/Masonry.vue'
 import {
   buildPagesLoadedLabel,
   getInitialPageToken,
   setReaction,
   useExposeDebugRef,
-} from '@/pages/demoUtils'
+} from '@/demo/demoUtils'
 
 const items = ref<FeedItem[]>([])
 const masonryRef = ref<{

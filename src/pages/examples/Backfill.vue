@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { type BackfillFeedItem, fetchBackfillPage, type PageToken } from '@/fakeServerBackfill'
+import { type BackfillFeedItem, fetchBackfillPage, type PageToken } from '@/demo/fakeServerBackfill'
 import type { BackfillStats } from '@/masonry/types'
 import Masonry from '@/components/Masonry.vue'
 import {
@@ -8,7 +8,7 @@ import {
   getInitialPageToken,
   setReaction,
   useExposeDebugRef,
-} from '@/pages/demoUtils'
+} from '@/demo/demoUtils'
 
 const items = ref<BackfillFeedItem[]>([])
 const masonryRef = ref<{ backfillStats?: unknown } | null>(null)

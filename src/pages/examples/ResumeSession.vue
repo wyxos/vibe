@@ -2,9 +2,9 @@
 import { computed, onMounted, ref } from 'vue'
 
 import Masonry from '@/components/Masonry.vue'
-import { type FeedItem, fetchPage, type PageToken } from '@/fakeServer'
+import { type FeedItem, fetchPage, type PageToken } from '@/demo/fakeServer'
 import type { MasonryRestoredPagesLoaded } from '@/masonry/types'
-import { setReaction, useExposeDebugRef } from '@/pages/demoUtils'
+import { setReaction, useExposeDebugRef } from '@/demo/demoUtils'
 
 const items = ref<FeedItem[]>([])
 const restoredPagesLoaded = ref<MasonryRestoredPagesLoaded | null>(null)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fetchPage } from '@/fakeServer'
+import { fetchPage } from '@/demo/fakeServer'
 
 describe('fakeServer.fetchPage', () => {
   it('returns only { items, nextPage }', async () => {

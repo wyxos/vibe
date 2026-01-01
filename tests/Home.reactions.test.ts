@@ -7,7 +7,7 @@ function flushPromises() {
   return new Promise((resolve) => setTimeout(resolve, 0))
 }
 
-vi.mock('@/fakeServer', () => {
+vi.mock('@/demo/fakeServer', () => {
   return {
     fetchPage: vi.fn(async () => {
       const makeItem = (n: number) => ({
@@ -24,6 +24,7 @@ vi.mock('@/fakeServer', () => {
     }),
   }
 })
+
 
 describe('Home reactions', () => {
   it('sets active reaction on click', async () => {

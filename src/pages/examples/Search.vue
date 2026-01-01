@@ -2,8 +2,8 @@
 import { computed, ref } from 'vue'
 
 import Masonry from '@/components/Masonry.vue'
-import { type FeedItem, fetchSearchPage, makeSearchPageToken, type PageToken } from '@/fakeServer'
-import { setReaction, useExposeDebugRef } from '@/pages/demoUtils'
+import { type FeedItem, fetchSearchPage, makeSearchPageToken, type PageToken } from '@/demo/fakeServer'
+import { setReaction, useExposeDebugRef } from '@/demo/demoUtils'
 
 const items = ref<FeedItem[]>([])
 const masonryRef = ref<{

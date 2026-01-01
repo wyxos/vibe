@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 
 import SearchExample from '@/pages/examples/Search.vue'
-import * as fakeServer from '@/fakeServer'
+import * as fakeServer from '@/demo/fakeServer'
 
 function flushPromises() {
   return new Promise((resolve) => setTimeout(resolve, 0))
