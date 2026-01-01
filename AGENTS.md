@@ -8,6 +8,7 @@ This repo’s `src/components/Masonry.vue` is designed with **very large item ar
 
 - **Never edit `lib/`** (generated output). Source of truth is `src/`.
 - Keep the masonry logic centralized in `src/components/Masonry.vue` and the existing helpers under `src/masonry/`.
+- Do not add backward compatibility (aliases, deprecated fallbacks, dual APIs) unless the user explicitly requests it.
 
 ## Performance principles (10k items)
 

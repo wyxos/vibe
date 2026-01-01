@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { type FeedItem, fetchPage, type PageToken } from '@/fakeServer'
 import Masonry from '@/components/Masonry.vue'
 
 const items = ref<FeedItem[]>([])
-const itemIndexById = shallowRef<Map<string, number>>(new Map())
 const masonryRef = ref<{
   remove: (itemsOrIds: Array<string | FeedItem> | string | FeedItem) => Promise<void>
 } | null>(null)
@@ -59,31 +58,11 @@ async function getContent(pageToken: PageToken) {
   return fetchPage(pageToken)
 }
 
-function setReaction(itemId: string, reaction: string) {
-  // Performance note: this demo is meant to stay responsive even with very large
-  // item arrays (e.g. 10k). Keep reaction updates O(1) by mutating only the
-  // affected item, and avoid copying the full array.
-  const index = itemIndexById.value.get(itemId)
-  if (index == null) return
-
-  const it = items.value[index]
-  if (!it) return
-  if (it.reaction === reaction) return
-  it.reaction = reaction
+function setReaction(item: FeedItem, reaction: string) {
+  if (!item) return
+  if (item.reaction === reaction) return
+  item.reaction = reaction
 }
-
-watch(
-  items,
-  (next) => {
-    const map = new Map()
-    for (let i = 0; i < next.length; i += 1) {
-      const id = next[i]?.id
-      if (id) map.set(id, i)
-    }
-    itemIndexById.value = map
-  },
-  { immediate: true }
-)
 
 function removeRandomItems() {
   const list = items.value
@@ -174,7 +153,7 @@ function removeRandomItems() {
                 :class="item.reaction === 'love' ? 'bg-slate-100 text-slate-900' : 'text-slate-700'"
                 :aria-pressed="item.reaction === 'love'"
                 title="Love"
-                @click="setReaction(item.id, 'love')"
+                @click="setReaction(item, 'love')"
               >
                 <i
                   :class="item.reaction === 'love' ? 'fa-solid fa-heart' : 'fa-regular fa-heart'"
@@ -188,7 +167,7 @@ function removeRandomItems() {
                 :class="item.reaction === 'like' ? 'bg-slate-100 text-slate-900' : 'text-slate-700'"
                 :aria-pressed="item.reaction === 'like'"
                 title="Like"
-                @click="setReaction(item.id, 'like')"
+                @click="setReaction(item, 'like')"
               >
                 <i
                   :class="item.reaction === 'like' ? 'fa-solid fa-thumbs-up' : 'fa-regular fa-thumbs-up'"
@@ -202,7 +181,7 @@ function removeRandomItems() {
                 :class="item.reaction === 'dislike' ? 'bg-slate-100 text-slate-900' : 'text-slate-700'"
                 :aria-pressed="item.reaction === 'dislike'"
                 title="Dislike"
-                @click="setReaction(item.id, 'dislike')"
+                @click="setReaction(item, 'dislike')"
               >
                 <i
                   :class="item.reaction === 'dislike' ? 'fa-solid fa-thumbs-down' : 'fa-regular fa-thumbs-down'"

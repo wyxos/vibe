@@ -86,6 +86,9 @@ describe('MasonryLoader', () => {
     expect(img.exists()).toBe(true)
     expect(img.attributes('src')).toBe(item.preview)
 
+    // Media starts hidden until it succeeds.
+    expect(img.classes()).toContain('opacity-0')
+
     // Shows spinner until the media fires success.
     expect(wrapper.find('[data-testid="masonry-loader-spinner"]').exists()).toBe(true)
 
@@ -93,6 +96,9 @@ describe('MasonryLoader', () => {
     await img.trigger('load')
     expect(wrapper.emitted('success')).toBeTruthy()
     expect(wrapper.find('[data-testid="masonry-loader-spinner"]').exists()).toBe(false)
+
+    // Media fades in on success.
+    expect(wrapper.find('img').classes()).toContain('opacity-100')
 
     wrapper.unmount()
   })
@@ -117,6 +123,9 @@ describe('MasonryLoader', () => {
 
     const img = wrapper.find('img')
     expect(img.exists()).toBe(true)
+
+    // Media starts hidden until it succeeds.
+    expect(img.classes()).toContain('opacity-0')
 
     // In loading state initially.
     expect(wrapper.find('[data-testid="masonry-loader-spinner"]').exists()).toBe(true)
