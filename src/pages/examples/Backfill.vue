@@ -185,7 +185,7 @@ async function getContent(pageToken: PageToken) {
               :class="item.reaction === 'love' ? 'bg-slate-100 text-slate-900' : 'text-slate-700'"
               :aria-pressed="item.reaction === 'love'"
               title="Love"
-              @click="setReaction(item, 'love')"
+              @click="setReaction(item as BackfillFeedItem, 'love')"
             >
               <i
                 :class="item.reaction === 'love' ? 'fa-solid fa-heart' : 'fa-regular fa-heart'"
@@ -200,7 +200,7 @@ async function getContent(pageToken: PageToken) {
               :class="item.reaction === 'like' ? 'bg-slate-100 text-slate-900' : 'text-slate-700'"
               :aria-pressed="item.reaction === 'like'"
               title="Like"
-              @click="setReaction(item, 'like')"
+              @click="setReaction(item as BackfillFeedItem, 'like')"
             >
               <i
                 :class="item.reaction === 'like' ? 'fa-solid fa-thumbs-up' : 'fa-regular fa-thumbs-up'"
@@ -215,7 +215,7 @@ async function getContent(pageToken: PageToken) {
               :class="item.reaction === 'dislike' ? 'bg-slate-100 text-slate-900' : 'text-slate-700'"
               :aria-pressed="item.reaction === 'dislike'"
               title="Dislike"
-              @click="setReaction(item, 'dislike')"
+              @click="setReaction(item as BackfillFeedItem, 'dislike')"
             >
               <i
                 :class="item.reaction === 'dislike' ? 'fa-solid fa-thumbs-down' : 'fa-regular fa-thumbs-down'"
