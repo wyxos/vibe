@@ -42,7 +42,6 @@
     "build": "vite build && node write-cname.js",
     "build:lib": "vite build -c vite.config.lib.js",
     "build:types": "vue-tsc -p tsconfig.lib.json",
-    "postversion": "npm run build",
     "prepublishOnly": "npm run check && npm run build:lib && npm run build:types",
     "preview": "vite preview",
     "check": "node -e \"console.log('→ Lint')\" && npm -s run lint && node -e \"console.log('✓ Lint')\" && node -e \"console.log('→ Typecheck')\" && npm -s run typecheck && node -e \"console.log('✓ Typecheck')\" && node -e \"console.log('→ Test')\" && npm -s run test",
