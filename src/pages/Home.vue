@@ -140,6 +140,22 @@ function highlightVueSnippet(source: string): string {
 
 const highlightedCode = computed(() => highlightVueSnippet(showcasedCode))
 
+async function copyShowcasedCode() {
+  try {
+    await navigator.clipboard.writeText(showcasedCode)
+  } catch {
+    const textarea = document.createElement('textarea')
+    textarea.value = showcasedCode
+    textarea.setAttribute('readonly', '')
+    textarea.style.position = 'fixed'
+    textarea.style.left = '-9999px'
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+  }
+}
+
 function getPageLabelFromId(id: string | null | undefined) {
   if (!id) return null
   const s = String(id)
@@ -233,7 +249,7 @@ function removeRandomItems() {
 
       <aside
         v-if="isCodeSheetOpen"
-        class="fixed right-0 top-0 z-50 flex h-full w-[520px] max-w-[90vw] flex-col border-l border-slate-200 bg-white"
+        class="fixed right-0 top-0 z-50 flex h-full w-1/2 flex-col border-l border-slate-200 bg-white"
         aria-label="Example code"
       >
         <div class="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
@@ -242,19 +258,31 @@ function removeRandomItems() {
             <div class="text-xs text-slate-500">Home demo</div>
           </div>
 
-          <button
-            type="button"
-            class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            title="Close"
-            @click="isCodeSheetOpen = false"
-          >
-            <i class="fa-solid fa-xmark" aria-hidden="true" />
-            <span class="sr-only">Close</span>
-          </button>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              title="Copy code"
+              @click="copyShowcasedCode"
+            >
+              <i class="fa-regular fa-copy" aria-hidden="true" />
+              Copy
+            </button>
+
+            <button
+              type="button"
+              class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              title="Close"
+              @click="isCodeSheetOpen = false"
+            >
+              <i class="fa-solid fa-xmark" aria-hidden="true" />
+              <span class="sr-only">Close</span>
+            </button>
+          </div>
         </div>
 
         <div class="min-h-0 flex-1 overflow-auto p-4">
-          <pre class="overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs leading-relaxed">
+          <pre class="whitespace-pre-wrap break-words rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs leading-relaxed">
 <code class="font-mono" v-html="highlightedCode" />
           </pre>
         </div>
