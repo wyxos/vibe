@@ -4,6 +4,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { h } from 'vue'
 import Masonry from '@/components/Masonry.vue'
+import MasonryItem from '@/components/MasonryItem.vue'
 
 type SlotItem = {
   id: string
@@ -47,7 +48,7 @@ describe('Masonry slots + media rendering', () => {
     }
   }
 
-  it('renders itemHeader and itemFooter slots and keeps media rendering internal', async () => {
+  it('renders MasonryItem header/footer definitions and keeps media rendering internal', async () => {
     vi.stubGlobal('IntersectionObserver', ImmediateIntersectionObserver as unknown as typeof IntersectionObserver)
 
     try {
@@ -80,13 +81,17 @@ describe('Masonry slots + media rendering', () => {
       const wrapper = mount(Masonry, {
         props: { getContent, page: 1, itemWidth: 300 },
         slots: {
-          itemHeader: ({ item }: SlotItemContext) => h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
-          itemFooter: ({ item, remove }: SlotItemFooterContext) =>
-            h(
-              'button',
-              { 'data-testid': 'slot-item-footer', type: 'button', onClick: remove },
-              `F:${item.id}`
-            ),
+          default: () =>
+            h(MasonryItem, null, {
+              header: ({ item }: SlotItemContext) =>
+                h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
+              footer: ({ item, remove }: SlotItemFooterContext) =>
+                h(
+                  'button',
+                  { 'data-testid': 'slot-item-footer', type: 'button', onClick: remove },
+                  `F:${item.id}`
+                ),
+            }),
         },
         attachTo: document.body,
       })
@@ -146,10 +151,13 @@ describe('Masonry slots + media rendering', () => {
     const wrapper = mount(Masonry, {
       props: { getContent, page: 1, itemWidth: 300, headerHeight: 10, footerHeight: 20 },
       slots: {
-        itemHeader: ({ item }: SlotItemContext) =>
-          h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
-        itemFooter: ({ item }: SlotItemContext) =>
-          h('div', { 'data-testid': 'slot-item-footer' }, `F:${item.id}`),
+        default: () =>
+          h(MasonryItem, null, {
+            header: ({ item }: SlotItemContext) =>
+              h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
+            footer: ({ item }: SlotItemContext) =>
+              h('div', { 'data-testid': 'slot-item-footer' }, `F:${item.id}`),
+          }),
       },
       attachTo: document.body,
     })
@@ -230,12 +238,15 @@ describe('Masonry slots + media rendering', () => {
     const wrapper = mount(Masonry, {
       props: { getContent, page: 1, itemWidth: 300, gapX: 16 },
       slots: {
-        itemFooter: ({ item, remove }: SlotItemFooterContext) =>
-          h(
-            'button',
-            { type: 'button', 'data-testid': `remove-${item.id}`, onClick: remove },
-            'Remove'
-          ),
+        default: () =>
+          h(MasonryItem, null, {
+            footer: ({ item, remove }: SlotItemFooterContext) =>
+              h(
+                'button',
+                { type: 'button', 'data-testid': `remove-${item.id}`, onClick: remove },
+                'Remove'
+              ),
+          }),
       },
       attachTo: document.body,
     })
@@ -347,8 +358,10 @@ describe('Masonry slots + media rendering', () => {
     const wrapper = mount(Masonry, {
       props: { getContent, page: 1, itemWidth: 300 },
       slots: {
-        itemHeader: ({ item }: SlotItemContext) =>
-          h('div', { 'data-testid': `hdr-${item.id}` }, item.id),
+        default: () =>
+          h(MasonryItem, null, {
+            header: ({ item }: SlotItemContext) => h('div', { 'data-testid': `hdr-${item.id}` }, item.id),
+          }),
       },
       attachTo: document.body,
     })
@@ -428,7 +441,10 @@ describe('Masonry slots + media rendering', () => {
     const wrapper = mount(Masonry, {
       props: { getContent, page: 1, itemWidth: 300 },
       slots: {
-        itemHeader: ({ item }: SlotItemContext) => h('div', { 'data-testid': `hdr-${item.id}` }, item.id),
+        default: () =>
+          h(MasonryItem, null, {
+            header: ({ item }: SlotItemContext) => h('div', { 'data-testid': `hdr-${item.id}` }, item.id),
+          }),
       },
       attachTo: document.body,
     })
@@ -463,7 +479,7 @@ describe('Masonry slots + media rendering', () => {
     wrapper.unmount()
   })
 
-  it('renders the default footer when itemFooter slot is not provided', async () => {
+  it('renders items when only a header definition is provided', async () => {
     const getContent = vi.fn(async () => {
       return {
         items: [
@@ -483,7 +499,11 @@ describe('Masonry slots + media rendering', () => {
     const wrapper = mount(Masonry, {
       props: { getContent, page: 1, itemWidth: 300 },
       slots: {
-        itemHeader: ({ item }) => h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
+        default: () =>
+          h(MasonryItem, null, {
+            header: ({ item }: SlotItemContext) =>
+              h('div', { 'data-testid': 'slot-item-header' }, `H:${item.id}`),
+          }),
       },
       attachTo: document.body,
     })
@@ -524,6 +544,9 @@ describe('Masonry slots + media rendering', () => {
     const wrapper = mount(Masonry, {
       props: { getContent, page: 1, itemWidth: 300 },
       attachTo: document.body,
+      slots: {
+        default: () => h(MasonryItem),
+      },
     })
 
     await flushPromises()
@@ -597,6 +620,9 @@ describe('Masonry slots + media rendering', () => {
     const wrapper = mount(Masonry, {
       props: { getContent, page: 1, itemWidth: 300, gapX: 16 },
       attachTo: document.body,
+      slots: {
+        default: () => h(MasonryItem),
+      },
     })
 
     await flushPromises()

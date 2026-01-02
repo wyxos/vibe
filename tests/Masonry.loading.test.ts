@@ -1,7 +1,9 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
+import { h } from 'vue'
 import type { GetContentFn, GetContentResult, MasonryItemBase, PageToken } from '@/masonry/types'
 import Masonry from '@/components/Masonry.vue'
+import MasonryItem from '@/components/MasonryItem.vue'
 
 async function flushMicrotasks() {
   await Promise.resolve()
@@ -43,6 +45,9 @@ describe('Masonry loading resilience', () => {
     const wrapper = mount(Masonry, {
       attachTo: document.body,
       props: { getContent: getContent as any, page: 1, itemWidth: 300 },
+      slots: {
+        default: () => h(MasonryItem),
+      },
     })
 
     // Initial load should succeed immediately.
@@ -103,9 +108,10 @@ describe('Masonry loading resilience', () => {
       attachTo: document.body,
       props: { getContent, page: 1, itemWidth: 300 },
       slots: {
-        itemHeader: ({ item }: { item: MasonryItemBase }) => {
-          return item.id
-        },
+        default: () =>
+          h(MasonryItem, null, {
+            header: ({ item }: { item: MasonryItemBase }) => item.id,
+          }),
       },
     })
 

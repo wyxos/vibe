@@ -2,6 +2,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { h } from 'vue'
 import Masonry from '@/components/Masonry.vue'
+import MasonryItem from '@/components/MasonryItem.vue'
 import type { MasonryItemBase } from '@/masonry/types'
 
 function flushPromises() {
@@ -55,8 +56,10 @@ describe('Masonry virtualization + resize', () => {
         gapY: 0,
       },
       slots: {
-        itemHeader: ({ item }: { item: MasonryItemBase }) =>
-          h('div', { 'data-testid': `hdr-${item.id}` }, item.id),
+        default: () =>
+          h(MasonryItem, null, {
+            header: ({ item }: { item: MasonryItemBase }) => h('div', { 'data-testid': `hdr-${item.id}` }, item.id),
+          }),
       },
     })
 

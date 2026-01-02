@@ -1,8 +1,10 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
+import { h } from 'vue'
 
 import type { BackfillStats } from '@/masonry/types'
 import Masonry from '@/components/Masonry.vue'
+import MasonryItem from '@/components/MasonryItem.vue'
 
 function flushPromises() {
   return new Promise((resolve) => setTimeout(resolve, 0))
@@ -73,6 +75,9 @@ describe('Masonry backfill', () => {
         pageSize: 20,
         backfillRequestDelayMs: 0,
       },
+      slots: {
+        default: () => h(MasonryItem),
+      },
     })
 
     await flushPromises()
@@ -140,6 +145,9 @@ describe('Masonry backfill', () => {
         prefetchThresholdPx: 200,
         backfillRequestDelayMs: 0,
       },
+      slots: {
+        default: () => h(MasonryItem),
+      },
     })
 
     await flushPromises()
@@ -203,6 +211,9 @@ describe('Masonry backfill', () => {
         pageSize: 20,
         prefetchThresholdPx: 200,
         backfillRequestDelayMs: 0,
+      },
+      slots: {
+        default: () => h(MasonryItem),
       },
     })
 

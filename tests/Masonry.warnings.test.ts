@@ -1,6 +1,8 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
+import { h } from 'vue'
 import Masonry from '@/components/Masonry.vue'
+import MasonryItem from '@/components/MasonryItem.vue'
 
 function flushPromises() {
   return new Promise((resolve) => setTimeout(resolve, 0))
@@ -30,6 +32,9 @@ describe('Masonry diagnostics', () => {
     const wrapper = mount(Masonry, {
       attachTo: document.body,
       props: { getContent, page: 1, itemWidth: 300 },
+      slots: {
+        default: () => h(MasonryItem),
+      },
     })
 
     await flushPromises()

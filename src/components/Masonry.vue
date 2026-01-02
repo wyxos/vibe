@@ -10,17 +10,23 @@ import {
 } from '@/masonry/types'
 import {
   computed,
+  defineComponent,
   nextTick,
   onMounted,
   onUnmounted,
   ref,
   shallowRef,
   useAttrs,
-  useSlots,
+  provide,
   watch,
 } from 'vue'
 
 import MasonryLoader from '@/components/MasonryLoader.vue'
+import {
+  masonryItemRegistryKey,
+  type MasonryItemDefinition,
+  type MasonryItemSlotProps,
+} from '@/components/masonryItemRegistry'
 
 import { getColumnCount, getColumnWidth } from '@/masonry/layout'
 import {
@@ -48,7 +54,44 @@ const props = withDefaults(defineProps<MasonryProps>(), masonryDefaults)
 const emit = defineEmits<(e: 'update:items', items: MasonryItemBase[]) => void>()
 
 const attrs = useAttrs()
-const slots = useSlots()
+
+const SlotRenderer = defineComponent({
+  name: 'SlotRenderer',
+  props: {
+    slotFn: {
+      type: Function,
+      required: false,
+    },
+    slotProps: {
+      type: Object,
+      required: true,
+    },
+  },
+  setup(props) {
+    return () => {
+      const fn = props.slotFn as ((p: unknown) => unknown) | undefined
+      return fn ? (fn(props.slotProps) as unknown) : null
+    }
+  },
+})
+
+const masonryItemDefinition = shallowRef<MasonryItemDefinition | null>(null)
+
+provide(masonryItemRegistryKey, (definition: MasonryItemDefinition) => {
+  if (masonryItemDefinition.value) {
+    if (import.meta.env.DEV) {
+      console.warn('[Masonry] Only one <MasonryItem> definition is supported.')
+    }
+    return
+  }
+  masonryItemDefinition.value = definition
+})
+
+onMounted(() => {
+  if (!masonryItemDefinition.value) {
+    throw new Error('[Masonry] Missing <MasonryItem> definition. Add <MasonryItem> as a child of <Masonry>.')
+  }
+})
 
 const passthroughAttrs = computed(() => {
   // Avoid double-applying class by stripping it from v-bind.
@@ -77,8 +120,12 @@ function getMeasuredContainerWidth(el: HTMLElement | null): number {
 const headerHeight = computed(() => props.headerHeight)
 const footerHeight = computed(() => props.footerHeight)
 
-const hasHeaderSlot = computed(() => Boolean(slots.itemHeader))
-const hasFooterSlot = computed(() => Boolean(slots.itemFooter))
+const itemHeaderSlotFn = computed(() => masonryItemDefinition.value?.header)
+const itemFooterSlotFn = computed(() => masonryItemDefinition.value?.footer)
+const itemBodySlotFn = computed(() => masonryItemDefinition.value?.default)
+
+const hasHeaderSlot = computed(() => Boolean(itemHeaderSlotFn.value))
+const hasFooterSlot = computed(() => Boolean(itemFooterSlotFn.value))
 
 const headerStyle = computed(() => {
   if (headerHeight.value > 0) return { height: `${headerHeight.value}px` }
@@ -1021,6 +1068,9 @@ const sectionClass = computed(() => {
 
 <template>
   <section v-bind="passthroughAttrs" :class="sectionClass">
+    <div class="hidden">
+      <slot />
+    </div>
     <div
       ref="scrollViewportRef"
       data-testid="items-scroll-container"
@@ -1073,10 +1123,18 @@ const sectionClass = computed(() => {
             class="w-full"
             :style="headerStyle"
           >
-            <slot name="itemHeader" :item="itemsState[idx]" :remove="() => removeItem(itemsState[idx])" />
+            <SlotRenderer
+              :slot-fn="itemHeaderSlotFn"
+              :slot-props="({ item: itemsState[idx], remove: () => removeItem(itemsState[idx]) } satisfies MasonryItemSlotProps)"
+            />
           </div>
 
-          <MasonryLoader :item="itemsState[idx]" />
+          <SlotRenderer
+            v-if="itemBodySlotFn"
+            :slot-fn="itemBodySlotFn"
+            :slot-props="({ item: itemsState[idx], remove: () => removeItem(itemsState[idx]) } satisfies MasonryItemSlotProps)"
+          />
+          <MasonryLoader v-else :item="itemsState[idx]" />
 
           <div
             v-if="hasFooterSlot || footerHeight > 0"
@@ -1084,7 +1142,10 @@ const sectionClass = computed(() => {
             class="w-full"
             :style="footerStyle"
           >
-            <slot name="itemFooter" :item="itemsState[idx]" :remove="() => removeItem(itemsState[idx])"></slot>
+            <SlotRenderer
+              :slot-fn="itemFooterSlotFn"
+              :slot-props="({ item: itemsState[idx], remove: () => removeItem(itemsState[idx]) } satisfies MasonryItemSlotProps)"
+            />
           </div>
         </article>
 
@@ -1107,10 +1168,18 @@ const sectionClass = computed(() => {
             class="w-full"
             :style="headerStyle"
           >
-            <slot name="itemHeader" :item="c.item" :remove="() => {}" />
+            <SlotRenderer
+              :slot-fn="itemHeaderSlotFn"
+              :slot-props="({ item: c.item, remove: () => {} } satisfies MasonryItemSlotProps)"
+            />
           </div>
 
-          <MasonryLoader :item="c.item" />
+          <SlotRenderer
+            v-if="itemBodySlotFn"
+            :slot-fn="itemBodySlotFn"
+            :slot-props="({ item: c.item, remove: () => {} } satisfies MasonryItemSlotProps)"
+          />
+          <MasonryLoader v-else :item="c.item" />
 
           <div
             v-if="hasFooterSlot || footerHeight > 0"
@@ -1118,7 +1187,10 @@ const sectionClass = computed(() => {
             class="w-full"
             :style="footerStyle"
           >
-            <slot name="itemFooter" :item="c.item" :remove="() => {}"></slot>
+            <SlotRenderer
+              :slot-fn="itemFooterSlotFn"
+              :slot-props="({ item: c.item, remove: () => {} } satisfies MasonryItemSlotProps)"
+            />
           </div>
         </article>
       </div>

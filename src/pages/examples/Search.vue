@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 
 import Masonry from '@/components/Masonry.vue'
+import MasonryItem from '@/components/MasonryItem.vue'
 import { type FeedItem, fetchSearchPage, makeSearchPageToken, type PageToken } from '@/demo/fakeServer'
 import { setReaction, useExposeDebugRef } from '@/demo/demoUtils'
 
@@ -67,20 +68,21 @@ function applySearch() {
         :header-height="45"
         :footer-height="54"
       >
-        <template #itemHeader="{ item }">
-          <div class="flex h-full items-center justify-between gap-3 border-b border-slate-200/60 px-4">
-            <span
-              class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-2 py-0.5 text-xs font-medium text-slate-700"
-            >
-              {{ item.type }}
-            </span>
+        <MasonryItem>
+          <template #header="{ item }">
+            <div class="flex h-full items-center justify-between gap-3 border-b border-slate-200/60 px-4">
+              <span
+                class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-2 py-0.5 text-xs font-medium text-slate-700"
+              >
+                {{ item.type }}
+              </span>
 
-            <span class="truncate font-mono text-xs text-slate-500">{{ item.id }}</span>
-          </div>
-        </template>
+              <span class="truncate font-mono text-xs text-slate-500">{{ item.id }}</span>
+            </div>
+          </template>
 
-        <template #itemFooter="{ item, remove }">
-          <div class="flex h-full items-center justify-end gap-2 px-4">
+          <template #footer="{ item, remove }">
+            <div class="flex h-full items-center justify-end gap-2 px-4">
             <button
               type="button"
               class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium hover:bg-slate-50"
@@ -133,8 +135,9 @@ function applySearch() {
               <i class="fa-solid fa-trash" aria-hidden="true" />
               <span class="sr-only">Remove</span>
             </button>
-          </div>
-        </template>
+            </div>
+          </template>
+        </MasonryItem>
       </Masonry>
     </div>
   </div>

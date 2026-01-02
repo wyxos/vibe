@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
 
 import Masonry from '@/components/Masonry.vue'
+import MasonryItem from '@/components/MasonryItem.vue'
 import type { MasonryItemBase } from '@/masonry/types'
 
 function flushPromises() {
@@ -48,16 +49,22 @@ describe('Masonry resume session', () => {
         return () =>
           h('div', [
             h('div', { 'data-testid': 'items-length' }, String(items.value.length)),
-            h(Masonry, {
-              getContent,
-              page: 1,
-              itemWidth: 300,
-              items: items.value,
-              restoredPagesLoaded: [1, 2, 3, 4, 5],
-              'onUpdate:items': (next) => {
-                items.value = next as MasonryItemBase[]
+            h(
+              Masonry,
+              {
+                getContent,
+                page: 1,
+                itemWidth: 300,
+                items: items.value,
+                restoredPagesLoaded: [1, 2, 3, 4, 5],
+                'onUpdate:items': (next) => {
+                  items.value = next as MasonryItemBase[]
+                },
               },
-            }),
+              {
+                default: () => h(MasonryItem),
+              }
+            ),
           ])
       },
     })
@@ -115,16 +122,22 @@ describe('Masonry resume session', () => {
         return () =>
           h('div', [
             h('div', { 'data-testid': 'items-length' }, String(items.value.length)),
-            h(Masonry, {
-              getContent,
-              page: 1,
-              itemWidth: 300,
-              items: items.value,
-              restoredPagesLoaded: 5,
-              'onUpdate:items': (next) => {
-                items.value = next as MasonryItemBase[]
+            h(
+              Masonry,
+              {
+                getContent,
+                page: 1,
+                itemWidth: 300,
+                items: items.value,
+                restoredPagesLoaded: 5,
+                'onUpdate:items': (next) => {
+                  items.value = next as MasonryItemBase[]
+                },
               },
-            }),
+              {
+                default: () => h(MasonryItem),
+              }
+            ),
           ])
       },
     })

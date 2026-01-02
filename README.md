@@ -11,7 +11,7 @@ It’s built for large, scroll-heavy media feeds and aims to stay smooth with th
 - Optional backfill mode to reach a target `pageSize`
 - Smooth removal + reorder transitions, with `remove` / `undo` / `restore`
 - Preserves a single DOM sequence (no column re-parenting)
-- Optional `itemHeader` / `itemFooter` slots per card
+- Item templates via `<MasonryItem>` with `#header` / `#default` / `#footer`
 
 ## Demo
 
