@@ -21,6 +21,8 @@ useExposeDebugRef(masonryRef)
 const initialPageToken = getInitialPageToken('page', 1)
 
 const isCodeSheetOpen = ref(false)
+const copyStatus = ref<'idle' | 'copied'>('idle')
+let copyResetTimeout: number | null = null
 
 const showcasedCode = `<script setup lang="ts">
 import { computed, ref } from 'vue'
@@ -141,6 +143,11 @@ function highlightVueSnippet(source: string): string {
 const highlightedCode = computed(() => highlightVueSnippet(showcasedCode))
 
 async function copyShowcasedCode() {
+  if (copyResetTimeout) {
+    window.clearTimeout(copyResetTimeout)
+    copyResetTimeout = null
+  }
+
   try {
     await navigator.clipboard.writeText(showcasedCode)
   } catch {
@@ -154,6 +161,12 @@ async function copyShowcasedCode() {
     document.execCommand('copy')
     document.body.removeChild(textarea)
   }
+
+  copyStatus.value = 'copied'
+  copyResetTimeout = window.setTimeout(() => {
+    copyStatus.value = 'idle'
+    copyResetTimeout = null
+  }, 1500)
 }
 
 function getPageLabelFromId(id: string | null | undefined) {
@@ -247,46 +260,58 @@ function removeRandomItems() {
         </div>
       </header>
 
-      <aside
-        v-if="isCodeSheetOpen"
-        class="fixed right-0 top-0 z-50 flex h-full w-1/2 flex-col border-l border-slate-200 bg-white"
-        aria-label="Example code"
+      <Transition
+        enter-active-class="transition duration-200 ease-out transform"
+        enter-from-class="translate-x-6 opacity-0"
+        enter-to-class="translate-x-0 opacity-100"
+        leave-active-class="transition duration-150 ease-in transform"
+        leave-from-class="translate-x-0 opacity-100"
+        leave-to-class="translate-x-6 opacity-0"
       >
-        <div class="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
-          <div class="min-w-0">
-            <div class="text-sm font-medium text-slate-900">Example code</div>
-            <div class="text-xs text-slate-500">Home demo</div>
+        <aside
+          v-if="isCodeSheetOpen"
+          class="fixed right-0 top-0 z-50 flex h-full w-1/2 flex-col border-l border-slate-200 bg-white"
+          aria-label="Example code"
+        >
+          <div class="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-slate-900">Example code</div>
+              <div class="text-xs text-slate-500">Home demo</div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                title="Copy code"
+                @click="copyShowcasedCode"
+              >
+                <i
+                  :class="copyStatus === 'copied' ? 'fa-solid fa-check' : 'fa-regular fa-copy'"
+                  aria-hidden="true"
+                />
+                {{ copyStatus === 'copied' ? 'Copied' : 'Copy' }}
+              </button>
+
+              <button
+                type="button"
+                class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                title="Close"
+                @click="isCodeSheetOpen = false"
+              >
+                <i class="fa-solid fa-xmark" aria-hidden="true" />
+                <span class="sr-only">Close</span>
+              </button>
+            </div>
           </div>
 
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              class="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              title="Copy code"
-              @click="copyShowcasedCode"
-            >
-              <i class="fa-regular fa-copy" aria-hidden="true" />
-              Copy
-            </button>
-
-            <button
-              type="button"
-              class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              title="Close"
-              @click="isCodeSheetOpen = false"
-            >
-              <i class="fa-solid fa-xmark" aria-hidden="true" />
-              <span class="sr-only">Close</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="min-h-0 flex-1 overflow-auto p-4">
-          <pre class="whitespace-pre-wrap break-words rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs leading-relaxed">
+          <div class="min-h-0 flex-1 overflow-auto p-4">
+            <pre class="whitespace-pre-wrap break-words rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs leading-relaxed">
 <code class="font-mono" v-html="highlightedCode" />
-          </pre>
-        </div>
-      </aside>
+            </pre>
+          </div>
+        </aside>
+      </Transition>
 
       <Masonry
         ref="masonryRef"
