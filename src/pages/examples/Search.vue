@@ -5,6 +5,7 @@ import Masonry from '@/components/Masonry.vue'
 import MasonryItem from '@/components/MasonryItem.vue'
 import { type FeedItem, fetchSearchPage, makeSearchPageToken, type PageToken } from '@/demo/fakeServer'
 import { setReaction, useExposeDebugRef } from '@/demo/demoUtils'
+import { highlightVueSnippet, useCopyToClipboard } from '@/demo/codeSheet'
 
 const items = ref<FeedItem[]>([])
 const masonryRef = ref<{
@@ -15,6 +16,47 @@ useExposeDebugRef(masonryRef)
 
 const searchInput = ref('')
 const appliedQuery = ref('')
+
+const isCodeSheetOpen = ref(false)
+
+const showcasedCode = `<script setup lang="ts">
+import { computed, ref } from 'vue'
+
+import Masonry from '@wyxos/vibe'
+import { type FeedItem, fetchSearchPage, makeSearchPageToken, type PageToken } from './server'
+
+const items = ref<FeedItem[]>([])
+const searchInput = ref('')
+const appliedQuery = ref('')
+
+const pageToken = computed<PageToken>(() => makeSearchPageToken({ page: 1, query: appliedQuery.value }))
+
+async function getContent(pageToken: PageToken) {
+  return fetchSearchPage(pageToken)
+}
+
+function applySearch() {
+  appliedQuery.value = searchInput.value.trim()
+  items.value = []
+}
+</scr${'ipt'}>
+
+<template>
+  <header>
+    <input v-model="searchInput" @keydown.enter.prevent="applySearch" />
+    <button type="button" @click="applySearch">Apply</button>
+  </header>
+
+  <Masonry v-model:items="items" :get-content="getContent" :page="pageToken">
+    <MasonryItem>
+      <template #default="{ item }">{{ item.id }}</template>
+    </MasonryItem>
+  </Masonry>
+</template>
+`
+
+const highlightedCode = computed(() => highlightVueSnippet(showcasedCode))
+const { copyStatus, copy: copyShowcasedCode } = useCopyToClipboard(() => showcasedCode)
 
 const pageToken = computed<PageToken>(() => makeSearchPageToken({ page: 1, query: appliedQuery.value }))
 
@@ -57,8 +99,72 @@ function applySearch() {
           >
             Apply
           </button>
+
+          <button
+            type="button"
+            class="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            title="Show code"
+            :aria-pressed="isCodeSheetOpen"
+            @click="isCodeSheetOpen = !isCodeSheetOpen"
+          >
+            <i class="fa-solid fa-code" aria-hidden="true" />
+            <span class="sr-only">Show code</span>
+          </button>
         </div>
       </header>
+
+      <Transition
+        enter-active-class="transition duration-200 ease-out transform"
+        enter-from-class="translate-x-6 opacity-0"
+        enter-to-class="translate-x-0 opacity-100"
+        leave-active-class="transition duration-150 ease-in transform"
+        leave-from-class="translate-x-0 opacity-100"
+        leave-to-class="translate-x-6 opacity-0"
+      >
+        <aside
+          v-if="isCodeSheetOpen"
+          class="fixed right-0 top-0 z-50 flex h-full w-1/2 flex-col border-l border-slate-200 bg-white"
+          aria-label="Example code"
+        >
+          <div class="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-slate-900">Example code</div>
+              <div class="text-xs text-slate-500">Search</div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                title="Copy code"
+                @click="copyShowcasedCode"
+              >
+                <i
+                  :class="copyStatus === 'copied' ? 'fa-solid fa-check' : 'fa-regular fa-copy'"
+                  aria-hidden="true"
+                />
+                {{ copyStatus === 'copied' ? 'Copied' : 'Copy' }}
+              </button>
+
+              <button
+                type="button"
+                class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                title="Close"
+                @click="isCodeSheetOpen = false"
+              >
+                <i class="fa-solid fa-xmark" aria-hidden="true" />
+                <span class="sr-only">Close</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="min-h-0 flex-1 overflow-auto p-4">
+            <pre class="whitespace-pre-wrap break-words rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs leading-relaxed">
+<code class="font-mono" v-html="highlightedCode" />
+            </pre>
+          </div>
+        </aside>
+      </Transition>
 
       <Masonry
         ref="masonryRef"
