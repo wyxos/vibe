@@ -10,6 +10,8 @@ export type MasonryItemDefinition = {
   header?: Slot<MasonryItemSlotProps>
   default?: Slot<MasonryItemSlotProps>
   footer?: Slot<MasonryItemSlotProps>
+  onPreloaded?: (item: MasonryItemBase) => void
+  onFailed?: (payload: { item: MasonryItemBase; error: unknown }) => void
 }
 
 export type RegisterMasonryItem = (definition: MasonryItemDefinition) => void

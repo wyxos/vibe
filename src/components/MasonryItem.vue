@@ -7,7 +7,7 @@ let hasWarnedRegistryMismatch = false
 
 export default defineComponent({
   name: 'MasonryItem',
-  setup(_props, { slots }) {
+  setup(_props, { slots, attrs }) {
     const register = inject(masonryItemRegistryKey, null)
 
     if (!register) {
@@ -40,10 +40,33 @@ export default defineComponent({
       return () => null
     }
 
+    const onPreloaded = attrs.onPreloaded
+    const onFailed = attrs.onFailed
+
     register({
       header: slots.header,
       default: slots.default,
       footer: slots.footer,
+      onPreloaded:
+        typeof onPreloaded === 'function'
+          ? (onPreloaded as (item: unknown) => void)
+          : Array.isArray(onPreloaded)
+            ? (item) => {
+                for (const fn of onPreloaded) {
+                  if (typeof fn === 'function') (fn as (v: unknown) => void)(item)
+                }
+              }
+            : undefined,
+      onFailed:
+        typeof onFailed === 'function'
+          ? (onFailed as (payload: unknown) => void)
+          : Array.isArray(onFailed)
+            ? (payload) => {
+                for (const fn of onFailed) {
+                  if (typeof fn === 'function') (fn as (v: unknown) => void)(payload)
+                }
+              }
+            : undefined,
     })
 
     return () => null

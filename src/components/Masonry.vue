@@ -51,7 +51,11 @@ export type {
 
 const props = withDefaults(defineProps<MasonryProps>(), masonryDefaults)
 
-const emit = defineEmits<(e: 'update:items', items: MasonryItemBase[]) => void>()
+const emit = defineEmits<{
+  (e: 'update:items', items: MasonryItemBase[]): void
+  (e: 'preloaded', items: MasonryItemBase[]): void
+  (e: 'failures', payloads: Array<{ item: MasonryItemBase; error: unknown }>): void
+}>()
 
 const attrs = useAttrs()
 
@@ -86,6 +90,52 @@ provide(masonryItemRegistryKey, (definition: MasonryItemDefinition) => {
   }
   masonryItemDefinition.value = definition
 })
+
+const PRELOAD_BATCH_DEBOUNCE_MS = 100
+const pendingPreloadedItems: MasonryItemBase[] = []
+const pendingFailurePayloads: Array<{ item: MasonryItemBase; error: unknown }> = []
+let flushPreloadedTimer: ReturnType<typeof setTimeout> | null = null
+let flushFailuresTimer: ReturnType<typeof setTimeout> | null = null
+
+function flushPreloaded() {
+  if (!pendingPreloadedItems.length) return
+  const batch = pendingPreloadedItems.splice(0, pendingPreloadedItems.length)
+  emit('preloaded', batch)
+}
+
+function flushFailures() {
+  if (!pendingFailurePayloads.length) return
+  const batch = pendingFailurePayloads.splice(0, pendingFailurePayloads.length)
+  emit('failures', batch)
+}
+
+function scheduleFlushPreloaded() {
+  if (flushPreloadedTimer) return
+  flushPreloadedTimer = setTimeout(() => {
+    flushPreloadedTimer = null
+    flushPreloaded()
+  }, PRELOAD_BATCH_DEBOUNCE_MS)
+}
+
+function scheduleFlushFailures() {
+  if (flushFailuresTimer) return
+  flushFailuresTimer = setTimeout(() => {
+    flushFailuresTimer = null
+    flushFailures()
+  }, PRELOAD_BATCH_DEBOUNCE_MS)
+}
+
+function handleItemPreloaded(item: MasonryItemBase) {
+  masonryItemDefinition.value?.onPreloaded?.(item)
+  pendingPreloadedItems.push(item)
+  scheduleFlushPreloaded()
+}
+
+function handleItemFailed(payload: { item: MasonryItemBase; error: unknown }) {
+  masonryItemDefinition.value?.onFailed?.(payload)
+  pendingFailurePayloads.push(payload)
+  scheduleFlushFailures()
+}
 
 onMounted(() => {
   if (!masonryItemDefinition.value) {
@@ -1004,6 +1054,19 @@ onMounted(async () => {
 
 onUnmounted(() => {
   resizeObserver?.disconnect()
+
+  if (flushPreloadedTimer) {
+    clearTimeout(flushPreloadedTimer)
+    flushPreloadedTimer = null
+  }
+  if (flushFailuresTimer) {
+    clearTimeout(flushFailuresTimer)
+    flushFailuresTimer = null
+  }
+
+  // Best-effort flush on teardown so callers don't lose a last batch.
+  flushPreloaded()
+  flushFailures()
 })
 
 watch(
@@ -1134,7 +1197,12 @@ const sectionClass = computed(() => {
             :slot-fn="itemBodySlotFn"
             :slot-props="({ item: itemsState[idx], remove: () => removeItem(itemsState[idx]) } satisfies MasonryItemSlotProps)"
           />
-          <MasonryLoader v-else :item="itemsState[idx]" />
+          <MasonryLoader
+            v-else
+            :item="itemsState[idx]"
+            @success="handleItemPreloaded"
+            @error="handleItemFailed"
+          />
 
           <div
             v-if="hasFooterSlot || footerHeight > 0"
