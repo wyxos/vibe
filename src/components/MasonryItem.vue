@@ -1,6 +1,9 @@
 <script lang="ts">
-import { defineComponent, inject } from 'vue'
+import { defineComponent, getCurrentInstance, inject } from 'vue'
 import { masonryItemRegistryKey } from '@/components/masonryItemRegistry'
+
+let hasWarnedOutsideMasonry = false
+let hasWarnedRegistryMismatch = false
 
 export default defineComponent({
   name: 'MasonryItem',
@@ -9,7 +12,30 @@ export default defineComponent({
 
     if (!register) {
       if (import.meta.env.DEV) {
-        console.warn('[MasonryItem] Must be used as a child of <Masonry>.')
+        const instance = getCurrentInstance()
+        let hasMasonryAncestor = false
+        let parent = instance?.parent ?? null
+
+        while (parent) {
+          const parentName = (parent.type as { name?: string } | undefined)?.name
+          if (parentName === 'Masonry') {
+            hasMasonryAncestor = true
+            break
+          }
+          parent = parent.parent
+        }
+
+        if (hasMasonryAncestor) {
+          if (!hasWarnedRegistryMismatch) {
+            hasWarnedRegistryMismatch = true
+            console.warn(
+              '[MasonryItem] Detected a <Masonry> ancestor but no registry was provided. Ensure <Masonry> and <MasonryItem> come from the same build (avoid mixing source + package imports / duplicate installs).'
+            )
+          }
+        } else if (!hasWarnedOutsideMasonry) {
+          hasWarnedOutsideMasonry = true
+          console.warn('[MasonryItem] Must be used as a child of <Masonry>.')
+        }
       }
       return () => null
     }
