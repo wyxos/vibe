@@ -80,7 +80,9 @@ async function getContent(page: number) {
 </style>
 ```
 
-Each item must include `{ id, width, height }` so the layout can be calculated.
+> **Warning**
+> Each item must include `{ id, width, height }` so the layout can be calculated.
+
 ## Local library build
 
 - JS bundles: `npm run build:lib`
