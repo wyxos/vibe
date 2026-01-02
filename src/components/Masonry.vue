@@ -172,10 +172,11 @@ const footerHeight = computed(() => props.footerHeight)
 
 const itemHeaderSlotFn = computed(() => masonryItemDefinition.value?.header)
 const itemFooterSlotFn = computed(() => masonryItemDefinition.value?.footer)
-const itemBodySlotFn = computed(() => masonryItemDefinition.value?.default)
+const itemOverlaySlotFn = computed(() => masonryItemDefinition.value?.overlay)
 
 const hasHeaderSlot = computed(() => Boolean(itemHeaderSlotFn.value))
 const hasFooterSlot = computed(() => Boolean(itemFooterSlotFn.value))
+const hasOverlaySlot = computed(() => Boolean(itemOverlaySlotFn.value))
 
 const headerStyle = computed(() => {
   if (headerHeight.value > 0) return { height: `${headerHeight.value}px` }
@@ -1192,17 +1193,20 @@ const sectionClass = computed(() => {
             />
           </div>
 
-          <SlotRenderer
-            v-if="itemBodySlotFn"
-            :slot-fn="itemBodySlotFn"
-            :slot-props="({ item: itemsState[idx], remove: () => removeItem(itemsState[idx]) } satisfies MasonryItemSlotProps)"
-          />
-          <MasonryLoader
-            v-else
-            :item="itemsState[idx]"
-            @success="handleItemPreloaded"
-            @error="handleItemFailed"
-          />
+          <div class="relative">
+            <MasonryLoader
+              :item="itemsState[idx]"
+              @success="handleItemPreloaded"
+              @error="handleItemFailed"
+            />
+
+            <div v-if="hasOverlaySlot" class="pointer-events-auto absolute inset-0">
+              <SlotRenderer
+                :slot-fn="itemOverlaySlotFn"
+                :slot-props="({ item: itemsState[idx], remove: () => removeItem(itemsState[idx]) } satisfies MasonryItemSlotProps)"
+              />
+            </div>
+          </div>
 
           <div
             v-if="hasFooterSlot || footerHeight > 0"
@@ -1242,12 +1246,16 @@ const sectionClass = computed(() => {
             />
           </div>
 
-          <SlotRenderer
-            v-if="itemBodySlotFn"
-            :slot-fn="itemBodySlotFn"
-            :slot-props="({ item: c.item, remove: () => {} } satisfies MasonryItemSlotProps)"
-          />
-          <MasonryLoader v-else :item="c.item" />
+          <div class="relative">
+            <MasonryLoader :item="c.item" />
+
+            <div v-if="hasOverlaySlot" class="pointer-events-auto absolute inset-0">
+              <SlotRenderer
+                :slot-fn="itemOverlaySlotFn"
+                :slot-props="({ item: c.item, remove: () => {} } satisfies MasonryItemSlotProps)"
+              />
+            </div>
+          </div>
 
           <div
             v-if="hasFooterSlot || footerHeight > 0"

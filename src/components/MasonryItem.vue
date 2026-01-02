@@ -43,9 +43,16 @@ export default defineComponent({
     const onPreloaded = attrs.onPreloaded
     const onFailed = attrs.onFailed
 
+    const overlaySlot = slots.overlay
+    const legacyDefaultSlot = slots.default
+
+    if (import.meta.env.DEV && !overlaySlot && legacyDefaultSlot) {
+      console.warn('[MasonryItem] The #default slot is deprecated for item bodies. Use #overlay instead.')
+    }
+
     register({
       header: slots.header,
-      default: slots.default,
+      overlay: overlaySlot ?? legacyDefaultSlot,
       footer: slots.footer,
       onPreloaded:
         typeof onPreloaded === 'function'

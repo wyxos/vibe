@@ -33,7 +33,7 @@ describe('MasonryItem definition', () => {
     }
   }
 
-  it('uses <MasonryItem> slots for header/body/footer and passes remove()', async () => {
+  it('uses <MasonryItem> slots for header/overlay/footer and passes remove()', async () => {
     vi.stubGlobal('IntersectionObserver', ImmediateIntersectionObserver as unknown as typeof IntersectionObserver)
 
     try {
@@ -68,8 +68,8 @@ describe('MasonryItem definition', () => {
             h(MasonryItem, null, {
               header: ({ item }: { item: { id: string } }) =>
                 h('div', { 'data-testid': 'defined-header' }, `H:${item.id}`),
-              default: ({ item }: { item: { id: string } }) =>
-                h('div', { 'data-testid': 'defined-body' }, `B:${item.id}`),
+              overlay: ({ item }: { item: { id: string } }) =>
+                h('div', { 'data-testid': 'defined-overlay' }, `O:${item.id}`),
               footer: ({ item, remove }: { item: { id: string }; remove: () => void }) =>
                 h(
                   'button',
@@ -92,7 +92,10 @@ describe('MasonryItem definition', () => {
 
       expect(wrapper.findAll('[data-testid="item-card"]').length).toBe(2)
       expect(wrapper.findAll('[data-testid="defined-header"]').length).toBe(2)
-      expect(wrapper.findAll('[data-testid="defined-body"]').length).toBe(2)
+      expect(wrapper.findAll('[data-testid="defined-overlay"]').length).toBe(2)
+
+      // Media rendering remains internal.
+      expect(wrapper.find('img').exists()).toBe(true)
 
       await wrapper.get('[data-testid="defined-remove-img-1"]').trigger('click')
       await wrapper.vm.$nextTick()
