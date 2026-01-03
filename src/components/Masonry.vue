@@ -941,11 +941,12 @@ function maybeLoadMoreOnScroll() {
 
   // Guard: avoid prefetch caused by content shrinking (e.g. removals or column-count changes)
   // which can clamp scrollTop and fire a scroll event even if the user didn't scroll.
-  const scrollingDown = nextScrollTop > lastPrefetchScrollTop
-  const contentShrank = lastPrefetchScrollHeight > 0 && nextScrollHeight < lastPrefetchScrollHeight
+  const prevScrollTop = lastPrefetchScrollTop
+  const prevScrollHeight = lastPrefetchScrollHeight
+  const contentShrank = prevScrollHeight > 0 && nextScrollHeight < prevScrollHeight
   lastPrefetchScrollTop = nextScrollTop
   lastPrefetchScrollHeight = nextScrollHeight
-  if (!scrollingDown || contentShrank) return
+  if (contentShrank && nextScrollTop <= prevScrollTop) return
 
   const distanceFromBottom = nextScrollHeight - (nextScrollTop + nextViewportHeight)
   if (distanceFromBottom <= props.prefetchThresholdPx) void loadNextPage()
