@@ -215,6 +215,21 @@ function getOutsideContainerBottomY(height: number): number {
 const enterStartIds = ref<Set<string>>(new Set())
 const enterAnimatingIds = ref<Set<string>>(new Set())
 const scheduledEnterIds = new Set<string>()
+const enterDelayById = ref<Map<string, number>>(new Map())
+
+const MAX_ENTER_STAGGER_TOTAL_MS = 400
+
+function clampEnterStaggerMs(ms: number): number {
+  if (!Number.isFinite(ms)) return 0
+  return Math.max(0, Math.min(250, ms))
+}
+
+function getCardTransitionDelay(id: string): string | undefined {
+  if (!enterAnimatingIds.value.has(id)) return undefined
+  const d = enterDelayById.value.get(id) ?? 0
+  if (d <= 0) return undefined
+  return `${d}ms`
+}
 
 // Move + leave animations
 const moveOffsets = ref<Map<string, { dx: number; dy: number }>>(new Map())
@@ -810,6 +825,18 @@ watch(
 
     if (!idsToSchedule.length) return
 
+    // Assign per-item stagger delays for this batch.
+    const stepMs = idsToSchedule.length > 1 ? clampEnterStaggerMs(props.enterStaggerMs) : 0
+    if (stepMs > 0) {
+      const next = new Map(enterDelayById.value)
+      for (let i = 0; i < idsToSchedule.length; i += 1) {
+        const id = idsToSchedule[i]
+        const delay = Math.min(i * stepMs, MAX_ENTER_STAGGER_TOTAL_MS)
+        next.set(id, delay)
+      }
+      enterDelayById.value = next
+    }
+
     // 1) ensure transition is enabled in its own frame
     raf(() => {
       const next = new Set(enterAnimatingIds.value)
@@ -825,11 +852,14 @@ watch(
 
       setTimeout(() => {
         const nextAnimating = new Set(enterAnimatingIds.value)
+        const nextDelay = new Map(enterDelayById.value)
         for (const id of idsToSchedule) {
           nextAnimating.delete(id)
           scheduledEnterIds.delete(id)
+          nextDelay.delete(id)
         }
         enterAnimatingIds.value = nextAnimating
+        enterDelayById.value = nextDelay
       }, ENTER_MOTION_MS)
     })
   },
@@ -1198,6 +1228,7 @@ const sectionClass = computed(() => {
           :style="{
             width: columnWidth + 'px',
             transition: getCardTransition(itemsState[idx].id),
+            transitionDelay: getCardTransitionDelay(itemsState[idx].id),
             transform: getCardTransform(idx),
           }"
         >

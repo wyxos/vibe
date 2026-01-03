@@ -59,6 +59,11 @@ export type MasonryProps = {
   mode?: MasonryMode
   pageSize?: number
   backfillRequestDelayMs?: number
+  /**
+   * Staggers the enter animation when multiple items start entering together.
+   * Set to 0 to disable.
+   */
+  enterStaggerMs?: number
   items?: MasonryItemBase[]
   page?: PageToken
   restoredPages?: MasonryRestoredPages
@@ -75,6 +80,7 @@ export const masonryDefaults = {
   mode: 'default',
   pageSize: 20,
   backfillRequestDelayMs: 2000,
+  enterStaggerMs: 40,
   page: 1,
   itemWidth: 300,
   prefetchThresholdPx: 200,
