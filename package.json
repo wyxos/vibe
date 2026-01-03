@@ -1,6 +1,6 @@
 {
   "name": "@wyxos/vibe",
-  "version": "2.1.7",
+  "version": "2.1.8",
   "description": "A high-performance, responsive masonry layout engine for Vue 3 with built-in infinite scrolling and virtualization.",
   "keywords": [
     "vue",
