@@ -90,10 +90,10 @@ describe('Masonry backfill', () => {
     const cards = wrapper.findAll('[data-testid="item-card"]')
     expect(cards).toHaveLength(20)
 
-    const exposed = getExposed<{ backfillStats: { value: BackfillStats } }>(
+    const exposed = getExposed<{ backfillStats: BackfillStats }>(
       wrapper as unknown as WrapperWithExposed
     )
-    const debug = exposed?.backfillStats?.value
+    const debug = exposed?.backfillStats
     expect(debug?.enabled).toBe(true)
     expect(debug?.pageSize).toBe(20)
     expect(debug?.bufferSize).toBe(14)
@@ -174,10 +174,10 @@ describe('Masonry backfill', () => {
     const cards = wrapper.findAll('[data-testid="item-card"]')
     expect(cards).toHaveLength(40)
 
-    const exposed = getExposed<{ backfillStats: { value: BackfillStats } }>(
+    const exposed = getExposed<{ backfillStats: BackfillStats }>(
       wrapper as unknown as WrapperWithExposed
     )
-    const debug = exposed?.backfillStats?.value
+    const debug = exposed?.backfillStats
     expect(debug?.lastBatch?.usedFromBuffer).toBe(14)
     expect(debug?.lastBatch?.pages).toEqual([3])
     expect(debug?.lastBatch?.emitted).toBe(20)
@@ -239,10 +239,10 @@ describe('Masonry backfill', () => {
     expect(getContent).toHaveBeenCalledTimes(1)
     expect(wrapper.findAll('[data-testid="item-card"]')).toHaveLength(25)
 
-    const exposed = getExposed<{ backfillStats: { value: BackfillStats } }>(
+    const exposed = getExposed<{ backfillStats: BackfillStats }>(
       wrapper as unknown as WrapperWithExposed
     )
-    const debug = exposed?.backfillStats?.value
+    const debug = exposed?.backfillStats
     expect(debug?.lastBatch?.startPage).toBe(null)
     expect(debug?.lastBatch?.pages).toEqual([])
     expect(debug?.lastBatch?.usedFromBuffer).toBe(5)

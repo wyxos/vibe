@@ -4,12 +4,12 @@ import { computed, onMounted, ref } from 'vue'
 import Masonry from '@/components/Masonry.vue'
 import MasonryItem from '@/components/MasonryItem.vue'
 import { type FeedItem, fetchPage, type PageToken } from '@/demo/fakeServer'
-import type { MasonryRestoredPagesLoaded } from '@/masonry/types'
+import type { MasonryRestoredPages } from '@/masonry/types'
 import { setReaction, useExposeDebugRef } from '@/demo/demoUtils'
 import { highlightVueSnippet, useCopyToClipboard } from '@/demo/codeSheet'
 
 const items = ref<FeedItem[]>([])
-const restoredPagesLoaded = ref<MasonryRestoredPagesLoaded | null>(null)
+const restoredPages = ref<MasonryRestoredPages | null>(null)
 
 const masonryRef = ref<{
   remove?: (itemsOrIds: Array<string | FeedItem> | string | FeedItem) => Promise<void>
@@ -27,10 +27,10 @@ import { onMounted, ref } from 'vue'
 
 import Masonry from '@wyxos/vibe'
 import { type FeedItem, fetchPage, type PageToken } from './server'
-import type { MasonryRestoredPagesLoaded } from '@wyxos/vibe'
+import type { MasonryRestoredPages } from '@wyxos/vibe'
 
 const items = ref<FeedItem[]>([])
-const restoredPagesLoaded = ref<MasonryRestoredPagesLoaded | null>(null)
+const restoredPages = ref<MasonryRestoredPages | null>(null)
 
 const initialPageToken: PageToken = 1
 
@@ -42,7 +42,7 @@ onMounted(async () => {
   const lastLoadedPage = 5
   const results = await Promise.all(Array.from({ length: lastLoadedPage }, (_, i) => fetchPage(i + 1)))
   items.value = results.flatMap((r) => r.items)
-  restoredPagesLoaded.value = lastLoadedPage
+  restoredPages.value = lastLoadedPage
 })
 </scr${'ipt'}>
 
@@ -51,7 +51,7 @@ onMounted(async () => {
     v-model:items="items"
     :get-content="getContent"
     :page="initialPageToken"
-    :restored-pages-loaded="restoredPagesLoaded"
+    :restored-pages="restoredPages"
   >
     <MasonryItem>
       <template #default="{ item }">{{ item.id }}</template>
@@ -64,7 +64,7 @@ const highlightedCode = computed(() => highlightVueSnippet(showcasedCode))
 const { copyStatus, copy: copyShowcasedCode } = useCopyToClipboard(() => showcasedCode)
 
 const pagesLoadedLabel = computed(() => {
-  const v = restoredPagesLoaded.value
+  const v = restoredPages.value
   if (!v) return '—'
   return Array.isArray(v) ? v.join(', ') : String(v)
 })
@@ -108,7 +108,7 @@ onMounted(async () => {
 
   // Parent provides pagesLoaded. Sometimes this is full history (e.g. [1..5]),
   // sometimes just the last loaded page (e.g. 5).
-  restoredPagesLoaded.value = lastLoadedPage
+  restoredPages.value = lastLoadedPage
 })
 </script>
 
@@ -206,7 +206,7 @@ onMounted(async () => {
         </aside>
       </Transition>
 
-      <div v-if="!restoredPagesLoaded" class="mt-8 flex flex-1 items-center justify-center">
+      <div v-if="!restoredPages" class="mt-8 flex flex-1 items-center justify-center">
         <div class="inline-flex items-center gap-3 text-sm text-slate-600">
           <svg class="h-5 w-5 animate-spin text-slate-500" viewBox="0 0 24 24" aria-hidden="true">
             <circle
@@ -234,7 +234,7 @@ onMounted(async () => {
         v-model:items="items"
         :get-content="getContent"
         :page="initialPageToken"
-        :restored-pages-loaded="restoredPagesLoaded"
+        :restored-pages="restoredPages"
         :header-height="45"
         :footer-height="54"
       >

@@ -1,6 +1,6 @@
 export type PageToken = string | number
 
-export type MasonryRestoredPagesLoaded = PageToken | PageToken[]
+export type MasonryRestoredPages = PageToken | PageToken[]
 
 export type BackfillStats = {
   enabled: boolean
@@ -61,7 +61,7 @@ export type MasonryProps = {
   backfillRequestDelayMs?: number
   items?: MasonryItemBase[]
   page?: PageToken
-  restoredPagesLoaded?: MasonryRestoredPagesLoaded
+  restoredPages?: MasonryRestoredPages
   itemWidth?: number
   prefetchThresholdPx?: number
   gapX?: number
@@ -83,4 +83,4 @@ export const masonryDefaults = {
   headerHeight: 0,
   footerHeight: 0,
   overscanPx: 600,
-} as const satisfies Omit<Required<MasonryProps>, 'getContent' | 'items' | 'restoredPagesLoaded'>
+} as const satisfies Omit<Required<MasonryProps>, 'getContent' | 'items' | 'restoredPages'>

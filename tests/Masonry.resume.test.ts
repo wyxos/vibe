@@ -23,7 +23,7 @@ function makeItem(id: string): MasonryItemBase {
 }
 
 describe('Masonry resume session', () => {
-  it('accepts restoredPagesLoaded as an array and resumes from derived nextPage on scroll', async () => {
+  it('accepts restoredPages as an array and resumes from derived nextPage on scroll', async () => {
     const getContent = vi.fn(async (pageToken: unknown) => {
       const token = String(pageToken)
       if (token === '6') {
@@ -56,7 +56,7 @@ describe('Masonry resume session', () => {
                 page: 1,
                 itemWidth: 300,
                 items: items.value,
-                restoredPagesLoaded: [1, 2, 3, 4, 5],
+                restoredPages: [1, 2, 3, 4, 5],
                 'onUpdate:items': (next) => {
                   items.value = next as MasonryItemBase[]
                 },
@@ -96,7 +96,7 @@ describe('Masonry resume session', () => {
     wrapper.unmount()
   })
 
-  it('accepts restoredPagesLoaded as a single page token and resumes from derived nextPage on scroll', async () => {
+  it('accepts restoredPages as a single page token and resumes from derived nextPage on scroll', async () => {
     const getContent = vi.fn(async (pageToken: unknown) => {
       const token = String(pageToken)
       if (token === '6') {
@@ -129,7 +129,7 @@ describe('Masonry resume session', () => {
                 page: 1,
                 itemWidth: 300,
                 items: items.value,
-                restoredPagesLoaded: 5,
+                restoredPages: 5,
                 'onUpdate:items': (next) => {
                   items.value = next as MasonryItemBase[]
                 },

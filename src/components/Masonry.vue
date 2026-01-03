@@ -3,7 +3,7 @@
 import {
   masonryDefaults,
   type BackfillStats,
-  type MasonryRestoredPagesLoaded,
+  type MasonryRestoredPages,
   type MasonryItemBase,
   type MasonryProps,
   type PageToken,
@@ -45,7 +45,7 @@ export type {
   GetContentResult,
   MasonryItemBase,
   MasonryMode,
-  MasonryRestoredPagesLoaded,
+  MasonryRestoredPages,
   PageToken,
 } from '@/masonry/types'
 
@@ -508,7 +508,7 @@ async function restoreItems(itemsToRestore: MasonryItemBase[]) {
   playFlipMoveAnimation(oldPosById)
 }
 
-async function restoreRemoved(itemsOrIds: string | MasonryItemBase | Array<string | MasonryItemBase>) {
+async function restore(itemsOrIds: string | MasonryItemBase | Array<string | MasonryItemBase>) {
   const raw = Array.isArray(itemsOrIds) ? itemsOrIds : [itemsOrIds]
   const ids = raw.map(toId).filter(Boolean)
   if (!ids.length) return
@@ -528,7 +528,7 @@ async function restoreRemoved(itemsOrIds: string | MasonryItemBase | Array<strin
   }
 }
 
-async function undoLastRemoval() {
+async function undo() {
   const last = removalHistory.pop()
   if (!last?.length) return
 
@@ -547,15 +547,7 @@ async function undoLastRemoval() {
   }
 }
 
-async function restore(itemsOrIds: string | MasonryItemBase | Array<string | MasonryItemBase>) {
-  return restoreRemoved(itemsOrIds)
-}
-
-async function undo() {
-  return undoLastRemoval()
-}
-
-function forgetRemoved(itemsOrIds: string | MasonryItemBase | Array<string | MasonryItemBase>) {
+function forget(itemsOrIds: string | MasonryItemBase | Array<string | MasonryItemBase>) {
   const raw = Array.isArray(itemsOrIds) ? itemsOrIds : [itemsOrIds]
   const ids = raw.map(toId).filter(Boolean) as string[]
   if (!ids.length) return
@@ -644,7 +636,7 @@ function toId(itemOrId: string | MasonryItemBase | null | undefined): string | n
   return typeof itemOrId === 'string' ? itemOrId : itemOrId?.id
 }
 
-async function removeItems(itemsOrIds: string | MasonryItemBase | Array<string | MasonryItemBase>) {
+async function remove(itemsOrIds: string | MasonryItemBase | Array<string | MasonryItemBase>) {
   const raw = Array.isArray(itemsOrIds) ? itemsOrIds : [itemsOrIds]
   const ids = raw.map(toId).filter(Boolean)
   if (!ids.length) return
@@ -723,21 +715,47 @@ async function removeItems(itemsOrIds: string | MasonryItemBase | Array<string |
 }
 
 async function removeItem(itemOrId: string | MasonryItemBase) {
-  return removeItems(itemOrId)
+  return remove(itemOrId)
+}
+
+function cancel() {
+  // Soft-cancel in-flight requests by bumping generation. Loaders will treat this as AbortError.
+  feedGeneration += 1
+  loadNextInFlight = null
+  loadFirstInFlight = null
+  isLoadingInitial.value = false
+  isLoadingNext.value = false
 }
 
 defineExpose({
-  remove: removeItems,
+  remove,
   restore,
   undo,
-  forget: forgetRemoved,
-  pagesLoaded,
-  nextPage,
-  // Aliases (kept for now; can be removed if you want strictly short API only).
-  restoreRemoved,
-  undoLastRemoval,
-  forgetRemoved,
-  backfillStats,
+  forget,
+  loadNextPage,
+  cancel,
+  get pagesLoaded() {
+    return pagesLoaded.value
+  },
+  set pagesLoaded(value: PageToken[]) {
+    pagesLoaded.value = value
+  },
+  get nextPage() {
+    return nextPage.value
+  },
+  set nextPage(value: PageToken | null) {
+    nextPage.value = value
+  },
+  get isLoading() {
+    return isLoadingInitial.value || isLoadingNext.value
+  },
+  get hasReachedEnd() {
+    if (props.mode !== 'backfill') return nextPage.value == null
+    return nextPage.value == null && backfillBuffer.value.length === 0
+  },
+  get backfillStats() {
+    return backfillStats.value
+  },
 })
 
 function rebuildLayout() {
@@ -949,7 +967,7 @@ function resetFeedState(startPage: PageToken) {
   nextPage.value = startPage
 }
 
-function normalizeRestoredPagesLoaded(input: MasonryRestoredPagesLoaded): PageToken[] {
+function normalizeRestoredPagesLoaded(input: MasonryRestoredPages): PageToken[] {
   const raw = Array.isArray(input) ? input : [input]
   const unique: PageToken[] = []
   const seen = new Set<string>()
@@ -980,12 +998,14 @@ function inferNextPageFromPagesLoaded(pages: PageToken[]): PageToken | null {
   return Math.max(...nums) + 1
 }
 
-function applyRestoredPagesLoaded(restored: MasonryRestoredPagesLoaded) {
+function applyRestoredPagesLoaded(restored: MasonryRestoredPages) {
   resetRuntimeState()
 
   const normalized = normalizeRestoredPagesLoaded(restored)
   pagesLoaded.value = normalized
-  nextPage.value = inferNextPageFromPagesLoaded(normalized)
+  // For cursor-based pagination, parent can pass the next cursor via props.page.
+  // For numeric paging, infer the next page from the restored pages.
+  nextPage.value = typeof props.page === 'string' ? props.page : inferNextPageFromPagesLoaded(normalized)
 
   // We assume parent has already restored items in controlled mode.
   // Avoid showing the initial loader and wait for user scroll.
@@ -1044,8 +1064,8 @@ onMounted(async () => {
   setupResizeObserver()
   connectViewport()
 
-  if (props.restoredPagesLoaded != null) {
-    applyRestoredPagesLoaded(props.restoredPagesLoaded)
+  if (props.restoredPages != null) {
+    applyRestoredPagesLoaded(props.restoredPages)
     return
   }
 
@@ -1073,7 +1093,7 @@ onUnmounted(() => {
 watch(
   () => props.page,
   async (newPage) => {
-    if (props.restoredPagesLoaded != null) return
+    if (props.restoredPages != null) return
     // If the starting page changes, restart the feed.
     resetFeedState(newPage)
     await loadFirstPage(newPage)
@@ -1081,7 +1101,7 @@ watch(
 )
 
 watch(
-  () => props.restoredPagesLoaded,
+  () => props.restoredPages,
   (next) => {
     if (!next) return
     applyRestoredPagesLoaded(next)
