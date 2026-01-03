@@ -240,6 +240,7 @@ const leavingClones = ref<
     item: MasonryItemBase
     fromX: number
     fromY: number
+    toY: number
     width: number
     height: number
     leaving: boolean
@@ -385,6 +386,9 @@ const MAX_GETCONTENT_RETRIES = 5
 const BASE_RETRY_DELAY_MS = 1000
 
 let feedGeneration = 0
+
+let lastPrefetchScrollTop = 0
+let lastPrefetchScrollHeight = 0
 
 function isAbortError(err: unknown): boolean {
   return err instanceof Error && err.name === 'AbortError'
@@ -677,11 +681,15 @@ async function remove(itemsOrIds: string | MasonryItemBase | Array<string | Maso
 
   // Render clones for removed items that are currently in layout.
   const width = columnWidth.value
+  // Compute leave target in scroll content coordinates so it doesn't depend on
+  // the dynamic container height (which can change when the scrollbar appears/disappears).
+  const viewportBottomY = scrollTop.value + viewportHeight.value
   const clones: Array<{
     id: string
     item: MasonryItemBase
     fromX: number
     fromY: number
+    toY: number
     width: number
     height: number
     leaving: boolean
@@ -693,11 +701,13 @@ async function remove(itemsOrIds: string | MasonryItemBase | Array<string | Maso
     if (!item) continue
     const pos = layoutPositions.value[idx] ?? { x: 0, y: 0 }
     const height = layoutHeights.value[idx] ?? width
+    const leaveBaseY = Math.max(pos.y, viewportBottomY)
     clones.push({
       id,
       item,
       fromX: pos.x,
       fromY: pos.y,
+      toY: leaveBaseY + Math.max(0, height),
       width,
       height,
       leaving: true,
@@ -921,13 +931,24 @@ function maybeLoadMoreOnScroll() {
   const el = scrollViewportRef.value
   if (!el) return
 
-  scrollTop.value = el.scrollTop
-  viewportHeight.value = el.clientHeight
+  const nextScrollTop = el.scrollTop
+  const nextViewportHeight = el.clientHeight
+  const nextScrollHeight = el.scrollHeight
 
-  const distanceFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight)
-  if (distanceFromBottom <= props.prefetchThresholdPx) {
-    void loadNextPage()
-  }
+  // Update reactive measures for virtualization/layout.
+  scrollTop.value = nextScrollTop
+  viewportHeight.value = nextViewportHeight
+
+  // Guard: avoid prefetch caused by content shrinking (e.g. removals or column-count changes)
+  // which can clamp scrollTop and fire a scroll event even if the user didn't scroll.
+  const scrollingDown = nextScrollTop > lastPrefetchScrollTop
+  const contentShrank = lastPrefetchScrollHeight > 0 && nextScrollHeight < lastPrefetchScrollHeight
+  lastPrefetchScrollTop = nextScrollTop
+  lastPrefetchScrollHeight = nextScrollHeight
+  if (!scrollingDown || contentShrank) return
+
+  const distanceFromBottom = nextScrollHeight - (nextScrollTop + nextViewportHeight)
+  if (distanceFromBottom <= props.prefetchThresholdPx) void loadNextPage()
 }
 
 function getViewportEl(): HTMLElement | null {
@@ -975,6 +996,8 @@ function resetRuntimeState() {
   feedGeneration += 1
   loadNextInFlight = null
   loadFirstInFlight = null
+  lastPrefetchScrollTop = 0
+  lastPrefetchScrollHeight = 0
   nextOriginalIndex = 0
   removedPoolById.clear()
   removalHistory.length = 0
@@ -1280,7 +1303,7 @@ const sectionClass = computed(() => {
             transition: 'transform ' + LEAVE_MOTION_MS + 'ms ease-out',
             transform: c.leaving
               ? 'translate3d(' + c.fromX + 'px,' + c.fromY + 'px,0)'
-              : 'translate3d(' + c.fromX + 'px,' + getOutsideContainerBottomY(c.height) + 'px,0)',
+              : 'translate3d(' + c.fromX + 'px,' + c.toY + 'px,0)',
           }"
         >
           <div
