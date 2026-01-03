@@ -638,6 +638,8 @@ const itemsState = computed({
   },
 })
 
+const isResumeMode = ref(false)
+
 
 async function loadDefaultPage(pageToLoad: PageToken) {
   const result = await getContentWithRetry(pageToLoad, feedGeneration)
@@ -1011,31 +1013,12 @@ function normalizeRestoredPagesLoaded(input: MasonryRestoredPages): PageToken[] 
   return unique
 }
 
-function inferNextPageFromPagesLoaded(pages: PageToken[]): PageToken | null {
-  const nums: number[] = []
-  for (const p of pages) {
-    if (typeof p === 'number' && Number.isFinite(p)) {
-      nums.push(p)
-      continue
-    }
-    if (typeof p === 'string') {
-      const n = Number.parseInt(p, 10)
-      if (Number.isFinite(n)) nums.push(n)
-    }
-  }
-
-  if (!nums.length) return null
-  return Math.max(...nums) + 1
-}
-
-function applyRestoredPagesLoaded(restored: MasonryRestoredPages) {
+function applyResumeState(restoredPages?: MasonryRestoredPages) {
   resetRuntimeState()
 
-  const normalized = normalizeRestoredPagesLoaded(restored)
-  pagesLoaded.value = normalized
-  // For cursor-based pagination, parent can pass the next cursor via props.page.
-  // For numeric paging, infer the next page from the restored pages.
-  nextPage.value = typeof props.page === 'string' ? props.page : inferNextPageFromPagesLoaded(normalized)
+  pagesLoaded.value = restoredPages ? normalizeRestoredPagesLoaded(restoredPages) : []
+  // Resume contract: parent provides the *next* page token via props.page.
+  nextPage.value = props.page
 
   // We assume parent has already restored items in controlled mode.
   // Avoid showing the initial loader and wait for user scroll.
@@ -1094,10 +1077,21 @@ onMounted(async () => {
   setupResizeObserver()
   connectViewport()
 
+  // Resume mode: parent provides already-restored items (controlled mode)
+  // and a next-page token via props.page. restoredPages is optional.
   if (props.restoredPages != null) {
-    applyRestoredPagesLoaded(props.restoredPages)
+    isResumeMode.value = true
+    applyResumeState(props.restoredPages)
     return
   }
+
+  if (isItemsControlled.value && itemsState.value.length > 0) {
+    isResumeMode.value = true
+    applyResumeState()
+    return
+  }
+
+  isResumeMode.value = false
 
   resetFeedState(props.page)
   await loadFirstPage(props.page)
@@ -1123,7 +1117,10 @@ onUnmounted(() => {
 watch(
   () => props.page,
   async (newPage) => {
-    if (props.restoredPages != null) return
+    if (isResumeMode.value) {
+      nextPage.value = newPage
+      return
+    }
     // If the starting page changes, restart the feed.
     resetFeedState(newPage)
     await loadFirstPage(newPage)
@@ -1134,7 +1131,8 @@ watch(
   () => props.restoredPages,
   (next) => {
     if (!next) return
-    applyRestoredPagesLoaded(next)
+    isResumeMode.value = true
+    applyResumeState(next)
   }
 )
 

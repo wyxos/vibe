@@ -11,14 +11,14 @@ import { highlightVueSnippet, useCopyToClipboard } from '@/demo/codeSheet'
 const items = ref<FeedItem[]>([])
 const restoredPages = ref<MasonryRestoredPages | null>(null)
 
+const nextPageToken = ref<PageToken>(1)
+
 const masonryRef = ref<{
   remove?: (itemsOrIds: Array<string | FeedItem> | string | FeedItem) => Promise<void>
   nextPage?: unknown
 } | null>(null)
 
 useExposeDebugRef(masonryRef)
-
-const initialPageToken: PageToken = 1
 
 const isCodeSheetOpen = ref(false)
 
@@ -32,7 +32,7 @@ import type { MasonryRestoredPages } from '@wyxos/vibe'
 const items = ref<FeedItem[]>([])
 const restoredPages = ref<MasonryRestoredPages | null>(null)
 
-const initialPageToken: PageToken = 1
+const nextPageToken = ref<PageToken>(1)
 
 async function getContent(pageToken: PageToken) {
   return fetchPage(pageToken)
@@ -43,6 +43,7 @@ onMounted(async () => {
   const results = await Promise.all(Array.from({ length: lastLoadedPage }, (_, i) => fetchPage(i + 1)))
   items.value = results.flatMap((r) => r.items)
   restoredPages.value = lastLoadedPage
+  nextPageToken.value = lastLoadedPage + 1
 })
 </scr${'ipt'}>
 
@@ -50,7 +51,7 @@ onMounted(async () => {
   <Masonry
     v-model:items="items"
     :get-content="getContent"
-    :page="initialPageToken"
+    :page="nextPageToken"
     :restored-pages="restoredPages"
   >
     <MasonryItem>
@@ -109,6 +110,9 @@ onMounted(async () => {
   // Parent provides pagesLoaded. Sometimes this is full history (e.g. [1..5]),
   // sometimes just the last loaded page (e.g. 5).
   restoredPages.value = lastLoadedPage
+
+  // New contract: parent provides the *next* page token.
+  nextPageToken.value = lastLoadedPage + 1
 })
 </script>
 
@@ -206,7 +210,7 @@ onMounted(async () => {
         </aside>
       </Transition>
 
-      <div v-if="!restoredPages" class="mt-8 flex flex-1 items-center justify-center">
+      <div v-if="!items.length" class="mt-8 flex flex-1 items-center justify-center">
         <div class="inline-flex items-center gap-3 text-sm text-slate-600">
           <svg class="h-5 w-5 animate-spin text-slate-500" viewBox="0 0 24 24" aria-hidden="true">
             <circle
@@ -233,8 +237,8 @@ onMounted(async () => {
         ref="masonryRef"
         v-model:items="items"
         :get-content="getContent"
-        :page="initialPageToken"
-        :restored-pages="restoredPages"
+        :page="nextPageToken"
+        :restored-pages="restoredPages ?? undefined"
         :header-height="45"
         :footer-height="54"
       >

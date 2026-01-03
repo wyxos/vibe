@@ -23,7 +23,7 @@ function makeItem(id: string): MasonryItemBase {
 }
 
 describe('Masonry resume session', () => {
-  it('accepts restoredPages as an array and resumes from derived nextPage on scroll', async () => {
+  it('accepts restoredPages as an array and uses page as the next token on scroll', async () => {
     const getContent = vi.fn(async (pageToken: unknown) => {
       const token = String(pageToken)
       if (token === '6') {
@@ -53,7 +53,7 @@ describe('Masonry resume session', () => {
               Masonry,
               {
                 getContent,
-                page: 1,
+                page: 6,
                 itemWidth: 300,
                 items: items.value,
                 restoredPages: [1, 2, 3, 4, 5],
@@ -96,7 +96,7 @@ describe('Masonry resume session', () => {
     wrapper.unmount()
   })
 
-  it('accepts restoredPages as a single page token and resumes from derived nextPage on scroll', async () => {
+  it('accepts restoredPages as a single page token and uses page as the next token on scroll', async () => {
     const getContent = vi.fn(async (pageToken: unknown) => {
       const token = String(pageToken)
       if (token === '6') {
@@ -126,10 +126,80 @@ describe('Masonry resume session', () => {
               Masonry,
               {
                 getContent,
-                page: 1,
+                page: 6,
                 itemWidth: 300,
                 items: items.value,
                 restoredPages: 5,
+                'onUpdate:items': (next) => {
+                  items.value = next as MasonryItemBase[]
+                },
+              },
+              {
+                default: () => h(MasonryItem),
+              }
+            ),
+          ])
+      },
+    })
+
+    const wrapper = mount(Harness, { attachTo: document.body })
+
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    expect(getContent).toHaveBeenCalledTimes(0)
+    expect(wrapper.get('[data-testid="items-length"]').text()).toBe('100')
+
+    const scroller = wrapper.get('[data-testid="items-scroll-container"]')
+    Object.defineProperty(scroller.element, 'scrollHeight', { value: 2000, configurable: true })
+    Object.defineProperty(scroller.element, 'clientHeight', { value: 1000, configurable: true })
+    Object.defineProperty(scroller.element, 'scrollTop', { value: 900, configurable: true })
+
+    await scroller.trigger('scroll')
+
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    expect(getContent).toHaveBeenCalledTimes(1)
+    expect(String(getContent.mock.calls[0]?.[0])).toBe('6')
+    expect(wrapper.get('[data-testid="items-length"]').text()).toBe('120')
+
+    wrapper.unmount()
+  })
+
+  it('can resume without restoredPages when controlled items are preloaded', async () => {
+    const getContent = vi.fn(async (pageToken: unknown) => {
+      const token = String(pageToken)
+      if (token === '6') {
+        return {
+          items: Array.from({ length: 20 }, (_, i) => makeItem(`6-${i}`)),
+          nextPage: null,
+        }
+      }
+
+      throw new Error(`unexpected page token: ${token}`)
+    })
+
+    const Harness = defineComponent({
+      setup() {
+        const items = ref<MasonryItemBase[]>(
+          Array.from({ length: 100 }, (_, i) => {
+            const page = Math.floor(i / 20) + 1
+            const idx = i % 20
+            return makeItem(`p${page}-i${idx}`)
+          })
+        )
+
+        return () =>
+          h('div', [
+            h('div', { 'data-testid': 'items-length' }, String(items.value.length)),
+            h(
+              Masonry,
+              {
+                getContent,
+                page: 6,
+                itemWidth: 300,
+                items: items.value,
                 'onUpdate:items': (next) => {
                   items.value = next as MasonryItemBase[]
                 },

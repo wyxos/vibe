@@ -50,6 +50,7 @@
     "release": "npx @wyxos/zephyr --type=node",
     "test": "vitest run --reporter=dot --silent",
     "test:unit": "vitest run",
+    "test:watch": "vitest",
     "test:e2e": "playwright test",
     "typecheck": "vue-tsc --noEmit --pretty false"
   },
