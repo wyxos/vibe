@@ -56,10 +56,8 @@ const isVideo = computed(() => props.item?.type === 'video')
 
 const isVideoInView = ref(false)
 const isHovered = ref(false)
-const userPausedVideo = ref(false)
 const videoDuration = ref(0)
 const videoCurrentTime = ref(0)
-const videoVolume = ref(0.6)
 
 function remove() {
   props.remove?.()
@@ -106,7 +104,6 @@ function startIfNeeded() {
 function syncVideoStateFromEl(el: HTMLVideoElement) {
   videoDuration.value = Number.isFinite(el.duration) ? el.duration : 0
   videoCurrentTime.value = Number.isFinite(el.currentTime) ? el.currentTime : 0
-  videoVolume.value = Number.isFinite(el.volume) ? el.volume : videoVolume.value
 }
 
 async function playVideoForHover() {
@@ -115,12 +112,13 @@ async function playVideoForHover() {
   if (!shouldRenderMedia.value) return
   if (!isLoaded.value) return
   if (!isVideoInView.value) return
-  if (userPausedVideo.value) return
 
   const el = videoEl.value
   if (!el) return
 
   try {
+    // Keep videos muted; we don't expose volume controls.
+    el.muted = true
     await el.play()
   } catch {
     // Ignore playback failures (browser policy, etc.).
@@ -141,18 +139,8 @@ function pauseVideoForViewport() {
   el.pause()
 }
 
-function togglePlayPause() {
-  const el = videoEl.value
-  if (!el) return
-
-  if (el.paused) {
-    userPausedVideo.value = false
-    void el.play()
-    return
-  }
-
-  userPausedVideo.value = true
-  el.pause()
+function playFromControls() {
+  void playVideoForHover()
 }
 
 function handleMouseEnter() {
@@ -174,19 +162,6 @@ function onSeekInput(e: Event) {
   if (!Number.isFinite(next)) return
   el.currentTime = Math.max(0, Math.min(next, Number.isFinite(el.duration) ? el.duration : next))
   syncVideoStateFromEl(el)
-}
-
-function onVolumeInput(e: Event) {
-  const el = videoEl.value
-  if (!el) return
-  const raw = (e.target as HTMLInputElement | null)?.value
-  const next = raw == null ? NaN : Number(raw)
-  if (!Number.isFinite(next)) return
-
-  const clamped = Math.max(0, Math.min(1, next))
-  el.volume = clamped
-  el.muted = clamped === 0
-  videoVolume.value = clamped
 }
 
 onMounted(() => {
@@ -396,10 +371,10 @@ function handleVideoTimeUpdate() {
         <button
           type="button"
           class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-          :aria-label="videoEl?.paused ? 'Play' : 'Pause'"
-          @click="togglePlayPause"
+          aria-label="Play"
+          @click="playFromControls"
         >
-          <i :class="videoEl?.paused ? 'fa-solid fa-play' : 'fa-solid fa-pause'" aria-hidden="true" />
+          <i class="fa-solid fa-play" aria-hidden="true" />
         </button>
 
         <input
@@ -411,17 +386,6 @@ function handleVideoTimeUpdate() {
           :value="videoCurrentTime"
           aria-label="Seek"
           @input="onSeekInput"
-        />
-
-        <input
-          type="range"
-          class="h-2 w-24"
-          min="0"
-          max="1"
-          step="0.05"
-          :value="videoVolume"
-          aria-label="Volume"
-          @input="onVolumeInput"
         />
       </div>
     </div>
