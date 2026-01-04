@@ -76,6 +76,26 @@ export type MasonryProps = {
   overscanPx?: number
 }
 
+// Public instance API exposed via defineExpose() on the Masonry component.
+// Intentionally permissive (uses `any` for item/id inputs) so apps can use
+// their own item shapes without fighting the library types.
+export interface MasonryInstance {
+  remove: (itemsOrIds: any | any[]) => Promise<void> | void
+  restore: (itemsOrIds: any | any[]) => Promise<void> | void
+  undo: () => Promise<void> | void
+  forget: (itemsOrIds: any | any[]) => void
+
+  pagesLoaded: PageToken[]
+  nextPage: PageToken | null
+  loadNextPage: () => Promise<void>
+  cancel: () => void
+
+  backfillStats?: BackfillStats | null
+
+  readonly isLoading: boolean
+  readonly hasReachedEnd: boolean
+}
+
 export const masonryDefaults = {
   mode: 'default',
   pageSize: 20,

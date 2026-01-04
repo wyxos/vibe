@@ -40,7 +40,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node write-cname.js",
-    "build:lib": "vite build -c vite.config.lib.js",
+    "build:lib": "vite build -c vite.config.lib.js && npm run build:types",
     "build:types": "vue-tsc -p tsconfig.lib.json",
     "prepublishOnly": "npm run check && npm run build:lib && npm run build:types",
     "preview": "vite preview",
