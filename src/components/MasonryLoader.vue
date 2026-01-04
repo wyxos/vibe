@@ -45,11 +45,20 @@ const SlotRenderer = defineComponent({
 })
 
 const rootEl = ref<HTMLElement | null>(null)
+const videoEl = ref<HTMLVideoElement | null>(null)
 const shouldRenderMedia = ref(false)
 const isLoaded = ref(false)
 const isError = ref(false)
 const loadAttempt = ref(0)
 const lastError = ref<unknown>(null)
+
+const isVideo = computed(() => props.item?.type === 'video')
+
+const isVideoInView = ref(false)
+const userPausedVideo = ref(false)
+const videoDuration = ref(0)
+const videoCurrentTime = ref(0)
+const videoVolume = ref(0.6)
 
 function remove() {
   props.remove?.()
@@ -64,6 +73,7 @@ const aspectRatioStyle = computed(() => {
 const isImage = computed(() => props.item?.type === 'image')
 
 let io: IntersectionObserver | null = null
+let playbackIo: IntersectionObserver | null = null
 let loadTimeoutId: number | null = null
 
 function clearLoadTimeout() {
@@ -92,6 +102,76 @@ function startIfNeeded() {
   scheduleLoadTimeout()
 }
 
+function syncVideoStateFromEl(el: HTMLVideoElement) {
+  videoDuration.value = Number.isFinite(el.duration) ? el.duration : 0
+  videoCurrentTime.value = Number.isFinite(el.currentTime) ? el.currentTime : 0
+  videoVolume.value = Number.isFinite(el.volume) ? el.volume : videoVolume.value
+}
+
+async function maybeAutoPlayVideo() {
+  if (!isVideo.value) return
+  if (!shouldRenderMedia.value) return
+  if (!isLoaded.value) return
+  if (!isVideoInView.value) return
+  if (userPausedVideo.value) return
+
+  const el = videoEl.value
+  if (!el) return
+
+  try {
+    // Autoplay is frequently blocked unless muted.
+    // Users can unmute via the volume slider.
+    el.muted = true
+    await el.play()
+  } catch {
+    // Ignore autoplay failures (browser policy, etc.).
+  }
+}
+
+function pauseVideoForViewport() {
+  const el = videoEl.value
+  if (!el) return
+  if (el.paused) return
+  el.pause()
+}
+
+function togglePlayPause() {
+  const el = videoEl.value
+  if (!el) return
+
+  if (el.paused) {
+    userPausedVideo.value = false
+    void el.play()
+    return
+  }
+
+  userPausedVideo.value = true
+  el.pause()
+}
+
+function onSeekInput(e: Event) {
+  const el = videoEl.value
+  if (!el) return
+  const raw = (e.target as HTMLInputElement | null)?.value
+  const next = raw == null ? NaN : Number(raw)
+  if (!Number.isFinite(next)) return
+  el.currentTime = Math.max(0, Math.min(next, Number.isFinite(el.duration) ? el.duration : next))
+  syncVideoStateFromEl(el)
+}
+
+function onVolumeInput(e: Event) {
+  const el = videoEl.value
+  if (!el) return
+  const raw = (e.target as HTMLInputElement | null)?.value
+  const next = raw == null ? NaN : Number(raw)
+  if (!Number.isFinite(next)) return
+
+  const clamped = Math.max(0, Math.min(1, next))
+  el.volume = clamped
+  el.muted = clamped === 0
+  videoVolume.value = clamped
+}
+
 onMounted(() => {
   if (typeof IntersectionObserver === 'undefined') {
     startIfNeeded()
@@ -113,11 +193,38 @@ onMounted(() => {
   )
 
   if (rootEl.value) io.observe(rootEl.value)
+
+  if (isVideo.value && rootEl.value) {
+    const scrollRoot = rootEl.value.closest<HTMLElement>('[data-testid="items-scroll-container"]')
+
+    playbackIo = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const ratio = entry.intersectionRatio ?? 0
+          const nextInView = Boolean(entry.isIntersecting) && ratio >= 0.5
+          isVideoInView.value = nextInView
+          if (!nextInView) {
+            pauseVideoForViewport()
+          } else {
+            void maybeAutoPlayVideo()
+          }
+        }
+      },
+      {
+        root: scrollRoot ?? undefined,
+        threshold: [0, 0.25, 0.5, 0.75, 1],
+      }
+    )
+
+    playbackIo.observe(rootEl.value)
+  }
 })
 
 onUnmounted(() => {
   io?.disconnect()
   io = null
+  playbackIo?.disconnect()
+  playbackIo = null
   clearLoadTimeout()
 })
 
@@ -148,10 +255,23 @@ function retry() {
   loadAttempt.value += 1
   scheduleLoadTimeout()
 }
+
+function handleVideoLoadedMetadata() {
+  onSuccess()
+  const el = videoEl.value
+  if (el) syncVideoStateFromEl(el)
+  void maybeAutoPlayVideo()
+}
+
+function handleVideoTimeUpdate() {
+  const el = videoEl.value
+  if (!el) return
+  syncVideoStateFromEl(el)
+}
 </script>
 
 <template>
-  <div ref="rootEl" class="relative bg-slate-100" :style="aspectRatioStyle">
+  <div ref="rootEl" class="group relative bg-slate-100" :style="aspectRatioStyle">
     <div
       v-if="shouldRenderMedia && !isLoaded && !isError"
       data-testid="masonry-loader-spinner"
@@ -232,12 +352,54 @@ function retry() {
         isLoaded ? 'opacity-100' : 'opacity-0',
       ]"
       :poster="props.item.preview as string"
-      controls
+      ref="videoEl"
+      playsinline
       preload="metadata"
-      @loadedmetadata="onSuccess"
+      @loadedmetadata="handleVideoLoadedMetadata"
+      @timeupdate="handleVideoTimeUpdate"
+      @durationchange="handleVideoTimeUpdate"
+      @loadeddata="handleVideoTimeUpdate"
       @error="onError($event)"
     >
       <source :src="props.item.original as string" type="video/mp4" />
     </video>
+
+    <div
+      v-if="shouldRenderMedia && isVideo && !isError"
+      class="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-2 opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
+    >
+      <div class="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-white/90 px-2 py-2 backdrop-blur">
+        <button
+          type="button"
+          class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+          :aria-label="videoEl?.paused ? 'Play' : 'Pause'"
+          @click="togglePlayPause"
+        >
+          <i :class="videoEl?.paused ? 'fa-solid fa-play' : 'fa-solid fa-pause'" aria-hidden="true" />
+        </button>
+
+        <input
+          type="range"
+          class="h-2 w-full"
+          :min="0"
+          :max="videoDuration || 0"
+          step="0.1"
+          :value="videoCurrentTime"
+          aria-label="Seek"
+          @input="onSeekInput"
+        />
+
+        <input
+          type="range"
+          class="h-2 w-24"
+          min="0"
+          max="1"
+          step="0.05"
+          :value="videoVolume"
+          aria-label="Volume"
+          @input="onVolumeInput"
+        />
+      </div>
+    </div>
   </div>
 </template>

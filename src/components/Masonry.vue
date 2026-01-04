@@ -1299,7 +1299,7 @@ const sectionClass = computed(() => {
               @error="handleItemFailed"
             />
 
-            <div v-if="hasOverlaySlot" class="pointer-events-auto absolute inset-0">
+            <div v-if="hasOverlaySlot" class="pointer-events-auto absolute inset-0 z-10">
               <SlotRenderer
                 :slot-fn="itemOverlaySlotFn"
                 :slot-props="({ item: itemsState[idx], remove: () => removeItem(itemsState[idx]) } satisfies MasonryItemSlotProps)"
@@ -1353,7 +1353,7 @@ const sectionClass = computed(() => {
               :error-slot-fn="itemErrorSlotFn"
             />
 
-            <div v-if="hasOverlaySlot" class="pointer-events-auto absolute inset-0">
+            <div v-if="hasOverlaySlot" class="pointer-events-auto absolute inset-0 z-10">
               <SlotRenderer
                 :slot-fn="itemOverlaySlotFn"
                 :slot-props="({ item: c.item, remove: () => {} } satisfies MasonryItemSlotProps)"
