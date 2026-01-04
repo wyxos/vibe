@@ -2,8 +2,11 @@ const TOTAL_PAGES = 100
 const ITEMS_PER_PAGE = 20
 
 const VIDEO_SOURCES = [
-  'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
-  'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/bee.mp4',
+  // Prefer stable, long-lived sample endpoints; external CDNs can be flaky.
+  'https://media.w3.org/2010/05/sintel/trailer.mp4',
+  'https://media.w3.org/2010/05/bunny/trailer.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
 ]
 
 export type PageToken = string | number
