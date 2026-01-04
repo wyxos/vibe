@@ -43,6 +43,8 @@ export type MasonryItemBase = {
   [key: string]: unknown
 }
 
+export type MasonryItemOrId = string | MasonryItemBase
+
 export type GetContentResult<TItem extends MasonryItemBase> = {
   items: TItem[]
   nextPage: PageToken | null
@@ -80,10 +82,10 @@ export type MasonryProps = {
 // Intentionally permissive (uses `any` for item/id inputs) so apps can use
 // their own item shapes without fighting the library types.
 export interface MasonryInstance {
-  remove: (itemsOrIds: any | any[]) => Promise<void> | void
-  restore: (itemsOrIds: any | any[]) => Promise<void> | void
+  remove: (itemsOrIds: MasonryItemOrId | MasonryItemOrId[]) => Promise<void> | void
+  restore: (itemsOrIds: MasonryItemOrId | MasonryItemOrId[]) => Promise<void> | void
   undo: () => Promise<void> | void
-  forget: (itemsOrIds: any | any[]) => void
+  forget: (itemsOrIds: MasonryItemOrId | MasonryItemOrId[]) => void
 
   pagesLoaded: PageToken[]
   nextPage: PageToken | null
