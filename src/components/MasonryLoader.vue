@@ -53,6 +53,15 @@ const loadAttempt = ref(0)
 const lastError = ref<unknown>(null)
 
 const isVideo = computed(() => props.item?.type === 'video')
+const videoPoster = computed(() => {
+  if (!isVideo.value) return undefined
+  const preview = props.item?.preview
+  const original = props.item?.original
+  if (typeof preview !== 'string' || !preview) return undefined
+  if (typeof original === 'string' && preview === original) return undefined
+  if (/\.(mp4|webm)(\?|#|$)/i.test(preview)) return undefined
+  return preview
+})
 
 const isVideoInView = ref(false)
 const isHovered = ref(false)
@@ -345,7 +354,7 @@ function handleVideoTimeUpdate() {
         'h-full w-full object-cover transition-opacity duration-300',
         isLoaded ? 'opacity-100' : 'opacity-0',
       ]"
-      :poster="props.item.preview as string"
+      :poster="videoPoster"
       ref="videoEl"
       playsinline
       loop

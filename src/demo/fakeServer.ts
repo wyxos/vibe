@@ -167,6 +167,7 @@ function createItem({ page, index }: { page: number; index: number }): FeedItem 
 
   if (isVideo) {
     const videoIndex = randomInt(rng, 0, VIDEO_SOURCES.length - 1)
+    const url = VIDEO_SOURCES[videoIndex]
 
     return {
       id: baseId,
@@ -174,10 +175,9 @@ function createItem({ page, index }: { page: number; index: number }): FeedItem 
       reaction: null,
       width,
       height,
-      original: VIDEO_SOURCES[videoIndex],
-      // For videos, preview is a poster image (thumbnail). In the demo we keep it deterministic
-      // instead of using a random unrelated photo.
-      preview: '/logo.svg',
+      original: url,
+      // For videos, use the video itself for both preview + original.
+      preview: url,
     }
   }
 
