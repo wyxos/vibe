@@ -208,9 +208,13 @@ const CARD_MOTION_MS = 300
 const ENTER_MOTION_MS = 600
 const LEAVE_MOTION_MS = 600
 
-function getOutsideContainerBottomY(height: number): number {
+function getOutsideViewportBottomY(height: number): number {
   const h = typeof height === 'number' && Number.isFinite(height) ? height : 0
-  return containerHeight.value + Math.max(0, h)
+  // Anchor enter animations to the viewport bottom, not the total content height.
+  // In resume mode the content can be very tall, which would otherwise make
+  // the enter distance huge and the animation look unnaturally fast.
+  const viewportBottomY = scrollTop.value + viewportHeight.value
+  return viewportBottomY + Math.max(0, h)
 }
 const enterStartIds = ref<Set<string>>(new Set())
 const enterAnimatingIds = ref<Set<string>>(new Set())
@@ -266,7 +270,7 @@ function getCardTransform(index: number): string {
   const enterHeight = layoutHeights.value[index] ?? 0
   const enterOffset = enterHeight > 0 ? enterHeight : columnWidth.value
   const startX = pos.x
-  const startY = id && enterStartIds.value.has(id) ? getOutsideContainerBottomY(enterOffset) : pos.y
+  const startY = id && enterStartIds.value.has(id) ? getOutsideViewportBottomY(enterOffset) : pos.y
   const off = id ? getMoveOffset(id) : { dx: 0, dy: 0 }
   return `translate3d(${startX + off.dx}px,${startY + off.dy}px,0)`
 }
@@ -643,6 +647,7 @@ const itemsState = computed({
 })
 
 const isResumeMode = ref(false)
+const hasPlayedResumeEnter = ref(false)
 
 
 async function loadDefaultPage(pageToLoad: PageToken) {
@@ -824,6 +829,21 @@ watch(
   visibleIndices,
   (indices) => {
     if (!indices?.length) return
+
+    // Resume mode: only animate the first viewport worth of items.
+    // Do this inside the visibleIndices watcher so we never shift items offscreen
+    // before the enter scheduler can run (which would otherwise require a scroll).
+    if (isResumeMode.value && !hasPlayedResumeEnter.value) {
+      const batch: MasonryItemBase[] = []
+      for (const idx of indices) {
+        const it = itemsState.value[idx]
+        if (it) batch.push(it)
+      }
+      if (batch.length) {
+        markEnterFromTop(batch)
+      }
+      hasPlayedResumeEnter.value = true
+    }
 
     const idsToSchedule: string[] = []
     for (const idx of indices) {
@@ -1015,6 +1035,7 @@ function resetRuntimeState() {
   isLoadingInitial.value = true
   isLoadingNext.value = false
   error.value = ''
+  hasPlayedResumeEnter.value = false
 }
 
 function resetFeedState(startPage: PageToken) {
