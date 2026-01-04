@@ -81,6 +81,18 @@ const SlotRenderer = defineComponent({
 
 const masonryItemDefinition = shallowRef<MasonryItemDefinition | null>(null)
 
+const hoveredCardId = ref<string | null>(null)
+
+function handleCardMouseEnter(id: string) {
+  hoveredCardId.value = id
+}
+
+function handleCardMouseLeave(id: string) {
+  if (hoveredCardId.value === id) {
+    hoveredCardId.value = null
+  }
+}
+
 provide(masonryItemRegistryKey, (definition: MasonryItemDefinition) => {
   if (masonryItemDefinition.value) {
     if (import.meta.env.DEV) {
@@ -1289,12 +1301,17 @@ const sectionClass = computed(() => {
             />
           </div>
 
-          <div class="relative">
+          <div
+            class="group relative"
+            @mouseenter="handleCardMouseEnter(itemsState[idx].id)"
+            @mouseleave="handleCardMouseLeave(itemsState[idx].id)"
+          >
             <MasonryLoader
               :item="itemsState[idx]"
               :remove="() => removeItem(itemsState[idx])"
               :loader-slot-fn="itemLoaderSlotFn"
               :error-slot-fn="itemErrorSlotFn"
+              :hovered="hoveredCardId === itemsState[idx].id"
               @success="handleItemPreloaded"
               @error="handleItemFailed"
             />
@@ -1351,6 +1368,7 @@ const sectionClass = computed(() => {
               :remove="() => {}"
               :loader-slot-fn="itemLoaderSlotFn"
               :error-slot-fn="itemErrorSlotFn"
+              :hovered="false"
             />
 
             <div v-if="hasOverlaySlot" class="pointer-events-auto absolute inset-0 z-10">

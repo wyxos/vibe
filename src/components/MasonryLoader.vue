@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, defineComponent, onMounted, onUnmounted, ref } from 'vue'
+import { watch } from 'vue'
 import type { MasonryItemBase } from '@/masonry/types'
 import type {
   MasonryItemErrorSlotProps,
@@ -13,10 +14,12 @@ type Props = {
   loaderSlotFn?: Slot<MasonryItemLoaderSlotProps>
   errorSlotFn?: Slot<MasonryItemErrorSlotProps>
   timeoutMs?: number
+  hovered?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   timeoutMs: 15_000,
+  hovered: false,
 })
 
 const emit = defineEmits<{
@@ -64,7 +67,7 @@ const videoPoster = computed(() => {
 })
 
 const isVideoInView = ref(false)
-const isHovered = ref(false)
+const isHovered = computed(() => Boolean(props.hovered))
 const videoDuration = ref(0)
 const videoCurrentTime = ref(0)
 
@@ -148,16 +151,18 @@ function pauseVideoForViewport() {
   el.pause()
 }
 
-function handleMouseEnter() {
-  isHovered.value = true
-  startIfNeeded()
-  void playVideoForHover()
-}
+watch(
+  () => props.hovered,
+  (next) => {
+    if (next) {
+      startIfNeeded()
+      void playVideoForHover()
+      return
+    }
 
-function handleMouseLeave() {
-  isHovered.value = false
-  pauseVideoForHover()
-}
+    pauseVideoForHover()
+  }
+)
 
 function onSeekInput(e: Event) {
   const el = videoEl.value
@@ -270,10 +275,8 @@ function handleVideoTimeUpdate() {
 <template>
   <div
     ref="rootEl"
-    class="group relative bg-slate-100"
+    class="relative bg-slate-100"
     :style="aspectRatioStyle"
-    @mouseenter="handleMouseEnter"
-    @mouseleave="handleMouseLeave"
   >
     <div
       v-if="shouldRenderMedia && !isLoaded && !isError"
