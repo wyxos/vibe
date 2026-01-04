@@ -130,6 +130,89 @@ describe('Masonry slots + media rendering', () => {
     }
   })
 
+  it('supports MasonryItem loader/error slots for customizing load + retry UI', async () => {
+    vi.stubGlobal('IntersectionObserver', ImmediateIntersectionObserver as unknown as typeof IntersectionObserver)
+
+    try {
+      const getContent = vi.fn(async () => {
+        return {
+          items: [
+            {
+              id: 'img-1',
+              type: 'image',
+              reaction: null,
+              width: 320,
+              height: 240,
+              original: 'https://picsum.photos/seed/original/1600/1200',
+              preview: 'https://picsum.photos/seed/preview/320/240',
+            },
+          ],
+          nextPage: null,
+        }
+      })
+
+      const wrapper = mount(Masonry, {
+        props: { getContent, page: 1, itemWidth: 300 },
+        slots: {
+          default: () =>
+            h(MasonryItem, null, {
+              loader: ({ item }: SlotItemFooterContext) =>
+                h('div', { 'data-testid': 'custom-loader' }, `L:${item.id}`),
+              error: ({ item, error, retry }: { item: SlotItem; remove: () => void; error: unknown; retry: () => void }) =>
+                h(
+                  'div',
+                  {
+                    'data-testid': 'custom-error',
+                    'data-has-error': String(error != null),
+                  },
+                  [
+                    h('p', { 'data-testid': 'custom-error-message' }, `E:${item.id}`),
+                    h(
+                      'button',
+                      { type: 'button', 'data-testid': 'custom-retry', onClick: retry },
+                      'Try again'
+                    ),
+                  ]
+                ),
+            }),
+        },
+        attachTo: document.body,
+      })
+
+      await flushPromises()
+      await wrapper.vm.$nextTick()
+
+      expect(getContent).toHaveBeenCalledTimes(1)
+
+      // Custom loader should render instead of the default spinner SVG.
+      expect(wrapper.find('[data-testid="custom-loader"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="masonry-loader-spinner"] svg').exists()).toBe(false)
+
+      const img = wrapper.find('img')
+      expect(img.exists()).toBe(true)
+
+      await img.trigger('error')
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="custom-error"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="custom-error"]').attributes('data-has-error')).toBe('true')
+
+      // Default retry should not be shown when custom error slot is provided.
+      expect(wrapper.find('[data-testid="masonry-loader-retry"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="custom-retry"]').exists()).toBe(true)
+
+      await wrapper.get('[data-testid="custom-retry"]').trigger('click')
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="custom-error"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="custom-loader"]').exists()).toBe(true)
+
+      wrapper.unmount()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('supports fixed header/footer heights via props', async () => {
     const getContent = vi.fn(async () => {
       return {

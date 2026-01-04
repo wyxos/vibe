@@ -1,9 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, defineComponent, onMounted, onUnmounted, ref } from 'vue'
 import type { MasonryItemBase } from '@/masonry/types'
+import type {
+  MasonryItemErrorSlotProps,
+  MasonryItemLoaderSlotProps,
+} from '@/components/masonryItemRegistry'
+import type { Slot } from 'vue'
 
 type Props = {
   item: MasonryItemBase
+  remove?: () => void
+  loaderSlotFn?: Slot<MasonryItemLoaderSlotProps>
+  errorSlotFn?: Slot<MasonryItemErrorSlotProps>
   timeoutMs?: number
 }
 
@@ -16,11 +24,36 @@ const emit = defineEmits<{
   (e: 'error', payload: { item: MasonryItemBase; error: unknown }): void
 }>()
 
+const SlotRenderer = defineComponent({
+  name: 'SlotRenderer',
+  props: {
+    slotFn: {
+      type: Function,
+      required: false,
+    },
+    slotProps: {
+      type: Object,
+      required: true,
+    },
+  },
+  setup(props) {
+    return () => {
+      const fn = props.slotFn as ((p: unknown) => unknown) | undefined
+      return fn ? (fn(props.slotProps) as unknown) : null
+    }
+  },
+})
+
 const rootEl = ref<HTMLElement | null>(null)
 const shouldRenderMedia = ref(false)
 const isLoaded = ref(false)
 const isError = ref(false)
 const loadAttempt = ref(0)
+const lastError = ref<unknown>(null)
+
+function remove() {
+  props.remove?.()
+}
 
 const aspectRatioStyle = computed(() => {
   const w = props.item?.width
@@ -92,6 +125,7 @@ function onSuccess() {
   if (isLoaded.value) return
   isLoaded.value = true
   isError.value = false
+  lastError.value = null
   clearLoadTimeout()
   emit('success', props.item)
 }
@@ -100,6 +134,7 @@ function onError(err: unknown) {
   if (isError.value) return
   isLoaded.value = false
   isError.value = true
+  lastError.value = err
   clearLoadTimeout()
   emit('error', { item: props.item, error: err })
 }
@@ -109,6 +144,7 @@ function retry() {
   if (!shouldRenderMedia.value) return
   isLoaded.value = false
   isError.value = false
+  lastError.value = null
   loadAttempt.value += 1
   scheduleLoadTimeout()
 }
@@ -121,7 +157,13 @@ function retry() {
       data-testid="masonry-loader-spinner"
       class="absolute inset-0 z-10 flex items-center justify-center"
     >
+      <SlotRenderer
+        v-if="props.loaderSlotFn"
+        :slot-fn="props.loaderSlotFn"
+        :slot-props="({ item: props.item, remove } satisfies MasonryItemLoaderSlotProps)"
+      />
       <svg
+        v-else
         class="h-5 w-5 animate-spin text-slate-500"
         viewBox="0 0 24 24"
         aria-hidden="true"
@@ -148,15 +190,22 @@ function retry() {
       data-testid="masonry-loader-error"
       class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 p-3"
     >
-      <p class="text-center text-xs font-medium text-red-700">Failed to load</p>
-      <button
-        type="button"
-        data-testid="masonry-loader-retry"
-        class="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
-        @click="retry"
-      >
-        Retry
-      </button>
+      <SlotRenderer
+        v-if="props.errorSlotFn"
+        :slot-fn="props.errorSlotFn"
+        :slot-props="({ item: props.item, remove, error: lastError, retry } satisfies MasonryItemErrorSlotProps)"
+      />
+      <template v-else>
+        <p class="text-center text-xs font-medium text-red-700">Failed to load</p>
+        <button
+          type="button"
+          data-testid="masonry-loader-retry"
+          class="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
+          @click="retry"
+        >
+          Retry
+        </button>
+      </template>
     </div>
 
     <img

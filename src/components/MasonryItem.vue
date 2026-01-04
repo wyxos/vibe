@@ -52,7 +52,9 @@ export default defineComponent({
 
     register({
       header: slots.header,
+      loader: slots.loader,
       overlay: overlaySlot ?? legacyDefaultSlot,
+      error: slots.error,
       footer: slots.footer,
       onPreloaded:
         typeof onPreloaded === 'function'

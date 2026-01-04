@@ -171,8 +171,10 @@ const headerHeight = computed(() => props.headerHeight)
 const footerHeight = computed(() => props.footerHeight)
 
 const itemHeaderSlotFn = computed(() => masonryItemDefinition.value?.header)
+const itemLoaderSlotFn = computed(() => masonryItemDefinition.value?.loader)
 const itemFooterSlotFn = computed(() => masonryItemDefinition.value?.footer)
 const itemOverlaySlotFn = computed(() => masonryItemDefinition.value?.overlay)
+const itemErrorSlotFn = computed(() => masonryItemDefinition.value?.error)
 
 const hasHeaderSlot = computed(() => Boolean(itemHeaderSlotFn.value))
 const hasFooterSlot = computed(() => Boolean(itemFooterSlotFn.value))
@@ -1290,6 +1292,9 @@ const sectionClass = computed(() => {
           <div class="relative">
             <MasonryLoader
               :item="itemsState[idx]"
+              :remove="() => removeItem(itemsState[idx])"
+              :loader-slot-fn="itemLoaderSlotFn"
+              :error-slot-fn="itemErrorSlotFn"
               @success="handleItemPreloaded"
               @error="handleItemFailed"
             />
@@ -1341,7 +1346,12 @@ const sectionClass = computed(() => {
           </div>
 
           <div class="relative">
-            <MasonryLoader :item="c.item" />
+            <MasonryLoader
+              :item="c.item"
+              :remove="() => {}"
+              :loader-slot-fn="itemLoaderSlotFn"
+              :error-slot-fn="itemErrorSlotFn"
+            />
 
             <div v-if="hasOverlaySlot" class="pointer-events-auto absolute inset-0">
               <SlotRenderer
