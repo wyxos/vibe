@@ -55,6 +55,7 @@ const lastError = ref<unknown>(null)
 const isVideo = computed(() => props.item?.type === 'video')
 
 const isVideoInView = ref(false)
+const isHovered = ref(false)
 const userPausedVideo = ref(false)
 const videoDuration = ref(0)
 const videoCurrentTime = ref(0)
@@ -108,8 +109,9 @@ function syncVideoStateFromEl(el: HTMLVideoElement) {
   videoVolume.value = Number.isFinite(el.volume) ? el.volume : videoVolume.value
 }
 
-async function maybeAutoPlayVideo() {
+async function playVideoForHover() {
   if (!isVideo.value) return
+  if (!isHovered.value) return
   if (!shouldRenderMedia.value) return
   if (!isLoaded.value) return
   if (!isVideoInView.value) return
@@ -119,13 +121,17 @@ async function maybeAutoPlayVideo() {
   if (!el) return
 
   try {
-    // Autoplay is frequently blocked unless muted.
-    // Users can unmute via the volume slider.
-    el.muted = true
     await el.play()
   } catch {
-    // Ignore autoplay failures (browser policy, etc.).
+    // Ignore playback failures (browser policy, etc.).
   }
+}
+
+function pauseVideoForHover() {
+  const el = videoEl.value
+  if (!el) return
+  if (el.paused) return
+  el.pause()
 }
 
 function pauseVideoForViewport() {
@@ -147,6 +153,17 @@ function togglePlayPause() {
 
   userPausedVideo.value = true
   el.pause()
+}
+
+function handleMouseEnter() {
+  isHovered.value = true
+  startIfNeeded()
+  void playVideoForHover()
+}
+
+function handleMouseLeave() {
+  isHovered.value = false
+  pauseVideoForHover()
 }
 
 function onSeekInput(e: Event) {
@@ -205,8 +222,8 @@ onMounted(() => {
           isVideoInView.value = nextInView
           if (!nextInView) {
             pauseVideoForViewport()
-          } else {
-            void maybeAutoPlayVideo()
+          } else if (isHovered.value) {
+            void playVideoForHover()
           }
         }
       },
@@ -260,7 +277,7 @@ function handleVideoLoadedMetadata() {
   onSuccess()
   const el = videoEl.value
   if (el) syncVideoStateFromEl(el)
-  void maybeAutoPlayVideo()
+  void playVideoForHover()
 }
 
 function handleVideoTimeUpdate() {
@@ -271,7 +288,13 @@ function handleVideoTimeUpdate() {
 </script>
 
 <template>
-  <div ref="rootEl" class="group relative bg-slate-100" :style="aspectRatioStyle">
+  <div
+    ref="rootEl"
+    class="group relative bg-slate-100"
+    :style="aspectRatioStyle"
+    @mouseenter="handleMouseEnter"
+    @mouseleave="handleMouseLeave"
+  >
     <div
       v-if="shouldRenderMedia && !isLoaded && !isError"
       data-testid="masonry-loader-spinner"
