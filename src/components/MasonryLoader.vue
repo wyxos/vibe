@@ -139,10 +139,6 @@ function pauseVideoForViewport() {
   el.pause()
 }
 
-function playFromControls() {
-  void playVideoForHover()
-}
-
 function handleMouseEnter() {
   isHovered.value = true
   startIfNeeded()
@@ -365,29 +361,18 @@ function handleVideoTimeUpdate() {
 
     <div
       v-if="shouldRenderMedia && isVideo && !isError"
-      class="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-2 opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
+      class="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-2 pb-2 opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
     >
-      <div class="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-white/90 px-2 py-2 backdrop-blur">
-        <button
-          type="button"
-          class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-          aria-label="Play"
-          @click="playFromControls"
-        >
-          <i class="fa-solid fa-play" aria-hidden="true" />
-        </button>
-
-        <input
-          type="range"
-          class="h-2 w-full"
-          :min="0"
-          :max="videoDuration || 0"
-          step="0.1"
-          :value="videoCurrentTime"
-          aria-label="Seek"
-          @input="onSeekInput"
-        />
-      </div>
+      <input
+        type="range"
+        class="h-1 w-full cursor-pointer appearance-none bg-transparent"
+        :min="0"
+        :max="videoDuration || 0"
+        step="0.1"
+        :value="videoCurrentTime"
+        aria-label="Seek"
+        @input="onSeekInput"
+      />
     </div>
   </div>
 </template>

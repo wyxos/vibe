@@ -175,7 +175,9 @@ function createItem({ page, index }: { page: number; index: number }): FeedItem 
       width,
       height,
       original: VIDEO_SOURCES[videoIndex],
-      preview: `https://picsum.photos/seed/vibe-${baseId}/${width}/${height}`,
+      // For videos, preview is a poster image (thumbnail). In the demo we keep it deterministic
+      // instead of using a random unrelated photo.
+      preview: '/logo.svg',
     }
   }
 
