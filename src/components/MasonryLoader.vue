@@ -119,7 +119,7 @@ function retry() {
     <div
       v-if="shouldRenderMedia && !isLoaded && !isError"
       data-testid="masonry-loader-spinner"
-      class="absolute inset-0 flex items-center justify-center"
+      class="absolute inset-0 z-10 flex items-center justify-center"
     >
       <svg
         class="h-5 w-5 animate-spin text-slate-500"
@@ -146,7 +146,7 @@ function retry() {
     <div
       v-else-if="shouldRenderMedia && isError"
       data-testid="masonry-loader-error"
-      class="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3"
+      class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 p-3"
     >
       <p class="text-center text-xs font-medium text-red-700">Failed to load</p>
       <button
