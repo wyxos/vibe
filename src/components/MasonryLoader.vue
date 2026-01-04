@@ -354,6 +354,7 @@ function handleVideoTimeUpdate() {
       :poster="props.item.preview as string"
       ref="videoEl"
       playsinline
+      loop
       preload="metadata"
       @loadedmetadata="handleVideoLoadedMetadata"
       @timeupdate="handleVideoTimeUpdate"
