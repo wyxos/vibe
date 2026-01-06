@@ -179,6 +179,8 @@ describe('Masonry slots + media rendering', () => {
         attachTo: document.body,
       })
 
+      const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
       await flushPromises()
       await wrapper.vm.$nextTick()
 
@@ -192,6 +194,27 @@ describe('Masonry slots + media rendering', () => {
       expect(img.exists()).toBe(true)
 
       await img.trigger('error')
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="custom-error"]').exists()).toBe(false)
+      expect(wrapper.get('[data-testid="masonry-loader-retry-status"]').text()).toContain('1/3')
+
+      await wait(10)
+      await wrapper.vm.$nextTick()
+
+      await wrapper.find('img').trigger('error')
+      await wrapper.vm.$nextTick()
+
+      await wait(1100)
+      await wrapper.vm.$nextTick()
+
+      await wrapper.find('img').trigger('error')
+      await wrapper.vm.$nextTick()
+
+      await wait(2100)
+      await wrapper.vm.$nextTick()
+
+      await wrapper.find('img').trigger('error')
       await wrapper.vm.$nextTick()
 
       expect(wrapper.find('[data-testid="custom-error"]').exists()).toBe(true)
