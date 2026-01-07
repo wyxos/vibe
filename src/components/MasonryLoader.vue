@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, defineComponent, onMounted, onUnmounted, ref } from 'vue'
 import { watch } from 'vue'
+import MasonryVideoControls from '@/components/MasonryVideoControls.vue'
 import type { MasonryItemBase } from '@/masonry/types'
 import type {
   MasonryItemErrorSlotProps,
@@ -219,11 +220,9 @@ watch(
   }
 )
 
-function onSeekInput(e: Event) {
+function onSeekInput(next: number) {
   const el = videoEl.value
   if (!el) return
-  const raw = (e.target as HTMLInputElement | null)?.value
-  const next = raw == null ? NaN : Number(raw)
   if (!Number.isFinite(next)) return
   el.currentTime = Math.max(0, Math.min(next, Number.isFinite(el.duration) ? el.duration : next))
   syncVideoStateFromEl(el)
@@ -458,15 +457,10 @@ function handleVideoTimeUpdate() {
       v-if="shouldRenderMedia && isVideo && !isError"
       class="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-2 pb-2 opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
     >
-      <input
-        type="range"
-        class="h-1 w-full cursor-pointer appearance-none bg-transparent"
-        :min="0"
-        :max="videoDuration || 0"
-        step="0.1"
-        :value="videoCurrentTime"
-        aria-label="Seek"
-        @input="onSeekInput"
+      <MasonryVideoControls
+        :duration="videoDuration"
+        :current-time="videoCurrentTime"
+        @seek="onSeekInput"
       />
     </div>
   </div>

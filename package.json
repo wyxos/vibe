@@ -44,7 +44,7 @@
     "build:types": "vue-tsc -p tsconfig.lib.json",
     "prepublishOnly": "npm run check && npm run build:lib && npm run build:types",
     "preview": "vite preview",
-    "check": "node -e \"console.log('→ Lint')\" && npm -s run lint && node -e \"console.log('✓ Lint')\" && node -e \"console.log('→ Typecheck')\" && npm -s run typecheck && node -e \"console.log('✓ Typecheck')\" && node -e \"console.log('→ Test')\" && npm -s run test",
+    "check": "node -e \"console.log('→ Lint')\" && npm -s run lint && node -e \"console.log('✓ Lint')\" && node -e \"console.log('→ Typecheck')\" && npm -s run typecheck && node -e \"console.log('✓ Typecheck')\" && node -e \"console.log('→ Test')\" && npm -s run test && node -e \"console.log('→ E2E')\" && npm -s run test:e2e",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "release": "npx @wyxos/zephyr --type=node",
