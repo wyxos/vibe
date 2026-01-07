@@ -116,7 +116,7 @@ describe('MasonryLoader', () => {
       original: 'https://example.com/original.jpg',
     }
 
-    const wrapper = mount(MasonryLoader, { props: { item, timeoutMs: 1000 } })
+    const wrapper = mount(MasonryLoader, { props: { item, timeoutSeconds: 1 } })
 
     const io = instances[0]
     io.trigger(1)
@@ -135,6 +135,38 @@ describe('MasonryLoader', () => {
     vi.useRealTimers()
   })
 
+  it('prefers item timeout over prop timeout', async () => {
+    vi.useFakeTimers()
+    const { instances } = installMockIntersectionObserver()
+
+    const item: MasonryItemBase = {
+      id: 'img-timeout-override',
+      type: 'image',
+      width: 320,
+      height: 240,
+      preview: 'https://example.com/slow.jpg',
+      original: 'https://example.com/original.jpg',
+      timeoutSeconds: 0.5,
+    }
+
+    const wrapper = mount(MasonryLoader, { props: { item, timeoutSeconds: 5 } })
+
+    const io = instances[0]
+    io.trigger(1)
+    await wrapper.vm.$nextTick()
+
+    vi.advanceTimersByTime(499)
+    await wrapper.vm.$nextTick()
+    expect(wrapper.emitted('error')).toBeFalsy()
+
+    vi.advanceTimersByTime(1)
+    await wrapper.vm.$nextTick()
+    expect(wrapper.emitted('error')).toBeTruthy()
+
+    wrapper.unmount()
+    vi.useRealTimers()
+  })
+
   it('emits error on timeout and begins auto retry', async () => {
     vi.useFakeTimers()
     const { instances } = installMockIntersectionObserver()
@@ -148,7 +180,7 @@ describe('MasonryLoader', () => {
       original: 'https://example.com/original.jpg',
     }
 
-    const wrapper = mount(MasonryLoader, { props: { item, timeoutMs: 1000 } })
+    const wrapper = mount(MasonryLoader, { props: { item, timeoutSeconds: 1 } })
 
     const io = instances[0]
     io.trigger(1)

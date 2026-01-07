@@ -14,12 +14,12 @@ type Props = {
   remove?: () => void
   loaderSlotFn?: Slot<MasonryItemLoaderSlotProps>
   errorSlotFn?: Slot<MasonryItemErrorSlotProps>
-  timeoutMs?: number
+  timeoutSeconds?: number
   hovered?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  timeoutMs: 15_000,
+  timeoutSeconds: 15,
   hovered: false,
 })
 
@@ -75,6 +75,14 @@ const isVideoInView = ref(false)
 const isHovered = computed(() => Boolean(props.hovered))
 const videoDuration = ref(0)
 const videoCurrentTime = ref(0)
+const effectiveTimeoutSeconds = computed(() => {
+  const itemTimeout = props.item?.timeoutSeconds
+  if (typeof itemTimeout === 'number' && Number.isFinite(itemTimeout)) return itemTimeout
+  if (typeof props.timeoutSeconds === 'number' && Number.isFinite(props.timeoutSeconds)) {
+    return props.timeoutSeconds
+  }
+  return 0
+})
 
 function remove() {
   props.remove?.()
@@ -112,8 +120,9 @@ function clearAutoRetryTimeout() {
 
 function scheduleLoadTimeout() {
   clearLoadTimeout()
-  const ms = typeof props.timeoutMs === 'number' && Number.isFinite(props.timeoutMs) ? props.timeoutMs : 0
-  if (ms <= 0) return
+  const seconds = effectiveTimeoutSeconds.value
+  if (seconds <= 0) return
+  const ms = seconds * 1000
 
   loadTimeoutId = window.setTimeout(() => {
     if (!shouldRenderMedia.value) return

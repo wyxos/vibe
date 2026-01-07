@@ -40,6 +40,7 @@ export type MasonryItemBase = {
   type?: string
   preview?: string
   original?: string
+  timeoutSeconds?: number
   [key: string]: unknown
 }
 
