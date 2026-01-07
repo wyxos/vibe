@@ -1,4 +1,10 @@
-# @wyxos/vibe
+<p align="center">
+  <img src="public/logo.svg" width="120" alt="VIBE logo" />
+</p>
+<h1 align="center">VIBE</h1>
+<p align="center">
+  <img src="demo.webp" alt="VIBE demo" />
+</p>
 
 VIBE (Vue Infinite Block Engine) is a high-performance masonry feed component for Vue 3.
 
