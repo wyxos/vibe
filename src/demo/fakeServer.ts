@@ -148,12 +148,21 @@ function randomInt(rng: () => number, minInclusive: number, maxInclusive: number
   return Math.floor(rng() * (maxInclusive - minInclusive + 1)) + minInclusive
 }
 
-function createItem({ page, index }: { page: number; index: number }): FeedItem {
+function createItem({
+  page,
+  index,
+  forcedType,
+}: {
+  page: number
+  index: number
+  forcedType?: FeedItemType
+}): FeedItem {
   const seed = page * 1000 + index
   const rng = createRng(seed)
 
   const isForcedVideo = index === 0
-  const isVideo = isForcedVideo || rng() < 0.25
+  const isVideo =
+    forcedType === 'video' ? true : forcedType === 'image' ? false : isForcedVideo || rng() < 0.25
 
   // width/height represent the preview dimensions used for layout.
   const width = randomInt(rng, 240, 520)
@@ -202,6 +211,27 @@ export async function fetchPage(pageToken: PageToken): Promise<FetchPageResult> 
   await new Promise((resolve) => setTimeout(resolve, delayMs))
 
   const items = Array.from({ length: ITEMS_PER_PAGE }, (_, index) => createItem({ page, index }))
+
+  const nextPageNumber = page < TOTAL_PAGES ? page + 1 : null
+
+  return {
+    items,
+    nextPage: createNextPageToken(nextPageNumber),
+  }
+}
+
+export async function fetchVideoPage(pageToken: PageToken): Promise<FetchPageResult> {
+  const page = normalizePageToken(pageToken)
+  if (page < 1 || page > TOTAL_PAGES) throw new Error('page out of range')
+
+  const rng = createRng(page + 99)
+  const delayMs = randomInt(rng, 250, 800)
+
+  await new Promise((resolve) => setTimeout(resolve, delayMs))
+
+  const items = Array.from({ length: ITEMS_PER_PAGE }, (_, index) =>
+    createItem({ page, index, forcedType: 'video' })
+  )
 
   const nextPageNumber = page < TOTAL_PAGES ? page + 1 : null
 

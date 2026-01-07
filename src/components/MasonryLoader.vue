@@ -70,6 +70,16 @@ const videoPoster = computed(() => {
   if (/\.(mp4|webm)(\?|#|$)/i.test(preview)) return undefined
   return preview
 })
+const videoSrc = computed(() => {
+  if (!isVideo.value) return undefined
+  const preview = props.item?.preview
+  if (typeof preview === 'string' && preview && /\.(mp4|webm)(\?|#|$)/i.test(preview)) {
+    return preview
+  }
+  const original = props.item?.original
+  if (typeof original === 'string' && original) return original
+  return undefined
+})
 
 const isVideoInView = ref(false)
 const isHovered = computed(() => Boolean(props.hovered))
@@ -457,7 +467,7 @@ function handleVideoTimeUpdate() {
     >
       <source
         ref="videoSourceEl"
-        :src="props.item.original as string"
+        :src="videoSrc"
         type="video/mp4"
       />
     </video>

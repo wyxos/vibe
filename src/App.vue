@@ -52,6 +52,14 @@ const npmUrl = `https://www.npmjs.com/package/${encodeURIComponent(pkg.name)}`
               >
                 Search
               </RouterLink>
+
+              <RouterLink
+                to="/examples/videos-only"
+                class="flex items-center rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                active-class="bg-slate-100 text-slate-900"
+              >
+                Video-only
+              </RouterLink>
             </div>
           </details>
         </nav>
