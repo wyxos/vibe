@@ -59,6 +59,8 @@ const isRetrying = ref(false)
 const loadAttempt = ref(0)
 const autoRetryCount = ref(0)
 const lastError = ref<unknown>(null)
+// TODO: Re-enable once the performance investigation is complete.
+const retryAndTimeoutEnabled = false
 
 const isVideo = computed(() => props.item?.type === 'video')
 const videoPoster = computed(() => {
@@ -129,6 +131,7 @@ function clearAutoRetryTimeout() {
 }
 
 function scheduleLoadTimeout() {
+  if (!retryAndTimeoutEnabled) return
   clearLoadTimeout()
   const seconds = effectiveTimeoutSeconds.value
   if (seconds <= 0) return
@@ -161,6 +164,7 @@ function abortMediaLoad() {
 }
 
 function scheduleAutoRetry() {
+  if (!retryAndTimeoutEnabled) return
   if (!shouldRenderMedia.value) return
   if (autoRetryCount.value >= MAX_AUTO_RETRIES) {
     isRetrying.value = false

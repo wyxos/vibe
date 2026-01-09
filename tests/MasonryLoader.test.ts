@@ -103,7 +103,7 @@ describe('MasonryLoader', () => {
     wrapper.unmount()
   })
 
-  it('clears media src when timeout fires', async () => {
+  it('does not clear media src when timeouts are disabled', async () => {
     vi.useFakeTimers()
     const { instances } = installMockIntersectionObserver()
 
@@ -129,13 +129,14 @@ describe('MasonryLoader', () => {
     vi.advanceTimersByTime(1000)
     await wrapper.vm.$nextTick()
 
-    expect(imgEl.getAttribute('src') ?? '').toBe('')
+    expect(imgEl.getAttribute('src') ?? '').toBe(item.preview)
+    expect(wrapper.emitted('error')).toBeFalsy()
 
     wrapper.unmount()
     vi.useRealTimers()
   })
 
-  it('prefers item timeout over prop timeout', async () => {
+  it('does not emit timeout error even when item timeout is set', async () => {
     vi.useFakeTimers()
     const { instances } = installMockIntersectionObserver()
 
@@ -155,57 +156,19 @@ describe('MasonryLoader', () => {
     io.trigger(1)
     await wrapper.vm.$nextTick()
 
-    vi.advanceTimersByTime(499)
+    vi.advanceTimersByTime(1000)
     await wrapper.vm.$nextTick()
     expect(wrapper.emitted('error')).toBeFalsy()
 
-    vi.advanceTimersByTime(1)
-    await wrapper.vm.$nextTick()
-    expect(wrapper.emitted('error')).toBeTruthy()
-
     wrapper.unmount()
     vi.useRealTimers()
   })
 
-  it('emits error on timeout and begins auto retry', async () => {
-    vi.useFakeTimers()
+  it('does not auto retry when an error occurs', async () => {
     const { instances } = installMockIntersectionObserver()
 
     const item: MasonryItemBase = {
-      id: 'img-timeout',
-      type: 'image',
-      width: 320,
-      height: 240,
-      preview: 'https://example.com/slow.jpg',
-      original: 'https://example.com/original.jpg',
-    }
-
-    const wrapper = mount(MasonryLoader, { props: { item, timeoutSeconds: 1 } })
-
-    const io = instances[0]
-    io.trigger(1)
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.find('[data-testid="masonry-loader-spinner"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="masonry-loader-error"]').exists()).toBe(false)
-
-    vi.advanceTimersByTime(1000)
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.emitted('error')).toBeTruthy()
-    expect(wrapper.get('[data-testid="masonry-loader-retry-status"]').text()).toContain('1/3')
-    expect(wrapper.find('[data-testid="masonry-loader-error"]').exists()).toBe(false)
-
-    wrapper.unmount()
-    vi.useRealTimers()
-  })
-
-  it('auto retries with incremental delays and stops after max retries', async () => {
-    vi.useFakeTimers()
-    const { instances } = installMockIntersectionObserver()
-
-    const item: MasonryItemBase = {
-      id: 'img-err',
+      id: 'img-error',
       type: 'image',
       width: 320,
       height: 240,
@@ -222,57 +185,48 @@ describe('MasonryLoader', () => {
     await wrapper.find('img').trigger('error')
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.get('[data-testid="masonry-loader-retry-status"]').text()).toContain('1/3')
-    expect(wrapper.find('[data-testid="masonry-loader-error"]').exists()).toBe(false)
-    expect(wrapper.find('img').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="masonry-loader-error"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="masonry-loader-retry-status"]').exists()).toBe(
+      false
+    )
 
-    vi.advanceTimersByTime(0)
+    wrapper.unmount()
+  })
+
+  it('manual retry resets error state without auto retry', async () => {
+    const { instances } = installMockIntersectionObserver()
+
+    const item: MasonryItemBase = {
+      id: 'img-retry',
+      type: 'image',
+      width: 320,
+      height: 240,
+      preview: 'https://example.com/broken.jpg',
+      original: 'https://example.com/original.jpg',
+    }
+
+    const wrapper = mount(MasonryLoader, { props: { item } })
+
+    const io = instances[0]
+    io.trigger(1)
     await wrapper.vm.$nextTick()
-
-    expect(wrapper.find('img').exists()).toBe(true)
-
-    await wrapper.find('img').trigger('error')
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.get('[data-testid="masonry-loader-retry-status"]').text()).toContain('2/3')
-    expect(wrapper.find('img').exists()).toBe(false)
-
-    vi.advanceTimersByTime(999)
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('img').exists()).toBe(false)
-
-    vi.advanceTimersByTime(1)
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('img').exists()).toBe(true)
-
-    await wrapper.find('img').trigger('error')
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.get('[data-testid="masonry-loader-retry-status"]').text()).toContain('3/3')
-    expect(wrapper.find('img').exists()).toBe(false)
-
-    vi.advanceTimersByTime(1999)
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('img').exists()).toBe(false)
-
-    vi.advanceTimersByTime(1)
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('img').exists()).toBe(true)
 
     await wrapper.find('img').trigger('error')
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('[data-testid="masonry-loader-error"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="masonry-loader-retry-status"]').exists()).toBe(false)
 
     await wrapper.get('[data-testid="masonry-loader-retry"]').trigger('click')
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('[data-testid="masonry-loader-error"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="masonry-loader-spinner"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="masonry-loader-retry-status"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="masonry-loader-spinner"]').exists()).toBe(
+      true
+    )
+    expect(wrapper.find('[data-testid="masonry-loader-retry-status"]').exists()).toBe(
+      false
+    )
 
     wrapper.unmount()
-    vi.useRealTimers()
   })
 })
