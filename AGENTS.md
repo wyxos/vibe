@@ -26,6 +26,8 @@ npm run test:e2e
 - Prefer `@/` imports (Vite alias) for internal modules.
 - Keep library logic in `src/components/` + `src/masonry/`; demo-only code stays in `src/demo/` and `src/pages/`.
 - Avoid backward-compat shims (aliases/deprecated fallbacks) unless explicitly requested.
+- Do not consider legacy/backward-compatibility changes unless explicitly requested.
+- If legacy/backward-compat code is found, report it to the user so they can decide whether to remove or align it immediately.
 
 ## Security & Secrets
 

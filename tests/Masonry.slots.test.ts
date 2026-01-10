@@ -130,7 +130,7 @@ describe('Masonry slots + media rendering', () => {
     }
   })
 
-  it('supports MasonryItem loader/error slots for customizing load + retry UI', async () => {
+  it('supports MasonryItem loader/error slots for customizing load + error UI', async () => {
     vi.stubGlobal('IntersectionObserver', ImmediateIntersectionObserver as unknown as typeof IntersectionObserver)
 
     try {
@@ -158,7 +158,7 @@ describe('Masonry slots + media rendering', () => {
             h(MasonryItem, null, {
               loader: ({ item }: SlotItemFooterContext) =>
                 h('div', { 'data-testid': 'custom-loader' }, `L:${item.id}`),
-              error: ({ item, error, retry }: { item: SlotItem; remove: () => void; error: unknown; retry: () => void }) =>
+              error: ({ item, error }: { item: SlotItem; remove: () => void; error: unknown }) =>
                 h(
                   'div',
                   {
@@ -167,19 +167,12 @@ describe('Masonry slots + media rendering', () => {
                   },
                   [
                     h('p', { 'data-testid': 'custom-error-message' }, `E:${item.id}`),
-                    h(
-                      'button',
-                      { type: 'button', 'data-testid': 'custom-retry', onClick: retry },
-                      'Try again'
-                    ),
                   ]
                 ),
             }),
         },
         attachTo: document.body,
       })
-
-      const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
       await flushPromises()
       await wrapper.vm.$nextTick()
@@ -196,39 +189,8 @@ describe('Masonry slots + media rendering', () => {
       await img.trigger('error')
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.find('[data-testid="custom-error"]').exists()).toBe(false)
-      expect(wrapper.get('[data-testid="masonry-loader-retry-status"]').text()).toContain('1/3')
-
-      await wait(10)
-      await wrapper.vm.$nextTick()
-
-      await wrapper.find('img').trigger('error')
-      await wrapper.vm.$nextTick()
-
-      await wait(1100)
-      await wrapper.vm.$nextTick()
-
-      await wrapper.find('img').trigger('error')
-      await wrapper.vm.$nextTick()
-
-      await wait(2100)
-      await wrapper.vm.$nextTick()
-
-      await wrapper.find('img').trigger('error')
-      await wrapper.vm.$nextTick()
-
       expect(wrapper.find('[data-testid="custom-error"]').exists()).toBe(true)
       expect(wrapper.find('[data-testid="custom-error"]').attributes('data-has-error')).toBe('true')
-
-      // Default retry should not be shown when custom error slot is provided.
-      expect(wrapper.find('[data-testid="masonry-loader-retry"]').exists()).toBe(false)
-      expect(wrapper.find('[data-testid="custom-retry"]').exists()).toBe(true)
-
-      await wrapper.get('[data-testid="custom-retry"]').trigger('click')
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.find('[data-testid="custom-error"]').exists()).toBe(false)
-      expect(wrapper.find('[data-testid="custom-loader"]').exists()).toBe(true)
 
       wrapper.unmount()
     } finally {

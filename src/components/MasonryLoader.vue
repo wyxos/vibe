@@ -14,12 +14,10 @@ type Props = {
   remove?: () => void
   loaderSlotFn?: Slot<MasonryItemLoaderSlotProps>
   errorSlotFn?: Slot<MasonryItemErrorSlotProps>
-  timeoutSeconds?: number
   hovered?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  timeoutSeconds: 15,
   hovered: false,
 })
 
@@ -51,16 +49,10 @@ const SlotRenderer = defineComponent({
 const rootEl = ref<HTMLElement | null>(null)
 const imgEl = ref<HTMLImageElement | null>(null)
 const videoEl = ref<HTMLVideoElement | null>(null)
-const videoSourceEl = ref<HTMLSourceElement | null>(null)
 const shouldRenderMedia = ref(false)
 const isLoaded = ref(false)
 const isError = ref(false)
-const isRetrying = ref(false)
-const loadAttempt = ref(0)
-const autoRetryCount = ref(0)
 const lastError = ref<unknown>(null)
-// TODO: Re-enable once the performance investigation is complete.
-const retryAndTimeoutEnabled = false
 
 const isVideo = computed(() => props.item?.type === 'video')
 const videoPoster = computed(() => {
@@ -87,14 +79,6 @@ const isVideoInView = ref(false)
 const isHovered = computed(() => Boolean(props.hovered))
 const videoDuration = ref(0)
 const videoCurrentTime = ref(0)
-const effectiveTimeoutSeconds = computed(() => {
-  const itemTimeout = props.item?.timeoutSeconds
-  if (typeof itemTimeout === 'number' && Number.isFinite(itemTimeout)) return itemTimeout
-  if (typeof props.timeoutSeconds === 'number' && Number.isFinite(props.timeoutSeconds)) {
-    return props.timeoutSeconds
-  }
-  return 0
-})
 
 function remove() {
   props.remove?.()
@@ -107,89 +91,16 @@ const aspectRatioStyle = computed(() => {
 })
 
 const isImage = computed(() => props.item?.type === 'image')
-const MAX_AUTO_RETRIES = 3
-const retryStatusText = computed(() => {
-  if (!isRetrying.value) return ''
-  return `Retrying ${autoRetryCount.value}/${MAX_AUTO_RETRIES}`
-})
 
 let io: IntersectionObserver | null = null
 let playbackIo: IntersectionObserver | null = null
-let loadTimeoutId: number | null = null
-let autoRetryTimeoutId: number | null = null
-
-function clearLoadTimeout() {
-  if (loadTimeoutId == null) return
-  window.clearTimeout(loadTimeoutId)
-  loadTimeoutId = null
-}
-
-function clearAutoRetryTimeout() {
-  if (autoRetryTimeoutId == null) return
-  window.clearTimeout(autoRetryTimeoutId)
-  autoRetryTimeoutId = null
-}
-
-function scheduleLoadTimeout() {
-  if (!retryAndTimeoutEnabled) return
-  clearLoadTimeout()
-  const seconds = effectiveTimeoutSeconds.value
-  if (seconds <= 0) return
-  const ms = seconds * 1000
-
-  loadTimeoutId = window.setTimeout(() => {
-    if (!shouldRenderMedia.value) return
-    if (isLoaded.value || isError.value) return
-    abortMediaLoad()
-    onError(new Error('timeout'))
-  }, ms)
-}
-
-function abortMediaLoad() {
-  const img = imgEl.value
-  if (img) {
-    img.removeAttribute('src')
-    img.src = ''
-  }
-
-  const video = videoEl.value
-  if (!video) return
-  video.pause()
-  const source = videoSourceEl.value
-  if (source) {
-    source.removeAttribute('src')
-  }
-  video.removeAttribute('src')
-  video.load()
-}
-
-function scheduleAutoRetry() {
-  if (!retryAndTimeoutEnabled) return
-  if (!shouldRenderMedia.value) return
-  if (autoRetryCount.value >= MAX_AUTO_RETRIES) {
-    isRetrying.value = false
-    return
-  }
-
-  clearAutoRetryTimeout()
-  const nextAttempt = autoRetryCount.value + 1
-  autoRetryCount.value = nextAttempt
-  isRetrying.value = true
-
-  const delayMs = (nextAttempt - 1) * 1000
-  autoRetryTimeoutId = window.setTimeout(() => {
-    autoRetryTimeoutId = null
-    if (!shouldRenderMedia.value) return
-    beginRetry({ resetAutoRetry: false })
-  }, delayMs)
-}
 
 function startIfNeeded() {
   if (shouldRenderMedia.value) return
   shouldRenderMedia.value = true
   isLoaded.value = false
   isError.value = false
-  scheduleLoadTimeout()
+  lastError.value = null
 }
 
 function syncVideoStateFromEl(el: HTMLVideoElement) {
@@ -304,8 +215,6 @@ onUnmounted(() => {
   io = null
   playbackIo?.disconnect()
   playbackIo = null
-  clearLoadTimeout()
-  clearAutoRetryTimeout()
 })
 
 function onSuccess() {
@@ -313,10 +222,6 @@ function onSuccess() {
   isLoaded.value = true
   isError.value = false
   lastError.value = null
-  clearLoadTimeout()
-  clearAutoRetryTimeout()
-  isRetrying.value = false
-  autoRetryCount.value = 0
   emit('success', props.item)
 }
 
@@ -325,28 +230,7 @@ function onError(err: unknown) {
   isLoaded.value = false
   isError.value = true
   lastError.value = err
-  clearLoadTimeout()
   emit('error', { item: props.item, error: err })
-  scheduleAutoRetry()
-}
-
-function beginRetry({ resetAutoRetry }: { resetAutoRetry: boolean }) {
-  // Keep the intersection gating decision: retry only after we started.        
-  if (!shouldRenderMedia.value) return
-  isLoaded.value = false
-  isError.value = false
-  lastError.value = null
-  loadAttempt.value += 1
-  if (resetAutoRetry) {
-    clearAutoRetryTimeout()
-    isRetrying.value = false
-    autoRetryCount.value = 0
-  }
-  scheduleLoadTimeout()
-}
-
-function retry() {
-  beginRetry({ resetAutoRetry: true })
 }
 
 function handleVideoLoadedMetadata() {
@@ -370,7 +254,7 @@ function handleVideoTimeUpdate() {
     :style="aspectRatioStyle"
   >
     <div
-      v-if="shouldRenderMedia && !isLoaded && (!isError || isRetrying)"
+      v-if="shouldRenderMedia && !isLoaded && !isError"
       data-testid="masonry-loader-spinner"
       class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1"
     >
@@ -400,17 +284,10 @@ function handleVideoTimeUpdate() {
           d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"
         />
       </svg>
-      <p
-        v-if="isRetrying"
-        data-testid="masonry-loader-retry-status"
-        class="text-xs font-medium text-slate-600"
-      >
-        {{ retryStatusText }}
-      </p>
     </div>
 
     <div
-      v-else-if="shouldRenderMedia && isError && !isRetrying"
+      v-else-if="shouldRenderMedia && isError"
       data-testid="masonry-loader-error"
       class="absolute inset-0 z-20 grid place-items-center p-3 pointer-events-none"
     >
@@ -418,25 +295,17 @@ function handleVideoTimeUpdate() {
         <SlotRenderer
           v-if="props.errorSlotFn"
           :slot-fn="props.errorSlotFn"
-          :slot-props="({ item: props.item, remove, error: lastError, retry } satisfies MasonryItemErrorSlotProps)"
+          :slot-props="({ item: props.item, remove, error: lastError } satisfies MasonryItemErrorSlotProps)"
         />
         <template v-else>
           <p class="text-center text-xs font-medium text-red-700">Error {{ lastError }}</p>
-          <button
-            type="button"
-            data-testid="masonry-loader-retry"
-            class="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
-            @click="retry"
-          >
-            Retry
-          </button>
         </template>
       </div>
     </div>
 
     <img
       v-if="shouldRenderMedia && isImage && !isError"
-      :key="props.item.id + ':img:' + loadAttempt"
+      :key="props.item.id + ':img'"
       ref="imgEl"
       :class="[
         'h-full w-full object-cover transition-opacity duration-300',
@@ -453,7 +322,7 @@ function handleVideoTimeUpdate() {
 
     <video
       v-else-if="shouldRenderMedia && !isError"
-      :key="props.item.id + ':vid:' + loadAttempt"
+      :key="props.item.id + ':vid'"
       :class="[
         'h-full w-full object-cover transition-opacity duration-300',
         isLoaded ? 'opacity-100' : 'opacity-0',
@@ -470,7 +339,6 @@ function handleVideoTimeUpdate() {
       @error="onError($event)"
     >
       <source
-        ref="videoSourceEl"
         :src="videoSrc"
         type="video/mp4"
       />

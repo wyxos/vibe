@@ -10,7 +10,6 @@ export type MasonryItemLoaderSlotProps = MasonryItemSlotProps
 
 export type MasonryItemErrorSlotProps = MasonryItemSlotProps & {
   error: unknown
-  retry: () => void
 }
 
 export type MasonryItemDefinition = {
