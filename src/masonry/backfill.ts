@@ -19,7 +19,8 @@ export type BackfillStatsShape<TPageToken> = {
   enabled: boolean
   isBackfillActive: boolean
   isRequestInFlight: boolean
-  requestPage: TPageToken | null
+  page: TPageToken | null
+  next: TPageToken | null
   progress: {
     collected: number
     target: number
@@ -97,6 +98,7 @@ export function createBackfillBatchLoader<TItem, TPageToken>(options: {
 
     const enabled = options.isEnabled()
     const delayMs = clampDelayMs(options.getRequestDelayMs())
+    const previousPage = options.stats.value.page ?? null
 
     // First, use any carryover items from previous backfill fetches.
     const collected: TItem[] = []
@@ -112,7 +114,8 @@ export function createBackfillBatchLoader<TItem, TPageToken>(options: {
       enabled,
       isBackfillActive: false,
       isRequestInFlight: false,
-      requestPage: null,
+      page: previousPage ?? startPage,
+      next: startPage,
       cooldownMsTotal: delayMs,
       cooldownMsRemaining: 0,
       progress: {
@@ -140,7 +143,8 @@ export function createBackfillBatchLoader<TItem, TPageToken>(options: {
           enabled,
           isBackfillActive: true,
           isRequestInFlight: true,
-          requestPage: pageToLoad,
+          page: pageToLoad,
+          next: null,
           progress: {
             collected: Math.min(collected.length, target),
             target,
@@ -161,7 +165,8 @@ export function createBackfillBatchLoader<TItem, TPageToken>(options: {
           enabled,
           isBackfillActive: true,
           isRequestInFlight: false,
-          requestPage: null,
+          page: pageToLoad,
+          next: result.nextPage,
         }
       }
 
@@ -181,7 +186,8 @@ export function createBackfillBatchLoader<TItem, TPageToken>(options: {
           enabled,
           isBackfillActive: true,
           isRequestInFlight: false,
-          requestPage: null,
+          page: pageToLoad,
+          next,
           progress: {
             collected: Math.min(collected.length, target),
             target,
@@ -195,6 +201,8 @@ export function createBackfillBatchLoader<TItem, TPageToken>(options: {
           ...options.stats.value,
           enabled,
           isBackfillActive: true,
+          page: pageToLoad,
+          next,
           progress: {
             collected: Math.min(collected.length, target),
             target,
@@ -216,7 +224,8 @@ export function createBackfillBatchLoader<TItem, TPageToken>(options: {
       enabled,
       isBackfillActive: false,
       isRequestInFlight: false,
-      requestPage: null,
+      page: pages.length ? pages[pages.length - 1] : previousPage ?? startPage,
+      next,
       progress: {
         collected: 0,
         target: 0,

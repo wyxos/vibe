@@ -97,6 +97,8 @@ describe('Masonry backfill', () => {
     expect(debug?.enabled).toBe(true)
     expect(debug?.pageSize).toBe(20)
     expect(debug?.bufferSize).toBe(14)
+    expect(debug?.page).toBe(2)
+    expect(debug?.next).toBe(3)
     expect(debug?.lastBatch?.pages).toEqual([1, 2])
     expect(debug?.lastBatch?.emitted).toBe(20)
     expect(debug?.lastBatch?.carried).toBe(14)
@@ -156,6 +158,8 @@ describe('Masonry backfill', () => {
     const debug = exposed?.backfillStats
     expect(debug?.lastBatch?.pages).toEqual([1, 2])
     expect(debug?.lastBatch?.emitted).toBe(20)
+    expect(debug?.page).toBe(2)
+    expect(debug?.next).toBe(3)
 
     wrapper.unmount()
   })
@@ -234,6 +238,8 @@ describe('Masonry backfill', () => {
     expect(debug?.lastBatch?.usedFromBuffer).toBe(14)
     expect(debug?.lastBatch?.pages).toEqual([3])
     expect(debug?.lastBatch?.emitted).toBe(20)
+    expect(debug?.page).toBe(3)
+    expect(debug?.next).toBe(4)
     expect(debug?.bufferSize).toBe(14)
 
     expect(wrapper.text()).toContain('Scroll to load page 4')
@@ -301,6 +307,8 @@ describe('Masonry backfill', () => {
     expect(debug?.lastBatch?.usedFromBuffer).toBe(5)
     expect(debug?.lastBatch?.fetchedFromNetwork).toBe(0)
     expect(debug?.lastBatch?.emitted).toBe(5)
+    expect(debug?.page).toBe(1)
+    expect(debug?.next).toBe(null)
     expect(debug?.bufferSize).toBe(0)
 
     wrapper.unmount()

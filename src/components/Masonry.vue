@@ -607,7 +607,8 @@ const backfillStats = shallowRef<BackfillStats>({
   enabled: false,
   isBackfillActive: false,
   isRequestInFlight: false,
-  requestPage: null,
+  page: props.page,
+  next: props.page,
   progress: {
     collected: 0,
     target: 0,
@@ -1010,7 +1011,8 @@ function makeInitialBackfillStats(): BackfillStats {
     enabled: props.mode === 'backfill',
     isBackfillActive: false,
     isRequestInFlight: false,
-    requestPage: null,
+    page: props.page,
+    next: props.page,
     progress: {
       collected: 0,
       target: 0,

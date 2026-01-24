@@ -8,7 +8,8 @@ export type BackfillStats = {
   // This is NOT the same as mode=backfill.
   isBackfillActive: boolean
   isRequestInFlight: boolean
-  requestPage: PageToken | null
+  page: PageToken | null
+  next: PageToken | null
   progress: {
     collected: number
     target: number
