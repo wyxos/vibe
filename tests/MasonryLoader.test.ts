@@ -129,4 +129,33 @@ describe('MasonryLoader', () => {
 
     wrapper.unmount()
   })
+
+  it('prefers preview for video src without extension', async () => {
+    const { instances } = installMockIntersectionObserver()
+
+    const item: MasonryItemBase = {
+      id: 'vid-preview',
+      type: 'video',
+      width: 320,
+      height: 240,
+      preview: 'https://atlas.test/api/files/123/preview',
+      original: 'https://atlas.test/api/files/123/downloaded',
+    }
+
+    const wrapper = mount(MasonryLoader, { props: { item } })
+
+    const io = instances[0]
+    io.trigger(1)
+    await wrapper.vm.$nextTick()
+
+    const video = wrapper.find('video')
+    expect(video.exists()).toBe(true)
+    expect(video.attributes('poster')).toBeUndefined()
+
+    const source = wrapper.find('video source')
+    expect(source.exists()).toBe(true)
+    expect(source.attributes('src')).toBe(item.preview)
+
+    wrapper.unmount()
+  })
 })

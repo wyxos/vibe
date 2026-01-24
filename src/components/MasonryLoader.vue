@@ -62,12 +62,13 @@ const videoPoster = computed(() => {
   if (typeof preview !== 'string' || !preview) return undefined
   if (typeof original === 'string' && preview === original) return undefined
   if (/\.(mp4|webm)(\?|#|$)/i.test(preview)) return undefined
+  if (!/\.(png|jpe?g|gif|webp)(\?|#|$)/i.test(preview)) return undefined
   return preview
 })
 const videoSrc = computed(() => {
   if (!isVideo.value) return undefined
   const preview = props.item?.preview
-  if (typeof preview === 'string' && preview && /\.(mp4|webm)(\?|#|$)/i.test(preview)) {
+  if (typeof preview === 'string' && preview && !/\.(png|jpe?g|gif|webp)(\?|#|$)/i.test(preview)) {
     return preview
   }
   const original = props.item?.original

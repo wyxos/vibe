@@ -107,6 +107,59 @@ describe('Masonry backfill', () => {
     wrapper.unmount()
   })
 
+  it('continues past an empty first page to fill the batch', async () => {
+    const getContent = vi.fn(async (pageToken: unknown) => {
+      const token = Number(pageToken)
+
+      if (token === 1) {
+        return {
+          items: [],
+          nextPage: 2,
+        }
+      }
+
+      if (token === 2) {
+        return {
+          items: Array.from({ length: 20 }, (_, i) => makeItem(`p2-${i}`)),
+          nextPage: 3,
+        }
+      }
+
+      return { items: [], nextPage: null }
+    })
+
+    const wrapper = mount(Masonry, {
+      attachTo: document.body,
+      props: {
+        getContent,
+        mode: 'backfill',
+        page: 1,
+        pageSize: 20,
+        backfillRequestDelayMs: 0,
+      },
+      slots: {
+        default: () => h(MasonryItem),
+      },
+    })
+
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    expect(getContent).toHaveBeenCalledTimes(2)
+    expect(getContent).toHaveBeenNthCalledWith(1, 1)
+    expect(getContent).toHaveBeenNthCalledWith(2, 2)
+    expect(wrapper.findAll('[data-testid="item-card"]')).toHaveLength(20)
+
+    const exposed = getExposed<{ backfillStats: BackfillStats }>(
+      wrapper as unknown as WrapperWithExposed
+    )
+    const debug = exposed?.backfillStats
+    expect(debug?.lastBatch?.pages).toEqual([1, 2])
+    expect(debug?.lastBatch?.emitted).toBe(20)
+
+    wrapper.unmount()
+  })
+
   it('uses carryover buffer first and reduces network fetches on next load', async () => {
     const getContent = vi.fn(async (pageToken: unknown) => {
       const token = Number(pageToken)
