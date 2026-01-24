@@ -71,7 +71,7 @@ describe('Masonry slots + media rendering', () => {
               width: 320,
               height: 240,
               original: 'https://example.com/video.mp4',
-              preview: 'https://picsum.photos/seed/poster/320/240',
+              preview: 'https://picsum.photos/seed/poster/320/240.jpg',
             },
           ],
           nextPage: null,
@@ -113,7 +113,7 @@ describe('Masonry slots + media rendering', () => {
 
       const video = wrapper.find('video')
       expect(video.exists()).toBe(true)
-      expect(video.attributes('poster')).toBe('https://picsum.photos/seed/poster/320/240')
+      expect(video.attributes('poster')).toBe('https://picsum.photos/seed/poster/320/240.jpg')
 
       const source = wrapper.find('video source')
       expect(source.exists()).toBe(true)
