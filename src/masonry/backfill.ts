@@ -52,6 +52,12 @@ export function clampDelayMs(n: number): number {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
 }
 
+function abortError(): Error {
+  const e = new Error('aborted')
+  e.name = 'AbortError'
+  return e
+}
+
 export function createBackfillBatchLoader<TItem, TPageToken>(options: {
   getContent: BackfillGetContentFn<TItem, TPageToken>
   markEnterFromLeft: (items: TItem[]) => void
@@ -60,6 +66,7 @@ export function createBackfillBatchLoader<TItem, TPageToken>(options: {
   isEnabled: () => boolean
   getPageSize: () => number
   getRequestDelayMs: () => number
+  getCancelToken?: () => number
 }) {
   async function sleepWithCountdown(ms: number) {
     const total = clampDelayMs(ms)
@@ -99,6 +106,12 @@ export function createBackfillBatchLoader<TItem, TPageToken>(options: {
     const enabled = options.isEnabled()
     const delayMs = clampDelayMs(options.getRequestDelayMs())
     const previousPage = options.stats.value.page ?? null
+    const cancelToken = options.getCancelToken?.() ?? null
+    const isCanceled = () =>
+      cancelToken !== null && options.getCancelToken && options.getCancelToken() !== cancelToken
+    const assertNotCanceled = () => {
+      if (isCanceled()) throw abortError()
+    }
 
     // First, use any carryover items from previous backfill fetches.
     const collected: TItem[] = []
@@ -133,6 +146,7 @@ export function createBackfillBatchLoader<TItem, TPageToken>(options: {
     let isBackfillActive = false
 
     while (collected.length < target && next != null) {
+      assertNotCanceled()
       const pageToLoad = next
 
       // Only consider these as "backfill requests" after we have actually
@@ -156,6 +170,7 @@ export function createBackfillBatchLoader<TItem, TPageToken>(options: {
       }
 
       const result = await options.getContent(pageToLoad)
+      assertNotCanceled()
 
       pages.push(pageToLoad)
 
@@ -212,6 +227,7 @@ export function createBackfillBatchLoader<TItem, TPageToken>(options: {
 
       if (isBackfillActive && collected.length < target && next != null) {
         await sleepWithCountdown(delayMs)
+        assertNotCanceled()
       }
     }
 

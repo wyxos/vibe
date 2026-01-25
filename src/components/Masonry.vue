@@ -404,6 +404,7 @@ const MAX_GETCONTENT_RETRIES = 5
 const BASE_RETRY_DELAY_MS = 1000
 
 let feedGeneration = 0
+let backfillCancelToken = 0
 
 let lastPrefetchScrollTop = 0
 let lastPrefetchScrollHeight = 0
@@ -634,6 +635,7 @@ const backfillLoader = createBackfillBatchLoader<MasonryItemBase, PageToken>({
   isEnabled: () => props.mode === 'backfill',
   getPageSize: () => props.pageSize,
   getRequestDelayMs: () => props.backfillRequestDelayMs,
+  getCancelToken: () => backfillCancelToken,
 })
 
 const isItemsControlled = computed(() => props.items !== undefined)
@@ -768,6 +770,7 @@ async function removeItem(itemOrId: string | MasonryItemBase) {
 function cancel() {
   // Soft-cancel in-flight requests by bumping generation. Loaders will treat this as AbortError.
   feedGeneration += 1
+  backfillCancelToken += 1
   loadNextInFlight = null
   loadFirstInFlight = null
   isLoadingInitial.value = false
@@ -1031,6 +1034,7 @@ function makeInitialBackfillStats(): BackfillStats {
 
 function resetRuntimeState() {
   feedGeneration += 1
+  backfillCancelToken += 1
   loadNextInFlight = null
   loadFirstInFlight = null
   lastPrefetchScrollTop = 0

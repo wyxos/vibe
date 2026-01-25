@@ -2,12 +2,26 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { h } from 'vue'
 
-import type { BackfillStats } from '@/masonry/types'
+import type {
+  BackfillStats,
+  GetContentFn,
+  GetContentResult,
+  MasonryItemBase,
+  PageToken,
+} from '@/masonry/types'
 import Masonry from '@/components/Masonry.vue'
 import MasonryItem from '@/components/MasonryItem.vue'
 
 function flushPromises() {
   return new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
 }
 
 function makeItem(id: string) {
@@ -312,5 +326,66 @@ describe('Masonry backfill', () => {
     expect(debug?.bufferSize).toBe(0)
 
     wrapper.unmount()
+  })
+
+  it('stops backfill requests after cancel is called', async () => {
+    let wrapper: ReturnType<typeof mount> | null = null
+    type GetContent = GetContentFn<MasonryItemBase>
+    const page1 = createDeferred<GetContentResult<MasonryItemBase>>()
+
+    const getContent: GetContent = vi.fn(async (pageToken: PageToken) => {
+      const token = Number(pageToken)
+
+      if (token === 1) {
+        return page1.promise
+      }
+
+      if (token === 2) {
+        return {
+          items: Array.from({ length: 20 }, (_, i) => makeItem(`p2-${i}`)),
+          nextPage: 3,
+        }
+      }
+
+      return { items: [], nextPage: null }
+    }) as GetContent
+
+    try {
+      wrapper = mount(Masonry, {
+        attachTo: document.body,
+        props: {
+          getContent,
+          mode: 'backfill',
+          page: 1,
+          pageSize: 20,
+          backfillRequestDelayMs: 0,
+        },
+        slots: {
+          default: () => h(MasonryItem),
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+      await Promise.resolve()
+
+      expect(getContent).toHaveBeenCalledTimes(1)
+
+      const exposed = getExposed<{ cancel: () => void }>(
+        wrapper as unknown as WrapperWithExposed
+      )
+      exposed.cancel()
+
+      page1.resolve({
+        items: Array.from({ length: 5 }, (_, i) => makeItem(`p1-${i}`)),
+        nextPage: 2,
+      })
+
+      await Promise.resolve()
+      await wrapper.vm.$nextTick()
+
+      expect(getContent).toHaveBeenCalledTimes(1)
+    } finally {
+      wrapper?.unmount()
+    }
   })
 })
