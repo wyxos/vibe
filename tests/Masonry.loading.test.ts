@@ -89,6 +89,54 @@ describe('Masonry loading resilience', () => {
     vi.useRealTimers()
   })
 
+  it('suppresses prefetch after removals until the user scrolls down', async () => {
+    const getContent = vi.fn<GetContentFn<MasonryItemBase>>(async (pageToken) => {
+      const token = String(pageToken)
+      if (token === '1') {
+        return { items: [makeItem('a'), makeItem('b'), makeItem('c')], nextPage: '2' }
+      }
+      if (token === '2') {
+        return { items: [makeItem('d')], nextPage: null }
+      }
+      return { items: [], nextPage: null }
+    })
+
+    const wrapper = mount(Masonry, {
+      attachTo: document.body,
+      props: { getContent: getContent as any, page: 1, itemWidth: 300 },
+      slots: {
+        default: () => h(MasonryItem),
+      },
+    })
+
+    await flushMicrotasks()
+    await wrapper.vm.$nextTick()
+
+    await (wrapper.vm as any).remove(['a', 'b', 'c'])
+    await wrapper.vm.$nextTick()
+
+    const scroller = wrapper.get('[data-testid="items-scroll-container"]')
+    Object.defineProperty(scroller.element, 'scrollHeight', { value: 1000, configurable: true })
+    Object.defineProperty(scroller.element, 'clientHeight', { value: 1000, configurable: true })
+    Object.defineProperty(scroller.element, 'scrollTop', { value: 0, configurable: true })
+
+    await scroller.trigger('scroll')
+    await flushMicrotasks()
+    await wrapper.vm.$nextTick()
+
+    const page2CallsAfterRemoval = getContent.mock.calls.filter((c) => String(c[0]) === '2').length
+    expect(page2CallsAfterRemoval).toBe(0)
+
+    Object.defineProperty(scroller.element, 'scrollTop', { value: 10, configurable: true })
+    await scroller.trigger('scroll')
+    await flushMicrotasks()
+    await wrapper.vm.$nextTick()
+
+    const page2CallsAfterScroll = getContent.mock.calls.filter((c) => String(c[0]) === '2').length
+    expect(page2CallsAfterScroll).toBe(1)
+
+    wrapper.unmount()
+  })
   it('ignores stale in-flight results after page prop changes', async () => {
     vi.useFakeTimers()
 
@@ -138,3 +186,5 @@ describe('Masonry loading resilience', () => {
     vi.useRealTimers()
   })
 })
+
+

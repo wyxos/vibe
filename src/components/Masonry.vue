@@ -55,6 +55,7 @@ const emit = defineEmits<{
   (e: 'update:items', items: MasonryItemBase[]): void
   (e: 'preloaded', items: MasonryItemBase[]): void
   (e: 'failures', payloads: Array<{ item: MasonryItemBase; error: unknown }>): void
+  (e: 'removed', payload: { items: MasonryItemBase[]; ids: string[] }): void
 }>()
 
 const attrs = useAttrs()
@@ -408,6 +409,7 @@ let backfillCancelToken = 0
 
 let lastPrefetchScrollTop = 0
 let lastPrefetchScrollHeight = 0
+let suppressPrefetchUntilScrollDown = false
 
 function isAbortError(err: unknown): boolean {
   return err instanceof Error && err.name === 'AbortError'
@@ -530,6 +532,8 @@ function insertItemsByOriginalIndex(
 
 async function restoreItems(itemsToRestore: MasonryItemBase[]) {
   if (!itemsToRestore.length) return
+
+  suppressPrefetchUntilScrollDown = true
 
   // Animate restored cards the same way as new appends.
   markEnterFromTop(itemsToRestore)
@@ -687,6 +691,7 @@ async function remove(itemsOrIds: string | MasonryItemBase | Array<string | Maso
   const removeSet = new Set(ids as string[])
 
   // Track removed items (as a batch) so callers can undo/restore.
+  const removedItems: MasonryItemBase[] = []
   const batchIds: string[] = []
   for (const id of removeSet) {
     const idx = layoutIndexById.value.get(id)
@@ -695,8 +700,12 @@ async function remove(itemsOrIds: string | MasonryItemBase | Array<string | Maso
     if (!item) continue
     removedPoolById.set(id, item)
     batchIds.push(id)
+    removedItems.push(item)
   }
-  if (batchIds.length) removalHistory.push(batchIds)
+  if (batchIds.length) {
+    removalHistory.push(batchIds)
+    suppressPrefetchUntilScrollDown = true
+  }
 
   // Snapshot positions for the currently rendered subset.
   const oldPosById = snapshotVisiblePositions()
@@ -760,6 +769,9 @@ async function remove(itemsOrIds: string | MasonryItemBase | Array<string | Maso
         leavingClones.value = leavingClones.value.filter((c) => !cloneIds.has(c.id))
       }, LEAVE_MOTION_MS)
     })
+  }
+  if (removedItems.length) {
+    emit('removed', { items: removedItems, ids: batchIds })
   }
 }
 
@@ -981,10 +993,16 @@ function maybeLoadMoreOnScroll() {
   // which can clamp scrollTop and fire a scroll event even if the user didn't scroll.
   const prevScrollTop = lastPrefetchScrollTop
   const prevScrollHeight = lastPrefetchScrollHeight
+  const userScrolledDown = nextScrollTop > prevScrollTop
   const contentShrank = prevScrollHeight > 0 && nextScrollHeight < prevScrollHeight
   lastPrefetchScrollTop = nextScrollTop
   lastPrefetchScrollHeight = nextScrollHeight
-  if (contentShrank && nextScrollTop <= prevScrollTop) return
+  if (suppressPrefetchUntilScrollDown) {
+    if (!userScrolledDown) return
+    suppressPrefetchUntilScrollDown = false
+  }
+
+  if (contentShrank && !userScrolledDown) return
 
   const distanceFromBottom = nextScrollHeight - (nextScrollTop + nextViewportHeight)
   if (distanceFromBottom <= props.prefetchThresholdPx) void loadNextPage()
@@ -1039,6 +1057,7 @@ function resetRuntimeState() {
   loadFirstInFlight = null
   lastPrefetchScrollTop = 0
   lastPrefetchScrollHeight = 0
+  suppressPrefetchUntilScrollDown = false
   nextOriginalIndex = 0
   removedPoolById.clear()
   removalHistory.length = 0
@@ -1135,6 +1154,8 @@ function connectViewport() {
   if (!el) return
   syncViewportMeasures(el)
   scrollTop.value = el.scrollTop
+  lastPrefetchScrollTop = el.scrollTop
+  lastPrefetchScrollHeight = el.scrollHeight
   resizeObserver?.observe(el)
 }
 
@@ -1429,3 +1450,4 @@ const sectionClass = computed(() => {
     </div>
   </section>
 </template>
+

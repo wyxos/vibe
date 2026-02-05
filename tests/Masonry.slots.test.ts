@@ -470,6 +470,66 @@ describe('Masonry slots + media rendering', () => {
     wrapper.unmount()
   })
 
+  it('emits removed event with ids and items', async () => {
+    const getContent = vi.fn(async () => {
+      return {
+        items: [
+          {
+            id: 'a',
+            type: 'image',
+            reaction: null,
+            width: 320,
+            height: 240,
+            original: 'https://picsum.photos/seed/a/1600/1200',
+            preview: 'https://picsum.photos/seed/a/320/240',
+          },
+          {
+            id: 'b',
+            type: 'image',
+            reaction: null,
+            width: 320,
+            height: 240,
+            original: 'https://picsum.photos/seed/b/1600/1200',
+            preview: 'https://picsum.photos/seed/b/320/240',
+          },
+          {
+            id: 'c',
+            type: 'image',
+            reaction: null,
+            width: 320,
+            height: 240,
+            original: 'https://picsum.photos/seed/c/1600/1200',
+            preview: 'https://picsum.photos/seed/c/320/240',
+          },
+        ],
+        nextPage: null,
+      }
+    })
+
+    const wrapper = mount(Masonry, {
+      props: { getContent, page: 1, itemWidth: 300 },
+      slots: {
+        default: () => h(MasonryItem),
+      },
+      attachTo: document.body,
+    })
+
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    await (wrapper.vm as any).remove(['a', 'c'])
+    await wrapper.vm.$nextTick()
+
+    const events = wrapper.emitted('removed')
+    expect(events).toBeTruthy()
+    expect(events?.length).toBe(1)
+
+    const payload = events![0][0] as { ids: string[]; items: SlotItem[] }
+    expect(payload.ids).toEqual(['a', 'c'])
+    expect(payload.items.map((item) => item.id)).toEqual(['a', 'c'])
+
+    wrapper.unmount()
+  })
   it('can permanently forget removed items so they cannot be restored/undone after parent commits', async () => {
     const getContent = vi.fn(async () => {
       return {
@@ -755,3 +815,5 @@ describe('Masonry slots + media rendering', () => {
     globalThis.ResizeObserver = originalResizeObserver
   })
 })
+
+
