@@ -91,7 +91,10 @@ const aspectRatioStyle = computed(() => {
   return { aspectRatio: `${w} / ${h}` }
 })
 
-const isImage = computed(() => props.item?.type === 'image')
+// Anything that isn't explicitly a video should be treated as an image-like item.
+// This allows consumers to pass types like "audio" or "file" while still rendering
+// their `preview` as an <img> (and avoids falling back to <video> for unknown types).
+const isImage = computed(() => !isVideo.value)
 
 let io: IntersectionObserver | null = null
 let playbackIo: IntersectionObserver | null = null
