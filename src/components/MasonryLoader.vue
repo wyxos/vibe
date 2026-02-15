@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, defineComponent, onMounted, onUnmounted, ref } from 'vue'
-import { watch } from 'vue'
+import { computed, defineComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import MasonryVideoControls from '@/components/MasonryVideoControls.vue'
 import type { MasonryItemBase } from '@/masonry/types'
 import type {
@@ -236,6 +235,40 @@ function onError(err: unknown) {
   lastError.value = err
   emit('error', { item: props.item, error: err })
 }
+
+function markLoadedIfAlreadyReady(): void {
+  if (!shouldRenderMedia.value) return
+  if (isLoaded.value) return
+  if (isError.value) return
+
+  if (isImage.value) {
+    const el = imgEl.value
+    if (!el) return
+    if (!el.complete) return
+    if (el.naturalWidth > 0) {
+      onSuccess()
+    }
+    return
+  }
+
+  if (isVideo.value) {
+    const el = videoEl.value
+    // Some browsers can have metadata ready before the event listener is attached.
+    if (el && (el.readyState ?? 0) >= 1) {
+      handleVideoLoadedMetadata()
+    }
+  }
+}
+
+watch(
+  [shouldRenderMedia, () => props.item.preview, () => videoSrc.value],
+  () => {
+    if (!shouldRenderMedia.value) return
+    // If the asset is cached, the load/metadata event can be missed; re-check post-render.
+    void Promise.resolve().then(markLoadedIfAlreadyReady)
+  },
+  { flush: 'post' }
+)
 
 function handleVideoLoadedMetadata() {
   onSuccess()

@@ -103,6 +103,60 @@ describe('MasonryLoader', () => {
     wrapper.unmount()
   })
 
+  it('emits success when an image is already complete (cache hit) without relying on load event', async () => {
+    const { instances } = installMockIntersectionObserver()
+
+    const item: MasonryItemBase = {
+      id: 'img-cached',
+      type: 'image',
+      width: 320,
+      height: 240,
+      preview: 'https://example.com/cached.jpg',
+      original: 'https://example.com/original.jpg',
+    }
+
+    const proto = HTMLImageElement.prototype as unknown as Record<string, unknown>
+    const prevComplete = Object.getOwnPropertyDescriptor(proto, 'complete')
+    const prevNaturalWidth = Object.getOwnPropertyDescriptor(proto, 'naturalWidth')
+
+    Object.defineProperty(proto, 'complete', {
+      configurable: true,
+      get() {
+        return true
+      },
+    })
+    Object.defineProperty(proto, 'naturalWidth', {
+      configurable: true,
+      get() {
+        return 123
+      },
+    })
+
+    const restore = () => {
+      if (prevComplete) Object.defineProperty(proto, 'complete', prevComplete)
+      else delete proto.complete
+
+      if (prevNaturalWidth) Object.defineProperty(proto, 'naturalWidth', prevNaturalWidth)
+      else delete proto.naturalWidth
+    }
+
+    let wrapper: ReturnType<typeof mount> | null = null
+    try {
+      wrapper = mount(MasonryLoader, { props: { item } })
+
+      const io = instances[0]
+      io.trigger(0.5)
+      await wrapper.vm.$nextTick()
+
+      // Success should be emitted even if we never dispatch a load event.
+      await new Promise((r) => setTimeout(r, 0))
+      expect(wrapper.emitted('success')).toBeTruthy()
+    } finally {
+      wrapper?.unmount()
+      restore()
+    }
+  })
+
   it('shows error state when media fails', async () => {
     const { instances } = installMockIntersectionObserver()
 
