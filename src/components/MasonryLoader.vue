@@ -378,6 +378,7 @@ function handleVideoTimeUpdate() {
       <source
         :src="videoSrc"
         type="video/mp4"
+        @error="onError($event)"
       />
     </video>
 

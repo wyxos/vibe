@@ -212,4 +212,31 @@ describe('MasonryLoader', () => {
 
     wrapper.unmount()
   })
+
+  it('shows error state when a video source fails', async () => {
+    const { instances } = installMockIntersectionObserver()
+
+    const item: MasonryItemBase = {
+      id: 'vid-error',
+      type: 'video',
+      width: 320,
+      height: 240,
+      preview: 'https://example.com/broken.mp4',
+      original: 'https://example.com/original.mp4',
+    }
+
+    const wrapper = mount(MasonryLoader, { props: { item } })
+
+    const io = instances[0]
+    io.trigger(1)
+    await wrapper.vm.$nextTick()
+
+    await wrapper.find('video source').trigger('error')
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="masonry-loader-error"]').exists()).toBe(true)
+    expect(wrapper.emitted('error')).toBeTruthy()
+
+    wrapper.unmount()
+  })
 })

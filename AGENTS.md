@@ -54,3 +54,9 @@ npm run test:e2e
 - `npm run check` passes
 - `npm run build && npm run build:lib && npm run build:types` pass
 - If you touched UI/scrolling behavior: `npm run test:e2e`
+
+## WSL + Herd Runtime
+- Environment assumption: commands run from WSL on a Windows host where Laravel Herd manages primary PHP/Laravel services.
+- Before PHP/Laravel tasks, verify runtime resolution (`which php`, `php -v`).
+- If binaries/services are not available in WSL PATH, use Windows/Herd-aware invocation paths as needed.
+- For DB/service operations, confirm whether runtime/services are Windows-hosted before executing maintenance/debug commands.
