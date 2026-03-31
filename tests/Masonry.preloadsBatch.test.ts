@@ -39,7 +39,8 @@ describe('Masonry preload batching', () => {
       attachTo: document.body,
       props: { getContent, page: 1, itemWidth: 300 },
       slots: {
-        // Provide the required definition but no default slot so Masonry falls back to MasonryLoader.
+        // Provide the required definition but no custom loader or overlay slots
+        // so Masonry uses the built-in MasonryLoader.
         default: () => h(MasonryItem, { onPreloaded: onItemPreloaded, onFailed: onItemFailed }),
       },
     })

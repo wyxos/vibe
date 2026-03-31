@@ -21,8 +21,9 @@ const isCodeSheetOpen = ref(false)
 
 const showcasedCode = `<script setup lang="ts">
 import { computed, ref } from 'vue'
+import '@wyxos/vibe/style.css'
 
-import Masonry from '@wyxos/vibe'
+import { Masonry, MasonryItem } from '@wyxos/vibe'
 import { type FeedItem, fetchSearchPage, makeSearchPageToken, type PageToken } from './server'
 
 const items = ref<FeedItem[]>([])
@@ -49,7 +50,7 @@ function applySearch() {
 
   <Masonry v-model:items="items" :get-content="getContent" :page="pageToken">
     <MasonryItem>
-      <template #default="{ item }">{{ item.id }}</template>
+      <template #overlay="{ item }">{{ item.id }}</template>
     </MasonryItem>
   </Masonry>
 </template>

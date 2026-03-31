@@ -24,8 +24,9 @@ const isCodeSheetOpen = ref(false)
 
 const showcasedCode = `<script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import '@wyxos/vibe/style.css'
 
-import Masonry from '@wyxos/vibe'
+import { Masonry, MasonryItem } from '@wyxos/vibe'
 import { type FeedItem, fetchPage, type PageToken } from './server'
 import type { MasonryRestoredPages } from '@wyxos/vibe'
 
@@ -55,7 +56,7 @@ onMounted(async () => {
     :restored-pages="restoredPages"
   >
     <MasonryItem>
-      <template #default="{ item }">{{ item.id }}</template>
+      <template #overlay="{ item }">{{ item.id }}</template>
     </MasonryItem>
   </Masonry>
 </template>

@@ -108,4 +108,50 @@ describe('MasonryItem definition', () => {
       vi.unstubAllGlobals()
     }
   })
+
+  it('ignores the removed MasonryItem default slot body', async () => {
+    vi.stubGlobal('IntersectionObserver', ImmediateIntersectionObserver as unknown as typeof IntersectionObserver)
+
+    try {
+      const getContent = vi.fn(async () => {
+        return {
+          items: [
+            {
+              id: 'img-legacy',
+              type: 'image',
+              width: 320,
+              height: 240,
+              original: 'https://example.com/original-legacy.jpg',
+              preview: 'https://example.com/preview-legacy.jpg',
+            },
+          ],
+          nextPage: null,
+        }
+      })
+
+      const wrapper = mount(Masonry, {
+        props: { getContent, page: 1, itemWidth: 300 },
+        slots: {
+          default: () =>
+            h(MasonryItem, null, {
+              default: ({ item }: { item: { id: string } }) =>
+                h('div', { 'data-testid': 'legacy-default-body' }, `Legacy:${item.id}`),
+            }),
+        },
+        attachTo: document.body,
+      })
+
+      await flushPromises()
+      await wrapper.vm.$nextTick()
+
+      expect(getContent).toHaveBeenCalledTimes(1)
+      expect(wrapper.find('img').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="legacy-default-body"]').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('Legacy:img-legacy')
+
+      wrapper.unmount()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
 })
