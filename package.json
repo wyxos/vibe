@@ -25,6 +25,7 @@
   "type": "module",
   "main": "./lib/index.cjs",
   "module": "./lib/index.js",
+  "style": "./lib/style.css",
   "types": "./lib/index.d.ts",
   "exports": {
     ".": {
@@ -32,6 +33,7 @@
       "import": "./lib/index.js",
       "require": "./lib/index.cjs"
     },
+    "./style.css": "./lib/style.css",
     "./package.json": "./package.json"
   },
   "files": [

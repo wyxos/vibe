@@ -1,3 +1,4 @@
+import './library.css'
 import type { App, Plugin } from 'vue'
 import Masonry from './components/Masonry.vue'
 import MasonryItem from './components/MasonryItem.vue'

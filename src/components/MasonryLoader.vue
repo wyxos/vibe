@@ -287,55 +287,57 @@ function handleVideoTimeUpdate() {
 <template>
   <div
     ref="rootEl"
-    class="relative bg-slate-100"
+    class="vibe-loader"
     :style="aspectRatioStyle"
   >
     <div
       v-if="shouldRenderMedia && !isLoaded && !isError"
       data-testid="masonry-loader-spinner"
-      class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1"
+      class="vibe-loader__pending"
     >
-      <SlotRenderer
-        v-if="props.loaderSlotFn"
-        :slot-fn="props.loaderSlotFn"
-        :slot-props="({ item: props.item, remove } satisfies MasonryItemLoaderSlotProps)"
-      />
-      <svg
-        v-else
-        class="h-5 w-5 animate-spin text-slate-500"
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-      >
-        <circle
-          class="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="4"
+      <div class="vibe-loader__pending-inner">
+        <SlotRenderer
+          v-if="props.loaderSlotFn"
+          :slot-fn="props.loaderSlotFn"
+          :slot-props="({ item: props.item, remove } satisfies MasonryItemLoaderSlotProps)"
         />
-        <path
-          class="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"
-        />
-      </svg>
+        <svg
+          v-else
+          class="vibe-spinner vibe-spinner--lg"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="4"
+          />
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"
+          />
+        </svg>
+      </div>
     </div>
 
     <div
       v-else-if="shouldRenderMedia && isError"
       data-testid="masonry-loader-error"
-      class="absolute inset-0 z-20 grid place-items-center p-3 pointer-events-none"
+      class="vibe-loader__error"
     >
-      <div class="pointer-events-auto flex flex-col items-center justify-center gap-2">
+      <div class="vibe-loader__error-inner">
         <SlotRenderer
           v-if="props.errorSlotFn"
           :slot-fn="props.errorSlotFn"
           :slot-props="({ item: props.item, remove, error: lastError } satisfies MasonryItemErrorSlotProps)"
         />
         <template v-else>
-          <p class="text-center text-xs font-medium text-red-700">Error {{ lastError }}</p>
+          <p>Error {{ lastError }}</p>
         </template>
       </div>
     </div>
@@ -345,8 +347,8 @@ function handleVideoTimeUpdate() {
       :key="props.item.id + ':img'"
       ref="imgEl"
       :class="[
-        'h-full w-full object-cover transition-opacity duration-300',
-        isLoaded ? 'opacity-100' : 'opacity-0',
+        'vibe-loader__media',
+        isLoaded ? 'vibe-loader__media--loaded' : '',
       ]"
       :src="props.item.preview as string"
       :width="props.item.width"
@@ -361,8 +363,8 @@ function handleVideoTimeUpdate() {
       v-else-if="shouldRenderMedia && !isError"
       :key="props.item.id + ':vid'"
       :class="[
-        'h-full w-full object-cover transition-opacity duration-300',
-        isLoaded ? 'opacity-100' : 'opacity-0',
+        'vibe-loader__media',
+        isLoaded ? 'vibe-loader__media--loaded' : '',
       ]"
       :poster="videoPoster"
       ref="videoEl"
@@ -384,7 +386,7 @@ function handleVideoTimeUpdate() {
 
     <div
       v-if="shouldRenderMedia && isVideo && !isError"
-      class="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-2 pb-2 opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
+      class="vibe-loader__controls"
     >
       <MasonryVideoControls
         :duration="videoDuration"

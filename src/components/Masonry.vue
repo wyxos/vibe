@@ -1257,29 +1257,26 @@ watch(
 
 const sectionClass = computed(() => {
   const userClass = attrs.class
-  return [
-    'mt-8 flex min-h-0 flex-1 flex-col rounded-2xl border border-slate-200/70 bg-white/70 p-5 shadow-sm backdrop-blur',
-    userClass,
-  ]
+  return ['vibe-masonry', userClass]
 })
 </script>
 
 <template>
   <section v-bind="passthroughAttrs" :class="sectionClass">
-    <div class="hidden">
+    <div class="vibe-masonry__definitions">
       <slot />
     </div>
     <div
       ref="scrollViewportRef"
       data-testid="items-scroll-container"
-      class="mt-4 min-h-0 flex-1 overflow-auto"
+      class="vibe-masonry__viewport"
       :style="{ paddingRight: gapX + 'px' }"
       @scroll="maybeLoadMoreOnScroll"
     >
-      <div v-if="isLoadingInitial" class="flex h-full items-center justify-center">
-        <div class="inline-flex items-center gap-3 text-sm text-slate-600">
+      <div v-if="isLoadingInitial" class="vibe-masonry__initial">
+        <div class="vibe-masonry__status-row">
           <svg
-            class="h-5 w-5 animate-spin text-slate-500"
+            class="vibe-spinner vibe-spinner--lg"
             viewBox="0 0 24 24"
             aria-hidden="true"
           >
@@ -1301,14 +1298,14 @@ const sectionClass = computed(() => {
           <span>Loading…</span>
         </div>
       </div>
-      <p v-else-if="error" class="text-sm font-medium text-red-700">Error: {{ error }}</p>
+      <p v-else-if="error" class="vibe-masonry__error">Error: {{ error }}</p>
 
-      <div v-else class="relative" :style="{ height: containerHeight + 'px' }">
+      <div v-else class="vibe-masonry__content" :style="{ height: containerHeight + 'px' }">
         <article
           v-for="idx in visibleIndices"
           :key="itemsState[idx].id"
           data-testid="item-card"
-          class="absolute overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm"
+          class="vibe-masonry__card"
           :style="{
             width: columnWidth + 'px',
             transition: getCardTransition(itemsState[idx].id),
@@ -1319,7 +1316,7 @@ const sectionClass = computed(() => {
           <div
             v-if="hasHeaderSlot || headerHeight > 0"
             data-testid="item-header-container"
-            class="w-full"
+            class="vibe-masonry__section"
             :style="headerStyle"
           >
             <SlotRenderer
@@ -1329,7 +1326,7 @@ const sectionClass = computed(() => {
           </div>
 
           <div
-            class="group relative"
+            class="vibe-masonry__media"
             @mouseenter="handleCardMouseEnter(itemsState[idx].id)"
             @mouseleave="handleCardMouseLeave(itemsState[idx].id)"
           >
@@ -1343,7 +1340,7 @@ const sectionClass = computed(() => {
               @error="handleItemFailed"
             />
 
-            <div v-if="hasOverlaySlot" class="pointer-events-auto absolute inset-0 z-10">
+            <div v-if="hasOverlaySlot" class="vibe-masonry__overlay">
               <SlotRenderer
                 :slot-fn="itemOverlaySlotFn"
                 :slot-props="({ item: itemsState[idx], remove: () => removeItem(itemsState[idx]) } satisfies MasonryItemSlotProps)"
@@ -1354,7 +1351,7 @@ const sectionClass = computed(() => {
           <div
             v-if="hasFooterSlot || footerHeight > 0"
             data-testid="item-footer-container"
-            class="w-full"
+            class="vibe-masonry__section"
             :style="footerStyle"
           >
             <SlotRenderer
@@ -1368,7 +1365,7 @@ const sectionClass = computed(() => {
           v-for="c in leavingClones"
           :key="c.id + ':leaving'"
           data-testid="item-card-leaving"
-          class="pointer-events-none absolute overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm"
+          class="vibe-masonry__leaving-card"
           :style="{
             width: c.width + 'px',
             transition: 'transform ' + LEAVE_MOTION_MS + 'ms ease-out',
@@ -1380,7 +1377,7 @@ const sectionClass = computed(() => {
           <div
             v-if="hasHeaderSlot || headerHeight > 0"
             data-testid="item-header-container"
-            class="w-full"
+            class="vibe-masonry__section"
             :style="headerStyle"
           >
             <SlotRenderer
@@ -1389,7 +1386,7 @@ const sectionClass = computed(() => {
             />
           </div>
 
-          <div class="relative">
+          <div class="vibe-masonry__media">
             <MasonryLoader
               :item="c.item"
               :remove="() => {}"
@@ -1398,7 +1395,7 @@ const sectionClass = computed(() => {
               :hovered="false"
             />
 
-            <div v-if="hasOverlaySlot" class="pointer-events-auto absolute inset-0 z-10">
+            <div v-if="hasOverlaySlot" class="vibe-masonry__overlay">
               <SlotRenderer
                 :slot-fn="itemOverlaySlotFn"
                 :slot-props="({ item: c.item, remove: () => {} } satisfies MasonryItemSlotProps)"
@@ -1409,7 +1406,7 @@ const sectionClass = computed(() => {
           <div
             v-if="hasFooterSlot || footerHeight > 0"
             data-testid="item-footer-container"
-            class="w-full"
+            class="vibe-masonry__section"
             :style="footerStyle"
           >
             <SlotRenderer
@@ -1420,10 +1417,10 @@ const sectionClass = computed(() => {
         </article>
       </div>
 
-      <div class="mt-4 pb-2 text-center text-xs text-slate-600">
-        <span v-if="isLoadingNext" class="inline-flex items-center justify-center gap-2">
+      <div class="vibe-masonry__footer-status">
+        <span v-if="isLoadingNext" class="vibe-masonry__footer-status-row">
           <svg
-            class="h-4 w-4 animate-spin text-slate-500"
+            class="vibe-spinner vibe-spinner--sm"
             viewBox="0 0 24 24"
             aria-hidden="true"
           >

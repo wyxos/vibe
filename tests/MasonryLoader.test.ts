@@ -87,7 +87,7 @@ describe('MasonryLoader', () => {
     expect(img.attributes('src')).toBe(item.preview)
 
     // Media starts hidden until it succeeds.
-    expect(img.classes()).toContain('opacity-0')
+    expect(img.classes()).not.toContain('vibe-loader__media--loaded')
 
     // Shows spinner until the media fires success.
     expect(wrapper.find('[data-testid="masonry-loader-spinner"]').exists()).toBe(true)
@@ -98,7 +98,7 @@ describe('MasonryLoader', () => {
     expect(wrapper.find('[data-testid="masonry-loader-spinner"]').exists()).toBe(false)
 
     // Media fades in on success.
-    expect(wrapper.find('img').classes()).toContain('opacity-100')
+    expect(wrapper.find('img').classes()).toContain('vibe-loader__media--loaded')
 
     wrapper.unmount()
   })

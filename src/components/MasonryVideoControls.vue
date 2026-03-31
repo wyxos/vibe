@@ -129,7 +129,7 @@ defineExpose({
 <template>
   <div
     ref="rootEl"
-    class="w-full select-none"
+    class="vibe-video-controls"
     role="slider"
     tabindex="0"
     :aria-label="props.ariaLabel"
@@ -140,7 +140,7 @@ defineExpose({
   >
     <div
       ref="trackEl"
-      class="relative h-2 w-full cursor-pointer rounded-full bg-slate-200"
+      class="vibe-video-controls__track"
       @pointerdown="handlePointerDown"
       @pointermove="handlePointerMove"
       @pointerup="handlePointerUp"
@@ -148,12 +148,12 @@ defineExpose({
       @pointerleave="handlePointerUp"
     >
       <div
-        class="absolute inset-y-0 left-0 rounded-full bg-slate-500"
+        class="vibe-video-controls__fill"
         :style="{ width: `${percent * 100}%` }"
       ></div>
       <div
         ref="thumbEl"
-        class="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-700 shadow"
+        class="vibe-video-controls__thumb"
         :style="{ left: `${percent * 100}%` }"
         aria-hidden="true"
       ></div>

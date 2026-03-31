@@ -17,6 +17,7 @@ export default defineConfig({
       name: 'VibeMasonry',
       formats: ['es', 'cjs'],
       fileName: (format) => (format === 'es' ? 'index.js' : 'index.cjs'),
+      cssFileName: 'style',
     },
     rollupOptions: {
       external: ['vue'],
