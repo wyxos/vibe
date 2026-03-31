@@ -54,6 +54,7 @@ const isError = ref(false)
 const lastError = ref<unknown>(null)
 
 const isVideo = computed(() => props.item?.type === 'video')
+const mediaErrorLabel = computed(() => (isVideo.value ? 'video' : 'image'))
 const videoPoster = computed(() => {
   if (!isVideo.value) return undefined
   const preview = props.item?.preview
@@ -94,6 +95,39 @@ const aspectRatioStyle = computed(() => {
 // This allows consumers to pass types like "audio" or "file" while still rendering
 // their `preview` as an <img> (and avoids falling back to <video> for unknown types).
 const isImage = computed(() => !isVideo.value)
+
+function getErrorMessage(err: unknown, mediaLabel: string): string {
+  const fallback = `Failed to load ${mediaLabel}.`
+
+  if (typeof err === 'string') {
+    const next = err.trim()
+    return next || fallback
+  }
+
+  if (err instanceof Error) {
+    const next = err.message?.trim()
+    return next || fallback
+  }
+
+  if (typeof err === 'object' && err !== null) {
+    if ('message' in err && typeof err.message === 'string') {
+      const next = err.message.trim()
+      if (next) return next
+    }
+
+    if (err instanceof Event) {
+      return fallback
+    }
+  }
+
+  if (typeof err === 'number' || typeof err === 'boolean' || typeof err === 'bigint') {
+    return String(err)
+  }
+
+  return fallback
+}
+
+const errorMessage = computed(() => getErrorMessage(lastError.value, mediaErrorLabel.value))
 
 let io: IntersectionObserver | null = null
 let playbackIo: IntersectionObserver | null = null
@@ -337,7 +371,7 @@ function handleVideoTimeUpdate() {
           :slot-props="({ item: props.item, remove, error: lastError } satisfies MasonryItemErrorSlotProps)"
         />
         <template v-else>
-          <p>Error {{ lastError }}</p>
+          <p>Error: {{ errorMessage }}</p>
         </template>
       </div>
     </div>

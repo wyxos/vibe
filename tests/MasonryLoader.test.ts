@@ -179,7 +179,8 @@ describe('MasonryLoader', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('[data-testid="masonry-loader-error"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Error')
+    expect(wrapper.text()).toContain('Error: Failed to load image.')
+    expect(wrapper.text()).not.toContain('[object Event]')
 
     wrapper.unmount()
   })
@@ -235,6 +236,8 @@ describe('MasonryLoader', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('[data-testid="masonry-loader-error"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Error: Failed to load video.')
+    expect(wrapper.text()).not.toContain('[object Event]')
     expect(wrapper.emitted('error')).toBeTruthy()
 
     wrapper.unmount()
