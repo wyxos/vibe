@@ -49,10 +49,15 @@ try {
 
   const forbiddenPatterns = [
     /^package\/lib\/App\.vue\.d\.ts$/,
+    /^package\/lib\/router\.d\.ts$/,
+    /^package\/lib\/main\.d\.ts$/,
+    /^package\/lib\/demo\//,
+    /^package\/lib\/pages\//,
     /^package\/lib\/apple-touch-icon-/,
     /^package\/lib\/favicon/,
     /^package\/lib\/logo(?:-dark|-light)?\.svg$/,
     /^package\/lib\/manifest\.json$/,
+    /^package\/lib\/[^/]+\.(?:png|jpe?g|gif|webp|ico|svg|json)$/,
   ]
 
   const missingEntries = requiredEntries.filter((entry) => !tarEntries.has(entry))

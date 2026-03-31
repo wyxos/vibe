@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 
 import { type FeedItem, fetchPage, type PageToken } from '@/demo/fakeServer'
+import { highlightVueSnippet, useCopyToClipboard } from '@/demo/codeSheet'
 import Masonry from '@/components/Masonry.vue'
 import MasonryItem from '@/components/MasonryItem.vue'
 import {
@@ -21,8 +22,6 @@ useExposeDebugRef(masonryRef)
 const initialPageToken = getInitialPageToken('page', 1)
 
 const isCodeSheetOpen = ref(false)
-const copyStatus = ref<'idle' | 'copied'>('idle')
-let copyResetTimeout: number | null = null
 
 const showcasedCode = `<script setup lang="ts">
 import { computed, ref } from 'vue'
@@ -103,71 +102,8 @@ async function getContent(pageToken: PageToken) {
 </template>
 `
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
-}
-
-function highlightVueSnippet(source: string): string {
-  const escaped = escapeHtml(source)
-
-  // Minimal highlighting for Vue template-ish code using Tailwind tokens.
-  const withMustache = escaped.replaceAll(
-    /\{\{([\s\S]*?)\}\}/g,
-    '<span class="text-violet-700">{{</span><span class="text-slate-900">$1</span><span class="text-violet-700">}}</span>'
-  )
-
-  const withStrings = withMustache.replaceAll(
-    /(&quot;[\s\S]*?&quot;|&#39;[\s\S]*?&#39;)/g,
-    '<span class="text-emerald-700">$1</span>'
-  )
-
-  const withTags = withStrings.replaceAll(
-    /(&lt;\/?)([A-Za-z][A-Za-z0-9-]*)([\s\S]*?)(&gt;)/g,
-    (_m, p1, tag, rest, p4) => {
-      const highlightedRest = String(rest)
-        .replaceAll(/\s(v-[a-zA-Z0-9-]+|:[a-zA-Z0-9-]+|@[a-zA-Z0-9-]+|#[a-zA-Z0-9-]+)/g, ' <span class="text-blue-700">$1</span>')
-        .replaceAll(/\s([a-zA-Z_:][a-zA-Z0-9_:\-.]*)(=)/g, ' <span class="text-blue-700">$1</span>$2')
-
-      return `<span class="text-slate-500">${p1}</span><span class="text-cyan-700">${tag}</span>${highlightedRest}<span class="text-slate-500">${p4}</span>`
-    }
-  )
-
-  return withTags
-}
-
 const highlightedCode = computed(() => highlightVueSnippet(showcasedCode))
-
-async function copyShowcasedCode() {
-  if (copyResetTimeout) {
-    window.clearTimeout(copyResetTimeout)
-    copyResetTimeout = null
-  }
-
-  try {
-    await navigator.clipboard.writeText(showcasedCode)
-  } catch {
-    const textarea = document.createElement('textarea')
-    textarea.value = showcasedCode
-    textarea.setAttribute('readonly', '')
-    textarea.style.position = 'fixed'
-    textarea.style.left = '-9999px'
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textarea)
-  }
-
-  copyStatus.value = 'copied'
-  copyResetTimeout = window.setTimeout(() => {
-    copyStatus.value = 'idle'
-    copyResetTimeout = null
-  }, 1500)
-}
+const { copyStatus, copy: copyShowcasedCode } = useCopyToClipboard(() => showcasedCode)
 
 function getPageLabelFromId(id: string | null | undefined) {
   if (!id) return null
