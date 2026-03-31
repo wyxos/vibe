@@ -9,6 +9,12 @@
     "outDir": "./lib",
     "stripInternal": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
-    "exclude": ["tests/**", "src/main.ts", "src/router.ts", "src/pages/**", "src/demo/**"]
+  "include": [
+    "src/env.d.ts",
+    "src/index.ts",
+    "src/components/**/*.ts",
+    "src/components/**/*.vue",
+    "src/masonry/**/*.ts"
+  ],
+  "exclude": ["tests/**"]
 }
