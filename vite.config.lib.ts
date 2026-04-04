@@ -15,7 +15,7 @@ export default defineConfig({
     emptyOutDir: true,
     lib: {
       entry: fileURLToPath(new URL('./src/index.ts', import.meta.url)),
-      name: 'VibeMasonry',
+      name: 'Vibe',
       formats: ['es', 'cjs'],
       fileName: (format) => (format === 'es' ? 'index.js' : 'index.cjs'),
       cssFileName: 'style',

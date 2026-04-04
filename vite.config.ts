@@ -10,9 +10,4 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
-  test: {
-    environment: 'jsdom',
-    include: ['tests/**/*.test.{js,ts}'],
-    exclude: ['tests/e2e/**', '**/node_modules/**'],
-  },
 })

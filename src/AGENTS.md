@@ -2,10 +2,10 @@
 
 ## Package Identity
 
-This folder contains the **source of truth** for the Vibe library and its demo app.
+This folder contains the **source of truth** for the rebuilt Vibe library and its demo shell.
 
 - Library entrypoint: `src/index.ts`
-- Demo shell/router: `src/App.vue`, `src/router.ts`, `src/pages/**`
+- Demo shell: `src/App.vue`, `src/main.ts`, `src/style.css`
 
 ## Setup & Run
 
@@ -25,27 +25,18 @@ npm run build:types
 
 ## Patterns & Conventions
 
-- ✅ DO: Keep reusable library behavior in `src/components/Masonry.vue` + `src/masonry/**`.
-- ✅ DO: Keep demo-only behavior in `src/demo/**` and `src/pages/**`.
-- ✅ DO: Use `@/` imports (example: `src/components/Masonry.vue` imports `@/masonry/types`).
-- ❌ DON’T: Edit generated outputs in `lib/index.js` / `lib/index.cjs`.
+- Keep reusable library behavior in `src/components/`.
+- Keep demo-only composition in `src/App.vue`.
+- Prefer `@/` imports inside demo/source files.
+- Use relative imports from `src/index.ts` when exporting public package symbols.
+- Don’t edit generated outputs in `lib/`.
 
 ## Touch Points / Key Files
 
 - Library export surface: `src/index.ts`
-- Demo entry + version display: `src/App.vue`
-- Demo routing: `src/router.ts`
-- Public component(s): `src/components/Masonry.vue`, `src/components/MasonryLoader.vue`
-
-## JIT Index Hints
-
-- Find all component exports: `rg -n "export" src/components`
-- Find alias imports: `rg -n "from '@/" src`
-- Find demo-only references: `rg -n "src/demo|@/demo" src tests`
-
-## Common Gotchas
-
-- The demo displays the package version from build-time metadata (see `src/App.vue`). If you change versioning/release flow, validate the demo build output.
+- Demo entry: `src/main.ts`
+- Demo shell: `src/App.vue`
+- Public component: `src/components/VibeRoot.vue`
 
 ## Pre-PR Checks
 

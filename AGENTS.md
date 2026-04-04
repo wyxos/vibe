@@ -4,7 +4,7 @@
 
 **Repo type**: single package (Vue 3 library + demo app)
 
-**Stack**: Vue 3 + TypeScript + Vite; tests via Vitest and Playwright; lint via ESLint.
+**Stack**: Vue 3 + TypeScript + Vite + Tailwind CSS 4; lint via ESLint.
 
 **Nearest-wins docs**: detailed guidance lives in sub-folder AGENTS.md files.
 
@@ -17,17 +17,15 @@ npm run check
 npm run build
 npm run build:lib
 npm run build:types
-npm run test:e2e
 ```
 
 ## Universal Conventions
 
 - **Never edit `lib/`** (generated output). Source of truth is `src/`.
-- Prefer `@/` imports (Vite alias) for internal modules.
-- Keep library logic in `src/components/` + `src/masonry/`; demo-only code stays in `src/demo/` and `src/pages/`.
-- Avoid backward-compat shims (aliases/deprecated fallbacks) unless explicitly requested.
-- Do not consider legacy/backward-compatibility changes unless explicitly requested.
-- If legacy/backward-compat code is found, report it to the user so they can decide whether to remove or align it immediately.
+- Prefer `@/` imports for internal demo/source files. Use relative imports from `src/index.ts` when it keeps generated declarations portable.
+- Keep reusable library code in `src/components/`; keep the public package surface in `src/index.ts`.
+- Keep demo-only composition in `src/App.vue` and `src/style.css`.
+- Avoid backward-compat shims unless explicitly requested.
 
 ## Security & Secrets
 
@@ -36,24 +34,14 @@ npm run test:e2e
 ## JIT Index (what to open, not what to paste)
 
 - Source overview: `src/` → see `src/AGENTS.md`
-- Public components: `src/components/` → see `src/components/AGENTS.md`
-- Layout/backfill engine: `src/masonry/` → see `src/masonry/AGENTS.md`
-- Demo/fake server: `src/demo/` → see `src/demo/AGENTS.md`
-- Unit/integration tests: `tests/` → see `tests/AGENTS.md`
-- Playwright tests: `tests/e2e/` → see `tests/e2e/AGENTS.md`
-
-### Quick Find Commands
-
-- Find exposed public API: `rg -n "defineExpose" src/components/Masonry.vue`
-- Find item contract: `rg -n "export type MasonryItemBase" src/masonry/types.ts`
-- Find virtualization logic: `rg -n "BUCKET_PX|overscanPx|getVisibleIndicesFromBuckets" src/components src/masonry`
-- Find Masonry tests: `rg -n "mount\(Masonry" tests`
+- Public entrypoint: `src/index.ts`
+- Demo shell: `src/App.vue`
+- Public components: `src/components/VibeRoot.vue`
 
 ## Definition of Done
 
 - `npm run check` passes
 - `npm run build && npm run build:lib && npm run build:types` pass
-- If you touched UI/scrolling behavior: `npm run test:e2e`
 
 ## WSL + Herd Runtime
 - Environment assumption: commands run from WSL on a Windows host where Laravel Herd manages primary PHP/Laravel services.

@@ -1,93 +1,61 @@
 <script setup lang="ts">
-import pkg from '../package.json'
-import { RouterLink, RouterView } from 'vue-router'
+import packageJson from '../package.json'
 
-const githubUrl = 'https://github.com/wyxos/vibe'
-const npmUrl = `https://www.npmjs.com/package/${encodeURIComponent(pkg.name)}`
+import VibeRoot from '@/components/VibeRoot.vue'
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 flex-col">
-    <header class="border-b border-slate-200 bg-white">
-      <div
-        class="mx-auto flex max-w-7xl items-center gap-3 px-6 py-3 2xl:max-w-screen-2xl 2xl:px-10 min-[1920px]:!max-w-[1800px] min-[1920px]:!px-12 min-[2560px]:!max-w-[2200px]"
-      >
-        <RouterLink to="/" class="inline-flex items-center gap-2">
-          <img src="/logo.svg" alt="Vibe" class="h-7 w-7" />
-          <span class="text-sm font-semibold tracking-tight text-slate-900">Vibe</span>
-        </RouterLink>
+  <main class="min-h-screen px-6 py-10 text-stone-950 sm:px-8 lg:px-12">
+    <div class="mx-auto flex min-h-[calc(100vh-5rem)] max-w-6xl items-center">
+      <div class="grid w-full gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] lg:items-center">
+        <section class="space-y-6">
+          <p class="text-xs font-semibold uppercase tracking-[0.38em] text-stone-500">
+            Vibe {{ packageJson.version }}
+          </p>
+          <div class="space-y-4">
+            <h1 class="max-w-3xl text-5xl font-semibold tracking-tight sm:text-6xl">
+              Blank workspace. Fresh repo. Start building the next Vibe.
+            </h1>
+            <p class="max-w-2xl text-lg leading-8 text-stone-600">
+              This baseline keeps the package and library builds wired up while stripping the old product
+              surface down to a clean Vue, Vite, TypeScript, and Tailwind starting point.
+            </p>
+          </div>
 
-  <span class="text-sm text-slate-600">v{{ pkg.version }}</span>
+          <div class="flex flex-wrap gap-3 text-sm font-medium text-stone-700">
+            <span class="rounded-full border border-stone-300 bg-white/70 px-4 py-2 backdrop-blur">Vue 3</span>
+            <span class="rounded-full border border-stone-300 bg-white/70 px-4 py-2 backdrop-blur">Vite</span>
+            <span class="rounded-full border border-stone-300 bg-white/70 px-4 py-2 backdrop-blur">TypeScript</span>
+            <span class="rounded-full border border-stone-300 bg-white/70 px-4 py-2 backdrop-blur">Tailwind 4</span>
+          </div>
+        </section>
 
-        <nav class="flex items-center gap-2" aria-label="Primary">
-          <details class="relative">
-            <summary
-              class="inline-flex cursor-pointer list-none items-center justify-center rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Examples
-              <i class="fa-solid fa-chevron-down ml-2 text-xs" aria-hidden="true" />
-            </summary>
-
-            <div class="absolute left-0 z-10 mt-2 w-48 rounded-md border border-slate-200 bg-white p-1">
-              <RouterLink
-                to="/examples/backfill"
-                class="flex items-center rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                active-class="bg-slate-100 text-slate-900"
-              >
-                Backfill
-              </RouterLink>
-
-              <RouterLink
-                to="/examples/resume-session"
-                class="flex items-center rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                active-class="bg-slate-100 text-slate-900"
-              >
-                Resume session
-              </RouterLink>
-
-              <RouterLink
-                to="/examples/search"
-                class="flex items-center rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                active-class="bg-slate-100 text-slate-900"
-              >
-                Search
-              </RouterLink>
-
-              <RouterLink
-                to="/examples/videos-only"
-                class="flex items-center rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                active-class="bg-slate-100 text-slate-900"
-              >
-                Video-only
-              </RouterLink>
+        <VibeRoot
+          title="Component entry is live"
+          subtitle="Edit src/components/VibeRoot.vue or replace it entirely as you rebuild the library."
+        >
+          <div class="space-y-4">
+            <div class="rounded-2xl border border-white/70 bg-white/80 p-4">
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">Start here</p>
+              <p class="mt-2 text-sm leading-6 text-stone-600">
+                The exported package surface is intentionally tiny. You have a clean component, plugin
+                install, Tailwind-enabled demo, and working library build.
+              </p>
             </div>
-          </details>
-        </nav>
 
-        <div class="ml-auto flex items-center gap-2">
-          <a
-            :href="githubUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <i class="fa-brands fa-github" aria-hidden="true" />
-            <span class="sr-only">GitHub</span>
-          </a>
-          <a
-            :href="npmUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            npm
-          </a>
-        </div>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div class="rounded-2xl border border-black/8 bg-black/[0.03] p-4">
+                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">Demo shell</p>
+                <p class="mt-2 text-sm text-stone-700">`src/App.vue`</p>
+              </div>
+              <div class="rounded-2xl border border-black/8 bg-black/[0.03] p-4">
+                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">Library entry</p>
+                <p class="mt-2 text-sm text-stone-700">`src/index.ts`</p>
+              </div>
+            </div>
+          </div>
+        </VibeRoot>
       </div>
-    </header>
-
-    <main class="min-h-0 flex-1">
-      <RouterView />
-    </main>
-  </div>
+    </div>
+  </main>
 </template>
