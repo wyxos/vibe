@@ -106,13 +106,15 @@ const mediaStatusOffsetClass = computed(() =>
             playsinline
             muted
             loop
-            preload="metadata"
+            :preload="index === resolvedActiveIndex ? 'metadata' : 'none'"
             :ref="(element) => registerVideoElement(item.id, element)"
             @click.stop="onVideoClick($event, item.id)"
             @durationchange="onMediaEvent(item.id, $event)"
             @loadedmetadata="onMediaEvent(item.id, $event)"
             @pause="onMediaEvent(item.id, $event)"
             @play="onMediaEvent(item.id, $event)"
+            @seeking="onMediaEvent(item.id, $event)"
+            @seeked="onMediaEvent(item.id, $event)"
             @timeupdate="onMediaEvent(item.id, $event)"
           >
             <source :src="item.original.url" :type="item.original.mimeType || item.mimeType" />
@@ -146,13 +148,15 @@ const mediaStatusOffsetClass = computed(() =>
           </button>
 
           <audio
-            preload="metadata"
+            :preload="index === resolvedActiveIndex ? 'metadata' : 'none'"
             class="pointer-events-none absolute h-px w-px opacity-0"
             :ref="(element) => registerAudioElement(item.id, element)"
             @durationchange="onMediaEvent(item.id, $event)"
             @loadedmetadata="onMediaEvent(item.id, $event)"
             @pause="onMediaEvent(item.id, $event)"
             @play="onMediaEvent(item.id, $event)"
+            @seeking="onMediaEvent(item.id, $event)"
+            @seeked="onMediaEvent(item.id, $event)"
             @timeupdate="onMediaEvent(item.id, $event)"
           >
             <source :src="item.original.url" :type="item.original.mimeType || item.mimeType" />

@@ -345,6 +345,14 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
     state.paused = media.paused
   }
 
+  function setMediaUiState(id: string, currentTime: number, media: HTMLMediaElement) {
+    const state = ensureMediaState(id)
+
+    state.currentTime = currentTime
+    state.duration = Number.isFinite(media.duration) ? media.duration : state.duration
+    state.paused = media.paused
+  }
+
   function onMediaEvent(id: string, event: Event) {
     if (event.currentTarget instanceof HTMLMediaElement) {
       updateMediaState(id, event.currentTarget)
@@ -390,8 +398,9 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
 
   function onMediaSeekInput(event: Event) {
     const media = getActiveMediaElement()
+    const activeId = activeMediaItem.value?.id
 
-    if (!media || !(event.target instanceof HTMLInputElement)) {
+    if (!media || !activeId || !(event.target instanceof HTMLInputElement)) {
       return
     }
 
@@ -401,8 +410,10 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
       return
     }
 
-    media.currentTime = clamp(nextTime, 0, activeMediaDuration.value || 0)
-    updateMediaState(activeMediaItem.value?.id ?? '', media)
+    const clampedTime = clamp(nextTime, 0, activeMediaDuration.value || 0)
+
+    setMediaUiState(activeId, clampedTime, media)
+    media.currentTime = clampedTime
   }
 
   function isVisual(item: VibeViewerItem) {

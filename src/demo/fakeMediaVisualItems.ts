@@ -1,5 +1,9 @@
 import type { VibeViewerItem } from '@/components/vibeViewer'
 
+const FLOWER_VIDEO_PREVIEW_URL = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4#t=0,4'
+const FLOWER_VIDEO_ALT_PREVIEW_URL = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4#t=1,5'
+const FLOWER_VIDEO_ORIGINAL_URL = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
+
 export const fakeMediaVisualItems: VibeViewerItem[] = [
   {
     id: 'img-aurora-board',
@@ -34,14 +38,14 @@ export const fakeMediaVisualItems: VibeViewerItem[] = [
     createdAt: '2026-04-04T08:10:00.000Z',
     durationMs: 22_000,
     preview: {
-      url: 'https://samplelib.com/lib/preview/mp4/sample-5s.mp4',
+      url: FLOWER_VIDEO_PREVIEW_URL,
       mimeType: 'video/mp4',
       sizeBytes: 3_742_000,
       width: 640,
       height: 360,
     },
     original: {
-      url: 'https://samplelib.com/lib/preview/mp4/sample-20s.mp4',
+      url: FLOWER_VIDEO_ORIGINAL_URL,
       mimeType: 'video/mp4',
       sizeBytes: 14_882_214,
       width: 1920,
@@ -81,14 +85,14 @@ export const fakeMediaVisualItems: VibeViewerItem[] = [
     createdAt: '2026-04-04T06:58:00.000Z',
     durationMs: 93_000,
     preview: {
-      url: 'https://samplelib.com/lib/preview/mp4/sample-10s.mp4',
+      url: FLOWER_VIDEO_ALT_PREVIEW_URL,
       mimeType: 'video/mp4',
       sizeBytes: 11_900_000,
       width: 1280,
       height: 720,
     },
     original: {
-      url: 'https://samplelib.com/lib/preview/mp4/sample-30s.mp4',
+      url: FLOWER_VIDEO_ORIGINAL_URL,
       mimeType: 'video/mp4',
       sizeBytes: 48_120_004,
       width: 2560,
@@ -144,14 +148,14 @@ export const fakeMediaVisualItems: VibeViewerItem[] = [
     createdAt: '2026-04-04T04:05:00.000Z',
     durationMs: 16_000,
     preview: {
-      url: 'https://samplelib.com/lib/preview/mp4/sample-5s.mp4',
+      url: FLOWER_VIDEO_PREVIEW_URL,
       mimeType: 'video/mp4',
       sizeBytes: 3_742_000,
       width: 540,
       height: 960,
     },
     original: {
-      url: 'https://samplelib.com/lib/preview/mp4/sample-15s.mp4',
+      url: FLOWER_VIDEO_ORIGINAL_URL,
       mimeType: 'video/mp4',
       sizeBytes: 12_621_443,
       width: 1080,
@@ -191,14 +195,14 @@ export const fakeMediaVisualItems: VibeViewerItem[] = [
     createdAt: '2026-04-04T02:23:00.000Z',
     durationMs: 12_000,
     preview: {
-      url: 'https://samplelib.com/lib/preview/mp4/sample-10s.mp4',
+      url: FLOWER_VIDEO_ALT_PREVIEW_URL,
       mimeType: 'video/mp4',
       sizeBytes: 7_640_000,
       width: 640,
       height: 360,
     },
     original: {
-      url: 'https://samplelib.com/lib/preview/mp4/sample-20s.mp4',
+      url: FLOWER_VIDEO_ORIGINAL_URL,
       mimeType: 'video/mp4',
       sizeBytes: 9_220_604,
       width: 1280,
@@ -238,14 +242,14 @@ export const fakeMediaVisualItems: VibeViewerItem[] = [
     createdAt: '2026-04-04T01:08:00.000Z',
     durationMs: 38_000,
     preview: {
-      url: 'https://samplelib.com/lib/preview/mp4/sample-5s.mp4',
+      url: FLOWER_VIDEO_PREVIEW_URL,
       mimeType: 'video/mp4',
       sizeBytes: 3_742_000,
       width: 720,
       height: 450,
     },
     original: {
-      url: 'https://samplelib.com/lib/preview/mp4/sample-10s.mp4',
+      url: FLOWER_VIDEO_ORIGINAL_URL,
       mimeType: 'video/mp4',
       sizeBytes: 21_444_219,
       width: 1440,

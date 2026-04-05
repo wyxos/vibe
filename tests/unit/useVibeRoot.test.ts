@@ -153,6 +153,45 @@ describe('useVibeRoot', () => {
 
     viewer.unmount()
   })
+
+  it('keeps the custom seekbar state at the requested time until the media catches up', async () => {
+    const videoItem = createVideoItem('video-laggy')
+    const viewer = await mountUseVibeRoot({
+      items: [videoItem],
+      activeIndex: 0,
+    })
+
+    const video = createStubMediaElement('video', {
+      currentTime: 0,
+      duration: 12,
+      paused: false,
+      delaySeekUpdates: true,
+    })
+
+    viewer.api.registerVideoElement(videoItem.id, video.element)
+
+    const seekInput = document.createElement('input')
+    seekInput.value = '7.5'
+    viewer.api.onMediaSeekInput({
+      target: seekInput,
+    } as Event)
+
+    expect(video.currentTime()).toBe(0)
+    expect(viewer.api.mediaStates.value[videoItem.id]).toMatchObject({
+      currentTime: 7.5,
+      duration: 12,
+      paused: false,
+    })
+
+    video.flushPendingSeek()
+    viewer.api.onMediaEvent(videoItem.id, {
+      currentTarget: video.element,
+    } as Event)
+
+    expect(viewer.api.mediaStates.value[videoItem.id]?.currentTime).toBe(7.5)
+
+    viewer.unmount()
+  })
 })
 
 function createImageItem(id: string): VibeViewerItem {
@@ -224,11 +263,13 @@ function createStubMediaElement(
     currentTime: number
     duration: number
     paused: boolean
+    delaySeekUpdates?: boolean
   },
 ) {
   const element = document.createElement(tagName) as HTMLMediaElement
   let currentTimeValue = options.currentTime
   let pausedValue = options.paused
+  let pendingSeekValue: number | null = null
 
   const play = vi.fn().mockImplementation(() => {
     pausedValue = false
@@ -243,6 +284,11 @@ function createStubMediaElement(
       configurable: true,
       get: () => currentTimeValue,
       set: (value: number) => {
+        if (options.delaySeekUpdates) {
+          pendingSeekValue = value
+          return
+        }
+
         currentTimeValue = value
       },
     },
@@ -269,5 +315,13 @@ function createStubMediaElement(
     play,
     pause,
     currentTime: () => currentTimeValue,
+    flushPendingSeek: () => {
+      if (pendingSeekValue == null) {
+        return
+      }
+
+      currentTimeValue = pendingSeekValue
+      pendingSeekValue = null
+    },
   }
 }

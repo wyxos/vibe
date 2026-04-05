@@ -43,3 +43,32 @@ test('home viewer prefetches the next page without rendering the full loaded lis
   await expect.poll(async () => (await progress.textContent())?.trim()).toContain('/ 50')
   expect(Number(await root.getAttribute('data-rendered-count'))).toBeLessThanOrEqual(5)
 })
+
+test('home viewer seekbar moves the active video forward instead of snapping back', async ({ page }) => {
+  await gotoRoute(page, '/')
+
+  const progress = page.getByTestId('vibe-root-pagination')
+
+  await expect(progress).toHaveText('1 / 25', { timeout: 15_000 })
+
+  await page.keyboard.press('ArrowDown')
+  await expect(progress).toHaveText('2 / 25')
+
+  const activeVideo = page.locator('[data-active="true"] video')
+  const seekbar = page.getByLabel('Seek active media')
+
+  await expect(activeVideo).toBeVisible()
+  await expect(seekbar).toBeVisible()
+
+  const targetTime = await activeVideo.evaluate((video) => Math.max(video.duration * 0.5, 1))
+
+  await seekbar.evaluate((input, nextValue) => {
+    const range = input as HTMLInputElement
+    range.value = String(nextValue)
+    range.dispatchEvent(new Event('input', { bubbles: true }))
+  }, targetTime)
+
+  await expect.poll(async () => {
+    return activeVideo.evaluate((video) => video.currentTime)
+  }).toBeGreaterThan(1)
+})
