@@ -5,6 +5,19 @@ import tsParser from '@typescript-eslint/parser'
 import vuePlugin from 'eslint-plugin-vue'
 import vueParser from 'vue-eslint-parser'
 
+const baseRules = {
+  'max-lines': [
+    'error',
+    {
+      max: 500,
+      skipBlankLines: false,
+      skipComments: false,
+    },
+  ],
+  'no-undef': 'off',
+  'no-unused-vars': 'off',
+}
+
 export default [
   {
     ignores: ['dist/**', 'lib/**', 'node_modules/**', '__blank-vite/**'],
@@ -21,8 +34,7 @@ export default [
       },
     },
     rules: {
-      'no-undef': 'off',
-      'no-unused-vars': 'off',
+      ...baseRules,
     },
   },
   {
@@ -43,8 +55,7 @@ export default [
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
-      'no-undef': 'off',
-      'no-unused-vars': 'off',
+      ...baseRules,
       '@typescript-eslint/no-unused-vars': [
         'warn',
         {
@@ -75,9 +86,7 @@ export default [
     },
     rules: {
       ...(vuePlugin.configs['flat/recommended']?.rules ?? {}),
-      'vue/multi-word-component-names': 'off',
-      'no-undef': 'off',
-      'no-unused-vars': 'off',
+      ...baseRules,
       '@typescript-eslint/no-unused-vars': [
         'warn',
         {
@@ -85,6 +94,7 @@ export default [
           varsIgnorePattern: '^_',
         },
       ],
+      'vue/multi-word-component-names': 'off',
     },
   },
 ]

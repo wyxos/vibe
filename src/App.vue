@@ -10,8 +10,10 @@ const isImmersiveRoute = computed(() => route.meta.immersive === true)
 
 <template>
   <main
-    class="text-stone-950"
-    :class="isImmersiveRoute ? 'h-screen overflow-hidden' : 'min-h-screen px-6 py-10 sm:px-8 lg:px-12'"
+    class="[font-family:'Segoe_UI_Variable','Segoe_UI',sans-serif] text-stone-950"
+    :class="isImmersiveRoute
+      ? 'h-screen overflow-hidden bg-[#05060a]'
+      : 'min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.24),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.2),transparent_32%),#f6efe6] px-6 py-10 sm:px-8 lg:px-12'"
   >
     <RouterView v-if="isImmersiveRoute" />
 
