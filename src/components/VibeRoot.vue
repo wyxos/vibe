@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { AudioLines, Clapperboard, File, FileArchive, FileText, ImagePlus } from 'lucide-vue-next'
+import { AudioLines, Clapperboard, File, FileArchive, FileText, ImagePlus, Pause, Play } from 'lucide-vue-next'
 
 import type { VibeViewerItem, VibeViewerType } from './vibeViewer'
 
@@ -29,10 +29,24 @@ const viewportHeight = ref(1)
 
 const videoElements = new Map<string, HTMLVideoElement>()
 const audioElements = new Map<string, HTMLAudioElement>()
+const mediaStates = ref<Record<string, MediaUiState>>({})
+
+interface MediaUiState {
+  currentTime: number
+  duration: number
+  paused: boolean
+}
+
+const DEFAULT_MEDIA_UI_STATE: MediaUiState = {
+  currentTime: 0,
+  duration: 0,
+  paused: true,
+}
 
 let activePointerId: number | null = null
 let dragStartY = 0
 let wheelLockedUntil = 0
+let suppressMediaToggleUntil = 0
 
 const resolvedActiveIndex = computed(() => {
   if (props.items.length === 0) {
@@ -43,6 +57,34 @@ const resolvedActiveIndex = computed(() => {
 })
 
 const activeItem = computed(() => props.items[resolvedActiveIndex.value] ?? null)
+const activeMediaItem = computed(() => {
+  if (activeItem.value?.type === 'video' || activeItem.value?.type === 'audio') {
+    return activeItem.value
+  }
+
+  return null
+})
+const activeMediaState = computed(() => {
+  if (!activeMediaItem.value) {
+    return DEFAULT_MEDIA_UI_STATE
+  }
+
+  return mediaStates.value[activeMediaItem.value.id] ?? DEFAULT_MEDIA_UI_STATE
+})
+const activeMediaDuration = computed(() => {
+  if (!activeMediaItem.value) {
+    return 0
+  }
+
+  return activeMediaState.value.duration || ((activeMediaItem.value.durationMs ?? 0) / 1000)
+})
+const activeMediaProgress = computed(() => {
+  if (activeMediaDuration.value <= 0) {
+    return 0
+  }
+
+  return clamp((activeMediaState.value.currentTime / activeMediaDuration.value) * 100, 0, 100)
+})
 const stageTheme = computed(() => getTheme(activeItem.value?.type ?? 'image'))
 const trackStyle = computed(() => {
   const offset = -resolvedActiveIndex.value * viewportHeight.value + dragOffset.value
@@ -183,6 +225,7 @@ function finalizeDrag() {
   const delta = dragOffset.value
 
   if (Math.abs(delta) >= dragThreshold.value) {
+    suppressMediaToggleUntil = Date.now() + 250
     navigate(delta < 0 ? 1 : -1)
   }
 
@@ -236,12 +279,13 @@ function isEditableTarget(target: EventTarget | null) {
 }
 
 function isInteractiveTarget(target: EventTarget | null) {
-  return target instanceof HTMLElement && Boolean(target.closest('audio, video, button, input, textarea, select, a'))
+  return target instanceof HTMLElement && Boolean(target.closest('[data-swipe-lock], input, textarea, select, a'))
 }
 
 function registerVideoElement(id: string, element: unknown) {
   if (element instanceof HTMLVideoElement) {
     videoElements.set(id, element)
+    updateMediaState(id, element)
     return
   }
 
@@ -251,13 +295,14 @@ function registerVideoElement(id: string, element: unknown) {
 function registerAudioElement(id: string, element: unknown) {
   if (element instanceof HTMLAudioElement) {
     audioElements.set(id, element)
+    updateMediaState(id, element)
     return
   }
 
   audioElements.delete(id)
 }
 
-function pauseAndReset(media: HTMLMediaElement) {
+function pauseAndReset(media: HTMLMediaElement, id: string) {
   media.pause()
 
   try {
@@ -266,15 +311,17 @@ function pauseAndReset(media: HTMLMediaElement) {
   catch {
     // Ignore reset failures for streams or not-yet-ready elements.
   }
+
+  updateMediaState(id, media)
 }
 
 function pauseAndResetAllMedia() {
-  for (const media of videoElements.values()) {
-    pauseAndReset(media)
+  for (const [id, media] of videoElements.entries()) {
+    pauseAndReset(media, id)
   }
 
-  for (const media of audioElements.values()) {
-    pauseAndReset(media)
+  for (const [id, media] of audioElements.entries()) {
+    pauseAndReset(media, id)
   }
 }
 
@@ -285,7 +332,7 @@ async function syncMediaPlayback() {
 
   for (const [id, element] of videoElements.entries()) {
     if (id !== activeId) {
-      pauseAndReset(element)
+      pauseAndReset(element, id)
       continue
     }
 
@@ -296,18 +343,115 @@ async function syncMediaPlayback() {
     void element.play().catch(() => {
       // Autoplay can be blocked depending on the browser policy.
     })
+
+    updateMediaState(id, element)
   }
 
   for (const [id, element] of audioElements.entries()) {
     if (id !== activeId) {
-      pauseAndReset(element)
+      pauseAndReset(element, id)
       continue
     }
 
     void element.play().catch(() => {
       // Autoplay can be blocked depending on the browser policy.
     })
+
+    updateMediaState(id, element)
   }
+}
+
+function ensureMediaState(id: string) {
+  if (!mediaStates.value[id]) {
+    mediaStates.value[id] = { ...DEFAULT_MEDIA_UI_STATE }
+  }
+
+  return mediaStates.value[id]
+}
+
+function updateMediaState(id: string, media: HTMLMediaElement) {
+  const state = ensureMediaState(id)
+
+  state.currentTime = Number.isFinite(media.currentTime) ? media.currentTime : 0
+  state.duration = Number.isFinite(media.duration) ? media.duration : 0
+  state.paused = media.paused
+}
+
+function onMediaEvent(id: string, event: Event) {
+  const element = event.currentTarget
+
+  if (element instanceof HTMLMediaElement) {
+    updateMediaState(id, element)
+  }
+}
+
+function getMediaElementById(id: string) {
+  return videoElements.get(id) ?? audioElements.get(id) ?? null
+}
+
+function getActiveMediaElement() {
+  return activeMediaItem.value ? getMediaElementById(activeMediaItem.value.id) : null
+}
+
+function toggleMediaPlayback(media: HTMLMediaElement | null) {
+  if (!media) {
+    return
+  }
+
+  if (media.paused) {
+    void media.play().catch(() => {
+      // Playback can still be blocked by browser policy.
+    })
+  }
+  else {
+    media.pause()
+  }
+}
+
+function onVideoClick(event: MouseEvent, id: string) {
+  if (event.button !== 0) {
+    return
+  }
+
+  if (Date.now() < suppressMediaToggleUntil) {
+    return
+  }
+
+  toggleMediaPlayback(videoElements.get(id) ?? null)
+}
+
+function onAudioCoverClick(event: MouseEvent, id: string) {
+  if (event.button !== 0) {
+    return
+  }
+
+  if (Date.now() < suppressMediaToggleUntil) {
+    return
+  }
+
+  toggleMediaPlayback(getMediaElementById(id))
+}
+
+function toggleActiveMediaPlayback() {
+  toggleMediaPlayback(getActiveMediaElement())
+}
+
+function onMediaSeekInput(event: Event) {
+  const media = getActiveMediaElement()
+  const target = event.target
+
+  if (!media || !(target instanceof HTMLInputElement)) {
+    return
+  }
+
+  const nextTime = Number.parseFloat(target.value)
+
+  if (!Number.isFinite(nextTime)) {
+    return
+  }
+
+  media.currentTime = clamp(nextTime, 0, activeMediaDuration.value || 0)
+  updateMediaState(activeMediaItem.value?.id ?? '', media)
 }
 
 function getTheme(type: VibeViewerType) {
@@ -414,14 +558,20 @@ function formatFileSize(sizeBytes: number) {
   return `${size.toFixed(size >= 10 ? 0 : 1)} ${units[unitIndex]}`
 }
 
-function formatDuration(durationMs: number | undefined) {
-  if (!durationMs) {
-    return 'n/a'
+function formatPlaybackTime(value: number) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return '0:00'
   }
 
-  const totalSeconds = Math.round(durationMs / 1000)
-  const minutes = Math.floor(totalSeconds / 60)
+  const totalSeconds = Math.floor(value)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
   const seconds = totalSeconds % 60
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
+
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
@@ -489,31 +639,46 @@ function getSlideTheme(item: VibeViewerItem) {
             loop
             preload="metadata"
             :ref="(element) => registerVideoElement(item.id, element)"
+            @click.stop="onVideoClick($event, item.id)"
+            @durationchange="onMediaEvent(item.id, $event)"
+            @loadedmetadata="onMediaEvent(item.id, $event)"
+            @pause="onMediaEvent(item.id, $event)"
+            @play="onMediaEvent(item.id, $event)"
+            @timeupdate="onMediaEvent(item.id, $event)"
           >
             <source :src="item.original.url" :type="item.original.mimeType || item.mimeType" />
           </video>
         </div>
 
         <div v-else-if="isAudio(item)" class="vibe-root__audio-stage">
-          <div class="vibe-root__audio-orbit vibe-root__audio-orbit--outer" />
-          <div class="vibe-root__audio-orbit vibe-root__audio-orbit--inner" />
-          <div class="vibe-root__file-chip vibe-root__file-chip--audio" aria-hidden="true">
-            <component :is="getItemIcon(item.type)" class="vibe-root__file-chip-icon" />
-          </div>
-
-          <div class="vibe-root__audio-body">
-            <p class="vibe-root__eyebrow">Audio item</p>
-            <h2 class="vibe-root__audio-title">{{ item.title }}</h2>
-            <p class="vibe-root__audio-meta">
-              {{ item.extension.toUpperCase() }} · {{ formatDuration(item.durationMs) }} · {{ formatFileSize(item.sizeBytes) }}
-            </p>
-          </div>
+          <button
+            type="button"
+            class="vibe-root__audio-cover"
+            :aria-label="(mediaStates[item.id]?.paused ?? true) ? `Play ${item.title}` : `Pause ${item.title}`"
+            @click="onAudioCoverClick($event, item.id)"
+          >
+            <div class="vibe-root__audio-orbit vibe-root__audio-orbit--outer" />
+            <div class="vibe-root__audio-orbit vibe-root__audio-orbit--inner" />
+            <div class="vibe-root__file-chip vibe-root__file-chip--audio" aria-hidden="true">
+              <component :is="getItemIcon(item.type)" class="vibe-root__file-chip-icon" />
+            </div>
+            <div class="vibe-root__audio-cover-state" aria-hidden="true">
+              <component
+                :is="(mediaStates[item.id]?.paused ?? true) ? Play : Pause"
+                class="vibe-root__audio-cover-state-icon"
+              />
+            </div>
+          </button>
 
           <audio
-            controls
             preload="metadata"
             class="vibe-root__audio-player"
             :ref="(element) => registerAudioElement(item.id, element)"
+            @durationchange="onMediaEvent(item.id, $event)"
+            @loadedmetadata="onMediaEvent(item.id, $event)"
+            @pause="onMediaEvent(item.id, $event)"
+            @play="onMediaEvent(item.id, $event)"
+            @timeupdate="onMediaEvent(item.id, $event)"
           >
             <source :src="item.original.url" :type="item.original.mimeType || item.mimeType" />
           </audio>
@@ -522,14 +687,6 @@ function getSlideTheme(item: VibeViewerItem) {
         <div v-else class="vibe-root__file-stage">
           <div class="vibe-root__file-chip" aria-hidden="true">
             <component :is="getItemIcon(item.type)" class="vibe-root__file-chip-icon" />
-          </div>
-
-          <div class="vibe-root__file-body">
-            <p class="vibe-root__eyebrow">{{ getItemLabel(item.type) }}</p>
-            <h2 class="vibe-root__file-title">{{ item.title }}</h2>
-            <p class="vibe-root__file-copy">
-              {{ item.mimeType }} · {{ item.extension.toUpperCase() }} · {{ formatFileSize(item.sizeBytes) }}
-            </p>
           </div>
         </div>
       </article>
@@ -575,7 +732,48 @@ function getSlideTheme(item: VibeViewerItem) {
       </div>
     </div>
 
-    <div v-if="statusMessage" class="vibe-root__status" :class="{ 'is-terminal': isAtEnd && !props.hasNextPage && !props.loading }">
+    <div
+      v-if="activeMediaItem"
+      class="vibe-root__media-bar"
+    >
+      <div class="vibe-root__media-shell">
+        <button
+          type="button"
+          class="vibe-root__media-toggle"
+          data-swipe-lock="true"
+          :aria-label="activeMediaState.paused ? 'Play active media' : 'Pause active media'"
+          @click="toggleActiveMediaPlayback"
+        >
+          <component :is="activeMediaState.paused ? Play : Pause" class="vibe-root__media-toggle-icon" aria-hidden="true" />
+        </button>
+
+        <span class="vibe-root__media-time">{{ formatPlaybackTime(activeMediaState.currentTime) }}</span>
+
+        <input
+          class="vibe-root__media-range"
+          data-swipe-lock="true"
+          type="range"
+          min="0"
+          step="0.1"
+          :max="activeMediaDuration || 1"
+          :value="activeMediaState.currentTime"
+          :disabled="activeMediaDuration <= 0"
+          :style="{ '--media-progress': `${activeMediaProgress}%` }"
+          @input="onMediaSeekInput"
+        />
+
+        <span class="vibe-root__media-time">{{ formatPlaybackTime(activeMediaDuration) }}</span>
+      </div>
+    </div>
+
+    <div
+      v-if="statusMessage"
+      class="vibe-root__status"
+      :class="{
+        'has-media-bar': Boolean(activeMediaItem),
+        'is-terminal': isAtEnd && !props.hasNextPage && !props.loading,
+      }"
+    >
       {{ statusMessage }}
     </div>
   </section>
@@ -655,6 +853,10 @@ function getSlideTheme(item: VibeViewerItem) {
   box-shadow: 0 40px 120px -60px rgba(0, 0, 0, 0.9);
 }
 
+.vibe-root__video {
+  cursor: pointer;
+}
+
 .vibe-root__audio-stage,
 .vibe-root__file-stage,
 .vibe-root__empty {
@@ -668,14 +870,41 @@ function getSlideTheme(item: VibeViewerItem) {
   padding: clamp(2rem, 4vw, 3rem);
 }
 
+.vibe-root__audio-cover {
+  position: relative;
+  display: grid;
+  width: clamp(320px, 46vw, 560px);
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)),
+    radial-gradient(circle at center, rgba(16, 185, 129, 0.14), transparent 58%);
+  color: #f7f1ea;
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.vibe-root__audio-cover:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03)),
+    radial-gradient(circle at center, rgba(16, 185, 129, 0.18), transparent 58%);
+}
+
+.vibe-root__audio-cover:focus-visible {
+  outline: 2px solid rgba(247, 241, 234, 0.9);
+  outline-offset: 4px;
+}
+
 .vibe-root__audio-orbit {
   position: absolute;
   border: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: none;
 }
 
 .vibe-root__audio-orbit--outer {
-  width: clamp(320px, 46vw, 560px);
-  height: clamp(320px, 46vw, 560px);
+  inset: 0;
   background: radial-gradient(circle, rgba(16, 185, 129, 0.16), transparent 66%);
 }
 
@@ -685,17 +914,28 @@ function getSlideTheme(item: VibeViewerItem) {
   background: radial-gradient(circle, rgba(255, 255, 255, 0.08), transparent 62%);
 }
 
-.vibe-root__audio-body,
-.vibe-root__file-body {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  gap: 0.6rem;
-  max-width: 38rem;
+.vibe-root__audio-cover-state {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(4, 6, 10, 0.52);
+  backdrop-filter: blur(18px);
+  pointer-events: none;
+}
+
+.vibe-root__audio-cover-state-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  stroke-width: 2;
 }
 
 .vibe-root__file-stage {
-  gap: 1.25rem;
   padding: clamp(2rem, 4vw, 3rem);
 }
 
@@ -732,8 +972,6 @@ function getSlideTheme(item: VibeViewerItem) {
   color: rgba(247, 241, 234, 0.68);
 }
 
-.vibe-root__audio-title,
-.vibe-root__file-title,
 .vibe-root__empty-title {
   margin: 0;
   font-size: clamp(2rem, 4.4vw, 3.6rem);
@@ -741,8 +979,6 @@ function getSlideTheme(item: VibeViewerItem) {
   letter-spacing: -0.05em;
 }
 
-.vibe-root__audio-meta,
-.vibe-root__file-copy,
 .vibe-root__empty-copy {
   margin: 0;
   font-size: clamp(0.98rem, 1.3vw, 1.12rem);
@@ -751,10 +987,11 @@ function getSlideTheme(item: VibeViewerItem) {
 }
 
 .vibe-root__audio-player {
-  position: relative;
-  z-index: 1;
-  width: min(100%, 34rem);
-  opacity: 0.94;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .vibe-root__hud {
@@ -845,6 +1082,111 @@ function getSlideTheme(item: VibeViewerItem) {
   gap: 0.5rem;
 }
 
+.vibe-root__media-bar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 5;
+  padding: 1rem clamp(1rem, 2.6vw, 2.25rem) 1.15rem;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.42) 24%, rgba(0, 0, 0, 0.78));
+}
+
+.vibe-root__media-shell {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(4, 6, 10, 0.68);
+  padding: 0.85rem 1rem;
+  backdrop-filter: blur(18px);
+}
+
+.vibe-root__media-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f7f1ea;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease;
+}
+
+.vibe-root__media-toggle:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.vibe-root__media-toggle-icon {
+  width: 1rem;
+  height: 1rem;
+  stroke-width: 2;
+}
+
+.vibe-root__media-time {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(247, 241, 234, 0.74);
+}
+
+.vibe-root__media-range {
+  --track-color: rgba(255, 255, 255, 0.12);
+  --fill-color: rgba(247, 241, 234, 0.9);
+  width: 100%;
+  height: 0.9rem;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.vibe-root__media-range:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.vibe-root__media-range::-webkit-slider-runnable-track {
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--fill-color) 0,
+    var(--fill-color) var(--media-progress),
+    var(--track-color) var(--media-progress),
+    var(--track-color) 100%
+  );
+}
+
+.vibe-root__media-range::-webkit-slider-thumb {
+  width: 0.9rem;
+  height: 0.9rem;
+  appearance: none;
+  margin-top: -0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #f7f1ea;
+}
+
+.vibe-root__media-range::-moz-range-track {
+  height: 2px;
+  background: var(--track-color);
+}
+
+.vibe-root__media-range::-moz-range-progress {
+  height: 2px;
+  background: var(--fill-color);
+}
+
+.vibe-root__media-range::-moz-range-thumb {
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #f7f1ea;
+}
+
 .vibe-root__status {
   position: absolute;
   left: 50%;
@@ -857,6 +1199,10 @@ function getSlideTheme(item: VibeViewerItem) {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: rgba(247, 241, 234, 0.74);
+}
+
+.vibe-root__status.has-media-bar {
+  bottom: 5.8rem;
 }
 
 .vibe-root__status.is-terminal {
@@ -877,11 +1223,14 @@ function getSlideTheme(item: VibeViewerItem) {
   .vibe-root__hud-actions {
     justify-items: start;
   }
-
   .vibe-root__status {
     bottom: 1.3rem;
     width: calc(100% - 2.5rem);
     justify-content: center;
+  }
+
+  .vibe-root__status.has-media-bar {
+    bottom: 7.4rem;
   }
 }
 </style>
