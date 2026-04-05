@@ -6,7 +6,7 @@ import type { VibeViewerItem } from '@/components/vibeViewer'
 import { fetchFakeMediaPage } from '@/demo/fakeServer'
 
 const INITIAL_PAGE = 1
-const PAGE_SIZE = 8
+const PAGE_SIZE = 25
 const PREFETCH_OFFSET = 3
 
 const items = ref<VibeViewerItem[]>([])

@@ -7,7 +7,7 @@ import {
   type FakeMediaPageResponse,
 } from '@/demo/fakeServer'
 
-const PAGE_SIZES = [4, 8, 12]
+const PAGE_SIZE = 25
 
 const server = createFakeMediaServer({
   minDelayMs: 120,
@@ -15,7 +15,6 @@ const server = createFakeMediaServer({
 })
 
 const page = ref(1)
-const pageSize = ref(8)
 const response = ref<FakeMediaPageResponse | null>(null)
 const isLoading = ref(false)
 const errorMessage = ref<string | null>(null)
@@ -26,11 +25,7 @@ const nextPage = computed(() => response.value?.nextPage ?? null)
 const canGoPrevious = computed(() => page.value > 1 && !isLoading.value)
 const canGoNext = computed(() => page.value < totalPages.value && !isLoading.value)
 
-watch(pageSize, () => {
-  page.value = 1
-})
-
-watch([page, pageSize], async () => {
+watch(page, async () => {
   await loadPage()
 })
 
@@ -45,7 +40,7 @@ async function loadPage() {
   try {
     response.value = await server.fetchPage({
       page: page.value,
-      pageSize: pageSize.value,
+      pageSize: PAGE_SIZE,
     })
   }
   catch (error) {
@@ -155,19 +150,7 @@ function cardTone(item: FakeMediaItem) {
           </p>
         </div>
 
-        <div class="grid gap-3 sm:grid-cols-[auto_auto_auto] sm:items-end">
-          <label class="grid gap-2 text-sm text-stone-600">
-            <span class="font-medium">Page size</span>
-            <select
-              v-model="pageSize"
-              class="border border-stone-300 bg-white px-4 py-3 text-stone-900 shadow-sm outline-none transition focus:border-stone-500"
-            >
-              <option v-for="size in PAGE_SIZES" :key="size" :value="size">
-                {{ size }} items
-              </option>
-            </select>
-          </label>
-
+        <div class="grid gap-3 sm:grid-cols-[auto_auto] sm:items-end">
           <div class="flex gap-2">
             <button
               type="button"
@@ -201,20 +184,25 @@ function cardTone(item: FakeMediaItem) {
       <div class="grid gap-3 md:grid-cols-4">
         <div class="border border-black/8 bg-black/[0.03] p-4">
           <p class="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">Current page</p>
-          <p class="mt-2 text-2xl font-semibold text-stone-950">{{ page }}</p>
+          <p data-testid="fake-server-current-page" class="mt-2 text-2xl font-semibold text-stone-950">{{ page }}</p>
+        </div>
+        <div class="border border-black/8 bg-black/[0.03] p-4">
+          <p class="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">Page size</p>
+          <p data-testid="fake-server-page-size" class="mt-2 text-2xl font-semibold text-stone-950">{{ PAGE_SIZE }}</p>
         </div>
         <div class="border border-black/8 bg-black/[0.03] p-4">
           <p class="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">Total pages</p>
-          <p class="mt-2 text-2xl font-semibold text-stone-950">{{ totalPages }}</p>
+          <p data-testid="fake-server-total-pages" class="mt-2 text-2xl font-semibold text-stone-950">{{ totalPages }}</p>
         </div>
         <div class="border border-black/8 bg-black/[0.03] p-4">
           <p class="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">Total items</p>
-          <p class="mt-2 text-2xl font-semibold text-stone-950">{{ totalItems }}</p>
+          <p data-testid="fake-server-total-items" class="mt-2 text-2xl font-semibold text-stone-950">{{ totalItems }}</p>
         </div>
-        <div class="border border-black/8 bg-black/[0.03] p-4">
-          <p class="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">Next page token</p>
-          <p class="mt-2 text-2xl font-semibold text-stone-950">{{ nextPage ?? 'null' }}</p>
-        </div>
+      </div>
+
+      <div class="border border-black/8 bg-black/[0.03] p-4">
+        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">Next page token</p>
+        <p data-testid="fake-server-next-page" class="mt-2 text-2xl font-semibold text-stone-950">{{ nextPage ?? 'null' }}</p>
       </div>
 
       <p v-if="errorMessage" class="border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-700">

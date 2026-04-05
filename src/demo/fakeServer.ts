@@ -27,11 +27,13 @@ export interface FakeMediaPageResponse {
 export interface CreateFakeMediaServerOptions {
   items?: FakeMediaItem[]
   defaultPageSize?: number
+  totalPages?: number
   minDelayMs?: number
   maxDelayMs?: number
 }
 
-const DEFAULT_PAGE_SIZE = 8
+const DEFAULT_PAGE_SIZE = 25
+const DEFAULT_TOTAL_PAGES = 100
 const DEFAULT_MIN_DELAY_MS = 140
 const DEFAULT_MAX_DELAY_MS = 320
 
@@ -113,22 +115,59 @@ function normalizePageSize(pageSize: number | undefined, fallback: number) {
   return Math.floor(pageSize)
 }
 
+function normalizeTotalPages(totalPages: number | undefined, fallback: number) {
+  if (!totalPages || !Number.isFinite(totalPages) || totalPages < 1) {
+    return fallback
+  }
+
+  return Math.floor(totalPages)
+}
+
 function slicePage(items: FakeMediaItem[], page: number, pageSize: number) {
   return items.slice((page - 1) * pageSize, page * pageSize)
 }
 
-const seedItems = [...fakeMediaVisualItems, ...fakeMediaFileItems]
+function offsetCreatedAt(value: string, cycle: number, seedIndex: number) {
+  const timestamp = Date.parse(value) - (cycle * 86_400_000) - (seedIndex * 90_000)
+  return new Date(timestamp).toISOString()
+}
+
+function cloneItem(item: FakeMediaItem, index: number, seedIndex: number, seedCount: number): FakeMediaItem {
+  const cycle = Math.floor(index / seedCount)
+
+  return {
+    ...item,
+    id: `${item.id}-${String(index + 1).padStart(4, '0')}`,
+    createdAt: offsetCreatedAt(item.createdAt, cycle, seedIndex),
+    preview: item.preview ? cloneAsset(item.preview) : undefined,
+    original: cloneAsset(item.original),
+  }
+}
+
+function buildFakeFeed(seedItems: FakeMediaItem[], totalItems: number) {
+  if (!seedItems.length) {
+    return []
+  }
+
+  return Array.from({ length: totalItems }, (_, index) => {
+    const seedIndex = index % seedItems.length
+    return cloneItem(seedItems[seedIndex], index, seedIndex, seedItems.length)
+  })
+}
+
+const baseSeedItems = [...fakeMediaVisualItems, ...fakeMediaFileItems]
   .map(resolveVisualDimensions)
   .map(ensurePreviewAsset)
   .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
 
-export const fakeMediaItems = [...seedItems]
+export const fakeMediaItems = buildFakeFeed(baseSeedItems, DEFAULT_PAGE_SIZE * DEFAULT_TOTAL_PAGES)
 
 export function createFakeMediaServer(options: CreateFakeMediaServerOptions = {}) {
-  const items = [...(options.items ?? fakeMediaItems)]
   const defaultPageSize = normalizePageSize(options.defaultPageSize, DEFAULT_PAGE_SIZE)
+  const totalPages = normalizeTotalPages(options.totalPages, DEFAULT_TOTAL_PAGES)
   const minDelayMs = options.minDelayMs ?? DEFAULT_MIN_DELAY_MS
   const maxDelayMs = options.maxDelayMs ?? DEFAULT_MAX_DELAY_MS
+  const items = [...(options.items ?? buildFakeFeed(baseSeedItems, defaultPageSize * totalPages))]
 
   return {
     async fetchPage(request: FakeMediaPageRequest = {}): Promise<FakeMediaPageResponse> {

@@ -4,7 +4,7 @@ import { Pause, Play } from 'lucide-vue-next'
 
 import type { VibeRootProps } from './vibe-root/useVibeRoot'
 import { useVibeRoot } from './vibe-root/useVibeRoot'
-import { getItemIcon, getItemLabel } from './vibe-root/media'
+import { getItemIcon } from './vibe-root/media'
 import { getSlideToneClass, getStageToneClass } from './vibe-root/theme'
 
 const props = withDefaults(defineProps<VibeRootProps>(), {
@@ -28,6 +28,7 @@ const {
   formatFileSize,
   formatPlaybackTime,
   getImageSource,
+  getSlideStyle,
   isAtEnd,
   isAudio,
   isVisual,
@@ -43,11 +44,10 @@ const {
   onWheel,
   registerAudioElement,
   registerVideoElement,
+  renderedItems,
   resolvedActiveIndex,
   stageRef,
   statusMessage,
-  toggleActiveMediaPlayback,
-  trackStyle,
 } = viewer
 
 const activeStageToneClass = computed(() => getStageToneClass(activeItem.value?.type ?? 'image'))
@@ -59,6 +59,8 @@ const mediaStatusOffsetClass = computed(() =>
 <template>
   <section
     ref="stageRef"
+    data-testid="vibe-root"
+    :data-rendered-count="renderedItems.length"
     class="relative h-full min-h-[100svh] touch-none overflow-hidden bg-[#05060a] text-[#f7f1ea]"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
@@ -70,13 +72,19 @@ const mediaStatusOffsetClass = computed(() =>
 
     <div
       v-if="props.items.length > 0"
-      class="relative z-[1] h-full will-change-transform"
-      :style="trackStyle"
+      class="relative z-[1] h-full"
     >
       <article
-        v-for="(item, index) in props.items"
+        v-for="{ item, index } in renderedItems"
         :key="item.id"
-        class="relative flex min-h-[100svh] items-center justify-center"
+        data-testid="vibe-root-slide"
+        :data-item-id="item.id"
+        :data-index="index"
+        :data-active="index === resolvedActiveIndex"
+        :aria-hidden="index === resolvedActiveIndex ? 'false' : 'true'"
+        class="absolute inset-0 flex min-h-[100svh] items-center justify-center will-change-transform"
+        :class="index === resolvedActiveIndex ? 'pointer-events-auto' : 'pointer-events-none'"
+        :style="getSlideStyle(index)"
       >
         <div class="absolute inset-0 opacity-85" :class="getSlideToneClass(item.type)" />
 
@@ -185,51 +193,47 @@ const mediaStatusOffsetClass = computed(() =>
       v-if="activeItem"
       class="pointer-events-none absolute inset-0 z-[3] flex flex-col justify-between p-[clamp(1.25rem,2.6vw,2.25rem)]"
     >
-      <div class="flex items-start justify-between gap-4 max-[720px]:flex-col">
-        <span class="inline-flex items-center gap-2 border border-white/14 bg-black/40 px-4 py-3 text-[0.74rem] font-bold uppercase tracking-[0.2em] text-[#f7f1ea]/72 backdrop-blur-[18px]">
-          <component :is="getItemIcon(activeItem.type)" class="h-3.5 w-3.5 stroke-2" aria-hidden="true" />
-          {{ getItemLabel(activeItem.type) }}
-        </span>
-        <span class="inline-flex items-center border border-white/14 bg-black/40 px-4 py-3 text-[0.74rem] font-bold uppercase tracking-[0.2em] text-[#f7f1ea]/72 backdrop-blur-[18px]">
-          {{ resolvedActiveIndex + 1 }} / {{ props.items.length }}
-        </span>
-      </div>
-
-      <div class="flex items-end justify-between gap-4 max-[720px]:flex-col max-[720px]:items-start">
-        <div class="max-w-[34rem]">
-          <h2 class="m-0 text-[clamp(1.2rem,2.4vw,1.9rem)] leading-none tracking-[-0.05em]">
+      <div class="grid gap-4">
+        <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+          <span class="inline-flex h-11 w-11 items-center justify-center border border-white/14 bg-black/40 text-[#f7f1ea]/72 backdrop-blur-[18px]">
+            <component :is="getItemIcon(activeItem.type)" class="h-3.5 w-3.5 stroke-2" aria-hidden="true" />
+          </span>
+          <h2
+            data-testid="vibe-root-title"
+            class="m-0 truncate px-2 text-center text-[0.95rem] leading-none tracking-[-0.04em] min-[721px]:text-[1.2rem]"
+          >
             {{ activeItem.title }}
           </h2>
-          <p class="mt-3 m-0 text-[0.95rem] leading-[1.7] text-[#f7f1ea]/70">
-            {{ formatDate(activeItem.createdAt) }} ·
-            {{ activeItem.extension.toUpperCase() }} ·
-            {{ formatFileSize(activeItem.sizeBytes) }}
-          </p>
-        </div>
-
-        <div v-if="isAtEnd && !props.hasNextPage && !props.loading" class="grid gap-2 max-[720px]:justify-items-start">
-          <span class="inline-flex items-center border border-amber-300/35 bg-black/40 px-4 py-3 text-[0.74rem] font-bold uppercase tracking-[0.2em] text-amber-200 backdrop-blur-[18px]">
-            End reached
+          <span
+            data-testid="vibe-root-pagination"
+            class="inline-flex items-center border border-white/14 bg-black/40 px-4 py-3 text-[0.74rem] font-bold uppercase tracking-[0.2em] text-[#f7f1ea]/72 backdrop-blur-[18px]"
+          >
+            {{ resolvedActiveIndex + 1 }} / {{ props.items.length }}
           </span>
         </div>
+
+        <div class="flex items-center justify-center gap-2 text-center text-[0.76rem] uppercase tracking-[0.18em] text-[#f7f1ea]/68 min-[721px]:text-[0.82rem]">
+          <span>{{ activeItem.extension.toUpperCase() }}</span>
+          <span class="max-[720px]:hidden">·</span>
+          <span class="max-[720px]:hidden">{{ formatDate(activeItem.createdAt) }}</span>
+          <span class="max-[720px]:hidden">·</span>
+          <span class="max-[720px]:hidden">{{ formatFileSize(activeItem.sizeBytes) }}</span>
+        </div>
+      </div>
+
+      <div v-if="isAtEnd && !props.hasNextPage && !props.loading" class="grid gap-2 max-[720px]:justify-items-start">
+        <span class="inline-flex items-center border border-amber-300/35 bg-black/40 px-4 py-3 text-[0.74rem] font-bold uppercase tracking-[0.2em] text-amber-200 backdrop-blur-[18px]">
+          End reached
+        </span>
       </div>
     </div>
 
     <div
       v-if="activeMediaItem"
+      data-testid="vibe-root-media-bar"
       class="absolute inset-x-0 bottom-0 z-[5] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.42)_24%,rgba(0,0,0,0.78))] px-[clamp(1rem,2.6vw,2.25rem)] pt-4 pb-[1.15rem]"
     >
-      <div class="grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-white/12 bg-black/70 backdrop-blur-[18px]">
-        <button
-          type="button"
-          data-swipe-lock="true"
-          class="inline-flex h-11 w-11 items-center justify-center border border-white/16 bg-white/6 text-[#f7f1ea] transition-[background,border-color] duration-200 hover:border-white/30 hover:bg-white/12"
-          :aria-label="activeMediaState.paused ? 'Play active media' : 'Pause active media'"
-          @click="toggleActiveMediaPlayback"
-        >
-          <component :is="activeMediaState.paused ? Play : Pause" class="h-4 w-4 stroke-2" aria-hidden="true" />
-        </button>
-
+      <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-white/12 bg-black/70 backdrop-blur-[18px]">
         <span class="text-[0.76rem] font-bold uppercase tracking-[0.18em] text-[#f7f1ea]/74">
           {{ formatPlaybackTime(activeMediaState.currentTime) }}
         </span>
@@ -243,6 +247,7 @@ const mediaStatusOffsetClass = computed(() =>
           <input
             data-swipe-lock="true"
             type="range"
+            aria-label="Seek active media"
             min="0"
             step="0.1"
             :max="activeMediaDuration || 1"

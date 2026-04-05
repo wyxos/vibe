@@ -1,6 +1,8 @@
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type CSSProperties } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { VibeViewerItem } from '../vibeViewer'
+import { formatDate, formatFileSize, formatPlaybackTime } from './format'
+import { getRenderedItems, getRenderedRange, getVirtualSlideStyle } from './virtualization'
 
 interface MediaUiState {
   currentTime: number
@@ -91,11 +93,9 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
 
     return null
   })
-  const trackStyle = computed<CSSProperties>(() => ({
-    transform: `translate3d(0, ${-resolvedActiveIndex.value * viewportHeight.value + dragOffset.value}px, 0)`,
-    transition: isDragging.value ? 'none' : 'transform 320ms cubic-bezier(0.22, 1, 0.36, 1)',
-  }))
   const dragThreshold = computed(() => Math.min(96, viewportHeight.value * 0.15 || 96))
+  const renderedRange = computed(() => getRenderedRange(resolvedActiveIndex.value, props.items.length))
+  const renderedItems = computed(() => getRenderedItems(props.items, resolvedActiveIndex.value))
 
   watch(resolvedActiveIndex, async () => {
     await syncMediaPlayback()
@@ -388,10 +388,6 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
     toggleMediaPlayback(getMediaElementById(id))
   }
 
-  function toggleActiveMediaPlayback() {
-    toggleMediaPlayback(getActiveMediaElement())
-  }
-
   function onMediaSeekInput(event: Event) {
     const media = getActiveMediaElement()
 
@@ -421,47 +417,8 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
     return item.original.url
   }
 
-  function formatFileSize(sizeBytes: number) {
-    if (sizeBytes < 1024) {
-      return `${sizeBytes} B`
-    }
-
-    const units = ['KB', 'MB', 'GB']
-    let unitIndex = 0
-    let size = sizeBytes / 1024
-
-    while (size >= 1024 && unitIndex < units.length - 1) {
-      size /= 1024
-      unitIndex += 1
-    }
-
-    return `${size.toFixed(size >= 10 ? 0 : 1)} ${units[unitIndex]}`
-  }
-
-  function formatPlaybackTime(value: number) {
-    if (!Number.isFinite(value) || value <= 0) {
-      return '0:00'
-    }
-
-    const totalSeconds = Math.floor(value)
-    const hours = Math.floor(totalSeconds / 3600)
-    const minutes = Math.floor((totalSeconds % 3600) / 60)
-    const seconds = totalSeconds % 60
-
-    if (hours > 0) {
-      return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-    }
-
-    return `${minutes}:${String(seconds).padStart(2, '0')}`
-  }
-
-  function formatDate(value: string) {
-    return new Intl.DateTimeFormat('en', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    }).format(new Date(value))
+  function getSlideStyle(index: number) {
+    return getVirtualSlideStyle(index, resolvedActiveIndex.value, viewportHeight.value, dragOffset.value, isDragging.value)
   }
 
   return {
@@ -474,13 +431,12 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
     formatFileSize,
     formatPlaybackTime,
     getImageSource,
+    getSlideStyle,
     isAtEnd,
     isAudio,
-    isDragging,
     isVisual,
     mediaStates,
     onAudioCoverClick,
-    onKeydown,
     onMediaEvent,
     onMediaSeekInput,
     onPointerCancel,
@@ -491,10 +447,10 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
     onWheel,
     registerAudioElement,
     registerVideoElement,
+    renderedItems,
+    renderedRange,
     resolvedActiveIndex,
     stageRef,
     statusMessage,
-    toggleActiveMediaPlayback,
-    trackStyle,
   }
 }
