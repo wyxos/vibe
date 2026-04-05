@@ -1,5 +1,8 @@
 import type { VibeViewerItem } from '@/components/vibeViewer'
 
+const T_REX_ROAR_AUDIO_URL = 'https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3'
+const KALIMBA_AUDIO_URL = 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3'
+
 export const fakeMediaFileItems: VibeViewerItem[] = [
   {
     id: 'audio-voiceover-cut',
@@ -11,7 +14,7 @@ export const fakeMediaFileItems: VibeViewerItem[] = [
     createdAt: '2026-04-04T07:54:00.000Z',
     durationMs: 186_000,
     original: {
-      url: 'https://samplelib.com/lib/preview/mp3/sample-3s.mp3',
+      url: KALIMBA_AUDIO_URL,
       mimeType: 'audio/mpeg',
       sizeBytes: 3_884_214,
     },
@@ -69,14 +72,14 @@ export const fakeMediaFileItems: VibeViewerItem[] = [
     id: 'audio-field-recording',
     type: 'audio',
     title: 'Field recording ambience',
-    extension: 'wav',
-    mimeType: 'audio/wav',
+    extension: 'mp3',
+    mimeType: 'audio/mpeg',
     sizeBytes: 34_052_110,
     createdAt: '2026-04-04T05:21:00.000Z',
     durationMs: 441_000,
     original: {
-      url: 'https://samplelib.com/lib/preview/wav/sample-6s.wav',
-      mimeType: 'audio/wav',
+      url: KALIMBA_AUDIO_URL,
+      mimeType: 'audio/mpeg',
       sizeBytes: 34_052_110,
     },
   },
@@ -125,7 +128,7 @@ export const fakeMediaFileItems: VibeViewerItem[] = [
     createdAt: '2026-04-04T03:02:00.000Z',
     durationMs: 49_000,
     original: {
-      url: 'https://samplelib.com/lib/preview/mp3/sample-12s.mp3',
+      url: T_REX_ROAR_AUDIO_URL,
       mimeType: 'audio/mpeg',
       sizeBytes: 902_118,
     },
@@ -182,7 +185,7 @@ export const fakeMediaFileItems: VibeViewerItem[] = [
     createdAt: '2026-04-04T00:14:00.000Z',
     durationMs: 302_000,
     original: {
-      url: 'https://samplelib.com/lib/preview/mp3/sample-12s.mp3',
+      url: KALIMBA_AUDIO_URL,
       mimeType: 'audio/mpeg',
       sizeBytes: 6_204_901,
     },
