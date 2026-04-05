@@ -198,19 +198,19 @@ const mediaStatusOffsetClass = computed(() =>
       class="pointer-events-none absolute inset-0 z-[3] flex flex-col justify-between p-[clamp(1.25rem,2.6vw,2.25rem)]"
     >
       <div class="grid gap-4">
-        <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
-          <span class="inline-flex h-11 w-11 items-center justify-center border border-white/14 bg-black/40 text-[#f7f1ea]/72 backdrop-blur-[18px]">
+        <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,34rem)_minmax(0,1fr)] items-center gap-3">
+          <span class="inline-flex h-11 w-11 items-center justify-center justify-self-start border border-white/14 bg-black/40 text-[#f7f1ea]/72 backdrop-blur-[18px]">
             <component :is="getItemIcon(activeItem.type)" class="h-3.5 w-3.5 stroke-2" aria-hidden="true" />
           </span>
           <h2
             data-testid="vibe-root-title"
-            class="m-0 truncate px-2 text-center text-[0.95rem] leading-none tracking-[-0.04em] min-[721px]:text-[1.2rem]"
+            class="m-0 w-full truncate px-2 text-center text-[0.95rem] leading-none tracking-[-0.04em] min-[721px]:text-[1.2rem]"
           >
             {{ activeItem.title }}
           </h2>
           <span
             data-testid="vibe-root-pagination"
-            class="inline-flex items-center border border-white/14 bg-black/40 px-4 py-3 text-[0.74rem] font-bold uppercase tracking-[0.2em] text-[#f7f1ea]/72 backdrop-blur-[18px]"
+            class="inline-flex items-center justify-self-end border border-white/14 bg-black/40 px-4 py-3 text-[0.74rem] font-bold uppercase tracking-[0.2em] text-[#f7f1ea]/72 backdrop-blur-[18px]"
           >
             {{ resolvedActiveIndex + 1 }} / {{ props.items.length }}
           </span>
