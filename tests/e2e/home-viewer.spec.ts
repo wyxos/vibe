@@ -1,5 +1,25 @@
 import { expect, gotoRoute, test } from './fixtures'
 
+test('workspace header opens a right-side menu with navigation routes', async ({ page }) => {
+  await gotoRoute(page, '/')
+
+  const menuButton = page.getByTestId('workspace-menu-button')
+  const menuSheet = page.getByTestId('workspace-menu-sheet')
+
+  await expect(menuButton).toBeVisible()
+  await expect(menuSheet).toHaveAttribute('data-open', 'false')
+
+  await menuButton.click()
+
+  await expect(menuSheet).toHaveAttribute('data-open', 'true')
+  await expect(menuSheet.getByRole('link', { name: 'Previous Page Demo' })).toBeVisible()
+
+  await menuSheet.getByRole('link', { name: 'Previous Page Demo' }).click()
+
+  await expect(page).toHaveURL(/\/demo\/bidirectional-paging$/)
+  await expect(menuSheet).toHaveAttribute('data-open', 'false')
+})
+
 test('home viewer loads the first media page', async ({ page }) => {
   await gotoRoute(page, '/')
 

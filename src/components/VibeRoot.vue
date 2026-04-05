@@ -61,7 +61,7 @@ const mediaStatusOffsetClass = computed(() =>
     ref="stageRef"
     data-testid="vibe-root"
     :data-rendered-count="renderedItems.length"
-    class="relative h-full min-h-[100svh] touch-none overflow-hidden bg-[#05060a] text-[#f7f1ea]"
+    class="relative h-full min-h-full touch-none overflow-hidden bg-[#05060a] text-[#f7f1ea]"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
     @pointerup="onPointerUp"
@@ -82,7 +82,7 @@ const mediaStatusOffsetClass = computed(() =>
         :data-index="index"
         :data-active="index === resolvedActiveIndex"
         :aria-hidden="index === resolvedActiveIndex ? 'false' : 'true'"
-        class="absolute inset-0 flex min-h-[100svh] items-center justify-center will-change-transform"
+        class="absolute inset-0 flex h-full min-h-full items-center justify-center will-change-transform"
         :class="index === resolvedActiveIndex ? 'pointer-events-auto' : 'pointer-events-none'"
         :style="getSlideStyle(index)"
       >
@@ -90,7 +90,7 @@ const mediaStatusOffsetClass = computed(() =>
 
         <div
           v-if="isVisual(item)"
-          class="relative z-[1] flex h-[100svh] w-full items-center justify-center overflow-hidden"
+          class="relative z-[1] flex h-full w-full items-center justify-center overflow-hidden"
         >
           <img
             v-if="item.type === 'image'"
@@ -210,9 +210,15 @@ const mediaStatusOffsetClass = computed(() =>
           </h2>
           <span
             data-testid="vibe-root-pagination"
-            class="inline-flex items-center justify-self-end border border-white/14 bg-black/40 px-4 py-3 text-[0.74rem] font-bold uppercase tracking-[0.2em] text-[#f7f1ea]/72 backdrop-blur-[18px]"
+            class="inline-flex items-center justify-self-end gap-3 border border-white/14 bg-black/40 px-4 py-3 text-[0.74rem] font-bold uppercase tracking-[0.2em] text-[#f7f1ea]/72 backdrop-blur-[18px]"
           >
-            {{ resolvedActiveIndex + 1 }} / {{ props.items.length }}
+            <span>{{ resolvedActiveIndex + 1 }} / {{ props.items.length }}</span>
+            <span
+              v-if="props.paginationDetail"
+              class="border-l border-white/12 pl-3 text-[#f7f1ea]/56"
+            >
+              {{ props.paginationDetail }}
+            </span>
           </span>
         </div>
 

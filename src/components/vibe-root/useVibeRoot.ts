@@ -15,6 +15,7 @@ export interface VibeRootProps {
   activeIndex?: number
   loading?: boolean
   hasNextPage?: boolean
+  paginationDetail?: string | null
 }
 
 type VibeRootEmit = (event: 'update:activeIndex', value: number) => void

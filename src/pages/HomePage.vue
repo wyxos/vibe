@@ -112,7 +112,7 @@ async function retryInitialLoad() {
 </script>
 
 <template>
-  <section class="relative h-full min-h-screen bg-[#05060a]">
+  <section class="relative h-full min-h-full bg-[#05060a]">
     <button
       v-if="errorMessage && items.length === 0"
       type="button"

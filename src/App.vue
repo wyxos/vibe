@@ -31,26 +31,11 @@ const isImmersiveRoute = computed(() => route.meta.immersive === true)
 
           <nav class="flex flex-wrap gap-2 text-sm font-medium" aria-label="Primary">
             <RouterLink
-              to="/"
-              class="border px-4 py-2 transition"
-              active-class="border-stone-900 bg-stone-900 text-white"
-              exact-active-class="border-stone-900 bg-stone-900 text-white"
-            >
-              Home
-            </RouterLink>
-            <RouterLink
               to="/debug/fake-server"
               class="border px-4 py-2 transition"
               active-class="border-stone-900 bg-stone-900 text-white"
             >
               Fake Server Debug
-            </RouterLink>
-            <RouterLink
-              to="/demo/bidirectional-paging"
-              class="border px-4 py-2 transition"
-              active-class="border-stone-900 bg-stone-900 text-white"
-            >
-              Previous Page Demo
             </RouterLink>
           </nav>
         </div>

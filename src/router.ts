@@ -3,30 +3,34 @@ import { createRouter, createWebHistory } from 'vue-router'
 import BidirectionalPagingDemoPage from '@/pages/BidirectionalPagingDemoPage.vue'
 import FakeServerDebugPage from '@/pages/FakeServerDebugPage.vue'
 import HomePage from '@/pages/HomePage.vue'
+import WorkspaceLayout from '@/pages/WorkspaceLayout.vue'
 
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
       path: '/',
-      name: 'home',
-      component: HomePage,
+      component: WorkspaceLayout,
       meta: {
         immersive: true,
       },
-    },
-    {
-      path: '/debug/fake-server',
-      name: 'debug-fake-server',
-      component: FakeServerDebugPage,
-    },
-    {
-      path: '/demo/bidirectional-paging',
-      name: 'demo-bidirectional-paging',
-      component: BidirectionalPagingDemoPage,
-      meta: {
-        immersive: true,
-      },
+      children: [
+        {
+          path: '',
+          name: 'home',
+          component: HomePage,
+        },
+        {
+          path: 'demo/bidirectional-paging',
+          name: 'demo-bidirectional-paging',
+          component: BidirectionalPagingDemoPage,
+        },
+        {
+          path: 'debug/fake-server',
+          name: 'debug-fake-server',
+          component: FakeServerDebugPage,
+        },
+      ],
     },
   ],
 })

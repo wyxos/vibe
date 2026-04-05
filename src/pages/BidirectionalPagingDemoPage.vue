@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
 
 import VibeRoot from '@/components/VibeRoot.vue'
 import type { VibeViewerItem } from '@/components/vibeViewer'
@@ -36,14 +35,17 @@ const currentVisiblePage = computed(() => {
 })
 const loadedPageRangeLabel = computed(() => {
   if (earliestLoadedPage.value == null || latestLoadedPage.value == null) {
-    return `Page ${INITIAL_PAGE}`
+    return `P${INITIAL_PAGE}`
   }
 
   if (earliestLoadedPage.value === latestLoadedPage.value) {
-    return `Page ${earliestLoadedPage.value}`
+    return `P${earliestLoadedPage.value}`
   }
 
-  return `Pages ${earliestLoadedPage.value}-${latestLoadedPage.value}`
+  return `P${earliestLoadedPage.value}-${latestLoadedPage.value}`
+})
+const paginationDetailLabel = computed(() => {
+  return `${loadedPageRangeLabel.value} · V${currentVisiblePage.value}`
 })
 
 watch(
@@ -175,40 +177,11 @@ async function retryInitialLoad() {
 </script>
 
 <template>
-  <section class="relative h-full min-h-screen bg-[#05060a]">
-    <div class="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-between gap-3 p-5">
-      <div class="pointer-events-auto flex flex-wrap items-center gap-2">
-        <RouterLink
-          to="/debug/fake-server"
-          class="inline-flex items-center border border-white/18 bg-black/45 px-4 py-3 text-[0.72rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/78 backdrop-blur-[18px] transition hover:border-white/30 hover:bg-black/60"
-        >
-          Back To Demos
-        </RouterLink>
-        <span class="inline-flex items-center border border-white/14 bg-black/40 px-4 py-3 text-[0.72rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/72 backdrop-blur-[18px]">
-          Starts On Page {{ INITIAL_PAGE }}
-        </span>
-      </div>
-
-      <div class="pointer-events-auto flex flex-wrap items-center justify-end gap-2 text-right">
-        <span
-          data-testid="bidirectional-loaded-pages"
-          class="inline-flex items-center border border-white/14 bg-black/40 px-4 py-3 text-[0.72rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/72 backdrop-blur-[18px]"
-        >
-          {{ loadedPageRangeLabel }}
-        </span>
-        <span
-          data-testid="bidirectional-current-page"
-          class="inline-flex items-center border border-white/14 bg-black/40 px-4 py-3 text-[0.72rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/72 backdrop-blur-[18px]"
-        >
-          Viewing Page {{ currentVisiblePage }}
-        </span>
-      </div>
-    </div>
-
+  <section class="relative h-full min-h-full bg-[#05060a]">
     <button
       v-if="errorMessage && items.length === 0"
       type="button"
-      class="absolute left-5 top-24 z-40 inline-flex items-center border border-rose-400/55 bg-rose-500/18 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-white backdrop-blur transition hover:bg-rose-500/28"
+      class="absolute left-5 top-20 z-40 inline-flex items-center border border-rose-400/55 bg-rose-500/18 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-white backdrop-blur transition hover:bg-rose-500/28"
       @click="retryInitialLoad"
     >
       Retry
@@ -216,7 +189,7 @@ async function retryInitialLoad() {
 
     <div
       v-if="errorMessage && items.length > 0"
-      class="absolute left-5 top-24 z-40 border border-amber-400/45 bg-black/35 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-amber-100 backdrop-blur"
+      class="absolute left-5 top-20 z-40 border border-amber-400/45 bg-black/35 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-amber-100 backdrop-blur"
     >
       {{ errorMessage }}
     </div>
@@ -226,6 +199,7 @@ async function retryInitialLoad() {
       :active-index="activeIndex"
       :loading="isViewerLoading"
       :has-next-page="Boolean(nextPage)"
+      :pagination-detail="paginationDetailLabel"
       @update:active-index="activeIndex = $event"
     />
   </section>
