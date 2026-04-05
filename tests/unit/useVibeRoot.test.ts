@@ -154,6 +154,34 @@ describe('useVibeRoot', () => {
     viewer.unmount()
   })
 
+  it('toggles active audio playback from the cover click handler', async () => {
+    const audioItem = createAudioItem('audio-toggle')
+    const viewer = await mountUseVibeRoot({
+      items: [audioItem],
+      activeIndex: 0,
+    })
+
+    const audio = createStubMediaElement('audio', {
+      currentTime: 0,
+      duration: 18,
+      paused: true,
+    })
+
+    viewer.api.registerAudioElement(audioItem.id, audio.element)
+    await viewer.flush()
+
+    audio.play.mockClear()
+    audio.pause.mockClear()
+
+    viewer.api.onAudioCoverClick({ button: 0 } as MouseEvent, audioItem.id)
+    expect(audio.play).toHaveBeenCalledTimes(1)
+
+    viewer.api.onAudioCoverClick({ button: 0 } as MouseEvent, audioItem.id)
+    expect(audio.pause).toHaveBeenCalledTimes(1)
+
+    viewer.unmount()
+  })
+
   it('keeps the custom seekbar state at the requested time until the media catches up', async () => {
     const videoItem = createVideoItem('video-laggy')
     const viewer = await mountUseVibeRoot({

@@ -4,6 +4,7 @@ test('fake-server debug route paginates and shows response metadata', async ({ p
   await gotoRoute(page, '/debug/fake-server')
 
   await expect(page.getByRole('heading', { name: 'Fake paginated media server' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Previous Page Demo' })).toBeVisible()
 
   const responseSnapshot = page.locator('pre')
   const previousButton = page.getByRole('button', { name: 'Previous' })
@@ -28,4 +29,22 @@ test('fake-server debug route paginates and shows response metadata', async ({ p
   await expect(responseSnapshot).toContainText('"page": 2')
   await expect(previousButton).toBeEnabled()
   await expect(cards).toHaveCount(25)
+})
+
+test('bidirectional paging demo prepends earlier pages when navigating upward', async ({ page }) => {
+  await gotoRoute(page, '/demo/bidirectional-paging')
+
+  const loadedPages = page.getByTestId('bidirectional-loaded-pages')
+  const currentPage = page.getByTestId('bidirectional-current-page')
+  const progress = page.getByTestId('vibe-root-pagination')
+
+  await expect(loadedPages).toHaveText('Page 10', { timeout: 15_000 })
+  await expect(currentPage).toHaveText('Viewing Page 10')
+  await expect(progress).toHaveText('4 / 25')
+
+  await page.keyboard.press('ArrowUp')
+
+  await expect.poll(async () => (await loadedPages.textContent())?.trim()).toBe('Pages 9-10')
+  await expect(progress).toHaveText('28 / 50')
+  await expect(currentPage).toHaveText('Viewing Page 10')
 })

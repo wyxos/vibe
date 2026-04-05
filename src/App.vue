@@ -45,6 +45,13 @@ const isImmersiveRoute = computed(() => route.meta.immersive === true)
             >
               Fake Server Debug
             </RouterLink>
+            <RouterLink
+              to="/demo/bidirectional-paging"
+              class="border px-4 py-2 transition"
+              active-class="border-stone-900 bg-stone-900 text-white"
+            >
+              Previous Page Demo
+            </RouterLink>
           </nav>
         </div>
       </header>
