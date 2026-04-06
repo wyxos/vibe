@@ -1,3 +1,5 @@
+import type { Locator } from '@playwright/test'
+
 import { expect, gotoRoute, test } from './fixtures'
 
 test('workspace header opens a right-side menu with navigation routes', async ({ page }) => {
@@ -20,65 +22,139 @@ test('workspace header opens a right-side menu with navigation routes', async ({
   await expect(menuSheet).toHaveAttribute('data-open', 'false')
 })
 
-test('home viewer loads the first media page', async ({ page }) => {
+test('desktop home viewer starts in the masonry list and virtualizes visible cards', async ({ page }) => {
+  await page.setViewportSize({
+    width: 2_560,
+    height: 1_440,
+  })
+
   await gotoRoute(page, '/')
 
   const root = page.getByTestId('vibe-root')
-  const title = page.getByTestId('vibe-root-title')
   const progress = page.getByTestId('vibe-root-pagination')
+  const cards = page.getByTestId('vibe-list-card')
 
   await expect(root).toBeVisible()
-  await expect(title).toHaveText(/\S+/, { timeout: 15_000 })
-  await expect(progress).toHaveText('1 / 25')
-  expect(Number(await root.getAttribute('data-rendered-count'))).toBeLessThanOrEqual(5)
-
-  let mediaBarVisible = false
-
-  for (let step = 0; step < 5; step += 1) {
-    if (await page.getByTestId('vibe-root-media-bar').isVisible().catch(() => false)) {
-      mediaBarVisible = true
-      break
-    }
-
-    await page.keyboard.press('ArrowDown')
-  }
-
-  expect(mediaBarVisible).toBe(true)
-  expect(Number(await root.getAttribute('data-rendered-count'))).toBeLessThanOrEqual(5)
+  await expect(root).toHaveAttribute('data-surface-mode', 'list')
+  await expect(page.getByTestId('vibe-list-scroll')).toBeVisible()
+  await expect.poll(async () => (await getPaginationState(progress)).active).toBe(1)
+  await expect.poll(async () => (await getPaginationState(progress)).total).toBeGreaterThanOrEqual(25)
+  await expect.poll(async () => cards.count()).toBeGreaterThan(0)
+  await expect.poll(async () => {
+    return cards.evaluateAll((nodes) => {
+      return new Set(nodes.map((node) => Math.round((node as HTMLElement).getBoundingClientRect().left))).size
+    })
+  }).toBeGreaterThan(1)
   await expect(page.getByRole('button', { name: 'Retry' })).toHaveCount(0)
 })
 
-test('home viewer prefetches the next page without rendering the full loaded list', async ({ page }) => {
+test('desktop home viewer opens fullscreen from a tile and can return to the list', async ({ page }) => {
+  await page.setViewportSize({
+    width: 1_100,
+    height: 650,
+  })
+
+  await gotoRoute(page, '/')
+
+  const root = page.getByTestId('vibe-root')
+  const cards = page.getByTestId('vibe-list-card')
+  const progress = page.getByTestId('vibe-root-pagination')
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'list')
+  await expect.poll(async () => cards.count()).toBeGreaterThan(1)
+
+  await cards.nth(1).locator('button').click()
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'fullscreen')
+  await expect(progress).toContainText('2 / 25')
+  await expect(page.getByTestId('vibe-root-back-to-list')).toBeVisible()
+
+  await page.getByTestId('vibe-root-back-to-list').click()
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'list')
+  await expect(page.getByTestId('vibe-root-back-to-list')).toHaveCount(0)
+})
+
+test('desktop home viewer auto-loads the next page and keeps the list virtualized after returning', async ({ page }) => {
+  await page.setViewportSize({
+    width: 1_100,
+    height: 650,
+  })
+
   await gotoRoute(page, '/')
 
   const root = page.getByTestId('vibe-root')
   const progress = page.getByTestId('vibe-root-pagination')
+  const cards = page.getByTestId('vibe-list-card')
 
+  await expect(root).toHaveAttribute('data-surface-mode', 'list')
   await expect(progress).toHaveText('1 / 25', { timeout: 15_000 })
+  await expect.poll(async () => cards.count()).toBeGreaterThan(0)
+
+  await cards.nth(0).locator('button').click()
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'fullscreen')
 
   for (let step = 0; step < 23; step += 1) {
     await page.keyboard.press('ArrowDown')
   }
 
-  await expect.poll(async () => (await progress.textContent())?.trim()).toContain('/ 50')
-  expect(Number(await root.getAttribute('data-rendered-count'))).toBeLessThanOrEqual(5)
+  await expect.poll(async () => normalizeWhitespace(await progress.textContent())).toContain('/ 50')
+  await page.getByTestId('vibe-root-back-to-list').click()
+  await expect(root).toHaveAttribute('data-surface-mode', 'list')
+  await expect.poll(async () => cards.count()).toBeLessThan(50)
 })
 
-test('home viewer seekbar moves the active video forward instead of snapping back', async ({ page }) => {
+test('desktop masonry list scroll loads the next page', async ({ page }) => {
+  await page.setViewportSize({
+    width: 2_560,
+    height: 1_207,
+  })
+
   await gotoRoute(page, '/')
 
+  const root = page.getByTestId('vibe-root')
   const progress = page.getByTestId('vibe-root-pagination')
+  const scrollViewport = page.getByTestId('vibe-list-scroll')
 
-  await expect(progress).toHaveText('1 / 25', { timeout: 15_000 })
+  await expect(root).toHaveAttribute('data-surface-mode', 'list')
+  await expect.poll(async () => (await getPaginationState(progress)).active).toBe(1)
+  await expect.poll(async () => (await getPaginationState(progress)).total).toBeGreaterThanOrEqual(25)
+  const initialPagination = await getPaginationState(progress)
 
-  await page.keyboard.press('ArrowDown')
-  await expect(progress).toHaveText('2 / 25')
+  await scrollViewport.evaluate((element) => {
+    element.scrollTop = element.scrollHeight
+    element.dispatchEvent(new Event('scroll'))
+  })
+
+  await expect.poll(async () => (await getPaginationState(progress)).total).toBeGreaterThan(initialPagination.total)
+})
+
+test('desktop fullscreen seekbar moves the active video forward instead of snapping back', async ({ page }) => {
+  await page.setViewportSize({
+    width: 1_100,
+    height: 650,
+  })
+
+  await gotoRoute(page, '/')
+
+  const root = page.getByTestId('vibe-root')
+  const cards = page.getByTestId('vibe-list-card')
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'list')
+  await expect.poll(async () => cards.count()).toBeGreaterThan(1)
+
+  await cards.nth(1).locator('button').click()
 
   const activeVideo = page.locator('[data-active="true"] video')
   const seekbar = page.getByLabel('Seek active media')
 
+  await expect(root).toHaveAttribute('data-surface-mode', 'fullscreen')
   await expect(activeVideo).toBeVisible()
   await expect(seekbar).toBeVisible()
+  await expect.poll(async () => {
+    return activeVideo.evaluate((video) => Number.isFinite(video.duration) ? video.duration : 0)
+  }).toBeGreaterThan(0)
 
   const targetTime = await activeVideo.evaluate((video) => Math.max(video.duration * 0.5, 1))
 
@@ -92,3 +168,44 @@ test('home viewer seekbar moves the active video forward instead of snapping bac
     return activeVideo.evaluate((video) => video.currentTime)
   }).toBeGreaterThan(1)
 })
+
+test('mobile home viewer always boots in fullscreen mode', async ({ page }) => {
+  await page.setViewportSize({
+    width: 430,
+    height: 932,
+  })
+
+  await gotoRoute(page, '/')
+
+  const root = page.getByTestId('vibe-root')
+  const progress = page.getByTestId('vibe-root-pagination')
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'fullscreen')
+  await expect(page.getByTestId('vibe-list-scroll')).toHaveCount(0)
+  await expect(progress).toHaveText('1 / 25', { timeout: 15_000 })
+
+  await page.keyboard.press('ArrowDown')
+
+  await expect(progress).toHaveText('2 / 25')
+})
+
+function normalizeWhitespace(value: string | null) {
+  return value?.replace(/\s+/g, ' ').trim() ?? ''
+}
+
+async function getPaginationState(locator: Locator) {
+  const text = normalizeWhitespace(await locator.textContent())
+  const match = text.match(/^(\d+)\s*\/\s*(\d+)$/)
+
+  if (!match) {
+    return {
+      active: -1,
+      total: -1,
+    }
+  }
+
+  return {
+    active: Number.parseInt(match[1], 10),
+    total: Number.parseInt(match[2], 10),
+  }
+}

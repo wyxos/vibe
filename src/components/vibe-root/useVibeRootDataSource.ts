@@ -272,6 +272,22 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
     await loadPage(autoProps.initialCursor ?? null, 'initial')
   }
 
+  async function prefetchNextPage() {
+    if (!isAutoMode.value || !nextPage.value || isLoadingInitial.value) {
+      return
+    }
+
+    await loadPage(nextPage.value, 'append')
+  }
+
+  async function prefetchPreviousPage() {
+    if (!isAutoMode.value || !previousPage.value || isLoadingInitial.value) {
+      return
+    }
+
+    await loadPage(previousPage.value, 'prepend')
+  }
+
   return {
     activeIndex,
     canRetryInitialLoad,
@@ -281,6 +297,8 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
     items,
     loading,
     paginationDetail,
+    prefetchNextPage,
+    prefetchPreviousPage,
     retryInitialLoad,
     setActiveIndex,
   }

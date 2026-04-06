@@ -67,7 +67,7 @@ function onKeydown(event: KeyboardEvent) {
 </script>
 
 <template>
-  <section class="flex h-full min-h-full flex-col bg-[#05060a] text-[#f7f1ea]">
+  <section class="flex h-full min-h-0 flex-col bg-[#05060a] text-[#f7f1ea]">
     <header class="relative z-40 border-b border-white/12 bg-[linear-gradient(180deg,rgba(6,7,10,0.96),rgba(6,7,10,0.84))] backdrop-blur-[20px]">
       <div class="mx-auto flex min-h-[4.75rem] w-full max-w-[1600px] items-center justify-between gap-4 px-5 py-4 sm:px-6">
         <div class="min-w-0">

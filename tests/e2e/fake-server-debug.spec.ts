@@ -33,15 +33,43 @@ test('fake-server debug route paginates and shows response metadata', async ({ p
 })
 
 test('bidirectional paging demo prepends earlier pages when navigating upward', async ({ page }) => {
+  await page.setViewportSize({
+    width: 1_100,
+    height: 650,
+  })
+
   await gotoRoute(page, '/demo/bidirectional-paging')
 
+  const root = page.getByTestId('vibe-root')
   const progress = page.getByTestId('vibe-root-pagination')
+  const listScroll = page.getByTestId('vibe-list-scroll')
 
-  await expect(progress).toContainText('4 / 25', { timeout: 15_000 })
+  await expect(root).toHaveAttribute('data-surface-mode', 'list')
+  await expect(progress).toContainText('13 / 25', { timeout: 15_000 })
   await expect(progress).toContainText('P10 · V10')
+  await expect.poll(async () => {
+    return listScroll.evaluate((element) => {
+      const node = element as HTMLElement
+      return node.scrollHeight > node.clientHeight
+    })
+  }).toBe(true)
 
-  await page.keyboard.press('ArrowUp')
+  await listScroll.evaluate((element) => {
+    const node = element as HTMLElement
+    node.scrollTop = Math.min(node.scrollHeight - node.clientHeight, Math.max(node.clientHeight * 0.75, 320))
+    node.dispatchEvent(new Event('scroll', { bubbles: true }))
+  })
 
-  await expect(progress).toContainText('28 / 50')
+  await listScroll.evaluate((element) => {
+    const node = element as HTMLElement
+    node.scrollTop = 0
+    node.dispatchEvent(new Event('scroll', { bubbles: true }))
+  })
+
+  await expect.poll(async () => normalizeWhitespace(await progress.textContent())).toContain('/ 50')
   await expect(progress).toContainText('P9-10 · V10')
 })
+
+function normalizeWhitespace(value: string | null) {
+  return value?.replace(/\s+/g, ' ').trim() ?? ''
+}

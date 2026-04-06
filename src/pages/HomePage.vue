@@ -18,7 +18,7 @@ async function getItems({ cursor, pageSize }: VibeGetItemsParams): Promise<VibeG
 </script>
 
 <template>
-  <section class="relative h-full min-h-full bg-[#05060a]">
+  <section class="relative h-full min-h-0 bg-[#05060a]">
     <VibeRoot :get-items="getItems" />
   </section>
 </template>

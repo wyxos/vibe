@@ -6,7 +6,7 @@ import type { VibeViewerItem } from '@/components/vibeViewer'
 import { fetchFakeMediaPage } from '@/demo/fakeServer'
 
 const INITIAL_PAGE = 10
-const INITIAL_ACTIVE_OFFSET = 3
+const INITIAL_ACTIVE_OFFSET = 12
 const PAGE_SIZE = 25
 const PREFETCH_OFFSET = 3
 
@@ -177,7 +177,7 @@ async function retryInitialLoad() {
 </script>
 
 <template>
-  <section class="relative h-full min-h-full bg-[#05060a]">
+  <section class="relative h-full min-h-0 bg-[#05060a]">
     <button
       v-if="errorMessage && items.length === 0"
       type="button"
