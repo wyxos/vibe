@@ -329,7 +329,7 @@ export function useVibeRoot(
       }
 
       element.muted = true
-      element.loop = true
+      element.loop = false
       element.playsInline = true
       void element.play().catch(() => {})
       updateMediaState(id, element)

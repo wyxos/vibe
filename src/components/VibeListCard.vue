@@ -12,22 +12,31 @@ const props = defineProps<{
 }>()
 
 const renderableAsset = computed(() => getListRenderableAsset(props.item))
-const isHovered = ref(false)
 const isInView = ref(false)
 const isReady = ref(renderableAsset.value.kind === 'fallback')
 const rootRef = ref<HTMLElement | null>(null)
 const videoRef = ref<HTMLVideoElement | null>(null)
+const attachedAssetUrl = computed(() => {
+  if (!isInView.value) {
+    return null
+  }
+
+  return renderableAsset.value.url
+})
+const shouldRenderImage = computed(() => renderableAsset.value.kind === 'image' && Boolean(attachedAssetUrl.value))
+const shouldRenderVideo = computed(() => renderableAsset.value.kind === 'video' && Boolean(attachedAssetUrl.value))
+const shouldShowSpinner = computed(() => Boolean(attachedAssetUrl.value) && !isReady.value)
 
 let intersectionObserver: IntersectionObserver | null = null
 
 watch(
-  () => renderableAsset.value.url,
+  attachedAssetUrl,
   () => {
     isReady.value = renderableAsset.value.kind === 'fallback'
   },
 )
 
-watch([isHovered, isInView, isReady], () => {
+watch([isInView, isReady, attachedAssetUrl], () => {
   syncVideoPlayback()
 })
 
@@ -85,12 +94,19 @@ function syncVideoPlayback() {
     return
   }
 
-  if (isHovered.value && isInView.value && isReady.value) {
+  if (attachedAssetUrl.value && isInView.value && isReady.value) {
     video.muted = true
     video.loop = true
     video.playsInline = true
     void video.play().catch(() => {})
     return
+  }
+
+  try {
+    video.currentTime = 0
+  }
+  catch {
+    // Ignore reset failures for streams or not-yet-ready media elements.
   }
 
   video.pause()
@@ -102,11 +118,9 @@ function syncVideoPlayback() {
     ref="rootRef"
     class="group relative h-full w-full overflow-hidden border bg-[#0a0b0f] text-[#f7f1ea] transition-[border-color,transform] duration-300"
     :class="props.active ? 'border-white/28' : 'border-white/12 hover:border-white/24'"
-    @mouseenter="isHovered = true"
-    @mouseleave="isHovered = false"
   >
     <div
-      v-if="renderableAsset.kind !== 'fallback' && !isReady"
+      v-if="shouldShowSpinner"
       data-testid="vibe-list-card-spinner"
       class="pointer-events-none absolute inset-0 z-[2] grid place-items-center bg-black/18"
     >
@@ -116,8 +130,8 @@ function syncVideoPlayback() {
     </div>
 
     <img
-      v-if="renderableAsset.kind === 'image' && renderableAsset.url"
-      :src="renderableAsset.url"
+      v-if="shouldRenderImage && attachedAssetUrl"
+      :src="attachedAssetUrl"
       :alt="renderableAsset.label"
       draggable="false"
       class="block h-full w-full object-cover transition-opacity duration-300"
@@ -127,9 +141,9 @@ function syncVideoPlayback() {
     />
 
     <video
-      v-else-if="renderableAsset.kind === 'video' && renderableAsset.url"
+      v-else-if="shouldRenderVideo && attachedAssetUrl"
       ref="videoRef"
-      :src="renderableAsset.url"
+      :src="attachedAssetUrl"
       muted
       loop
       playsinline

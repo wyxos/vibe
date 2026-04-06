@@ -1,7 +1,5 @@
 import type { VibeViewerItem } from '@/components/vibeViewer'
 
-const FLOWER_VIDEO_PREVIEW_URL = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4#t=0,4'
-const FLOWER_VIDEO_ALT_PREVIEW_URL = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4#t=1,5'
 const FLOWER_VIDEO_URL = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
 
 export const fakeMediaVisualItems: VibeViewerItem[] = [
@@ -26,7 +24,7 @@ export const fakeMediaVisualItems: VibeViewerItem[] = [
     width: 1920,
     height: 1080,
     preview: {
-      url: FLOWER_VIDEO_PREVIEW_URL,
+      url: FLOWER_VIDEO_URL,
       width: 640,
       height: 360,
     },
@@ -52,7 +50,7 @@ export const fakeMediaVisualItems: VibeViewerItem[] = [
     width: 2560,
     height: 1440,
     preview: {
-      url: FLOWER_VIDEO_ALT_PREVIEW_URL,
+      url: FLOWER_VIDEO_URL,
       width: 1280,
       height: 720,
     },
@@ -86,7 +84,7 @@ export const fakeMediaVisualItems: VibeViewerItem[] = [
     width: 1080,
     height: 1920,
     preview: {
-      url: FLOWER_VIDEO_PREVIEW_URL,
+      url: FLOWER_VIDEO_URL,
       width: 540,
       height: 960,
     },
@@ -112,7 +110,7 @@ export const fakeMediaVisualItems: VibeViewerItem[] = [
     width: 1280,
     height: 720,
     preview: {
-      url: FLOWER_VIDEO_ALT_PREVIEW_URL,
+      url: FLOWER_VIDEO_URL,
       width: 640,
       height: 360,
     },
@@ -138,7 +136,7 @@ export const fakeMediaVisualItems: VibeViewerItem[] = [
     width: 1440,
     height: 900,
     preview: {
-      url: FLOWER_VIDEO_PREVIEW_URL,
+      url: FLOWER_VIDEO_URL,
       width: 720,
       height: 450,
     },

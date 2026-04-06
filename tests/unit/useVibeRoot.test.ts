@@ -133,7 +133,7 @@ describe('useVibeRoot', () => {
 
     expect(video.play).toHaveBeenCalledTimes(1)
     expect(video.element.muted).toBe(true)
-    expect(video.element.loop).toBe(true)
+    expect(video.element.loop).toBe(false)
     expect(video.element.playsInline).toBe(true)
     expect(audio.pause).toHaveBeenCalledTimes(1)
     expect(audio.currentTime()).toBe(0)

@@ -146,7 +146,6 @@ function getFullscreenMediaSource(index: number, item: (typeof props.items)[numb
             :class="viewer.isMediaReady(item.id) ? 'opacity-100' : 'opacity-0'"
             playsinline
             muted
-            loop
             :src="getFullscreenMediaSource(index, item)"
             :preload="shouldLoadSlideAsset(index) ? 'metadata' : 'none'"
             :ref="(element) => viewer.registerVideoElement(item.id, element)"
