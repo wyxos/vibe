@@ -5,6 +5,7 @@ import { LoaderCircle } from 'lucide-vue-next'
 import type { VibeViewerItem } from './vibeViewer'
 import { getItemIcon } from './vibe-root/media'
 import { getListRenderableAsset } from './vibe-root/listPreview'
+import { defaultVibeAssetLoadQueue, type VibeAssetLoadLease } from './vibe-root/useVibeAssetLoadQueue'
 
 const props = defineProps<{
   active?: boolean
@@ -15,26 +16,46 @@ const renderableAsset = computed(() => getListRenderableAsset(props.item))
 const isInView = ref(false)
 const isReady = ref(renderableAsset.value.kind === 'fallback')
 const rootRef = ref<HTMLElement | null>(null)
+const scrollRootRef = ref<HTMLElement | null>(null)
 const videoRef = ref<HTMLVideoElement | null>(null)
+const canAttachAsset = ref(renderableAsset.value.kind === 'fallback')
 const attachedAssetUrl = computed(() => {
-  if (!isInView.value) {
+  if (!isInView.value || !canAttachAsset.value) {
     return null
   }
 
   return renderableAsset.value.url
 })
+const isQueueEligible = computed(() =>
+  isInView.value
+  && (renderableAsset.value.kind === 'image' || renderableAsset.value.kind === 'video')
+  && Boolean(renderableAsset.value.url),
+)
 const shouldRenderImage = computed(() => renderableAsset.value.kind === 'image' && Boolean(attachedAssetUrl.value))
 const shouldRenderVideo = computed(() => renderableAsset.value.kind === 'video' && Boolean(attachedAssetUrl.value))
-const shouldShowSpinner = computed(() => Boolean(attachedAssetUrl.value) && !isReady.value)
+const shouldShowSpinner = computed(() =>
+  isQueueEligible.value && (!canAttachAsset.value || !isReady.value),
+)
 
 let intersectionObserver: IntersectionObserver | null = null
+let loadLease: VibeAssetLoadLease | null = null
 
 watch(
-  attachedAssetUrl,
+  [attachedAssetUrl, () => renderableAsset.value.kind],
   () => {
-    isReady.value = renderableAsset.value.kind === 'fallback'
+    const isFallback = renderableAsset.value.kind === 'fallback'
+
+    isReady.value = isFallback
+
+    if (isFallback) {
+      canAttachAsset.value = true
+    }
   },
 )
+
+watch(isQueueEligible, () => {
+  syncAssetQueue()
+})
 
 watch([isInView, isReady, attachedAssetUrl], () => {
   syncVideoPlayback()
@@ -42,9 +63,13 @@ watch([isInView, isReady, attachedAssetUrl], () => {
 
 onMounted(() => {
   if (!rootRef.value || typeof IntersectionObserver === 'undefined') {
+    scrollRootRef.value = null
     isInView.value = true
+    syncAssetQueue()
     return
   }
+
+  scrollRootRef.value = rootRef.value.closest('[data-testid="vibe-list-scroll"]')
 
   intersectionObserver = new IntersectionObserver(
     (entries) => {
@@ -54,11 +79,12 @@ onMounted(() => {
         }
 
         isInView.value = entry.isIntersecting && (entry.intersectionRatio ?? 0) >= 0.5
+        syncAssetQueue()
         syncVideoPlayback()
       }
     },
     {
-      root: rootRef.value.closest('[data-testid="vibe-list-scroll"]'),
+      root: scrollRootRef.value,
       threshold: [0, 0.5, 1],
     },
   )
@@ -67,25 +93,56 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  teardownAssetLoad()
   intersectionObserver?.disconnect()
   intersectionObserver = null
 })
 
 function onImageLoad() {
   isReady.value = true
+  releaseLoadLease()
 }
 
 function onImageError() {
   isReady.value = true
+  releaseLoadLease()
 }
 
 function onVideoReady() {
   isReady.value = true
+  releaseLoadLease()
   syncVideoPlayback()
 }
 
 function onVideoLoading() {
   isReady.value = false
+}
+
+function syncAssetQueue() {
+  if (renderableAsset.value.kind === 'fallback') {
+    teardownAssetLoad(false)
+    return
+  }
+
+  if (!isQueueEligible.value) {
+    teardownAssetLoad()
+    return
+  }
+
+  if (canAttachAsset.value || loadLease) {
+    loadLease?.refresh()
+    return
+  }
+
+  loadLease = defaultVibeAssetLoadQueue.request({
+    assetType: renderableAsset.value.kind,
+    getPriority: getLoadPriority,
+    onGrant() {
+      canAttachAsset.value = true
+      isReady.value = false
+    },
+    url: renderableAsset.value.url ?? props.item.url,
+  })
 }
 
 function syncVideoPlayback() {
@@ -110,6 +167,59 @@ function syncVideoPlayback() {
   }
 
   video.pause()
+}
+
+function teardownAssetLoad(resetMedia = true) {
+  if (resetMedia) {
+    resetVideoPlayback()
+  }
+
+  releaseLoadLease()
+  canAttachAsset.value = renderableAsset.value.kind === 'fallback'
+  isReady.value = renderableAsset.value.kind === 'fallback'
+}
+
+function releaseLoadLease() {
+  loadLease?.release()
+  loadLease = null
+}
+
+function resetVideoPlayback() {
+  const video = videoRef.value
+
+  if (!video) {
+    return
+  }
+
+  try {
+    video.currentTime = 0
+  }
+  catch {
+    // Ignore reset failures for streams or not-yet-ready media elements.
+  }
+
+  video.pause()
+}
+
+function getLoadPriority() {
+  const rootElement = rootRef.value
+
+  if (!rootElement) {
+    return Number.POSITIVE_INFINITY
+  }
+
+  const itemBounds = rootElement.getBoundingClientRect()
+
+  if (scrollRootRef.value) {
+    const scrollBounds = scrollRootRef.value.getBoundingClientRect()
+    const viewportCenter = scrollBounds.top + (scrollBounds.height / 2)
+
+    return Math.abs(((itemBounds.top + itemBounds.bottom) / 2) - viewportCenter)
+  }
+
+  const viewportCenter = window.innerHeight / 2
+
+  return Math.abs(((itemBounds.top + itemBounds.bottom) / 2) - viewportCenter)
 }
 </script>
 
