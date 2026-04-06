@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import VibeRoot from '@/components/VibeRoot.vue'
 import type { VibeViewerItem } from '@/components/vibeViewer'
@@ -9,6 +9,7 @@ const INITIAL_PAGE = 10
 const INITIAL_ACTIVE_OFFSET = 12
 const PAGE_SIZE = 25
 const PREFETCH_OFFSET = 3
+const TOP_SCROLL_THRESHOLD_PX = 24
 
 const items = ref<VibeViewerItem[]>([])
 const activeIndex = ref(0)
@@ -21,9 +22,13 @@ const isLoadingInitial = ref(true)
 const isPrefetchingNext = ref(false)
 const isPrefetchingPrevious = ref(false)
 const errorMessage = ref<string | null>(null)
+const hasSeenNonTopListScroll = ref(false)
+const hasReachedTopAfterScroll = ref(false)
 
 const loadedPages = new Set<string>()
 const inFlightPages = new Set<string>()
+
+let listScrollViewport: HTMLElement | null = null
 
 const isViewerLoading = computed(() => isLoadingInitial.value || isPrefetchingNext.value || isPrefetchingPrevious.value)
 const currentVisiblePage = computed(() => {
@@ -73,12 +78,16 @@ onMounted(async () => {
   await loadPage(String(INITIAL_PAGE), 'initial')
 })
 
+onBeforeUnmount(() => {
+  detachListScrollListener()
+})
+
 async function maybePrefetchAround() {
   if (!items.value.length || isLoadingInitial.value) {
     return
   }
 
-  if (previousPage.value && activeIndex.value < PREFETCH_OFFSET) {
+  if (previousPage.value && canPrefetchPreviousPage()) {
     await loadPage(previousPage.value, 'prepend')
   }
 
@@ -119,6 +128,8 @@ async function loadPage(pageToken: string, mode: 'initial' | 'prepend' | 'append
       activeIndex.value = Math.min(INITIAL_ACTIVE_OFFSET, Math.max(response.items.length - 1, 0))
       earliestLoadedPage.value = response.page
       latestLoadedPage.value = response.page
+      hasSeenNonTopListScroll.value = false
+      hasReachedTopAfterScroll.value = false
     }
     else if (mode === 'prepend') {
       items.value = [...response.items, ...items.value]
@@ -131,6 +142,8 @@ async function loadPage(pageToken: string, mode: 'initial' | 'prepend' | 'append
     }
 
     updatePageBounds()
+    await nextTick()
+    connectListScrollListener()
   }
   catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'The demo could not load items.'
@@ -173,6 +186,62 @@ async function retryInitialLoad() {
   loadedPages.clear()
 
   await loadPage(String(INITIAL_PAGE), 'initial')
+}
+
+function canPrefetchPreviousPage() {
+  if (activeIndex.value >= PREFETCH_OFFSET) {
+    return false
+  }
+
+  const requiresScrollIntent = typeof window !== 'undefined' && window.innerWidth >= 1024
+  if (!requiresScrollIntent) {
+    return true
+  }
+
+  return hasReachedTopAfterScroll.value
+}
+
+function connectListScrollListener() {
+  const nextViewport = document.querySelector<HTMLElement>('[data-testid="vibe-list-scroll"]')
+  if (!nextViewport || nextViewport === listScrollViewport) {
+    return
+  }
+
+  detachListScrollListener()
+  listScrollViewport = nextViewport
+  listScrollViewport.addEventListener('scroll', onListViewportScroll, {
+    passive: true,
+  })
+  syncListScrollState(listScrollViewport.scrollTop)
+}
+
+function detachListScrollListener() {
+  if (!listScrollViewport) {
+    return
+  }
+
+  listScrollViewport.removeEventListener('scroll', onListViewportScroll)
+  listScrollViewport = null
+}
+
+function onListViewportScroll(event: Event) {
+  const viewport = event.currentTarget
+  if (!(viewport instanceof HTMLElement)) {
+    return
+  }
+
+  syncListScrollState(viewport.scrollTop)
+}
+
+function syncListScrollState(scrollTop: number) {
+  if (scrollTop > TOP_SCROLL_THRESHOLD_PX) {
+    hasSeenNonTopListScroll.value = true
+    return
+  }
+
+  if (hasSeenNonTopListScroll.value) {
+    hasReachedTopAfterScroll.value = true
+  }
 }
 </script>
 

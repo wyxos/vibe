@@ -47,6 +47,9 @@ test('bidirectional paging demo prepends earlier pages when navigating upward', 
   await expect(root).toHaveAttribute('data-surface-mode', 'list')
   await expect(progress).toContainText('13 / 25', { timeout: 15_000 })
   await expect(progress).toContainText('P10 · V10')
+  await page.waitForTimeout(500)
+  await expect(progress).toContainText('/ 25')
+  await expect(progress).toContainText('P10 · V10')
   await expect.poll(async () => {
     return listScroll.evaluate((element) => {
       const node = element as HTMLElement
