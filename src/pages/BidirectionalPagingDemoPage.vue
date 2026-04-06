@@ -24,6 +24,7 @@ const isPrefetchingPrevious = ref(false)
 const errorMessage = ref<string | null>(null)
 const hasSeenNonTopListScroll = ref(false)
 const isListViewportAtTop = ref(false)
+const isTopEdgeLoadLocked = ref(false)
 const topEdgeIntentVersion = ref(0)
 const consumedTopEdgeIntentVersion = ref(0)
 
@@ -102,6 +103,7 @@ async function maybePrefetchAround() {
   }
 
   if (previousPage.value && canPrefetchPreviousPage()) {
+    isTopEdgeLoadLocked.value = true
     consumedTopEdgeIntentVersion.value = topEdgeIntentVersion.value
     await loadPage(previousPage.value, 'prepend')
   }
@@ -144,6 +146,7 @@ async function loadPage(pageToken: string, mode: 'initial' | 'prepend' | 'append
       earliestLoadedPage.value = response.page
       latestLoadedPage.value = response.page
       hasSeenNonTopListScroll.value = false
+      isTopEdgeLoadLocked.value = false
       topEdgeIntentVersion.value = 0
       consumedTopEdgeIntentVersion.value = 0
     }
@@ -172,6 +175,7 @@ async function loadPage(pageToken: string, mode: 'initial' | 'prepend' | 'append
     }
     else if (mode === 'prepend') {
       isPrefetchingPrevious.value = false
+      isTopEdgeLoadLocked.value = false
     }
     else {
       isPrefetchingNext.value = false
@@ -205,6 +209,10 @@ async function retryInitialLoad() {
 }
 
 function canPrefetchPreviousPage() {
+  if (isPrefetchingPrevious.value || isTopEdgeLoadLocked.value) {
+    return false
+  }
+
   const requiresScrollIntent = typeof window !== 'undefined' && window.innerWidth >= 1024
   if (!requiresScrollIntent) {
     return activeIndex.value < PREFETCH_OFFSET
@@ -287,6 +295,10 @@ function syncListScrollState(scrollTop: number) {
 }
 
 function registerTopEdgeIntent() {
+  if (isPrefetchingPrevious.value || isTopEdgeLoadLocked.value) {
+    return
+  }
+
   topEdgeIntentVersion.value += 1
 }
 </script>

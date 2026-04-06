@@ -68,10 +68,20 @@ test('bidirectional paging demo prepends earlier pages when navigating upward', 
     const node = element as HTMLElement
     node.scrollTop = 0
     node.dispatchEvent(new Event('scroll', { bubbles: true }))
+    node.dispatchEvent(new WheelEvent('wheel', {
+      bubbles: true,
+      deltaY: -160,
+    }))
+    node.dispatchEvent(new WheelEvent('wheel', {
+      bubbles: true,
+      deltaY: -160,
+    }))
   })
 
   await expect.poll(async () => normalizeWhitespace(await progress.textContent())).toContain('/ 50')
   await expect(progress).toContainText('P9-10 · V10')
+  await page.waitForTimeout(400)
+  await expect(progress).toContainText('/ 50')
 
   await listScroll.evaluate((element) => {
     element.dispatchEvent(new WheelEvent('wheel', {
