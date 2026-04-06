@@ -71,7 +71,7 @@ test('bidirectional paging demo prepends earlier pages when navigating upward', 
   })
 
   await expect.poll(async () => normalizeWhitespace(await progress.textContent())).toContain('/ 50')
-  await expect(progress).toContainText('P9-10 · V10')
+  await expect(progress).toContainText('P9-10 · V9')
   await listScroll.evaluate((element) => {
     element.dispatchEvent(new WheelEvent('wheel', {
       bubbles: true,
@@ -90,7 +90,7 @@ test('bidirectional paging demo prepends earlier pages when navigating upward', 
   })
 
   await expect.poll(async () => normalizeWhitespace(await progress.textContent())).toContain('/ 75')
-  await expect(progress).toContainText('P8-10 · V10')
+  await expect(progress).toContainText('P8-10 · V8')
 })
 
 function normalizeWhitespace(value: string | null) {

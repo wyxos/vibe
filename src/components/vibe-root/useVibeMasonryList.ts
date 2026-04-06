@@ -148,9 +148,7 @@ export function useVibeMasonryList(options: {
       const isPrepend = currentIds.length > previousIds.length && previousIds.length > 0 && currentIds[0] !== previousIds[0]
       const shouldPreserveAnchor = isPrepend && scrollTop.value > CONTENT_INSET_PX + GAP_PX
       const anchorId = shouldPreserveAnchor ? options.items.value[resolvedActiveIndex.value]?.id ?? null : null
-
       rebuildLayout()
-
       if (addedItems.length > 0) {
         motion.markEnter(addedItems, isPrepend ? 'top' : 'bottom')
         if (isPrepend) {
@@ -170,6 +168,9 @@ export function useVibeMasonryList(options: {
       if (anchorId) {
         await nextTick()
         preserveScrollAnchor(anchorId, oldPositionsById)
+      }
+      else if (previousIds.length > 0) {
+        syncBoundaryIndexFromScroll()
       }
     },
     {
@@ -214,7 +215,6 @@ export function useVibeMasonryList(options: {
 
   onMounted(async () => {
     updateViewportMetrics()
-
     await nextTick()
     if (resolvedActiveIndex.value > 0) {
       scrollToIndex(resolvedActiveIndex.value, 'center')
