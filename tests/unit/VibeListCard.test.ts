@@ -48,6 +48,7 @@ describe('VibeListCard', () => {
   it('autoplays video previews when they enter view and detaches them when they leave', async () => {
     const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
     const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+    const load = vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {})
 
     const wrapper = mount(VibeListCard, {
       props: {
@@ -73,6 +74,7 @@ describe('VibeListCard', () => {
     await flushDom()
 
     expect(pause).toHaveBeenCalled()
+    expect(load).toHaveBeenCalled()
     expect(wrapper.find('video').exists()).toBe(false)
 
     wrapper.unmount()

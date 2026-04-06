@@ -15,6 +15,7 @@ const props = defineProps<{
 const renderableAsset = computed(() => getListRenderableAsset(props.item))
 const isInView = ref(false)
 const isReady = ref(renderableAsset.value.kind === 'fallback')
+const imageRef = ref<HTMLImageElement | null>(null)
 const rootRef = ref<HTMLElement | null>(null)
 const scrollRootRef = ref<HTMLElement | null>(null)
 const videoRef = ref<HTMLVideoElement | null>(null)
@@ -171,7 +172,8 @@ function syncVideoPlayback() {
 
 function teardownAssetLoad(resetMedia = true) {
   if (resetMedia) {
-    resetVideoPlayback()
+    abortImageLoad()
+    abortVideoLoad()
   }
 
   releaseLoadLease()
@@ -184,7 +186,23 @@ function releaseLoadLease() {
   loadLease = null
 }
 
-function resetVideoPlayback() {
+function abortImageLoad() {
+  const image = imageRef.value
+
+  if (!image) {
+    return
+  }
+
+  try {
+    image.removeAttribute('src')
+    image.src = ''
+  }
+  catch {
+    // Ignore abort failures if the image element is already detached.
+  }
+}
+
+function abortVideoLoad() {
   const video = videoRef.value
 
   if (!video) {
@@ -199,6 +217,14 @@ function resetVideoPlayback() {
   }
 
   video.pause()
+
+  try {
+    video.removeAttribute('src')
+    video.load()
+  }
+  catch {
+    // Ignore abort failures if the video element is already detached.
+  }
 }
 
 function getLoadPriority() {
@@ -241,6 +267,7 @@ function getLoadPriority() {
 
     <img
       v-if="shouldRenderImage && attachedAssetUrl"
+      ref="imageRef"
       :src="attachedAssetUrl"
       :alt="renderableAsset.label"
       draggable="false"
