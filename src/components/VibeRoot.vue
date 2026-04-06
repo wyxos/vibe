@@ -74,16 +74,18 @@ const root = useVibeRootController(props, emit)
         >
           <VibeListSurface
             :items="root.items.value"
-            :active-index="root.activeIndex.value"
-            :loading="root.loading.value"
-            :has-next-page="root.hasNextPage.value"
-            :pending-append-items="root.pendingAppendItems.value"
-            :commit-pending-append="root.commitPendingAppend"
-            :pagination-detail="root.paginationDetail.value"
-            :request-next-page="root.prefetchNextPage"
-            :restore-token="root.listRestoreToken.value"
-            @open-fullscreen="root.openFullscreen"
-            @update:active-index="root.setActiveIndex"
+          :active-index="root.activeIndex.value"
+          :loading="root.loading.value"
+          :has-next-page="root.hasNextPage.value"
+          :has-previous-page="root.hasPreviousPage.value"
+          :pending-append-items="root.pendingAppendItems.value"
+          :commit-pending-append="root.commitPendingAppend"
+          :pagination-detail="root.paginationDetail.value"
+          :request-next-page="root.prefetchNextPage"
+          :request-previous-page="root.prefetchPreviousPage"
+          :restore-token="root.listRestoreToken.value"
+          @open-fullscreen="root.openFullscreen"
+          @update:active-index="root.setActiveIndex"
           />
         </div>
       </Transition>

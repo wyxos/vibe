@@ -9,20 +9,24 @@ const props = withDefaults(defineProps<{
   activeIndex?: number
   commitPendingAppend?: (() => void | Promise<void>) | null
   hasNextPage?: boolean
+  hasPreviousPage?: boolean
   items: VibeViewerItem[]
   loading?: boolean
   pendingAppendItems?: VibeViewerItem[]
   paginationDetail?: string | null
   requestNextPage?: (() => void | Promise<void>) | null
+  requestPreviousPage?: (() => void | Promise<void>) | null
   restoreToken: number
 }>(), {
   activeIndex: 0,
   commitPendingAppend: null,
   hasNextPage: false,
+  hasPreviousPage: false,
   loading: false,
   pendingAppendItems: () => [],
   paginationDetail: null,
   requestNextPage: null,
+  requestPreviousPage: null,
 })
 
 const emit = defineEmits<{
@@ -35,10 +39,12 @@ const list = useVibeMasonryList({
   activeIndex: toRef(props, 'activeIndex'),
   loading: toRef(props, 'loading'),
   hasNextPage: toRef(props, 'hasNextPage'),
+  hasPreviousPage: toRef(props, 'hasPreviousPage'),
   paginationDetail: toRef(props, 'paginationDetail'),
   pendingAppendItems: toRef(props, 'pendingAppendItems'),
   commitPendingAppend: toRef(props, 'commitPendingAppend'),
   requestNextPage: toRef(props, 'requestNextPage'),
+  requestPreviousPage: toRef(props, 'requestPreviousPage'),
   restoreToken: toRef(props, 'restoreToken'),
   setActiveIndex(index) {
     emit('update:activeIndex', index)
@@ -68,6 +74,7 @@ const list = useVibeMasonryList({
       data-testid="vibe-list-scroll"
       class="h-full min-h-0 overflow-y-auto overflow-x-hidden [overflow-anchor:none] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       @scroll="list.onScroll"
+      @wheel="list.onWheel"
     >
       <div
         data-testid="vibe-list-content"

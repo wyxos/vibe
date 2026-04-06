@@ -18,6 +18,14 @@ export function getVibeMasonryEnterOrder(itemIds: string[], direction: VibeMason
   return itemIds
 }
 
+export function getVibeMasonryEnterDuration(itemCount: number) {
+  if (itemCount <= 0) {
+    return ENTER_MOTION_MS
+  }
+
+  return ENTER_MOTION_MS + Math.min((itemCount - 1) * ENTER_STAGGER_MS, MAX_ENTER_STAGGER_TOTAL_MS)
+}
+
 export function getVibeMasonryEnterStartY(options: {
   direction: VibeMasonryEnterDirection
   itemHeight: number
@@ -113,7 +121,7 @@ export function useVibeMasonryMotion(options: {
           enterAnimatingIds.value = nextAnimatingIds
           enterDelayById.value = nextDelayById
           enterDirectionById.value = nextEnterDirectionById
-        }, ENTER_MOTION_MS)
+        }, getVibeMasonryEnterDuration(idsToAnimate.length))
       })
     },
     { flush: 'post' },

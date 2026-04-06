@@ -137,19 +137,41 @@ test('desktop masonry list scroll loads one page per bottom hit', async ({ page 
   const initialPagination = await getPaginationState(progress)
 
   await scrollViewport.evaluate((element) => {
-    element.scrollTop = element.scrollHeight
-    element.dispatchEvent(new Event('scroll'))
+    const node = element as HTMLElement
+    node.scrollTop = node.scrollHeight
+    node.dispatchEvent(new Event('scroll', { bubbles: true }))
+    for (let index = 0; index < 8; index += 1) {
+      node.dispatchEvent(new WheelEvent('wheel', {
+        bubbles: true,
+        deltaY: 180,
+      }))
+    }
   })
 
   await expect.poll(async () => (await getPaginationState(progress)).total).toBeGreaterThan(initialPagination.total)
   const afterFirstLoad = await getPaginationState(progress)
 
-  await page.waitForTimeout(500)
+  await scrollViewport.evaluate((element) => {
+    const node = element as HTMLElement
+    node.scrollTop = node.scrollHeight
+    node.dispatchEvent(new Event('scroll', { bubbles: true }))
+    node.dispatchEvent(new WheelEvent('wheel', {
+      bubbles: true,
+      deltaY: 180,
+    }))
+  })
+  await page.waitForTimeout(1_200)
   await expect.poll(async () => (await getPaginationState(progress)).total).toBe(afterFirstLoad.total)
 
+  await page.waitForTimeout(1_400)
   await scrollViewport.evaluate((element) => {
-    element.scrollTop = element.scrollHeight
-    element.dispatchEvent(new Event('scroll'))
+    const node = element as HTMLElement
+    node.scrollTop = node.scrollHeight
+    node.dispatchEvent(new Event('scroll', { bubbles: true }))
+    node.dispatchEvent(new WheelEvent('wheel', {
+      bubbles: true,
+      deltaY: 180,
+    }))
   })
 
   await expect.poll(async () => (await getPaginationState(progress)).total).toBeGreaterThan(afterFirstLoad.total)

@@ -1,7 +1,5 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
-
 import type { VibeViewerItem } from '../vibeViewer'
-
 import {
   buildMasonryLayout,
   getColumnCount,
@@ -9,7 +7,14 @@ import {
   getVisibleIndicesFromBuckets,
   snapshotPositionsById,
 } from './masonryLayout'
-import { useVibeMasonryMotion } from './useVibeMasonryMotion'
+import { getVibeMasonryEnterDuration, useVibeMasonryMotion } from './useVibeMasonryMotion'
+import {
+  getVibeMasonryDistanceFromBottom,
+  getVibeMasonryScrollbarThumbStyle,
+  getVibeMasonryViewportHeight,
+  getVibeMasonryViewportWidth,
+} from './masonryViewport'
+import { useVibeMasonryEdgeBoundary } from './useVibeMasonryEdgeBoundary'
 
 const BUCKET_PX = 600
 const CONTENT_INSET_PX = 24
@@ -22,16 +27,19 @@ const HEIGHT_RESERVE_MS = 300
 const SCROLLBAR_INSET_PX = 24
 const SCROLLBAR_MIN_THUMB_HEIGHT_PX = 48
 const PREPEND_MOVE_MOTION_MS = 500
+const EDGE_COOLDOWN_MS = 1000
 
 export function useVibeMasonryList(options: {
   items: Ref<VibeViewerItem[]>
   activeIndex: Ref<number>
   loading: Ref<boolean>
   hasNextPage: Ref<boolean>
+  hasPreviousPage: Ref<boolean>
   paginationDetail: Ref<string | null>
   pendingAppendItems: Ref<VibeViewerItem[]>
   commitPendingAppend: Ref<(() => void | Promise<void>) | null | undefined>
   requestNextPage: Ref<(() => void | Promise<void>) | null | undefined>
+  requestPreviousPage: Ref<(() => void | Promise<void>) | null | undefined>
   restoreToken: Ref<number>
   setActiveIndex: (index: number) => void
 }) {
@@ -45,7 +53,6 @@ export function useVibeMasonryList(options: {
   const layoutContentHeight = ref(0)
   const layoutIndexById = ref<Map<string, number>>(new Map())
   const reservedContentHeight = ref<number | null>(null)
-  const isScrollLoadLocked = ref(false)
 
   const availableWidth = computed(() => Math.max(ITEM_WIDTH_PX, viewportWidth.value - CONTENT_INSET_PX * 2))
   const columnCount = computed(() => getColumnCount(availableWidth.value, ITEM_WIDTH_PX))
@@ -61,25 +68,15 @@ export function useVibeMasonryList(options: {
       buckets: layoutBuckets.value,
     }),
   )
-  const renderedItems = computed(() => renderedIndices.value.map((index) => ({
-    item: options.items.value[index],
-    index,
-  })))
+  const renderedItems = computed(() => renderedIndices.value.map((index) => ({ item: options.items.value[index], index })))
   const containerHeight = computed(() => {
     const contentHeight = layoutContentHeight.value + CONTENT_INSET_PX * 2
     const nextReservedHeight = reservedContentHeight.value ?? 0
-
     return Math.max(contentHeight, nextReservedHeight, viewportHeight.value) + SCROLL_BUFFER_PX
   })
   const footerStatusMessage = computed(() => {
-    if (options.loading.value) {
-      return options.items.value.length > 0 ? 'Loading more items' : 'Loading the first page'
-    }
-
-    if (!options.hasNextPage.value && options.items.value.length > 0) {
-      return 'End of list'
-    }
-
+    if (options.loading.value) return options.items.value.length > 0 ? 'Loading more items' : 'Loading the first page'
+    if (!options.hasNextPage.value && options.items.value.length > 0) return 'End of list'
     return null
   })
   const paginationLabel = computed(() => `${resolvedActiveIndex.value + 1} / ${options.items.value.length}`)
@@ -89,7 +86,6 @@ export function useVibeMasonryList(options: {
     if (!showScrollbar.value) {
       return 0
     }
-
     const rawThumbHeight = (viewportHeight.value / containerHeight.value) * scrollbarTrackHeight.value
     return Math.min(scrollbarTrackHeight.value, Math.max(SCROLLBAR_MIN_THUMB_HEIGHT_PX, rawThumbHeight))
   })
@@ -97,11 +93,9 @@ export function useVibeMasonryList(options: {
     if (!showScrollbar.value) {
       return SCROLLBAR_INSET_PX
     }
-
     const maxScrollTop = Math.max(0, containerHeight.value - viewportHeight.value)
     const maxThumbTravel = Math.max(0, scrollbarTrackHeight.value - scrollbarThumbHeight.value)
     const progress = maxScrollTop > 0 ? clamp(scrollTop.value / maxScrollTop, 0, 1) : 0
-
     return SCROLLBAR_INSET_PX + maxThumbTravel * progress
   })
 
@@ -114,6 +108,30 @@ export function useVibeMasonryList(options: {
     columnWidth,
     scrollTop,
     viewportHeight,
+  })
+  const previousPageBoundary = useVibeMasonryEdgeBoundary({
+    direction: 'top',
+    getAnimationLockMs(addedItemCount) {
+      return Math.max(PREPEND_MOVE_MOTION_MS, getVibeMasonryEnterDuration(addedItemCount)) + EDGE_COOLDOWN_MS
+    },
+    hasPage: options.hasPreviousPage,
+    isAtBoundary() {
+      return scrollTop.value <= CONTENT_INSET_PX + GAP_PX
+    },
+    loading: options.loading,
+    requestPage: options.requestPreviousPage,
+  })
+  const nextPageBoundary = useVibeMasonryEdgeBoundary({
+    direction: 'bottom',
+    getAnimationLockMs(addedItemCount) {
+      return getVibeMasonryEnterDuration(addedItemCount) + EDGE_COOLDOWN_MS
+    },
+    hasPage: options.hasNextPage,
+    isAtBoundary() {
+      return getDistanceFromBottom() <= PREFETCH_THRESHOLD_PX
+    },
+    loading: options.loading,
+    requestPage: options.requestNextPage,
   })
 
   let resizeObserver: ResizeObserver | null = null
@@ -135,6 +153,12 @@ export function useVibeMasonryList(options: {
 
       if (addedItems.length > 0) {
         motion.markEnter(addedItems, isPrepend ? 'top' : 'bottom')
+        if (isPrepend) {
+          previousPageBoundary.onItemsMutated(addedItems.length)
+        }
+        else {
+          nextPageBoundary.onItemsMutated(addedItems.length)
+        }
       }
 
       motion.playFlipMoveAnimation(
@@ -147,7 +171,6 @@ export function useVibeMasonryList(options: {
         await nextTick()
         preserveScrollAnchor(anchorId, oldPositionsById)
       }
-
     },
     {
       immediate: true,
@@ -158,11 +181,7 @@ export function useVibeMasonryList(options: {
     [() => options.pendingAppendItems.value.map((item) => item.id), columnCount, columnWidth, viewportHeight],
     ([pendingIds]) => {
       clearAppendCommitTimer()
-
-      if (!pendingIds.length) {
-        return
-      }
-
+      if (!pendingIds.length) return
       reservedContentHeight.value = measureContentHeight([...options.items.value, ...options.pendingAppendItems.value])
       schedulePendingAppendCommit()
     },
@@ -186,6 +205,9 @@ export function useVibeMasonryList(options: {
         reservedContentHeight.value = null
       }
 
+      previousPageBoundary.onLoadingChange(isLoading)
+      nextPageBoundary.onLoadingChange(isLoading)
+
       await nextTick()
     },
   )
@@ -200,6 +222,8 @@ export function useVibeMasonryList(options: {
     else {
       syncActiveIndexFromScroll()
     }
+    previousPageBoundary.syncBoundary()
+    nextPageBoundary.syncBoundary()
     if (typeof ResizeObserver !== 'undefined') {
       resizeObserver = new ResizeObserver(() => {
         updateViewportMetrics()
@@ -219,7 +243,6 @@ export function useVibeMasonryList(options: {
     resizeObserver = null
     window.removeEventListener('resize', updateViewportMetrics)
     clearAppendCommitTimer()
-
     if (scrollFrame) {
       cancelAnimationFrame(scrollFrame)
       scrollFrame = 0
@@ -248,6 +271,8 @@ export function useVibeMasonryList(options: {
   function onScroll() {
     scrollTop.value = scrollViewportRef.value?.scrollTop ?? 0
     viewportHeight.value = getViewportHeight()
+    previousPageBoundary.syncBoundary()
+    nextPageBoundary.syncBoundary()
     maybeRequestMoreAtBoundary()
 
     if (syncBoundaryIndexFromScroll()) {
@@ -262,6 +287,12 @@ export function useVibeMasonryList(options: {
       scrollFrame = 0
       syncActiveIndexFromScroll()
     })
+  }
+
+  function onWheel(event: WheelEvent) {
+    previousPageBoundary.onWheel(event)
+    nextPageBoundary.onWheel(event)
+    maybeRequestMoreAtBoundary()
   }
 
   function getCardStyle(index: number) {
@@ -366,26 +397,8 @@ export function useVibeMasonryList(options: {
   }
 
   function maybeRequestMoreAtBoundary() {
-    if (
-      !options.hasNextPage.value
-      || typeof options.requestNextPage.value !== 'function'
-    ) {
-      return
-    }
-
-    const nearBottom = getDistanceFromBottom() <= PREFETCH_THRESHOLD_PX
-    if (!nearBottom) {
-      isScrollLoadLocked.value = false
-
-      return
-    }
-
-    if (options.loading.value || isScrollLoadLocked.value) {
-      return
-    }
-
-    isScrollLoadLocked.value = true
-    void options.requestNextPage.value()
+    previousPageBoundary.maybeRequestPage()
+    nextPageBoundary.maybeRequestPage()
   }
 
   function updateViewportMetrics() {
@@ -394,36 +407,24 @@ export function useVibeMasonryList(options: {
   }
 
   function getViewportHeight() {
-    const viewport = scrollViewportRef.value
-
-    return viewport?.clientHeight
-      || Math.round(viewport?.getBoundingClientRect().height ?? 0)
-      || window.innerHeight
-      || viewportHeight.value
-      || 1
+    return getVibeMasonryViewportHeight(scrollViewportRef.value, viewportHeight.value)
   }
 
   function getViewportWidth() {
-    const viewport = scrollViewportRef.value
-
-    return viewport?.clientWidth
-      || Math.round(viewport?.getBoundingClientRect().width ?? 0)
-      || window.innerWidth
-      || viewportWidth.value
-      || ITEM_WIDTH_PX
+    return getVibeMasonryViewportWidth(scrollViewportRef.value, viewportWidth.value, ITEM_WIDTH_PX)
   }
 
   function getDistanceFromBottom() {
-    const viewport = scrollViewportRef.value
-    const scrollHeight = viewport?.scrollHeight ?? containerHeight.value
-    return scrollHeight - (scrollTop.value + viewportHeight.value)
+    return getVibeMasonryDistanceFromBottom(
+      scrollViewportRef.value,
+      scrollTop.value,
+      viewportHeight.value,
+      containerHeight.value,
+    )
   }
 
   function getScrollbarThumbStyle() {
-    return {
-      height: `${scrollbarThumbHeight.value}px`,
-      transform: `translate3d(0, ${scrollbarThumbTop.value}px, 0)`,
-    }
+    return getVibeMasonryScrollbarThumbStyle(scrollbarThumbHeight.value, scrollbarThumbTop.value)
   }
 
   function measureContentHeight(items: VibeViewerItem[]) {
@@ -484,6 +485,7 @@ export function useVibeMasonryList(options: {
     getCardStyle,
     getScrollbarThumbStyle,
     onScroll,
+    onWheel,
     paginationLabel,
     renderedItems,
     resolvedActiveIndex,

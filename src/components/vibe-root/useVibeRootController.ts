@@ -36,6 +36,16 @@ export function useVibeRootController(props: Readonly<VibeRootProps>, emit: Vibe
     },
   )
 
+  watch(
+    surfaceMode,
+    (nextSurfaceMode) => {
+      dataSource.setAutoPrefetchEnabled(nextSurfaceMode === 'fullscreen')
+    },
+    {
+      immediate: true,
+    },
+  )
+
   onMounted(() => {
     updateViewportWidth()
     window.addEventListener('resize', updateViewportWidth)

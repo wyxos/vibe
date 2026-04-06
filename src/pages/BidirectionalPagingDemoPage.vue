@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 import VibeRoot from '@/components/VibeRoot.vue'
 import type { VibeViewerItem } from '@/components/vibeViewer'
@@ -8,9 +8,6 @@ import { fetchFakeMediaPage } from '@/demo/fakeServer'
 const INITIAL_PAGE = 10
 const INITIAL_ACTIVE_OFFSET = 12
 const PAGE_SIZE = 25
-const PREFETCH_OFFSET = 3
-const TOP_SCROLL_THRESHOLD_PX = 24
-
 const items = ref<VibeViewerItem[]>([])
 const activeIndex = ref(0)
 const earliestLoadedPage = ref<number | null>(null)
@@ -22,17 +19,9 @@ const isLoadingInitial = ref(true)
 const isPrefetchingNext = ref(false)
 const isPrefetchingPrevious = ref(false)
 const errorMessage = ref<string | null>(null)
-const hasSeenNonTopListScroll = ref(false)
-const isListViewportAtTop = ref(false)
-const isTopEdgeLoadLocked = ref(false)
-const topEdgeIntentVersion = ref(0)
-const consumedTopEdgeIntentVersion = ref(0)
 
 const loadedPages = new Set<string>()
 const inFlightPages = new Set<string>()
-
-let listScrollViewport: HTMLElement | null = null
-let topWheelLockedUntil = 0
 
 const isViewerLoading = computed(() => isLoadingInitial.value || isPrefetchingNext.value || isPrefetchingPrevious.value)
 const currentVisiblePage = computed(() => {
@@ -71,47 +60,9 @@ watch(
   },
 )
 
-watch(
-  () => activeIndex.value,
-  () => {
-    void maybePrefetchAround()
-  },
-)
-
-watch(
-  () => topEdgeIntentVersion.value,
-  (version) => {
-    if (version <= 0) {
-      return
-    }
-
-    void maybePrefetchAround()
-  },
-)
-
 onMounted(async () => {
   await loadPage(String(INITIAL_PAGE), 'initial')
 })
-
-onBeforeUnmount(() => {
-  detachListScrollListener()
-})
-
-async function maybePrefetchAround() {
-  if (!items.value.length || isLoadingInitial.value) {
-    return
-  }
-
-  if (previousPage.value && canPrefetchPreviousPage()) {
-    isTopEdgeLoadLocked.value = true
-    consumedTopEdgeIntentVersion.value = topEdgeIntentVersion.value
-    await loadPage(previousPage.value, 'prepend')
-  }
-
-  if (nextPage.value && activeIndex.value >= items.value.length - PREFETCH_OFFSET) {
-    await loadPage(nextPage.value, 'append')
-  }
-}
 
 async function loadPage(pageToken: string, mode: 'initial' | 'prepend' | 'append') {
   if (loadedPages.has(pageToken) || inFlightPages.has(pageToken)) {
@@ -145,10 +96,6 @@ async function loadPage(pageToken: string, mode: 'initial' | 'prepend' | 'append
       activeIndex.value = Math.min(INITIAL_ACTIVE_OFFSET, Math.max(response.items.length - 1, 0))
       earliestLoadedPage.value = response.page
       latestLoadedPage.value = response.page
-      hasSeenNonTopListScroll.value = false
-      isTopEdgeLoadLocked.value = false
-      topEdgeIntentVersion.value = 0
-      consumedTopEdgeIntentVersion.value = 0
     }
     else if (mode === 'prepend') {
       items.value = [...response.items, ...items.value]
@@ -161,8 +108,6 @@ async function loadPage(pageToken: string, mode: 'initial' | 'prepend' | 'append
     }
 
     updatePageBounds()
-    await nextTick()
-    connectListScrollListener()
   }
   catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'The demo could not load items.'
@@ -175,7 +120,6 @@ async function loadPage(pageToken: string, mode: 'initial' | 'prepend' | 'append
     }
     else if (mode === 'prepend') {
       isPrefetchingPrevious.value = false
-      isTopEdgeLoadLocked.value = false
     }
     else {
       isPrefetchingNext.value = false
@@ -208,98 +152,20 @@ async function retryInitialLoad() {
   await loadPage(String(INITIAL_PAGE), 'initial')
 }
 
-function canPrefetchPreviousPage() {
-  if (isPrefetchingPrevious.value || isTopEdgeLoadLocked.value) {
-    return false
+async function requestNextPage() {
+  if (!nextPage.value || isViewerLoading.value) {
+    return
   }
 
-  const requiresScrollIntent = typeof window !== 'undefined' && window.innerWidth >= 1024
-  if (!requiresScrollIntent) {
-    return activeIndex.value < PREFETCH_OFFSET
-  }
-
-  if (isListViewportAtTop.value && topEdgeIntentVersion.value > consumedTopEdgeIntentVersion.value) {
-    return true
-  }
-
-  return false
+  await loadPage(nextPage.value, 'append')
 }
 
-function connectListScrollListener() {
-  const nextViewport = document.querySelector<HTMLElement>('[data-testid="vibe-list-scroll"]')
-  if (!nextViewport || nextViewport === listScrollViewport) {
+async function requestPreviousPage() {
+  if (!previousPage.value || isViewerLoading.value) {
     return
   }
 
-  detachListScrollListener()
-  listScrollViewport = nextViewport
-  listScrollViewport.addEventListener('scroll', onListViewportScroll, {
-    passive: true,
-  })
-  listScrollViewport.addEventListener('wheel', onListViewportWheel, {
-    passive: true,
-  })
-  syncListScrollState(listScrollViewport.scrollTop)
-}
-
-function detachListScrollListener() {
-  if (!listScrollViewport) {
-    return
-  }
-
-  listScrollViewport.removeEventListener('scroll', onListViewportScroll)
-  listScrollViewport.removeEventListener('wheel', onListViewportWheel)
-  listScrollViewport = null
-}
-
-function onListViewportScroll(event: Event) {
-  const viewport = event.currentTarget
-  if (!(viewport instanceof HTMLElement)) {
-    return
-  }
-
-  syncListScrollState(viewport.scrollTop)
-}
-
-function onListViewportWheel(event: WheelEvent) {
-  const viewport = event.currentTarget
-  if (!(viewport instanceof HTMLElement)) {
-    return
-  }
-
-  if (event.deltaY >= 0 || viewport.scrollTop > TOP_SCROLL_THRESHOLD_PX) {
-    return
-  }
-
-  const now = Date.now()
-  if (now < topWheelLockedUntil) {
-    return
-  }
-
-  topWheelLockedUntil = now + 250
-  registerTopEdgeIntent()
-}
-
-function syncListScrollState(scrollTop: number) {
-  const wasAtTop = isListViewportAtTop.value
-  isListViewportAtTop.value = scrollTop <= TOP_SCROLL_THRESHOLD_PX
-
-  if (scrollTop > TOP_SCROLL_THRESHOLD_PX) {
-    hasSeenNonTopListScroll.value = true
-    return
-  }
-
-  if (!wasAtTop && hasSeenNonTopListScroll.value) {
-    registerTopEdgeIntent()
-  }
-}
-
-function registerTopEdgeIntent() {
-  if (isPrefetchingPrevious.value || isTopEdgeLoadLocked.value) {
-    return
-  }
-
-  topEdgeIntentVersion.value += 1
+  await loadPage(previousPage.value, 'prepend')
 }
 </script>
 
@@ -326,7 +192,10 @@ function registerTopEdgeIntent() {
       :active-index="activeIndex"
       :loading="isViewerLoading"
       :has-next-page="Boolean(nextPage)"
+      :has-previous-page="Boolean(previousPage)"
       :pagination-detail="paginationDetailLabel"
+      :request-next-page="requestNextPage"
+      :request-previous-page="requestPreviousPage"
       @update:active-index="activeIndex = $event"
     />
   </section>

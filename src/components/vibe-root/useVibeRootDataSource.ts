@@ -18,7 +18,10 @@ export interface VibeGetItemsResult {
 }
 
 interface VibeRootSharedProps {
+  hasPreviousPage?: boolean
   paginationDetail?: string | null
+  requestNextPage?: (() => void | Promise<void>) | null
+  requestPreviousPage?: (() => void | Promise<void>) | null
 }
 
 export interface VibeRootControlledProps extends VibeRootSharedProps {
@@ -37,9 +40,12 @@ export interface VibeRootAutoProps {
   pageSize?: number
   items?: never
   activeIndex?: never
+  hasPreviousPage?: never
   loading?: never
   hasNextPage?: never
   paginationDetail?: never
+  requestNextPage?: never
+  requestPreviousPage?: never
 }
 
 export type VibeRootProps = VibeRootControlledProps | VibeRootAutoProps
@@ -61,6 +67,7 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
   const isPrefetchingNext = ref(false)
   const isPrefetchingPrevious = ref(false)
   const isAwaitingAppendCommit = ref(false)
+  const isAutoPrefetchEnabled = ref(true)
 
   const loadedCursors = new Set<string>()
   const inFlightCursors = new Set<string>()
@@ -77,6 +84,7 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
       : (controlledProps.loading ?? false),
   )
   const hasNextPage = computed(() => isAutoMode.value ? Boolean(nextPage.value) : (controlledProps.hasNextPage ?? false))
+  const hasPreviousPage = computed(() => isAutoMode.value ? Boolean(previousPage.value) : (controlledProps.hasPreviousPage ?? false))
   const paginationDetail = computed(() => controlledProps.paginationDetail ?? null)
   const canRetryInitialLoad = computed(() =>
     isAutoMode.value
@@ -121,7 +129,7 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
   watch(
     () => autoActiveIndex.value,
     () => {
-      if (!isAutoMode.value) {
+      if (!isAutoMode.value || !isAutoPrefetchEnabled.value) {
         return
       }
 
@@ -280,19 +288,37 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
   }
 
   async function prefetchNextPage() {
-    if (!isAutoMode.value || !nextPage.value || isLoadingInitial.value) {
+    if (isAutoMode.value) {
+      if (!nextPage.value || isLoadingInitial.value) {
+        return
+      }
+
+      await loadPage(nextPage.value, 'append')
       return
     }
 
-    await loadPage(nextPage.value, 'append')
+    if (loading.value || typeof controlledProps.requestNextPage !== 'function') {
+      return
+    }
+
+    await controlledProps.requestNextPage()
   }
 
   async function prefetchPreviousPage() {
-    if (!isAutoMode.value || !previousPage.value || isLoadingInitial.value) {
+    if (isAutoMode.value) {
+      if (!previousPage.value || isLoadingInitial.value) {
+        return
+      }
+
+      await loadPage(previousPage.value, 'prepend')
       return
     }
 
-    await loadPage(previousPage.value, 'prepend')
+    if (loading.value || typeof controlledProps.requestPreviousPage !== 'function') {
+      return
+    }
+
+    await controlledProps.requestPreviousPage()
   }
 
   async function commitPendingAppend() {
@@ -309,12 +335,17 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
     isAwaitingAppendCommit.value = false
   }
 
+  function setAutoPrefetchEnabled(nextValue: boolean) {
+    isAutoPrefetchEnabled.value = nextValue
+  }
+
   return {
     activeIndex,
     canRetryInitialLoad,
     commitPendingAppend,
     errorMessage,
     hasNextPage,
+    hasPreviousPage,
     isAutoMode,
     items,
     loading,
@@ -324,5 +355,6 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
     prefetchPreviousPage,
     retryInitialLoad,
     setActiveIndex,
+    setAutoPrefetchEnabled,
   }
 }
