@@ -69,6 +69,29 @@ describe('masonryLayout', () => {
     }), 316)).toBe(474)
   })
 
+  it('renders ultra-wide image previews as squares in the masonry grid', () => {
+    const dimensions = getMasonryDimensions(createItem('wide-preview', {
+      preview: {
+        url: 'https://example.com/wide-preview.jpg',
+        width: 1_200,
+        height: 400,
+      },
+    }))
+
+    expect(dimensions).toEqual({
+      width: 1_200,
+      height: 1_200,
+      source: 'preview',
+    })
+    expect(estimateItemHeight(createItem('wide-preview-height', {
+      preview: {
+        url: 'https://example.com/wide-preview-height.jpg',
+        width: 1_200,
+        height: 400,
+      },
+    }), 296)).toBe(296)
+  })
+
   it('distributes items into the shortest column', () => {
     const items = [
       createItem('item-1', {

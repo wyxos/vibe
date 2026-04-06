@@ -37,6 +37,7 @@ test('desktop home viewer starts in the masonry list and virtualizes visible car
   await expect(root).toBeVisible()
   await expect(root).toHaveAttribute('data-surface-mode', 'list')
   await expect(page.getByTestId('vibe-list-scroll')).toBeVisible()
+  await expect(page.getByTestId('vibe-list-scrollbar-thumb')).toBeVisible()
   await expect.poll(async () => (await getPaginationState(progress)).active).toBe(1)
   await expect.poll(async () => (await getPaginationState(progress)).total).toBeGreaterThanOrEqual(25)
   await expect.poll(async () => cards.count()).toBeGreaterThan(0)
@@ -105,7 +106,7 @@ test('desktop home viewer auto-loads the next page and keeps the list virtualize
   await expect.poll(async () => cards.count()).toBeLessThan(50)
 })
 
-test('desktop masonry list scroll loads the next page', async ({ page }) => {
+test('desktop masonry list scroll loads one page per bottom hit', async ({ page }) => {
   await page.setViewportSize({
     width: 2_560,
     height: 1_207,
@@ -128,6 +129,17 @@ test('desktop masonry list scroll loads the next page', async ({ page }) => {
   })
 
   await expect.poll(async () => (await getPaginationState(progress)).total).toBeGreaterThan(initialPagination.total)
+  const afterFirstLoad = await getPaginationState(progress)
+
+  await page.waitForTimeout(500)
+  await expect.poll(async () => (await getPaginationState(progress)).total).toBe(afterFirstLoad.total)
+
+  await scrollViewport.evaluate((element) => {
+    element.scrollTop = element.scrollHeight
+    element.dispatchEvent(new Event('scroll'))
+  })
+
+  await expect.poll(async () => (await getPaginationState(progress)).total).toBeGreaterThan(afterFirstLoad.total)
 })
 
 test('desktop fullscreen seekbar moves the active video forward instead of snapping back', async ({ page }) => {

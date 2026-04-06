@@ -54,10 +54,13 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
   const autoActiveIndex = ref(0)
   const nextPage = ref<string | null>(null)
   const previousPage = ref<string | null>(null)
+  const pendingAppendItems = ref<VibeViewerItem[]>([])
+  const pendingAppendNextPage = ref<string | null>(null)
   const errorMessage = ref<string | null>(null)
   const isLoadingInitial = ref(false)
   const isPrefetchingNext = ref(false)
   const isPrefetchingPrevious = ref(false)
+  const isAwaitingAppendCommit = ref(false)
 
   const loadedCursors = new Set<string>()
   const inFlightCursors = new Set<string>()
@@ -70,7 +73,7 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
   const activeIndex = computed(() => isAutoMode.value ? autoActiveIndex.value : (controlledProps.activeIndex ?? 0))
   const loading = computed(() =>
     isAutoMode.value
-      ? (isLoadingInitial.value || isPrefetchingNext.value || isPrefetchingPrevious.value)
+      ? (isLoadingInitial.value || isPrefetchingNext.value || isPrefetchingPrevious.value || isAwaitingAppendCommit.value)
       : (controlledProps.loading ?? false),
   )
   const hasNextPage = computed(() => isAutoMode.value ? Boolean(nextPage.value) : (controlledProps.hasNextPage ?? false))
@@ -229,8 +232,9 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
       }
 
       if (mode === 'append') {
-        autoItems.value = [...autoItems.value, ...response.items]
-        nextPage.value = response.nextPage
+        pendingAppendItems.value = response.items
+        pendingAppendNextPage.value = response.nextPage
+        isAwaitingAppendCommit.value = true
         return
       }
 
@@ -265,7 +269,10 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
     autoActiveIndex.value = 0
     nextPage.value = null
     previousPage.value = null
+    pendingAppendItems.value = []
+    pendingAppendNextPage.value = null
     errorMessage.value = null
+    isAwaitingAppendCommit.value = false
     loadedCursors.clear()
     inFlightCursors.clear()
 
@@ -288,15 +295,31 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
     await loadPage(previousPage.value, 'prepend')
   }
 
+  async function commitPendingAppend() {
+    if (!pendingAppendItems.value.length) {
+      isAwaitingAppendCommit.value = false
+      pendingAppendNextPage.value = null
+      return
+    }
+
+    autoItems.value = [...autoItems.value, ...pendingAppendItems.value]
+    nextPage.value = pendingAppendNextPage.value
+    pendingAppendItems.value = []
+    pendingAppendNextPage.value = null
+    isAwaitingAppendCommit.value = false
+  }
+
   return {
     activeIndex,
     canRetryInitialLoad,
+    commitPendingAppend,
     errorMessage,
     hasNextPage,
     isAutoMode,
     items,
     loading,
     paginationDetail,
+    pendingAppendItems,
     prefetchNextPage,
     prefetchPreviousPage,
     retryInitialLoad,

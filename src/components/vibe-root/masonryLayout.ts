@@ -20,6 +20,7 @@ export interface VibeMasonryLayoutResult {
 }
 
 const FALLBACK_SIZE = 1
+const WIDE_IMAGE_MIN_ASPECT_RATIO = 0.5
 
 export function getMasonryDimensions(item: VibeViewerItem): VibeMasonryDimensions {
   if (item.type !== 'image' && item.type !== 'video') {
@@ -34,17 +35,21 @@ export function getMasonryDimensions(item: VibeViewerItem): VibeMasonryDimension
   const previewHeight = item.preview?.height
 
   if (isValidDimension(previewWidth) && isValidDimension(previewHeight)) {
+    const normalizedPreviewDimensions = normalizeImageDimensions(item, previewWidth, previewHeight)
+
     return {
-      width: previewWidth,
-      height: previewHeight,
+      width: normalizedPreviewDimensions.width,
+      height: normalizedPreviewDimensions.height,
       source: 'preview',
     }
   }
 
   if (isValidDimension(item.width) && isValidDimension(item.height)) {
+    const normalizedOriginalDimensions = normalizeImageDimensions(item, item.width, item.height)
+
     return {
-      width: item.width,
-      height: item.height,
+      width: normalizedOriginalDimensions.width,
+      height: normalizedOriginalDimensions.height,
       source: 'original',
     }
   }
@@ -201,4 +206,25 @@ export function snapshotPositionsById(items: VibeViewerItem[], indexById: Map<st
 
 function isValidDimension(value: number | undefined): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0
+}
+
+function normalizeImageDimensions(item: VibeViewerItem, width: number, height: number) {
+  if (item.type !== 'image') {
+    return {
+      width,
+      height,
+    }
+  }
+
+  if (height / width >= WIDE_IMAGE_MIN_ASPECT_RATIO) {
+    return {
+      width,
+      height,
+    }
+  }
+
+  return {
+    width,
+    height: width,
+  }
 }

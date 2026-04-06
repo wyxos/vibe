@@ -61,7 +61,14 @@ describe('useVibeRootDataSource', () => {
     deferred.resolve(createPageResult('page-2'))
     await source.flush()
 
+    expect(source.api.items.value).toHaveLength(25)
+    expect(source.api.pendingAppendItems.value).toHaveLength(25)
+
+    await source.api.commitPendingAppend()
+    await source.flush()
+
     expect(source.api.items.value).toHaveLength(50)
+    expect(source.api.pendingAppendItems.value).toHaveLength(0)
 
     source.unmount()
   })

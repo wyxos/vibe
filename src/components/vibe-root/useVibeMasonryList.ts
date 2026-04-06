@@ -18,6 +18,9 @@ const ITEM_WIDTH_PX = 300
 const OVERSCAN_PX = 200
 const PREFETCH_THRESHOLD_PX = 200
 const SCROLL_BUFFER_PX = 200
+const HEIGHT_RESERVE_MS = 300
+const SCROLLBAR_INSET_PX = 24
+const SCROLLBAR_MIN_THUMB_HEIGHT_PX = 48
 
 export function useVibeMasonryList(options: {
   items: Ref<VibeViewerItem[]>
@@ -25,6 +28,8 @@ export function useVibeMasonryList(options: {
   loading: Ref<boolean>
   hasNextPage: Ref<boolean>
   paginationDetail: Ref<string | null>
+  pendingAppendItems: Ref<VibeViewerItem[]>
+  commitPendingAppend: Ref<(() => void | Promise<void>) | null | undefined>
   requestNextPage: Ref<(() => void | Promise<void>) | null | undefined>
   restoreToken: Ref<number>
   setActiveIndex: (index: number) => void
@@ -38,6 +43,8 @@ export function useVibeMasonryList(options: {
   const layoutBuckets = ref<Map<number, number[]>>(new Map())
   const layoutContentHeight = ref(0)
   const layoutIndexById = ref<Map<string, number>>(new Map())
+  const reservedContentHeight = ref<number | null>(null)
+  const isScrollLoadLocked = ref(false)
 
   const availableWidth = computed(() => Math.max(ITEM_WIDTH_PX, viewportWidth.value - CONTENT_INSET_PX * 2))
   const columnCount = computed(() => getColumnCount(availableWidth.value, ITEM_WIDTH_PX))
@@ -59,7 +66,9 @@ export function useVibeMasonryList(options: {
   })))
   const containerHeight = computed(() => {
     const contentHeight = layoutContentHeight.value + CONTENT_INSET_PX * 2
-    return Math.max(contentHeight, viewportHeight.value) + SCROLL_BUFFER_PX
+    const nextReservedHeight = reservedContentHeight.value ?? 0
+
+    return Math.max(contentHeight, nextReservedHeight, viewportHeight.value) + SCROLL_BUFFER_PX
   })
   const footerStatusMessage = computed(() => {
     if (options.loading.value) {
@@ -73,6 +82,27 @@ export function useVibeMasonryList(options: {
     return null
   })
   const paginationLabel = computed(() => `${resolvedActiveIndex.value + 1} / ${options.items.value.length}`)
+  const scrollbarTrackHeight = computed(() => Math.max(0, viewportHeight.value - SCROLLBAR_INSET_PX * 2))
+  const showScrollbar = computed(() => containerHeight.value > viewportHeight.value + 1 && scrollbarTrackHeight.value > 0)
+  const scrollbarThumbHeight = computed(() => {
+    if (!showScrollbar.value) {
+      return 0
+    }
+
+    const rawThumbHeight = (viewportHeight.value / containerHeight.value) * scrollbarTrackHeight.value
+    return Math.min(scrollbarTrackHeight.value, Math.max(SCROLLBAR_MIN_THUMB_HEIGHT_PX, rawThumbHeight))
+  })
+  const scrollbarThumbTop = computed(() => {
+    if (!showScrollbar.value) {
+      return SCROLLBAR_INSET_PX
+    }
+
+    const maxScrollTop = Math.max(0, containerHeight.value - viewportHeight.value)
+    const maxThumbTravel = Math.max(0, scrollbarTrackHeight.value - scrollbarThumbHeight.value)
+    const progress = maxScrollTop > 0 ? clamp(scrollTop.value / maxScrollTop, 0, 1) : 0
+
+    return SCROLLBAR_INSET_PX + maxThumbTravel * progress
+  })
 
   const motion = useVibeMasonryMotion({
     items: options.items,
@@ -87,6 +117,8 @@ export function useVibeMasonryList(options: {
 
   let resizeObserver: ResizeObserver | null = null
   let scrollFrame = 0
+  let appendCommitTimer: ReturnType<typeof setTimeout> | null = null
+  let isSettlingReservedHeight = false
 
   watch(
     [() => options.items.value.map((item) => item.id), columnCount, columnWidth],
@@ -117,6 +149,23 @@ export function useVibeMasonryList(options: {
   )
 
   watch(
+    [() => options.pendingAppendItems.value.map((item) => item.id), columnCount, columnWidth, viewportHeight],
+    ([pendingIds]) => {
+      clearAppendCommitTimer()
+
+      if (!pendingIds.length) {
+        return
+      }
+
+      reservedContentHeight.value = measureContentHeight([...options.items.value, ...options.pendingAppendItems.value])
+      schedulePendingAppendCommit()
+    },
+    {
+      immediate: true,
+    },
+  )
+
+  watch(
     () => options.restoreToken.value,
     async () => {
       await nextTick()
@@ -127,8 +176,8 @@ export function useVibeMasonryList(options: {
   watch(
     () => options.loading.value,
     async (isLoading) => {
-      if (isLoading) {
-        return
+      if (!isLoading && !options.pendingAppendItems.value.length && !appendCommitTimer && !isSettlingReservedHeight) {
+        reservedContentHeight.value = null
       }
 
       await nextTick()
@@ -163,6 +212,7 @@ export function useVibeMasonryList(options: {
     resizeObserver?.disconnect()
     resizeObserver = null
     window.removeEventListener('resize', updateViewportMetrics)
+    clearAppendCommitTimer()
 
     if (scrollFrame) {
       cancelAnimationFrame(scrollFrame)
@@ -319,16 +369,17 @@ export function useVibeMasonryList(options: {
 
     const nearBottom = getDistanceFromBottom() <= PREFETCH_THRESHOLD_PX
     if (!nearBottom) {
+      isScrollLoadLocked.value = false
+
       return
     }
 
-    if (options.loading.value) {
+    if (options.loading.value || isScrollLoadLocked.value) {
       return
     }
 
-    if (nearBottom) {
-      void options.requestNextPage.value()
-    }
+    isScrollLoadLocked.value = true
+    void options.requestNextPage.value()
   }
 
   function updateViewportMetrics() {
@@ -362,16 +413,76 @@ export function useVibeMasonryList(options: {
     return scrollHeight - (scrollTop.value + viewportHeight.value)
   }
 
+  function getScrollbarThumbStyle() {
+    return {
+      height: `${scrollbarThumbHeight.value}px`,
+      transform: `translate3d(0, ${scrollbarThumbTop.value}px, 0)`,
+    }
+  }
+
+  function measureContentHeight(items: VibeViewerItem[]) {
+    if (!items.length) {
+      return 0
+    }
+
+    const projectedLayout = buildMasonryLayout(items, {
+      columnCount: columnCount.value,
+      columnWidth: columnWidth.value,
+      gapX: GAP_PX,
+      gapY: GAP_PX,
+      bucketPx: BUCKET_PX,
+    })
+
+    return projectedLayout.contentHeight + CONTENT_INSET_PX * 2
+  }
+
+  function schedulePendingAppendCommit() {
+    const commitPendingAppend = options.commitPendingAppend.value
+    if (typeof commitPendingAppend !== 'function') {
+      return
+    }
+
+    appendCommitTimer = setTimeout(async () => {
+      appendCommitTimer = null
+      isSettlingReservedHeight = true
+
+      try {
+        if (!options.pendingAppendItems.value.length) {
+          return
+        }
+
+        await commitPendingAppend()
+        await nextTick()
+        await nextTick()
+      }
+      finally {
+        reservedContentHeight.value = null
+        isSettlingReservedHeight = false
+      }
+    }, HEIGHT_RESERVE_MS)
+  }
+
+  function clearAppendCommitTimer() {
+    if (!appendCommitTimer) {
+      return
+    }
+
+    clearTimeout(appendCommitTimer)
+    appendCommitTimer = null
+  }
+
   return {
     columnWidth,
     containerHeight,
     footerStatusMessage,
     getCardStyle,
+    getScrollbarThumbStyle,
     onScroll,
     paginationLabel,
     renderedItems,
     resolvedActiveIndex,
     scrollToIndex,
+    showScrollbar,
     scrollViewportRef,
   }
 }

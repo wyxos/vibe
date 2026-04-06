@@ -192,6 +192,29 @@ describe('VibeRoot', () => {
 
     wrapper.unmount()
   })
+
+  it('renders ultra-wide image previews as square desktop tiles', async () => {
+    setViewportWidth(1_280)
+
+    const wrapper = mount(VibeRoot, {
+      props: {
+        items: [createImageItem('image-6', 'Square preview clamp', {
+          preview: {
+            url: 'https://example.com/image-6-preview.jpg',
+            width: 1_200,
+            height: 400,
+          },
+        })],
+      },
+    })
+
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="vibe-root"]').attributes('data-surface-mode')).toBe('list')
+    expect(wrapper.get('[data-testid="vibe-list-card"]').attributes('style')).toContain('height: 296px;')
+
+    wrapper.unmount()
+  })
 })
 
 function createImageItem(id: string, title?: string, overrides: Partial<VibeViewerItem> = {}): VibeViewerItem {

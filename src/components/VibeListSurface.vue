@@ -7,16 +7,20 @@ import VibeListCard from './VibeListCard.vue'
 
 const props = withDefaults(defineProps<{
   activeIndex?: number
+  commitPendingAppend?: (() => void | Promise<void>) | null
   hasNextPage?: boolean
   items: VibeViewerItem[]
   loading?: boolean
+  pendingAppendItems?: VibeViewerItem[]
   paginationDetail?: string | null
   requestNextPage?: (() => void | Promise<void>) | null
   restoreToken: number
 }>(), {
   activeIndex: 0,
+  commitPendingAppend: null,
   hasNextPage: false,
   loading: false,
+  pendingAppendItems: () => [],
   paginationDetail: null,
   requestNextPage: null,
 })
@@ -32,6 +36,8 @@ const list = useVibeMasonryList({
   loading: toRef(props, 'loading'),
   hasNextPage: toRef(props, 'hasNextPage'),
   paginationDetail: toRef(props, 'paginationDetail'),
+  pendingAppendItems: toRef(props, 'pendingAppendItems'),
+  commitPendingAppend: toRef(props, 'commitPendingAppend'),
   requestNextPage: toRef(props, 'requestNextPage'),
   restoreToken: toRef(props, 'restoreToken'),
   setActiveIndex(index) {
@@ -60,7 +66,7 @@ const list = useVibeMasonryList({
     <div
       :ref="list.scrollViewportRef"
       data-testid="vibe-list-scroll"
-      class="h-full min-h-0 overflow-y-auto overflow-x-hidden"
+      class="h-full min-h-0 overflow-y-auto overflow-x-hidden [overflow-anchor:none] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       @scroll="list.onScroll"
     >
       <div
@@ -87,6 +93,16 @@ const list = useVibeMasonryList({
           </button>
         </article>
       </div>
+    </div>
+
+    <div v-if="list.showScrollbar.value" class="pointer-events-none absolute inset-y-0 right-0 z-[3] hidden w-8 min-[1024px]:block">
+      <div class="absolute bottom-6 right-3 top-6 w-px bg-white/8" />
+      <div
+        data-testid="vibe-list-scrollbar-thumb"
+        class="absolute right-[0.625rem] w-1 bg-white/34 transition-[height,transform,background-color,opacity] duration-300 ease-out"
+        :class="props.loading ? 'bg-white/52' : 'bg-white/34'"
+        :style="list.getScrollbarThumbStyle()"
+      />
     </div>
 
     <div v-if="list.footerStatusMessage.value" class="pointer-events-none absolute inset-x-0 bottom-0 z-[2] flex justify-center px-6 pb-6">

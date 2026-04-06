@@ -25,6 +25,17 @@ export function useVibeRootController(props: Readonly<VibeRootProps>, emit: Vibe
     },
   )
 
+  watch(
+    [surfaceMode, () => dataSource.pendingAppendItems.value.length],
+    ([nextSurfaceMode, pendingAppendCount]) => {
+      if (nextSurfaceMode === 'list' || pendingAppendCount <= 0) {
+        return
+      }
+
+      void dataSource.commitPendingAppend()
+    },
+  )
+
   onMounted(() => {
     updateViewportWidth()
     window.addEventListener('resize', updateViewportWidth)
