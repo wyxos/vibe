@@ -8,14 +8,21 @@ const CARD_MOTION_MS = 300
 const ENTER_MOTION_MS = 600
 const ENTER_STAGGER_MS = 40
 const MAX_ENTER_STAGGER_TOTAL_MS = 400
+export type VibeMasonryEnterDirection = 'bottom' | 'top'
 
 export function getVibeMasonryEnterStartY(options: {
+  direction: VibeMasonryEnterDirection
   itemHeight: number
   columnWidth: number
   scrollTop: number
   viewportHeight: number
 }) {
   const safeHeight = options.itemHeight > 0 ? options.itemHeight : options.columnWidth
+
+  if (options.direction === 'top') {
+    return options.scrollTop - safeHeight
+  }
+
   return options.scrollTop + options.viewportHeight + safeHeight
 }
 
@@ -32,7 +39,9 @@ export function useVibeMasonryMotion(options: {
   const enterStartIds = ref<Set<string>>(new Set())
   const enterAnimatingIds = ref<Set<string>>(new Set())
   const enterDelayById = ref<Map<string, number>>(new Map())
+  const enterDirectionById = ref<Map<string, VibeMasonryEnterDirection>>(new Map())
   const moveOffsets = ref<Map<string, { dx: number; dy: number }>>(new Map())
+  const moveDurationById = ref<Map<string, number>>(new Map())
   const moveTransitionIds = ref<Set<string>>(new Set())
   const scheduledEnterIds = new Set<string>()
   const activeTimers = new Set<ReturnType<typeof setTimeout>>()
@@ -84,13 +93,16 @@ export function useVibeMasonryMotion(options: {
         trackTimeout(() => {
           const nextAnimatingIds = new Set(enterAnimatingIds.value)
           const nextDelayById = new Map(enterDelayById.value)
+          const nextEnterDirectionById = new Map(enterDirectionById.value)
           for (const itemId of idsToAnimate) {
             nextAnimatingIds.delete(itemId)
             nextDelayById.delete(itemId)
+            nextEnterDirectionById.delete(itemId)
             scheduledEnterIds.delete(itemId)
           }
           enterAnimatingIds.value = nextAnimatingIds
           enterDelayById.value = nextDelayById
+          enterDirectionById.value = nextEnterDirectionById
         }, ENTER_MOTION_MS)
       })
     },
@@ -104,19 +116,22 @@ export function useVibeMasonryMotion(options: {
     activeTimers.clear()
   })
 
-  function markEnter(items: VibeViewerItem[]) {
+  function markEnter(items: VibeViewerItem[], direction: VibeMasonryEnterDirection = 'bottom') {
     if (!items.length) {
       return
     }
 
     const nextStartIds = new Set(enterStartIds.value)
+    const nextEnterDirectionById = new Map(enterDirectionById.value)
     for (const item of items) {
       nextStartIds.add(item.id)
+      nextEnterDirectionById.set(item.id, direction)
     }
     enterStartIds.value = nextStartIds
+    enterDirectionById.value = nextEnterDirectionById
   }
 
-  function playFlipMoveAnimation(oldPositionsById: Map<string, LayoutPosition>, skipIds?: Set<string>) {
+  function playFlipMoveAnimation(oldPositionsById: Map<string, LayoutPosition>, skipIds?: Set<string>, durationMs = CARD_MOTION_MS) {
     if (!oldPositionsById.size) {
       return
     }
@@ -155,6 +170,11 @@ export function useVibeMasonryMotion(options: {
 
     moveOffsets.value = nextMoveOffsets
     moveTransitionIds.value = new Set()
+    const nextMoveDurationById = new Map(moveDurationById.value)
+    for (const itemId of animatingIds) {
+      nextMoveDurationById.set(itemId, durationMs)
+    }
+    moveDurationById.value = nextMoveDurationById
 
     raf(() => {
       moveTransitionIds.value = new Set(animatingIds)
@@ -165,7 +185,12 @@ export function useVibeMasonryMotion(options: {
 
     trackTimeout(() => {
       moveTransitionIds.value = new Set()
-    }, CARD_MOTION_MS)
+      const nextMoveDurationById = new Map(moveDurationById.value)
+      for (const itemId of animatingIds) {
+        nextMoveDurationById.delete(itemId)
+      }
+      moveDurationById.value = nextMoveDurationById
+    }, durationMs)
   }
 
   function getCardTransition(itemId: string) {
@@ -174,7 +199,7 @@ export function useVibeMasonryMotion(options: {
     }
 
     if (moveTransitionIds.value.has(itemId)) {
-      return `transform ${CARD_MOTION_MS}ms ease-out`
+      return `transform ${moveDurationById.value.get(itemId) ?? CARD_MOTION_MS}ms ease-out`
     }
 
     return undefined
@@ -194,9 +219,11 @@ export function useVibeMasonryMotion(options: {
     const position = options.positions.value[index] ?? { x: 0, y: 0 }
     const height = options.heights.value[index] ?? options.columnWidth.value
     const moveOffset = item ? moveOffsets.value.get(item.id) ?? { dx: 0, dy: 0 } : { dx: 0, dy: 0 }
+    const enterDirection = item ? enterDirectionById.value.get(item.id) ?? 'bottom' : 'bottom'
     const enterStartY = item && enterStartIds.value.has(item.id)
       ? getVibeMasonryEnterStartY({
           columnWidth: options.columnWidth.value,
+          direction: enterDirection,
           itemHeight: height,
           scrollTop: options.scrollTop.value,
           viewportHeight: options.viewportHeight.value,

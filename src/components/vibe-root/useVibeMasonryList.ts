@@ -21,6 +21,7 @@ const SCROLL_BUFFER_PX = 200
 const HEIGHT_RESERVE_MS = 300
 const SCROLLBAR_INSET_PX = 24
 const SCROLLBAR_MIN_THUMB_HEIGHT_PX = 48
+const PREPEND_MOVE_MOTION_MS = 500
 
 export function useVibeMasonryList(options: {
   items: Ref<VibeViewerItem[]>
@@ -127,15 +128,20 @@ export function useVibeMasonryList(options: {
       const previousIdSet = new Set(previousIds)
       const addedItems = options.items.value.filter((item) => !previousIdSet.has(item.id))
       const isPrepend = currentIds.length > previousIds.length && previousIds.length > 0 && currentIds[0] !== previousIds[0]
-      const anchorId = isPrepend ? options.items.value[resolvedActiveIndex.value]?.id ?? null : null
+      const shouldPreserveAnchor = isPrepend && scrollTop.value > CONTENT_INSET_PX + GAP_PX
+      const anchorId = shouldPreserveAnchor ? options.items.value[resolvedActiveIndex.value]?.id ?? null : null
 
       rebuildLayout()
 
       if (addedItems.length > 0) {
-        motion.markEnter(addedItems)
+        motion.markEnter(addedItems, isPrepend ? 'top' : 'bottom')
       }
 
-      motion.playFlipMoveAnimation(oldPositionsById, new Set(addedItems.map((item) => item.id)))
+      motion.playFlipMoveAnimation(
+        oldPositionsById,
+        new Set(addedItems.map((item) => item.id)),
+        isPrepend ? PREPEND_MOVE_MOTION_MS : undefined,
+      )
 
       if (anchorId) {
         await nextTick()
