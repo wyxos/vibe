@@ -10,14 +10,13 @@ const ENTER_STAGGER_MS = 40
 const MAX_ENTER_STAGGER_TOTAL_MS = 400
 
 export function getVibeMasonryEnterStartY(options: {
-  itemTop: number
   itemHeight: number
   columnWidth: number
   scrollTop: number
   viewportHeight: number
 }) {
   const safeHeight = options.itemHeight > 0 ? options.itemHeight : options.columnWidth
-  return options.scrollTop + options.viewportHeight + safeHeight + options.itemTop
+  return options.scrollTop + options.viewportHeight + safeHeight
 }
 
 export function useVibeMasonryMotion(options: {
@@ -61,20 +60,6 @@ export function useVibeMasonryMotion(options: {
         return
       }
 
-      idsToAnimate.sort((leftId, rightId) => {
-        const leftIndex = options.indexById.value.get(leftId) ?? -1
-        const rightIndex = options.indexById.value.get(rightId) ?? -1
-        const leftPosition = leftIndex >= 0 ? options.positions.value[leftIndex] : null
-        const rightPosition = rightIndex >= 0 ? options.positions.value[rightIndex] : null
-
-        const yDelta = (rightPosition?.y ?? 0) - (leftPosition?.y ?? 0)
-        if (yDelta !== 0) {
-          return yDelta
-        }
-
-        return (leftPosition?.x ?? 0) - (rightPosition?.x ?? 0)
-      })
-
       const nextDelayById = new Map(enterDelayById.value)
       for (let index = 0; index < idsToAnimate.length; index += 1) {
         nextDelayById.set(idsToAnimate[index], Math.min(index * ENTER_STAGGER_MS, MAX_ENTER_STAGGER_TOTAL_MS))
@@ -90,25 +75,23 @@ export function useVibeMasonryMotion(options: {
       })
 
       raf2(() => {
-        raf(() => {
-          const nextStartIds = new Set(enterStartIds.value)
-          for (const itemId of idsToAnimate) {
-            nextStartIds.delete(itemId)
-          }
-          enterStartIds.value = nextStartIds
+        const nextStartIds = new Set(enterStartIds.value)
+        for (const itemId of idsToAnimate) {
+          nextStartIds.delete(itemId)
+        }
+        enterStartIds.value = nextStartIds
 
-          trackTimeout(() => {
-            const nextAnimatingIds = new Set(enterAnimatingIds.value)
-            const nextDelayById = new Map(enterDelayById.value)
-            for (const itemId of idsToAnimate) {
-              nextAnimatingIds.delete(itemId)
-              nextDelayById.delete(itemId)
-              scheduledEnterIds.delete(itemId)
-            }
-            enterAnimatingIds.value = nextAnimatingIds
-            enterDelayById.value = nextDelayById
-          }, ENTER_MOTION_MS)
-        })
+        trackTimeout(() => {
+          const nextAnimatingIds = new Set(enterAnimatingIds.value)
+          const nextDelayById = new Map(enterDelayById.value)
+          for (const itemId of idsToAnimate) {
+            nextAnimatingIds.delete(itemId)
+            nextDelayById.delete(itemId)
+            scheduledEnterIds.delete(itemId)
+          }
+          enterAnimatingIds.value = nextAnimatingIds
+          enterDelayById.value = nextDelayById
+        }, ENTER_MOTION_MS)
       })
     },
     { flush: 'post' },
@@ -215,7 +198,6 @@ export function useVibeMasonryMotion(options: {
       ? getVibeMasonryEnterStartY({
           columnWidth: options.columnWidth.value,
           itemHeight: height,
-          itemTop: position.y,
           scrollTop: options.scrollTop.value,
           viewportHeight: options.viewportHeight.value,
         })
