@@ -223,6 +223,9 @@ function connectListScrollListener() {
   listScrollViewport.addEventListener('scroll', onListViewportScroll, {
     passive: true,
   })
+  listScrollViewport.addEventListener('wheel', onListViewportWheel, {
+    passive: true,
+  })
   syncListScrollState(listScrollViewport.scrollTop)
 }
 
@@ -232,6 +235,7 @@ function detachListScrollListener() {
   }
 
   listScrollViewport.removeEventListener('scroll', onListViewportScroll)
+  listScrollViewport.removeEventListener('wheel', onListViewportWheel)
   listScrollViewport = null
 }
 
@@ -242,6 +246,20 @@ function onListViewportScroll(event: Event) {
   }
 
   syncListScrollState(viewport.scrollTop)
+}
+
+function onListViewportWheel(event: WheelEvent) {
+  const viewport = event.currentTarget
+  if (!(viewport instanceof HTMLElement)) {
+    return
+  }
+
+  if (event.deltaY >= 0 || viewport.scrollTop > TOP_SCROLL_THRESHOLD_PX) {
+    return
+  }
+
+  hasReachedTopAfterScroll.value = true
+  void maybePrefetchAround()
 }
 
 function syncListScrollState(scrollTop: number) {
