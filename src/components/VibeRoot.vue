@@ -4,7 +4,7 @@ import { Pause, Play } from 'lucide-vue-next'
 
 import type { VibeRootProps } from './vibe-root/useVibeRoot'
 import { useVibeRoot } from './vibe-root/useVibeRoot'
-import { getItemIcon } from './vibe-root/media'
+import { getItemIcon, getItemLabel } from './vibe-root/media'
 import { getSlideToneClass, getStageToneClass } from './vibe-root/theme'
 
 const props = withDefaults(defineProps<VibeRootProps>(), {
@@ -24,8 +24,6 @@ const {
   activeMediaItem,
   activeMediaProgress,
   activeMediaState,
-  formatDate,
-  formatFileSize,
   formatPlaybackTime,
   getImageSource,
   getSlideStyle,
@@ -54,6 +52,16 @@ const activeStageToneClass = computed(() => getStageToneClass(activeItem.value?.
 const mediaStatusOffsetClass = computed(() =>
   activeMediaItem.value ? 'bottom-[5.8rem] max-[720px]:bottom-[7.4rem]' : 'bottom-[1.8rem] max-[720px]:bottom-[1.3rem]',
 )
+
+function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof activeItem.value>) {
+  const label = item.title?.trim()
+
+  if (label) {
+    return `${action} ${label}`
+  }
+
+  return `${action} ${getItemLabel(item.type).toLowerCase()}`
+}
 </script>
 
 <template>
@@ -95,7 +103,7 @@ const mediaStatusOffsetClass = computed(() =>
           <img
             v-if="item.type === 'image'"
             :src="getImageSource(item)"
-            :alt="item.title"
+            :alt="item.title ?? ''"
             draggable="false"
             class="block h-auto max-h-full w-auto max-w-full object-contain shadow-[0_40px_120px_-60px_rgba(0,0,0,0.9)]"
           />
@@ -117,7 +125,7 @@ const mediaStatusOffsetClass = computed(() =>
             @seeked="onMediaEvent(item.id, $event)"
             @timeupdate="onMediaEvent(item.id, $event)"
           >
-            <source :src="item.original.url" :type="item.original.mimeType || item.mimeType" />
+            <source :src="item.url" />
           </video>
         </div>
 
@@ -128,7 +136,7 @@ const mediaStatusOffsetClass = computed(() =>
           <button
             type="button"
             class="relative grid aspect-square w-[clamp(320px,46vw,560px)] max-w-[calc(100vw-2.5rem)] place-items-center border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02)),radial-gradient(circle_at_center,rgba(16,185,129,0.14),transparent_58%)] text-[#f7f1ea] transition-[border-color,background] duration-200 hover:border-white/30 hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.03)),radial-gradient(circle_at_center,rgba(16,185,129,0.18),transparent_58%)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f7f1ea]"
-            :aria-label="(mediaStates[item.id]?.paused ?? true) ? `Play ${item.title}` : `Pause ${item.title}`"
+            :aria-label="(mediaStates[item.id]?.paused ?? true) ? getMediaActionLabel('Play', item) : getMediaActionLabel('Pause', item)"
             @click="onAudioCoverClick($event, item.id)"
           >
             <div class="pointer-events-none absolute inset-0 border border-white/8 bg-[radial-gradient(circle,rgba(16,185,129,0.16),transparent_66%)]" />
@@ -159,7 +167,7 @@ const mediaStatusOffsetClass = computed(() =>
             @seeked="onMediaEvent(item.id, $event)"
             @timeupdate="onMediaEvent(item.id, $event)"
           >
-            <source :src="item.original.url" :type="item.original.mimeType || item.mimeType" />
+            <source :src="item.url" />
           </audio>
         </div>
 
@@ -203,11 +211,13 @@ const mediaStatusOffsetClass = computed(() =>
             <component :is="getItemIcon(activeItem.type)" class="h-3.5 w-3.5 stroke-2" aria-hidden="true" />
           </span>
           <h2
+            v-if="activeItem.title"
             data-testid="vibe-root-title"
             class="m-0 w-full truncate px-2 text-center text-[0.95rem] leading-none tracking-[-0.04em] min-[721px]:text-[1.2rem]"
           >
             {{ activeItem.title }}
           </h2>
+          <div v-else class="min-h-px" aria-hidden="true" />
           <span
             data-testid="vibe-root-pagination"
             class="inline-flex items-center justify-self-end gap-3 border border-white/14 bg-black/40 px-4 py-3 text-[0.74rem] font-bold uppercase tracking-[0.2em] text-[#f7f1ea]/72 backdrop-blur-[18px]"
@@ -220,14 +230,6 @@ const mediaStatusOffsetClass = computed(() =>
               {{ props.paginationDetail }}
             </span>
           </span>
-        </div>
-
-        <div class="flex items-center justify-center gap-2 text-center text-[0.76rem] uppercase tracking-[0.18em] text-[#f7f1ea]/68 min-[721px]:text-[0.82rem]">
-          <span>{{ activeItem.extension.toUpperCase() }}</span>
-          <span class="max-[720px]:hidden">·</span>
-          <span class="max-[720px]:hidden">{{ formatDate(activeItem.createdAt) }}</span>
-          <span class="max-[720px]:hidden">·</span>
-          <span class="max-[720px]:hidden">{{ formatFileSize(activeItem.sizeBytes) }}</span>
         </div>
       </div>
 

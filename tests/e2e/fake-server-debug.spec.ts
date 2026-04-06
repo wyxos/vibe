@@ -19,7 +19,8 @@ test('fake-server debug route paginates and shows response metadata', async ({ p
   await expect(previousButton).toBeDisabled()
   await expect(nextButton).toBeEnabled()
   await expect(cards).toHaveCount(25)
-  await expect(page.getByText('Resolved dimensions').first()).toBeVisible()
+  await expect(page.getByText('Main dimensions').first()).toBeVisible()
+  await expect(page.getByText('Preview dimensions').first()).toBeVisible()
 
   await nextButton.click()
 

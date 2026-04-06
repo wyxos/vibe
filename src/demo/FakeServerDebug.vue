@@ -64,58 +64,16 @@ function goToNextPage() {
   }
 }
 
-function isVisualItem(item: FakeMediaItem): item is FakeMediaItem & { width: number; height: number } {
-  return (
-    (item.type === 'image' || item.type === 'video')
-    && typeof item.width === 'number'
-    && typeof item.height === 'number'
-  )
+function isVisualItem(item: FakeMediaItem) {
+  return item.type === 'image' || item.type === 'video'
 }
 
-function hasPreviewDimensions(item: FakeMediaItem) {
-  return Boolean(item.preview?.width && item.preview.height)
-}
-
-function formatFileSize(sizeBytes: number) {
-  if (sizeBytes < 1024) {
-    return `${sizeBytes} B`
-  }
-
-  const units = ['KB', 'MB', 'GB']
-  let size = sizeBytes / 1024
-  let unitIndex = 0
-
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024
-    unitIndex += 1
-  }
-
-  return `${size.toFixed(size >= 10 ? 0 : 1)} ${units[unitIndex]}`
-}
-
-function formatDuration(durationMs: number | undefined) {
-  if (!durationMs) {
+function formatDimensions(width?: number, height?: number) {
+  if (!width || !height) {
     return 'n/a'
   }
 
-  const totalSeconds = Math.round(durationMs / 1000)
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-
-  return `${minutes}:${String(seconds).padStart(2, '0')}`
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat('en', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(value))
-}
-
-function dimensionSource(item: FakeMediaItem) {
-  return hasPreviewDimensions(item) ? 'preview' : 'original'
+  return `${width} × ${height}`
 }
 
 function cardTone(item: FakeMediaItem) {
@@ -146,8 +104,8 @@ function cardTone(item: FakeMediaItem) {
             Fake paginated media server
           </h1>
           <p class="max-w-3xl text-sm leading-7 text-[#f7f1ea]/64 sm:text-[0.98rem]">
-            Browse the response shape, step through pages, and confirm that image and video items expose
-            `width` and `height` with preview dimensions preferred over original dimensions.
+            Inspect the simpler viewer contract and verify that the fake server only requires `id`, `type`,
+            optional `title`, the main `url`, main dimensions, and an optional preview object.
           </p>
         </div>
 
@@ -223,13 +181,13 @@ function cardTone(item: FakeMediaItem) {
             <div class="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start">
               <div class="relative aspect-[4/3] overflow-hidden border border-white/10 bg-black/28">
                 <img
-                  v-if="item.type === 'image' && item.preview"
-                  :src="item.preview.url"
-                  :alt="item.title"
+                  v-if="item.type === 'image'"
+                  :src="item.preview?.url ?? item.url"
+                  :alt="item.title ?? ''"
                   class="h-full w-full object-cover"
                 />
                 <video
-                  v-else-if="item.type === 'video' && item.preview"
+                  v-else-if="item.type === 'video'"
                   class="h-full w-full object-cover"
                   autoplay
                   muted
@@ -237,25 +195,20 @@ function cardTone(item: FakeMediaItem) {
                   playsinline
                   preload="metadata"
                 >
-                  <source :src="item.preview.url" :type="item.preview.mimeType || item.mimeType" />
+                  <source :src="item.preview?.url ?? item.url" />
                 </video>
-                <div
-                  v-else
-                  class="grid h-full place-items-center px-4 text-center"
-                >
+                <div v-else class="grid h-full place-items-center px-4 text-center">
                   <div class="grid justify-items-center gap-3">
                     <span class="inline-flex h-12 w-12 items-center justify-center border border-white/12 bg-black/34 text-[#f7f1ea]/72">
                       <component :is="getItemIcon(item.type)" class="h-4 w-4 stroke-[2]" aria-hidden="true" />
                     </span>
                     <p class="text-[0.7rem] font-bold uppercase tracking-[0.24em] text-[#f7f1ea]/54">
-                      {{ item.preview ? 'Preview asset' : getItemLabel(item.type) }}
+                      {{ item.preview ? 'Preview available' : getItemLabel(item.type) }}
                     </p>
                   </div>
                 </div>
 
-                <span
-                  class="absolute left-3 top-3 inline-flex items-center gap-2 border border-white/12 bg-black/60 px-3 py-2 text-[0.66rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/76 backdrop-blur-[14px]"
-                >
+                <span class="absolute left-3 top-3 inline-flex items-center gap-2 border border-white/12 bg-black/60 px-3 py-2 text-[0.66rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/76 backdrop-blur-[14px]">
                   <component :is="getItemIcon(item.type)" class="h-3.5 w-3.5 stroke-[2]" aria-hidden="true" />
                   <span>{{ getItemLabel(item.type) }}</span>
                 </span>
@@ -264,60 +217,49 @@ function cardTone(item: FakeMediaItem) {
               <div class="grid gap-4">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                   <div class="min-w-0">
-                    <h3 class="truncate text-[1.35rem] font-semibold tracking-[-0.04em] text-[#f7f1ea]">{{ item.title }}</h3>
+                    <h3 class="truncate text-[1.35rem] font-semibold tracking-[-0.04em] text-[#f7f1ea]">
+                      {{ item.title ?? 'Untitled item' }}
+                    </h3>
                     <p class="mt-1 break-all text-[0.78rem] uppercase tracking-[0.18em] text-[#f7f1ea]/42">{{ item.id }}</p>
                   </div>
                   <span class="border border-white/12 bg-black/36 px-3 py-2 text-[0.68rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/68">
-                    {{ item.extension }}
+                    {{ item.type }}
                   </span>
-                </div>
-
-                <div class="flex flex-wrap gap-2 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-[#f7f1ea]/62">
-                  <span class="border border-white/10 bg-black/28 px-3 py-2">{{ item.mimeType }}</span>
-                  <span class="border border-white/10 bg-black/28 px-3 py-2">{{ formatFileSize(item.sizeBytes) }}</span>
-                  <span class="border border-white/10 bg-black/28 px-3 py-2">{{ formatDate(item.createdAt) }}</span>
-                  <span class="border border-white/10 bg-black/28 px-3 py-2">Duration {{ formatDuration(item.durationMs) }}</span>
                 </div>
 
                 <div class="grid gap-3 sm:grid-cols-2">
                   <div class="border border-white/10 bg-black/20 p-3">
-                    <p class="text-[0.64rem] font-bold uppercase tracking-[0.24em] text-[#f7f1ea]/44">Original</p>
-                    <p class="mt-2 break-all text-sm leading-6 text-[#f7f1ea]/72">{{ item.original.url }}</p>
+                    <p class="text-[0.64rem] font-bold uppercase tracking-[0.24em] text-[#f7f1ea]/44">Main URL</p>
+                    <p class="mt-2 break-all text-sm leading-6 text-[#f7f1ea]/72">{{ item.url }}</p>
                   </div>
 
                   <div class="border border-white/10 bg-black/20 p-3">
-                    <p class="text-[0.64rem] font-bold uppercase tracking-[0.24em] text-[#f7f1ea]/44">Preview</p>
+                    <p class="text-[0.64rem] font-bold uppercase tracking-[0.24em] text-[#f7f1ea]/44">Preview URL</p>
                     <p class="mt-2 break-all text-sm leading-6 text-[#f7f1ea]/72">
                       {{ item.preview?.url ?? 'No preview asset' }}
                     </p>
                   </div>
                 </div>
 
-                <div
-                  class="grid gap-3"
-                  :class="isVisualItem(item) ? 'sm:grid-cols-3' : 'sm:grid-cols-2'"
-                >
+                <div class="grid gap-3 sm:grid-cols-2">
                   <div class="border border-white/10 bg-black/20 p-3">
-                    <p class="text-[0.64rem] font-bold uppercase tracking-[0.24em] text-[#f7f1ea]/44">Resolved dimensions</p>
-                    <p class="mt-2 text-sm text-[#f7f1ea]/78">
-                      {{ isVisualItem(item) ? `${item.width} × ${item.height}` : 'n/a' }}
-                    </p>
+                    <p class="text-[0.64rem] font-bold uppercase tracking-[0.24em] text-[#f7f1ea]/44">Main dimensions</p>
+                    <p class="mt-2 text-sm text-[#f7f1ea]/78">{{ formatDimensions(item.width, item.height) }}</p>
                   </div>
 
                   <div class="border border-white/10 bg-black/20 p-3">
-                    <p class="text-[0.64rem] font-bold uppercase tracking-[0.24em] text-[#f7f1ea]/44">Dimension source</p>
+                    <p class="text-[0.64rem] font-bold uppercase tracking-[0.24em] text-[#f7f1ea]/44">Preview dimensions</p>
                     <p class="mt-2 text-sm text-[#f7f1ea]/78">
-                      {{ isVisualItem(item) ? dimensionSource(item) : 'n/a' }}
+                      {{ formatDimensions(item.preview?.width, item.preview?.height) }}
                     </p>
                   </div>
+                </div>
 
-                  <div
-                    v-if="isVisualItem(item)"
-                    class="border border-white/10 bg-black/20 p-3"
-                  >
-                    <p class="text-[0.64rem] font-bold uppercase tracking-[0.24em] text-[#f7f1ea]/44">Aspect ratio</p>
-                    <p class="mt-2 text-sm text-[#f7f1ea]/78">{{ (item.width / item.height).toFixed(2) }}</p>
-                  </div>
+                <div v-if="isVisualItem(item)" class="border border-white/10 bg-black/20 p-3">
+                  <p class="text-[0.64rem] font-bold uppercase tracking-[0.24em] text-[#f7f1ea]/44">Visual type</p>
+                  <p class="mt-2 text-sm text-[#f7f1ea]/78">
+                    Main asset renders from `url`, preview card renders from `preview.url` when provided.
+                  </p>
                 </div>
               </div>
             </div>
@@ -333,11 +275,10 @@ function cardTone(item: FakeMediaItem) {
           <div class="border border-white/10 bg-black/20 p-4">
             <p class="text-[0.68rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/42">What to verify</p>
             <ul class="mt-3 grid gap-2 text-sm leading-6 text-[#f7f1ea]/68">
-              <li>Image and video items expose top-level `width` and `height`.</li>
-              <li>Preview dimensions win when preview width and height are both present.</li>
-              <li>Video items expose both a short preview clip and an original media URL.</li>
-              <li>Audio items expose preview and original with the same source URL.</li>
-              <li>Non-visual items still carry preview/original assets but no resolved dimensions.</li>
+              <li>Every item exposes `id`, `type`, `url`, and optionally `title` and `preview`.</li>
+              <li>Main `width` and `height` describe the main `url` asset, not preview-first dimensions.</li>
+              <li>Preview dimensions only appear under `preview.width` and `preview.height`.</li>
+              <li>The viewer can consume the same item objects without mime, file-size, or timestamp fields.</li>
               <li>`nextPage` becomes `null` on the last page.</li>
             </ul>
           </div>

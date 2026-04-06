@@ -7,26 +7,14 @@ const createItems = (count: number) =>
     id: `item-${index + 1}`,
     type: 'image' as const,
     title: `Item ${index + 1}`,
-    extension: 'jpg',
-    mimeType: 'image/jpeg',
-    sizeBytes: 2_048,
-    createdAt: '2026-04-05T08:00:00.000Z',
+    url: `https://example.com/item-${index + 1}.jpg`,
+    width: 1_920,
+    height: 1_080,
     preview: {
       url: `https://example.com/item-${index + 1}-preview.jpg`,
-      mimeType: 'image/jpeg',
-      sizeBytes: 512,
       width: 320,
       height: 180,
     },
-    original: {
-      url: `https://example.com/item-${index + 1}.jpg`,
-      mimeType: 'image/jpeg',
-      sizeBytes: 2_048,
-      width: 1_920,
-      height: 1_080,
-    },
-    width: 1_920,
-    height: 1_080,
   }))
 
 describe('virtualization helpers', () => {

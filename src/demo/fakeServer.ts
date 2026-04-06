@@ -3,8 +3,6 @@ import type { VibeViewerAsset, VibeViewerItem, VibeViewerType } from '@/componen
 import { fakeMediaFileItems } from '@/demo/fakeMediaFileItems'
 import { fakeMediaVisualItems } from '@/demo/fakeMediaVisualItems'
 
-type VisualMediaType = Extract<VibeViewerType, 'image' | 'video'>
-
 export type FakeMediaType = VibeViewerType
 export type FakeMediaAsset = VibeViewerAsset
 export type FakeMediaItem = VibeViewerItem
@@ -39,46 +37,6 @@ const DEFAULT_MAX_DELAY_MS = 320
 
 function cloneAsset(asset: FakeMediaAsset): FakeMediaAsset {
   return { ...asset }
-}
-
-function isVisualItem(item: FakeMediaItem): item is FakeMediaItem & { type: VisualMediaType } {
-  return item.type === 'image' || item.type === 'video'
-}
-
-function resolveVisualDimensions(item: FakeMediaItem) {
-  if (!isVisualItem(item)) {
-    return item
-  }
-
-  const source = (item.preview?.width && item.preview.height) ? item.preview : item.original
-
-  if (!source.width || !source.height) {
-    throw new Error('Visual media items require preview or original dimensions.')
-  }
-
-  return {
-    ...item,
-    width: source.width,
-    height: source.height,
-  }
-}
-
-function ensurePreviewAsset(item: FakeMediaItem) {
-  if (item.type === 'audio') {
-    return {
-      ...item,
-      preview: cloneAsset(item.original),
-    }
-  }
-
-  if (item.preview) {
-    return item
-  }
-
-  return {
-    ...item,
-    preview: cloneAsset(item.original),
-  }
 }
 
 function createLatency(minDelayMs: number, maxDelayMs: number) {
@@ -127,20 +85,11 @@ function slicePage(items: FakeMediaItem[], page: number, pageSize: number) {
   return items.slice((page - 1) * pageSize, page * pageSize)
 }
 
-function offsetCreatedAt(value: string, cycle: number, seedIndex: number) {
-  const timestamp = Date.parse(value) - (cycle * 86_400_000) - (seedIndex * 90_000)
-  return new Date(timestamp).toISOString()
-}
-
-function cloneItem(item: FakeMediaItem, index: number, seedIndex: number, seedCount: number): FakeMediaItem {
-  const cycle = Math.floor(index / seedCount)
-
+function cloneItem(item: FakeMediaItem, index: number): FakeMediaItem {
   return {
     ...item,
     id: `${item.id}-${String(index + 1).padStart(4, '0')}`,
-    createdAt: offsetCreatedAt(item.createdAt, cycle, seedIndex),
     preview: item.preview ? cloneAsset(item.preview) : undefined,
-    original: cloneAsset(item.original),
   }
 }
 
@@ -151,14 +100,24 @@ function buildFakeFeed(seedItems: FakeMediaItem[], totalItems: number) {
 
   return Array.from({ length: totalItems }, (_, index) => {
     const seedIndex = index % seedItems.length
-    return cloneItem(seedItems[seedIndex], index, seedIndex, seedItems.length)
+    return cloneItem(seedItems[seedIndex], index)
   })
 }
 
-const baseSeedItems = [...fakeMediaVisualItems, ...fakeMediaFileItems]
-  .map(resolveVisualDimensions)
-  .map(ensurePreviewAsset)
-  .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+function ensureAudioPreview(item: FakeMediaItem) {
+  if (item.type !== 'audio' || item.preview) {
+    return item
+  }
+
+  return {
+    ...item,
+    preview: {
+      url: item.url,
+    },
+  }
+}
+
+const baseSeedItems = [...fakeMediaVisualItems, ...fakeMediaFileItems].map(ensureAudioPreview)
 
 export const fakeMediaItems = buildFakeFeed(baseSeedItems, DEFAULT_PAGE_SIZE * DEFAULT_TOTAL_PAGES)
 

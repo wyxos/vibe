@@ -1,7 +1,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { VibeViewerItem } from '../vibeViewer'
-import { formatDate, formatFileSize, formatPlaybackTime } from './format'
+import { formatPlaybackTime } from './format'
 import { getRenderedItems, getRenderedRange, getVirtualSlideStyle } from './virtualization'
 
 interface MediaUiState {
@@ -69,7 +69,7 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
       return 0
     }
 
-    return activeMediaState.value.duration || ((activeMediaItem.value.durationMs ?? 0) / 1000)
+    return activeMediaState.value.duration
   })
   const activeMediaProgress = computed(() => {
     if (activeMediaDuration.value <= 0) {
@@ -426,7 +426,7 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
   }
 
   function getImageSource(item: VibeViewerItem) {
-    return item.original.url
+    return item.url
   }
 
   function getSlideStyle(index: number) {
@@ -439,8 +439,6 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
     activeMediaItem,
     activeMediaProgress,
     activeMediaState,
-    formatDate,
-    formatFileSize,
     formatPlaybackTime,
     getImageSource,
     getSlideStyle,

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { createFakeMediaServer, type FakeMediaItem } from '@/demo/fakeServer'
 
 describe('createFakeMediaServer', () => {
-  it('builds a 25-item page across 100 default pages and preserves media contracts', async () => {
+  it('builds a 25-item page across 100 default pages and preserves the simplified media contract', async () => {
     const server = createFakeMediaServer({
       maxDelayMs: 0,
       minDelayMs: 0,
@@ -11,7 +11,11 @@ describe('createFakeMediaServer', () => {
 
     const response = await server.fetchPage()
     const audioItem = server.list().find((item) => item.type === 'audio')
-    const visualItem = server.list().find((item) => item.type === 'image' || item.type === 'video')
+    const visualItem = server.list().find((item) =>
+      (item.type === 'image' || item.type === 'video')
+      && item.preview
+      && (item.width !== item.preview.width || item.height !== item.preview.height),
+    )
 
     expect(response).toMatchObject({
       page: 1,
@@ -21,9 +25,13 @@ describe('createFakeMediaServer', () => {
       nextPage: '2',
     })
     expect(response.items).toHaveLength(25)
-    expect(audioItem?.preview?.url).toBe(audioItem?.original.url)
-    expect(visualItem?.width).toBe(visualItem?.preview?.width ?? visualItem?.original.width)
-    expect(visualItem?.height).toBe(visualItem?.preview?.height ?? visualItem?.original.height)
+    expect(audioItem?.preview?.url).toBe(audioItem?.url)
+    expect(visualItem?.width).toBeDefined()
+    expect(visualItem?.height).toBeDefined()
+    expect(visualItem?.preview?.width).toBeDefined()
+    expect(visualItem?.preview?.height).toBeDefined()
+    expect(visualItem?.width).not.toBe(visualItem?.preview?.width)
+    expect(visualItem?.height).not.toBe(visualItem?.preview?.height)
   })
 
   it('uses the default paging values and returns the expected response shape', async () => {
@@ -93,25 +101,13 @@ function createItem(index: number): FakeMediaItem {
     id: `item-${index}`,
     type: 'image',
     title: `Item ${index}`,
-    extension: 'jpg',
-    mimeType: 'image/jpeg',
-    sizeBytes: 1_024 + index,
-    createdAt: new Date(Date.UTC(2026, 3, 5, 12, index, 0)).toISOString(),
+    url: `https://example.com/item-${index}.jpg`,
+    width: 1_920,
+    height: 1_080,
     preview: {
       url: `https://example.com/item-${index}-preview.jpg`,
-      mimeType: 'image/jpeg',
-      sizeBytes: 256 + index,
       width: 320,
       height: 180,
     },
-    original: {
-      url: `https://example.com/item-${index}.jpg`,
-      mimeType: 'image/jpeg',
-      sizeBytes: 1_024 + index,
-      width: 1_920,
-      height: 1_080,
-    },
-    width: 1_920,
-    height: 1_080,
   }
 }

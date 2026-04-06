@@ -227,26 +227,14 @@ function createImageItem(id: string): VibeViewerItem {
     id,
     type: 'image',
     title: `${id} title`,
-    extension: 'jpg',
-    mimeType: 'image/jpeg',
-    sizeBytes: 2_048,
-    createdAt: '2026-04-05T08:00:00.000Z',
+    url: `https://example.com/${id}.jpg`,
+    width: 1_920,
+    height: 1_080,
     preview: {
       url: `https://example.com/${id}-preview.jpg`,
-      mimeType: 'image/jpeg',
-      sizeBytes: 512,
       width: 320,
       height: 180,
     },
-    original: {
-      url: `https://example.com/${id}.jpg`,
-      mimeType: 'image/jpeg',
-      sizeBytes: 2_048,
-      width: 1_920,
-      height: 1_080,
-    },
-    width: 1_920,
-    height: 1_080,
   }
 }
 
@@ -254,16 +242,7 @@ function createVideoItem(id: string): VibeViewerItem {
   return {
     ...createImageItem(id),
     type: 'video',
-    extension: 'mp4',
-    mimeType: 'video/mp4',
-    durationMs: 12_000,
-    original: {
-      url: `https://example.com/${id}.mp4`,
-      mimeType: 'video/mp4',
-      sizeBytes: 2_048,
-      width: 1_920,
-      height: 1_080,
-    },
+    url: `https://example.com/${id}.mp4`,
   }
 }
 
@@ -272,15 +251,9 @@ function createAudioItem(id: string): VibeViewerItem {
     id,
     type: 'audio',
     title: `${id} title`,
-    extension: 'mp3',
-    mimeType: 'audio/mpeg',
-    sizeBytes: 2_048,
-    createdAt: '2026-04-05T08:00:00.000Z',
-    durationMs: 18_000,
-    original: {
+    url: `https://example.com/${id}.mp3`,
+    preview: {
       url: `https://example.com/${id}.mp3`,
-      mimeType: 'audio/mpeg',
-      sizeBytes: 2_048,
     },
   }
 }

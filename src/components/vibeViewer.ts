@@ -2,8 +2,6 @@ export type VibeViewerType = 'image' | 'video' | 'audio' | 'document' | 'archive
 
 export interface VibeViewerAsset {
   url: string
-  mimeType: string
-  sizeBytes: number
   width?: number
   height?: number
 }
@@ -11,14 +9,9 @@ export interface VibeViewerAsset {
 export interface VibeViewerItem {
   id: string
   type: VibeViewerType
-  title: string
-  extension: string
-  mimeType: string
-  sizeBytes: number
-  createdAt: string
+  title?: string
+  url: string
   preview?: VibeViewerAsset
-  original: VibeViewerAsset
-  durationMs?: number
   width?: number
   height?: number
 }
