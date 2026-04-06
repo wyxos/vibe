@@ -1,7 +1,9 @@
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch, type Ref } from 'vue'
 
 import { createMediaUiState, DEFAULT_MEDIA_UI_STATE, isImageElementReady, syncMediaUiState, type MediaUiState } from './assetState'
+import { isEditableTarget, isInteractiveTarget } from './dom'
 import { formatPlaybackTime } from './format'
+import { useVibeRootActivation } from './useVibeRootActivation'
 import { useVibeRootDataSource, type VibeRootProps } from './useVibeRootDataSource'
 import { getRenderedItems, getRenderedRange, getVirtualSlideStyle } from './virtualization'
 
@@ -14,7 +16,13 @@ export type {
   VibeRootProps,
 } from './useVibeRootDataSource'
 
-export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'update:activeIndex', value: number) => void) {
+export function useVibeRoot(
+  props: Readonly<VibeRootProps>,
+  emit: (event: 'update:activeIndex', value: number) => void,
+  options: {
+    enabled?: Ref<boolean>
+  } = {},
+) {
   const dataSource = useVibeRootDataSource(props, emit)
   const {
     activeIndex,
@@ -37,6 +45,7 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
 
   const videoElements = new Map<string, HTMLVideoElement>()
   const audioElements = new Map<string, HTMLAudioElement>()
+  const isEnabled = options.enabled ?? computed(() => true)
 
   let activePointerId: number | null = null
   let dragStartY = 0
@@ -111,17 +120,19 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
     },
   )
 
-  onMounted(() => {
-    updateViewportHeight()
-    window.addEventListener('resize', updateViewportHeight)
-    window.addEventListener('keydown', onKeydown)
-    void syncMediaPlayback()
-  })
-
-  onBeforeUnmount(() => {
-    window.removeEventListener('resize', updateViewportHeight)
-    window.removeEventListener('keydown', onKeydown)
-    pauseAndResetAllMedia()
+  useVibeRootActivation({
+    enabled: isEnabled,
+    onDisable() {
+      resetDragState()
+      pauseAndResetAllMedia()
+      imageReadyStates.value = {}
+      mediaStates.value = {}
+    },
+    onEnable() {
+      return syncMediaPlayback()
+    },
+    onKeydown,
+    onResize: updateViewportHeight,
   })
 
   function clamp(value: number, min: number, max: number) {
@@ -164,7 +175,7 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
   }
 
   function onPointerDown(event: PointerEvent) {
-    if (items.value.length === 0 || event.pointerType === 'mouse' || isInteractiveTarget(event.target)) {
+    if (!isEnabled.value || items.value.length === 0 || event.pointerType === 'mouse' || isInteractiveTarget(event.target)) {
       return
     }
 
@@ -176,7 +187,7 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
   }
 
   function onPointerMove(event: PointerEvent) {
-    if (!isDragging.value || activePointerId !== event.pointerId) {
+    if (!isEnabled.value || !isDragging.value || activePointerId !== event.pointerId) {
       return
     }
 
@@ -184,7 +195,7 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
   }
 
   function onPointerUp(event: PointerEvent) {
-    if (activePointerId !== event.pointerId) {
+    if (!isEnabled.value || activePointerId !== event.pointerId) {
       return
     }
 
@@ -193,7 +204,7 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
   }
 
   function onPointerCancel(event: PointerEvent) {
-    if (activePointerId !== event.pointerId) {
+    if (!isEnabled.value || activePointerId !== event.pointerId) {
       return
     }
 
@@ -217,7 +228,7 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
   }
 
   function onWheel(event: WheelEvent) {
-    if (items.value.length === 0 || isDragging.value || isInteractiveTarget(event.target)) {
+    if (!isEnabled.value || items.value.length === 0 || isDragging.value || isInteractiveTarget(event.target)) {
       return
     }
 
@@ -237,7 +248,7 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
   }
 
   function onKeydown(event: KeyboardEvent) {
-    if (items.value.length === 0 || isEditableTarget(event.target)) {
+    if (!isEnabled.value || items.value.length === 0 || isEditableTarget(event.target)) {
       return
     }
 
@@ -250,14 +261,6 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
       event.preventDefault()
       navigate(-1)
     }
-  }
-
-  function isEditableTarget(target: EventTarget | null) {
-    return target instanceof HTMLElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
-  }
-
-  function isInteractiveTarget(target: EventTarget | null) {
-    return target instanceof HTMLElement && Boolean(target.closest('[data-swipe-lock], input, textarea, select, a'))
   }
 
   function registerVideoElement(id: string, element: unknown) {
@@ -310,6 +313,11 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
   }
 
   async function syncMediaPlayback() {
+    if (!isEnabled.value) {
+      pauseAndResetAllMedia()
+      return
+    }
+
     await nextTick()
 
     const activeId = activeItem.value?.id ?? null
@@ -446,7 +454,6 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
   function getSlideStyle(index: number) {
     return getVirtualSlideStyle(index, resolvedActiveIndex.value, viewportHeight.value, dragOffset.value, isDragging.value)
   }
-
   return {
     activeItem,
     activeMediaDuration,

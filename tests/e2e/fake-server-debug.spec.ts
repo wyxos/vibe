@@ -41,8 +41,9 @@ test('bidirectional paging demo prepends earlier pages when navigating upward', 
   await gotoRoute(page, '/demo/bidirectional-paging')
 
   const root = page.getByTestId('vibe-root')
-  const progress = page.getByTestId('vibe-root-pagination')
-  const listScroll = page.getByTestId('vibe-list-scroll')
+  const listSurface = page.getByTestId('vibe-root-list-surface')
+  const progress = listSurface.getByTestId('vibe-root-pagination')
+  const listScroll = listSurface.getByTestId('vibe-list-scroll')
 
   await expect(root).toHaveAttribute('data-surface-mode', 'list')
   await expect(progress).toContainText('13 / 25', { timeout: 15_000 })

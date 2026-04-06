@@ -55,29 +55,79 @@ const root = useVibeRootController(props, emit)
       </p>
     </div>
 
-    <VibeListSurface
-      v-else-if="root.surfaceMode.value === 'list'"
-      :items="root.items.value"
-      :active-index="root.activeIndex.value"
-      :loading="root.loading.value"
-      :has-next-page="root.hasNextPage.value"
-      :pending-append-items="root.pendingAppendItems.value"
-      :commit-pending-append="root.commitPendingAppend"
-      :pagination-detail="root.paginationDetail.value"
-      :request-next-page="root.prefetchNextPage"
-      :restore-token="root.listRestoreToken.value"
-      @open-fullscreen="root.openFullscreen"
-      @update:active-index="root.setActiveIndex"
-    />
+    <template v-else-if="root.isDesktop.value">
+      <Transition
+        appear
+        enter-active-class="transition-[opacity,transform] duration-300 ease-out"
+        enter-from-class="translate-y-3 opacity-0"
+        enter-to-class="translate-y-0 opacity-100"
+        leave-active-class="transition-[opacity,transform] duration-300 ease-out"
+        leave-from-class="translate-y-0 opacity-100"
+        leave-to-class="translate-y-3 opacity-0"
+      >
+        <div
+          v-show="root.surfaceMode.value === 'list'"
+          data-testid="vibe-root-list-surface"
+          :data-visible="root.surfaceMode.value === 'list' ? 'true' : 'false'"
+          :inert="root.surfaceMode.value !== 'list'"
+          class="absolute inset-0 z-[2]"
+        >
+          <VibeListSurface
+            :items="root.items.value"
+            :active-index="root.activeIndex.value"
+            :loading="root.loading.value"
+            :has-next-page="root.hasNextPage.value"
+            :pending-append-items="root.pendingAppendItems.value"
+            :commit-pending-append="root.commitPendingAppend"
+            :pagination-detail="root.paginationDetail.value"
+            :request-next-page="root.prefetchNextPage"
+            :restore-token="root.listRestoreToken.value"
+            @open-fullscreen="root.openFullscreen"
+            @update:active-index="root.setActiveIndex"
+          />
+        </div>
+      </Transition>
+
+      <Transition
+        appear
+        enter-active-class="transition-[opacity,transform] duration-300 ease-out"
+        enter-from-class="-translate-y-3 opacity-0"
+        enter-to-class="translate-y-0 opacity-100"
+        leave-active-class="transition-[opacity,transform] duration-300 ease-out"
+        leave-from-class="translate-y-0 opacity-100"
+        leave-to-class="-translate-y-3 opacity-0"
+      >
+        <div
+          v-show="root.surfaceMode.value === 'fullscreen'"
+          data-testid="vibe-root-fullscreen-surface"
+          :data-visible="root.surfaceMode.value === 'fullscreen' ? 'true' : 'false'"
+          :inert="root.surfaceMode.value !== 'fullscreen'"
+          class="absolute inset-0 z-[3]"
+        >
+          <VibeFullscreenSurface
+            :items="root.items.value"
+            :active="root.surfaceMode.value === 'fullscreen'"
+            :active-index="root.activeIndex.value"
+            :loading="root.loading.value"
+            :has-next-page="root.hasNextPage.value"
+            :pagination-detail="root.paginationDetail.value"
+            :show-back-to-list="root.showBackToList.value"
+            @back-to-list="root.returnToList"
+            @update:active-index="root.setActiveIndex"
+          />
+        </div>
+      </Transition>
+    </template>
 
     <VibeFullscreenSurface
       v-else
       :items="root.items.value"
+      :active="true"
       :active-index="root.activeIndex.value"
       :loading="root.loading.value"
       :has-next-page="root.hasNextPage.value"
       :pagination-detail="root.paginationDetail.value"
-      :show-back-to-list="root.showBackToList.value"
+      :show-back-to-list="false"
       @back-to-list="root.returnToList"
       @update:active-index="root.setActiveIndex"
     />

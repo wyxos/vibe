@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, toRef } from 'vue'
 import { ArrowLeft, LoaderCircle, Pause, Play } from 'lucide-vue-next'
 
 import type { VibeRootControlledProps } from './vibe-root/useVibeRoot'
@@ -8,8 +8,10 @@ import { getItemIcon, getItemLabel } from './vibe-root/media'
 import { getSlideToneClass, getStageToneClass } from './vibe-root/theme'
 
 const props = withDefaults(defineProps<VibeRootControlledProps & {
+  active?: boolean
   showBackToList?: boolean
 }>(), {
+  active: true,
   activeIndex: 0,
   hasNextPage: false,
   loading: false,
@@ -22,9 +24,15 @@ const emit = defineEmits<{
   'update:activeIndex': [value: number]
 }>()
 
-const viewer = useVibeRoot(props, (_event, value) => {
-  emit('update:activeIndex', value)
-})
+const viewer = useVibeRoot(
+  props,
+  (_event, value) => {
+    emit('update:activeIndex', value)
+  },
+  {
+    enabled: toRef(props, 'active'),
+  },
+)
 
 const activeStageToneClass = computed(() => getStageToneClass(viewer.activeItem.value?.type ?? 'image'))
 const mediaStatusOffsetClass = computed(() =>
@@ -42,6 +50,10 @@ function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof 
 }
 
 function isAssetLoading(index: number, item: (typeof props.items)[number]) {
+  if (!shouldLoadSlideAsset(index)) {
+    return false
+  }
+
   if (index !== viewer.resolvedActiveIndex.value) {
     return false
   }
@@ -55,6 +67,26 @@ function isAssetLoading(index: number, item: (typeof props.items)[number]) {
   }
 
   return false
+}
+
+function shouldLoadSlideAsset(index: number) {
+  return props.active && index === viewer.resolvedActiveIndex.value
+}
+
+function getFullscreenImageSource(index: number, item: (typeof props.items)[number]) {
+  if (!shouldLoadSlideAsset(index)) {
+    return undefined
+  }
+
+  return viewer.getImageSource(item)
+}
+
+function getFullscreenMediaSource(index: number, item: (typeof props.items)[number]) {
+  if (!shouldLoadSlideAsset(index)) {
+    return undefined
+  }
+
+  return item.url
 }
 </script>
 
@@ -98,7 +130,7 @@ function isAssetLoading(index: number, item: (typeof props.items)[number]) {
 
           <img
             v-if="item.type === 'image'"
-            :src="viewer.getImageSource(item)"
+            :src="getFullscreenImageSource(index, item)"
             :alt="item.title ?? ''"
             draggable="false"
             class="block h-auto max-h-full w-auto max-w-full object-contain shadow-[0_40px_120px_-60px_rgba(0,0,0,0.9)] transition-opacity duration-300"
@@ -115,7 +147,8 @@ function isAssetLoading(index: number, item: (typeof props.items)[number]) {
             playsinline
             muted
             loop
-            :preload="index === viewer.resolvedActiveIndex.value ? 'metadata' : 'none'"
+            :src="getFullscreenMediaSource(index, item)"
+            :preload="shouldLoadSlideAsset(index) ? 'metadata' : 'none'"
             :ref="(element) => viewer.registerVideoElement(item.id, element)"
             @click.stop="viewer.onVideoClick($event, item.id)"
             @canplay="viewer.onMediaEvent(item.id, $event)"
@@ -131,9 +164,7 @@ function isAssetLoading(index: number, item: (typeof props.items)[number]) {
             @stalled="viewer.onMediaEvent(item.id, $event)"
             @timeupdate="viewer.onMediaEvent(item.id, $event)"
             @waiting="viewer.onMediaEvent(item.id, $event)"
-          >
-            <source :src="item.url" />
-          </video>
+          />
         </div>
 
         <div
@@ -173,7 +204,8 @@ function isAssetLoading(index: number, item: (typeof props.items)[number]) {
           </button>
 
           <audio
-            :preload="index === viewer.resolvedActiveIndex.value ? 'metadata' : 'none'"
+            :src="getFullscreenMediaSource(index, item)"
+            :preload="shouldLoadSlideAsset(index) ? 'metadata' : 'none'"
             class="pointer-events-none absolute h-px w-px opacity-0"
             :ref="(element) => viewer.registerAudioElement(item.id, element)"
             @canplay="viewer.onMediaEvent(item.id, $event)"
@@ -189,9 +221,7 @@ function isAssetLoading(index: number, item: (typeof props.items)[number]) {
             @stalled="viewer.onMediaEvent(item.id, $event)"
             @timeupdate="viewer.onMediaEvent(item.id, $event)"
             @waiting="viewer.onMediaEvent(item.id, $event)"
-          >
-            <source :src="item.url" />
-          </audio>
+          />
         </div>
 
         <div

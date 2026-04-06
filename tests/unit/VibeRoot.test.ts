@@ -26,9 +26,12 @@ describe('VibeRoot', () => {
 
     await flushDom()
 
+    const listSurface = wrapper.get('[data-testid="vibe-root-list-surface"]')
+
     expect(wrapper.get('[data-testid="vibe-root"]').attributes('data-surface-mode')).toBe('list')
+    expect(listSurface.attributes('data-visible')).toBe('true')
+    expect(wrapper.get('[data-testid="vibe-root-fullscreen-surface"]').attributes('data-visible')).toBe('false')
     expect(wrapper.findAll('[data-testid="vibe-list-card"]')).toHaveLength(3)
-    expect(wrapper.find('[data-testid="vibe-root-slide"]').exists()).toBe(false)
 
     wrapper.unmount()
   })
@@ -57,6 +60,8 @@ describe('VibeRoot', () => {
     await flushDom()
 
     expect(wrapper.get('[data-testid="vibe-root"]').attributes('data-surface-mode')).toBe('fullscreen')
+    expect(wrapper.get('[data-testid="vibe-root-list-surface"]').attributes('data-visible')).toBe('false')
+    expect(wrapper.get('[data-testid="vibe-root-fullscreen-surface"]').attributes('data-visible')).toBe('true')
     expect(wrapper.get('[data-testid="vibe-root-title"]').text()).toBe('Launch loop teaser')
     expect(wrapper.get('[data-testid="vibe-root-pagination"]').text()).toContain('2 / 2')
 
@@ -64,6 +69,8 @@ describe('VibeRoot', () => {
     await flushDom()
 
     expect(wrapper.get('[data-testid="vibe-root"]').attributes('data-surface-mode')).toBe('list')
+    expect(wrapper.get('[data-testid="vibe-root-list-surface"]').attributes('data-visible')).toBe('true')
+    expect(wrapper.get('[data-testid="vibe-root-fullscreen-surface"]').attributes('data-visible')).toBe('false')
     expect(wrapper.find('[data-testid="vibe-root-back-to-list"]').exists()).toBe(false)
 
     wrapper.unmount()
@@ -158,10 +165,12 @@ describe('VibeRoot', () => {
 
     await flushDom()
 
+    const listSurface = wrapper.get('[data-testid="vibe-root-list-surface"]')
+
     expect(wrapper.get('[data-testid="vibe-root"]').attributes('data-surface-mode')).toBe('list')
     expect(wrapper.find('img').exists()).toBe(false)
     expect(wrapper.find('video').exists()).toBe(false)
-    expect(wrapper.text()).not.toContain('Archive fallback')
+    expect(listSurface.text()).not.toContain('Archive fallback')
     expect(wrapper.get('[data-testid="vibe-list-card"]').attributes('style')).toContain('height: 296px;')
     expect(wrapper.get('[data-testid="vibe-list-card"] button').classes()).toContain('h-full')
 
