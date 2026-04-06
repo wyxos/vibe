@@ -7,11 +7,7 @@ import { useVibeRoot } from './vibe-root/useVibeRoot'
 import { getItemIcon, getItemLabel } from './vibe-root/media'
 import { getSlideToneClass, getStageToneClass } from './vibe-root/theme'
 
-const props = withDefaults(defineProps<VibeRootProps>(), {
-  activeIndex: 0,
-  loading: false,
-  hasNextPage: false,
-})
+const props = defineProps<VibeRootProps>()
 
 const emit = defineEmits<{
   'update:activeIndex': [value: number]
@@ -24,12 +20,17 @@ const {
   activeMediaItem,
   activeMediaProgress,
   activeMediaState,
+  canRetryInitialLoad,
+  errorMessage,
   formatPlaybackTime,
   getImageSource,
   getSlideStyle,
+  hasNextPage,
   isAtEnd,
   isAudio,
   isVisual,
+  items,
+  loading,
   mediaStates,
   onAudioCoverClick,
   onMediaEvent,
@@ -40,10 +41,12 @@ const {
   onPointerUp,
   onVideoClick,
   onWheel,
+  paginationDetail,
   registerAudioElement,
   registerVideoElement,
   renderedItems,
   resolvedActiveIndex,
+  retryInitialLoad,
   stageRef,
   statusMessage,
 } = viewer
@@ -78,8 +81,24 @@ function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof 
   >
     <div class="absolute inset-0 transition-[background] duration-200" :class="activeStageToneClass" />
 
+    <button
+      v-if="canRetryInitialLoad"
+      type="button"
+      class="absolute left-5 top-5 z-30 inline-flex items-center border border-rose-400/55 bg-rose-500/18 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-white backdrop-blur transition hover:bg-rose-500/28"
+      @click="retryInitialLoad"
+    >
+      Retry
+    </button>
+
     <div
-      v-if="props.items.length > 0"
+      v-else-if="errorMessage && items.length > 0"
+      class="absolute left-5 top-5 z-30 border border-amber-400/45 bg-black/35 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-amber-100 backdrop-blur"
+    >
+      {{ errorMessage }}
+    </div>
+
+    <div
+      v-if="items.length > 0"
       class="relative z-[1] h-full"
     >
       <article
@@ -187,14 +206,14 @@ function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof 
       class="relative z-[1] grid w-full max-w-[1100px] justify-items-center gap-6 px-[clamp(2rem,4vw,3rem)] py-[clamp(2rem,4vw,3rem)] text-center"
     >
       <p class="m-0 text-[0.78rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/68">
-        {{ props.loading ? 'Syncing' : 'Viewer ready' }}
+        {{ loading ? 'Syncing' : 'Viewer ready' }}
       </p>
       <h2 class="m-0 text-[clamp(2rem,4.4vw,3.6rem)] leading-[0.95] tracking-[-0.05em]">
-        {{ props.loading ? 'Loading the viewer' : 'No items available' }}
+        {{ loading ? 'Loading the viewer' : 'No items available' }}
       </h2>
       <p class="m-0 text-[clamp(0.98rem,1.3vw,1.12rem)] leading-[1.8] text-[#f7f1ea]/70">
         {{
-          props.loading
+          loading
             ? 'Pulling the first page from the fake server.'
             : 'Attach items to VibeRoot to turn this screen into the workspace.'
         }}
@@ -222,18 +241,18 @@ function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof 
             data-testid="vibe-root-pagination"
             class="inline-flex items-center justify-self-end gap-3 border border-white/14 bg-black/40 px-4 py-3 text-[0.74rem] font-bold uppercase tracking-[0.2em] text-[#f7f1ea]/72 backdrop-blur-[18px]"
           >
-            <span>{{ resolvedActiveIndex + 1 }} / {{ props.items.length }}</span>
+            <span>{{ resolvedActiveIndex + 1 }} / {{ items.length }}</span>
             <span
-              v-if="props.paginationDetail"
+              v-if="paginationDetail"
               class="border-l border-white/12 pl-3 text-[#f7f1ea]/56"
             >
-              {{ props.paginationDetail }}
+              {{ paginationDetail }}
             </span>
           </span>
         </div>
       </div>
 
-      <div v-if="isAtEnd && !props.hasNextPage && !props.loading" class="grid gap-2 max-[720px]:justify-items-start">
+      <div v-if="isAtEnd && !hasNextPage && !loading" class="grid gap-2 max-[720px]:justify-items-start">
         <span class="inline-flex items-center border border-amber-300/35 bg-black/40 px-4 py-3 text-[0.74rem] font-bold uppercase tracking-[0.2em] text-amber-200 backdrop-blur-[18px]">
           End reached
         </span>
@@ -281,7 +300,7 @@ function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof 
       class="absolute left-1/2 z-[4] inline-flex w-auto -translate-x-1/2 items-center border border-white/14 bg-black/40 px-5 py-3 text-[0.75rem] font-bold uppercase tracking-[0.18em] text-[#f7f1ea]/74 backdrop-blur-[18px] max-[720px]:w-[calc(100%-2.5rem)] max-[720px]:justify-center"
       :class="[
         mediaStatusOffsetClass,
-        isAtEnd && !props.hasNextPage && !props.loading ? 'border-amber-300/35 text-amber-200' : '',
+        isAtEnd && !hasNextPage && !loading ? 'border-amber-300/35 text-amber-200' : '',
       ]"
     >
       {{ statusMessage }}

@@ -1,32 +1,30 @@
 import { createApp, defineComponent, h, nextTick, reactive } from 'vue'
 
-import { useVibeRoot, type VibeRootControlledProps } from '@/components/vibe-root/useVibeRoot'
+import { useVibeRootDataSource, type VibeRootAutoProps } from '@/components/vibe-root/useVibeRootDataSource'
 
-export interface MountedUseVibeRoot {
-  api: ReturnType<typeof useVibeRoot>
+export interface MountedUseVibeRootDataSource {
+  api: ReturnType<typeof useVibeRootDataSource>
   emitted: number[]
-  props: VibeRootControlledProps
+  props: VibeRootAutoProps
   flush: () => Promise<void>
   unmount: () => void
 }
 
-export async function mountUseVibeRoot(initialProps: VibeRootControlledProps): Promise<MountedUseVibeRoot> {
+export async function mountUseVibeRootDataSource(initialProps: VibeRootAutoProps): Promise<MountedUseVibeRootDataSource> {
   const emitted: number[] = []
   const props = reactive({
-    activeIndex: 0,
-    hasNextPage: false,
-    loading: false,
+    pageSize: 25,
     ...initialProps,
-  }) as VibeRootControlledProps
+  }) as VibeRootAutoProps
 
-  let api!: ReturnType<typeof useVibeRoot>
+  let api!: ReturnType<typeof useVibeRootDataSource>
 
   const container = document.createElement('div')
   document.body.appendChild(container)
 
   const app = createApp(defineComponent({
     setup() {
-      api = useVibeRoot(props, (_event, value) => {
+      api = useVibeRootDataSource(props, (_event, value) => {
         emitted.push(value)
       })
 
@@ -35,13 +33,13 @@ export async function mountUseVibeRoot(initialProps: VibeRootControlledProps): P
   }))
 
   app.mount(container)
-  await flushViewer()
+  await flushDataSource()
 
   return {
     api,
     emitted,
     props,
-    flush: flushViewer,
+    flush: flushDataSource,
     unmount() {
       app.unmount()
       container.remove()
@@ -49,7 +47,9 @@ export async function mountUseVibeRoot(initialProps: VibeRootControlledProps): P
   }
 }
 
-async function flushViewer() {
+async function flushDataSource() {
+  await nextTick()
+  await Promise.resolve()
   await nextTick()
   await Promise.resolve()
   await nextTick()

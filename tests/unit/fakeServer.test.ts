@@ -23,6 +23,7 @@ describe('createFakeMediaServer', () => {
       totalItems: 2_500,
       totalPages: 100,
       nextPage: '2',
+      previousPage: null,
     })
     expect(response.items).toHaveLength(25)
     expect(audioItem?.preview?.url).toBe(audioItem?.url)
@@ -49,6 +50,7 @@ describe('createFakeMediaServer', () => {
       totalItems: 60,
       totalPages: 3,
       nextPage: '2',
+      previousPage: null,
     })
     expect(response.items).toHaveLength(25)
     expect(response.items[0]?.id).toBe('item-1')
@@ -72,6 +74,7 @@ describe('createFakeMediaServer', () => {
     expect(response.pageSize).toBe(4)
     expect(response.items.map((item) => item.id)).toEqual(['item-1', 'item-2', 'item-3', 'item-4'])
     expect(response.nextPage).toBe('2')
+    expect(response.previousPage).toBeNull()
   })
 
   it('returns a null next page on the final slice', async () => {
@@ -89,6 +92,7 @@ describe('createFakeMediaServer', () => {
     expect(response.items.map((item) => item.id)).toEqual(['item-7'])
     expect(response.totalPages).toBe(4)
     expect(response.nextPage).toBeNull()
+    expect(response.previousPage).toBe('3')
   })
 })
 

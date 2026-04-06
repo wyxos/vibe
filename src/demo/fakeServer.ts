@@ -19,6 +19,7 @@ export interface FakeMediaPageResponse {
   totalItems: number
   totalPages: number
   nextPage: string | null
+  previousPage: string | null
   latencyMs: number
 }
 
@@ -143,6 +144,7 @@ export function createFakeMediaServer(options: CreateFakeMediaServerOptions = {}
         totalItems: items.length,
         totalPages: Math.max(1, Math.ceil(items.length / pageSize)),
         nextPage: page * pageSize < items.length ? String(page + 1) : null,
+        previousPage: page > 1 ? String(page - 1) : null,
         latencyMs,
       }
     },

@@ -23,8 +23,20 @@ const errorMessage = ref<string | null>(null)
 const totalPages = computed(() => response.value?.totalPages ?? 1)
 const totalItems = computed(() => response.value?.totalItems ?? 0)
 const nextPage = computed(() => response.value?.nextPage ?? null)
+const previousPage = computed(() => response.value?.previousPage ?? null)
 const canGoPrevious = computed(() => page.value > 1 && !isLoading.value)
 const canGoNext = computed(() => page.value < totalPages.value && !isLoading.value)
+const vibeRootContractSnapshot = computed(() => {
+  if (!response.value) {
+    return null
+  }
+
+  return {
+    items: response.value.items,
+    nextPage: response.value.nextPage,
+    previousPage: response.value.previousPage,
+  }
+})
 
 watch(page, async () => {
   await loadPage()
@@ -140,7 +152,7 @@ function cardTone(item: FakeMediaItem) {
         </div>
       </div>
 
-      <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
         <div class="border border-white/10 bg-black/20 px-4 py-4">
           <p class="text-[0.66rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/46">Current page</p>
           <p data-testid="fake-server-current-page" class="mt-2 text-[1.8rem] font-semibold tracking-[-0.04em] text-[#f7f1ea]">{{ page }}</p>
@@ -156,6 +168,10 @@ function cardTone(item: FakeMediaItem) {
         <div class="border border-white/10 bg-black/20 px-4 py-4">
           <p class="text-[0.66rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/46">Total items</p>
           <p data-testid="fake-server-total-items" class="mt-2 text-[1.8rem] font-semibold tracking-[-0.04em] text-[#f7f1ea]">{{ totalItems }}</p>
+        </div>
+        <div class="border border-white/10 bg-black/20 px-4 py-4">
+          <p class="text-[0.66rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/46">Previous page</p>
+          <p class="mt-2 text-[1.8rem] font-semibold tracking-[-0.04em] text-[#f7f1ea]">{{ previousPage ?? 'null' }}</p>
         </div>
         <div class="border border-white/10 bg-black/20 px-4 py-4">
           <p class="text-[0.66rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/46">Next page</p>
@@ -269,13 +285,19 @@ function cardTone(item: FakeMediaItem) {
         <aside class="grid gap-4 xl:sticky xl:top-5 xl:self-start">
           <div class="border border-white/12 bg-black/72 p-4 shadow-[0_24px_60px_-42px_rgba(0,0,0,0.88)]">
             <p class="text-[0.68rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/42">Response snapshot</p>
-            <pre class="mt-3 overflow-auto text-xs leading-6 text-[#f7f1ea]/78">{{ JSON.stringify(response, null, 2) }}</pre>
+            <pre data-testid="fake-server-response-snapshot" class="mt-3 overflow-auto text-xs leading-6 text-[#f7f1ea]/78">{{ JSON.stringify(response, null, 2) }}</pre>
+          </div>
+
+          <div class="border border-white/12 bg-black/72 p-4 shadow-[0_24px_60px_-42px_rgba(0,0,0,0.88)]">
+            <p class="text-[0.68rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/42">VibeRoot callback shape</p>
+            <pre data-testid="fake-server-callback-snapshot" class="mt-3 overflow-auto text-xs leading-6 text-[#f7f1ea]/78">{{ JSON.stringify(vibeRootContractSnapshot, null, 2) }}</pre>
           </div>
 
           <div class="border border-white/10 bg-black/20 p-4">
             <p class="text-[0.68rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/42">What to verify</p>
             <ul class="mt-3 grid gap-2 text-sm leading-6 text-[#f7f1ea]/68">
               <li>Every item exposes `id`, `type`, `url`, and optionally `title` and `preview`.</li>
+              <li>`VibeRoot` consumes a strict callback result of `items`, `nextPage`, and optional `previousPage`.</li>
               <li>Main `width` and `height` describe the main `url` asset, not preview-first dimensions.</li>
               <li>Preview dimensions only appear under `preview.width` and `preview.height`.</li>
               <li>The viewer can consume the same item objects without mime, file-size, or timestamp fields.</li>

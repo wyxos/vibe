@@ -1,0 +1,196 @@
+import { describe, expect, it, vi } from 'vitest'
+
+import type { VibeGetItemsParams, VibeGetItemsResult } from '@/components/vibe-root/useVibeRootDataSource'
+import type { VibeViewerItem } from '@/components/vibeViewer'
+
+import { mountUseVibeRootDataSource } from '../helpers/mountUseVibeRootDataSource'
+
+describe('useVibeRootDataSource', () => {
+  it('loads the initial page from getItems with the default page size', async () => {
+    const getItems = vi.fn(async ({ cursor, pageSize }: VibeGetItemsParams) => {
+      expect(cursor).toBeNull()
+      expect(pageSize).toBe(25)
+
+      return createPageResult('page-1', {
+        nextPage: 'page-2',
+      })
+    })
+
+    const source = await mountUseVibeRootDataSource({
+      getItems,
+    })
+
+    await source.flush()
+
+    expect(getItems).toHaveBeenCalledTimes(1)
+    expect(source.api.items.value).toHaveLength(25)
+    expect(source.api.activeIndex.value).toBe(0)
+    expect(source.api.hasNextPage.value).toBe(true)
+
+    source.unmount()
+  })
+
+  it('prefetches the next page near the end and avoids duplicate cursor requests', async () => {
+    const deferred = createDeferred<VibeGetItemsResult>()
+    const getItems = vi.fn(({ cursor }: VibeGetItemsParams) => {
+      if (cursor === 'page-2') {
+        return deferred.promise
+      }
+
+      return Promise.resolve(createPageResult('page-1', {
+        nextPage: 'page-2',
+      }))
+    })
+
+    const source = await mountUseVibeRootDataSource({
+      getItems,
+    })
+
+    await source.flush()
+
+    source.api.setActiveIndex(22)
+    source.api.setActiveIndex(23)
+    await source.flush()
+
+    expect(getItems).toHaveBeenCalledTimes(2)
+    expect(getItems).toHaveBeenLastCalledWith({
+      cursor: 'page-2',
+      pageSize: 25,
+    })
+
+    deferred.resolve(createPageResult('page-2'))
+    await source.flush()
+
+    expect(source.api.items.value).toHaveLength(50)
+
+    source.unmount()
+  })
+
+  it('prepends an unseen previous page when previousPage is available', async () => {
+    const getItems = vi.fn(async ({ cursor }: VibeGetItemsParams) => {
+      if (cursor === 'page-9') {
+        return createPageResult('page-9', {
+          nextPage: 'page-10',
+          previousPage: 'page-8',
+        })
+      }
+
+      return createPageResult('page-10', {
+        nextPage: 'page-11',
+        previousPage: 'page-9',
+      })
+    })
+
+    const source = await mountUseVibeRootDataSource({
+      getItems,
+      initialCursor: 'page-10',
+    })
+
+    await source.flush()
+    source.api.setActiveIndex(1)
+    await source.flush()
+
+    expect(getItems).toHaveBeenCalledTimes(2)
+    expect(getItems).toHaveBeenLastCalledWith({
+      cursor: 'page-9',
+      pageSize: 25,
+    })
+    expect(source.api.items.value).toHaveLength(50)
+    expect(source.api.activeIndex.value).toBe(26)
+
+    source.unmount()
+  })
+
+  it('does not fetch an unseen previous page when previousPage is missing', async () => {
+    const getItems = vi.fn(async () => createPageResult('page-1', {
+      nextPage: 'page-2',
+      previousPage: null,
+    }))
+
+    const source = await mountUseVibeRootDataSource({
+      getItems,
+      initialCursor: 'page-1',
+    })
+
+    await source.flush()
+    source.api.setActiveIndex(1)
+    await source.flush()
+
+    expect(getItems).toHaveBeenCalledTimes(1)
+
+    source.unmount()
+  })
+
+  it('retries the initial load after a failure', async () => {
+    const getItems = vi.fn()
+      .mockRejectedValueOnce(new Error('Temporary failure'))
+      .mockResolvedValueOnce(createPageResult('page-1', {
+        nextPage: 'page-2',
+      }))
+
+    const source = await mountUseVibeRootDataSource({
+      getItems,
+    })
+
+    await source.flush()
+
+    expect(source.api.errorMessage.value).toBe('Temporary failure')
+    expect(source.api.canRetryInitialLoad.value).toBe(true)
+    expect(source.api.items.value).toHaveLength(0)
+
+    await source.api.retryInitialLoad()
+    await source.flush()
+
+    expect(getItems).toHaveBeenCalledTimes(2)
+    expect(source.api.errorMessage.value).toBeNull()
+    expect(source.api.items.value).toHaveLength(25)
+
+    source.unmount()
+  })
+})
+
+function createPageResult(
+  pageLabel: string,
+  options: {
+    nextPage?: string | null
+    previousPage?: string | null
+  } = {},
+): VibeGetItemsResult {
+  return {
+    items: createItems(pageLabel),
+    nextPage: options.nextPage ?? null,
+    previousPage: options.previousPage,
+  }
+}
+
+function createItems(prefix: string): VibeViewerItem[] {
+  return Array.from({ length: 25 }, (_, index) => ({
+    id: `${prefix}-item-${index + 1}`,
+    type: index % 5 === 0 ? 'video' : 'image',
+    title: `${prefix} item ${index + 1}`,
+    url: `https://example.com/${prefix}-item-${index + 1}.jpg`,
+    width: 1_920,
+    height: 1_080,
+    preview: {
+      url: `https://example.com/${prefix}-item-${index + 1}-preview.jpg`,
+      width: 320,
+      height: 180,
+    },
+  }))
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+
+  const promise = new Promise<T>((innerResolve, innerReject) => {
+    resolve = innerResolve
+    reject = innerReject
+  })
+
+  return {
+    promise,
+    reject,
+    resolve,
+  }
+}

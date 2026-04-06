@@ -1,7 +1,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-import type { VibeViewerItem } from '../vibeViewer'
 import { formatPlaybackTime } from './format'
+import { useVibeRootDataSource, type VibeRootProps } from './useVibeRootDataSource'
 import { getRenderedItems, getRenderedRange, getVirtualSlideStyle } from './virtualization'
 
 interface MediaUiState {
@@ -9,16 +9,14 @@ interface MediaUiState {
   duration: number
   paused: boolean
 }
-
-export interface VibeRootProps {
-  items: VibeViewerItem[]
-  activeIndex?: number
-  loading?: boolean
-  hasNextPage?: boolean
-  paginationDetail?: string | null
-}
-
-type VibeRootEmit = (event: 'update:activeIndex', value: number) => void
+export type {
+  VibeGetItemsParams,
+  VibeGetItemsResult,
+  VibeRootAutoProps,
+  VibeRootControlledProps,
+  VibeRootEmit,
+  VibeRootProps,
+} from './useVibeRootDataSource'
 
 const DEFAULT_MEDIA_UI_STATE: MediaUiState = {
   currentTime: 0,
@@ -26,7 +24,20 @@ const DEFAULT_MEDIA_UI_STATE: MediaUiState = {
   paused: true,
 }
 
-export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) {
+export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'update:activeIndex', value: number) => void) {
+  const dataSource = useVibeRootDataSource(props, emit)
+  const {
+    activeIndex,
+    canRetryInitialLoad,
+    errorMessage,
+    hasNextPage,
+    items,
+    loading,
+    paginationDetail,
+    retryInitialLoad,
+    setActiveIndex,
+  } = dataSource
+
   const stageRef = ref<HTMLElement | null>(null)
   const dragOffset = ref(0)
   const isDragging = ref(false)
@@ -42,14 +53,14 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
   let suppressMediaToggleUntil = 0
 
   const resolvedActiveIndex = computed(() => {
-    if (props.items.length === 0) {
+    if (items.value.length === 0) {
       return 0
     }
 
-    return clamp(props.activeIndex ?? 0, 0, props.items.length - 1)
+    return clamp(activeIndex.value, 0, items.value.length - 1)
   })
 
-  const activeItem = computed(() => props.items[resolvedActiveIndex.value] ?? null)
+  const activeItem = computed(() => items.value[resolvedActiveIndex.value] ?? null)
   const activeMediaItem = computed(() => {
     if (activeItem.value?.type === 'audio' || activeItem.value?.type === 'video') {
       return activeItem.value
@@ -78,32 +89,32 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
 
     return clamp((activeMediaState.value.currentTime / activeMediaDuration.value) * 100, 0, 100)
   })
-  const isAtEnd = computed(() => props.items.length > 0 && resolvedActiveIndex.value === props.items.length - 1)
+  const isAtEnd = computed(() => items.value.length > 0 && resolvedActiveIndex.value === items.value.length - 1)
   const statusMessage = computed(() => {
-    if (props.items.length === 0 && props.loading) {
+    if (items.value.length === 0 && loading.value) {
       return 'Loading the first page'
     }
 
-    if (props.loading && props.hasNextPage) {
+    if (loading.value && hasNextPage.value) {
       return 'Loading more items'
     }
 
-    if (isAtEnd.value && !props.hasNextPage && !props.loading) {
+    if (isAtEnd.value && !hasNextPage.value && !loading.value) {
       return 'End of feed'
     }
 
     return null
   })
   const dragThreshold = computed(() => Math.min(96, viewportHeight.value * 0.15 || 96))
-  const renderedRange = computed(() => getRenderedRange(resolvedActiveIndex.value, props.items.length))
-  const renderedItems = computed(() => getRenderedItems(props.items, resolvedActiveIndex.value))
+  const renderedRange = computed(() => getRenderedRange(resolvedActiveIndex.value, items.value.length))
+  const renderedItems = computed(() => getRenderedItems(items.value, resolvedActiveIndex.value))
 
   watch(resolvedActiveIndex, async () => {
     await syncMediaPlayback()
   })
 
   watch(
-    () => props.items.length,
+    () => items.value.length,
     async () => {
       await syncMediaPlayback()
     },
@@ -131,22 +142,22 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
   }
 
   function canNavigate(direction: -1 | 1) {
-    if (props.items.length === 0) {
+    if (items.value.length === 0) {
       return false
     }
 
-    return clamp(resolvedActiveIndex.value + direction, 0, props.items.length - 1) !== resolvedActiveIndex.value
+    return clamp(resolvedActiveIndex.value + direction, 0, items.value.length - 1) !== resolvedActiveIndex.value
   }
 
   function navigate(direction: -1 | 1) {
-    if (props.items.length === 0) {
+    if (items.value.length === 0) {
       return
     }
 
-    const nextIndex = clamp(resolvedActiveIndex.value + direction, 0, props.items.length - 1)
+    const nextIndex = clamp(resolvedActiveIndex.value + direction, 0, items.value.length - 1)
 
     if (nextIndex !== resolvedActiveIndex.value) {
-      emit('update:activeIndex', nextIndex)
+      setActiveIndex(nextIndex)
     }
   }
 
@@ -162,7 +173,7 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
   }
 
   function onPointerDown(event: PointerEvent) {
-    if (props.items.length === 0 || event.pointerType === 'mouse' || isInteractiveTarget(event.target)) {
+    if (items.value.length === 0 || event.pointerType === 'mouse' || isInteractiveTarget(event.target)) {
       return
     }
 
@@ -215,7 +226,7 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
   }
 
   function onWheel(event: WheelEvent) {
-    if (props.items.length === 0 || isDragging.value || isInteractiveTarget(event.target)) {
+    if (items.value.length === 0 || isDragging.value || isInteractiveTarget(event.target)) {
       return
     }
 
@@ -235,7 +246,7 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
   }
 
   function onKeydown(event: KeyboardEvent) {
-    if (props.items.length === 0 || isEditableTarget(event.target)) {
+    if (items.value.length === 0 || isEditableTarget(event.target)) {
       return
     }
 
@@ -417,15 +428,15 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
     media.currentTime = clampedTime
   }
 
-  function isVisual(item: VibeViewerItem) {
+  function isVisual(item: (typeof items.value)[number]) {
     return item.type === 'image' || item.type === 'video'
   }
 
-  function isAudio(item: VibeViewerItem) {
+  function isAudio(item: (typeof items.value)[number]) {
     return item.type === 'audio'
   }
 
-  function getImageSource(item: VibeViewerItem) {
+  function getImageSource(item: (typeof items.value)[number]) {
     return item.url
   }
 
@@ -439,12 +450,17 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
     activeMediaItem,
     activeMediaProgress,
     activeMediaState,
+    canRetryInitialLoad,
+    errorMessage,
     formatPlaybackTime,
     getImageSource,
     getSlideStyle,
+    hasNextPage,
     isAtEnd,
     isAudio,
     isVisual,
+    items,
+    loading,
     mediaStates,
     onAudioCoverClick,
     onMediaEvent,
@@ -460,7 +476,9 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: VibeRootEmit) 
     renderedItems,
     renderedRange,
     resolvedActiveIndex,
+    retryInitialLoad,
     stageRef,
     statusMessage,
+    paginationDetail,
   }
 }

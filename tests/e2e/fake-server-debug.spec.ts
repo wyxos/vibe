@@ -5,7 +5,7 @@ test('fake-server debug route paginates and shows response metadata', async ({ p
 
   await expect(page.getByRole('heading', { name: 'Fake paginated media server' })).toBeVisible()
 
-  const responseSnapshot = page.locator('pre')
+  const responseSnapshot = page.getByTestId('fake-server-response-snapshot')
   const previousButton = page.getByRole('button', { name: 'Previous' })
   const nextButton = page.getByRole('button', { name: 'Next' })
   const cards = page.getByRole('article')
@@ -21,6 +21,7 @@ test('fake-server debug route paginates and shows response metadata', async ({ p
   await expect(cards).toHaveCount(25)
   await expect(page.getByText('Main dimensions').first()).toBeVisible()
   await expect(page.getByText('Preview dimensions').first()).toBeVisible()
+  await expect(page.getByText('VibeRoot callback shape')).toBeVisible()
 
   await nextButton.click()
 

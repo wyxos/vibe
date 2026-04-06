@@ -12,9 +12,9 @@ test('workspace header opens a right-side menu with navigation routes', async ({
   await menuButton.click()
 
   await expect(menuSheet).toHaveAttribute('data-open', 'true')
-  await expect(menuSheet.getByRole('link', { name: 'Previous Page Demo' })).toBeVisible()
+  await expect(menuSheet.getByRole('link', { name: 'Manual Paging Demo' })).toBeVisible()
 
-  await menuSheet.getByRole('link', { name: 'Previous Page Demo' }).click()
+  await menuSheet.getByRole('link', { name: 'Manual Paging Demo' }).click()
 
   await expect(page).toHaveURL(/\/demo\/bidirectional-paging$/)
   await expect(menuSheet).toHaveAttribute('data-open', 'false')

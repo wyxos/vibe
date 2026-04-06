@@ -16,7 +16,7 @@ const workspaceLinks = [
   },
   {
     to: '/demo/bidirectional-paging',
-    label: 'Previous Page Demo',
+    label: 'Manual Paging Demo',
   },
   {
     to: '/debug/fake-server',
