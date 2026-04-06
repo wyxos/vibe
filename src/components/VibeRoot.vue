@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Pause, Play } from 'lucide-vue-next'
+import { LoaderCircle, Pause, Play } from 'lucide-vue-next'
 
 import type { VibeRootProps } from './vibe-root/useVibeRoot'
 import { useVibeRoot } from './vibe-root/useVibeRoot'
@@ -28,11 +28,14 @@ const {
   hasNextPage,
   isAtEnd,
   isAudio,
+  isImageReady,
+  isMediaReady,
   isVisual,
   items,
   loading,
   mediaStates,
   onAudioCoverClick,
+  onImageLoad,
   onMediaEvent,
   onMediaSeekInput,
   onPointerCancel,
@@ -43,6 +46,7 @@ const {
   onWheel,
   paginationDetail,
   registerAudioElement,
+  registerImageElement,
   registerVideoElement,
   renderedItems,
   resolvedActiveIndex,
@@ -64,6 +68,22 @@ function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof 
   }
 
   return `${action} ${getItemLabel(item.type).toLowerCase()}`
+}
+
+function isAssetLoading(index: number, item: (typeof items.value)[number]) {
+  if (index !== resolvedActiveIndex.value) {
+    return false
+  }
+
+  if (item.type === 'image') {
+    return !isImageReady(item.id)
+  }
+
+  if (item.type === 'video' || item.type === 'audio') {
+    return !isMediaReady(item.id)
+  }
+
+  return false
 }
 </script>
 
@@ -119,30 +139,51 @@ function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof 
           v-if="isVisual(item)"
           class="relative z-[1] flex h-full w-full items-center justify-center overflow-hidden"
         >
+          <div
+            v-if="isAssetLoading(index, item)"
+            data-testid="vibe-root-asset-spinner"
+            class="pointer-events-none absolute inset-0 z-[2] grid place-items-center"
+          >
+            <span class="inline-flex h-12 w-12 items-center justify-center border border-white/14 bg-black/55 backdrop-blur-[18px]">
+              <LoaderCircle class="h-5 w-5 animate-spin stroke-[1.9] text-[#f7f1ea]/78" aria-hidden="true" />
+            </span>
+          </div>
+
           <img
             v-if="item.type === 'image'"
             :src="getImageSource(item)"
             :alt="item.title ?? ''"
             draggable="false"
-            class="block h-auto max-h-full w-auto max-w-full object-contain shadow-[0_40px_120px_-60px_rgba(0,0,0,0.9)]"
+            class="block h-auto max-h-full w-auto max-w-full object-contain shadow-[0_40px_120px_-60px_rgba(0,0,0,0.9)] transition-opacity duration-300"
+            :class="isImageReady(item.id) ? 'opacity-100' : 'opacity-0'"
+            :ref="(element) => registerImageElement(item.id, element)"
+            @load="onImageLoad(item.id)"
+            @error="onImageLoad(item.id)"
           />
 
           <video
             v-else
-            class="block h-auto max-h-full w-auto max-w-full cursor-pointer object-contain shadow-[0_40px_120px_-60px_rgba(0,0,0,0.9)]"
+            class="block h-auto max-h-full w-auto max-w-full cursor-pointer object-contain shadow-[0_40px_120px_-60px_rgba(0,0,0,0.9)] transition-opacity duration-300"
+            :class="isMediaReady(item.id) ? 'opacity-100' : 'opacity-0'"
             playsinline
             muted
             loop
             :preload="index === resolvedActiveIndex ? 'metadata' : 'none'"
             :ref="(element) => registerVideoElement(item.id, element)"
             @click.stop="onVideoClick($event, item.id)"
+            @canplay="onMediaEvent(item.id, $event)"
             @durationchange="onMediaEvent(item.id, $event)"
+            @error="onMediaEvent(item.id, $event)"
+            @loadstart="onMediaEvent(item.id, $event)"
             @loadedmetadata="onMediaEvent(item.id, $event)"
             @pause="onMediaEvent(item.id, $event)"
             @play="onMediaEvent(item.id, $event)"
+            @playing="onMediaEvent(item.id, $event)"
             @seeking="onMediaEvent(item.id, $event)"
             @seeked="onMediaEvent(item.id, $event)"
+            @stalled="onMediaEvent(item.id, $event)"
             @timeupdate="onMediaEvent(item.id, $event)"
+            @waiting="onMediaEvent(item.id, $event)"
           >
             <source :src="item.url" />
           </video>
@@ -158,6 +199,16 @@ function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof 
             :aria-label="(mediaStates[item.id]?.paused ?? true) ? getMediaActionLabel('Play', item) : getMediaActionLabel('Pause', item)"
             @click="onAudioCoverClick($event, item.id)"
           >
+            <div
+              v-if="isAssetLoading(index, item)"
+              data-testid="vibe-root-asset-spinner"
+              class="pointer-events-none absolute inset-0 z-[3] grid place-items-center"
+            >
+              <span class="inline-flex h-12 w-12 items-center justify-center border border-white/14 bg-black/55 backdrop-blur-[18px]">
+                <LoaderCircle class="h-5 w-5 animate-spin stroke-[1.9] text-[#f7f1ea]/78" aria-hidden="true" />
+              </span>
+            </div>
+
             <div class="pointer-events-none absolute inset-0 border border-white/8 bg-[radial-gradient(circle,rgba(16,185,129,0.16),transparent_66%)]" />
             <div class="pointer-events-none absolute h-[clamp(220px,30vw,360px)] w-[clamp(220px,30vw,360px)] border border-white/8 bg-[radial-gradient(circle,rgba(255,255,255,0.08),transparent_62%)]" />
 
@@ -178,13 +229,19 @@ function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof 
             :preload="index === resolvedActiveIndex ? 'metadata' : 'none'"
             class="pointer-events-none absolute h-px w-px opacity-0"
             :ref="(element) => registerAudioElement(item.id, element)"
+            @canplay="onMediaEvent(item.id, $event)"
             @durationchange="onMediaEvent(item.id, $event)"
+            @error="onMediaEvent(item.id, $event)"
+            @loadstart="onMediaEvent(item.id, $event)"
             @loadedmetadata="onMediaEvent(item.id, $event)"
             @pause="onMediaEvent(item.id, $event)"
             @play="onMediaEvent(item.id, $event)"
+            @playing="onMediaEvent(item.id, $event)"
             @seeking="onMediaEvent(item.id, $event)"
             @seeked="onMediaEvent(item.id, $event)"
+            @stalled="onMediaEvent(item.id, $event)"
             @timeupdate="onMediaEvent(item.id, $event)"
+            @waiting="onMediaEvent(item.id, $event)"
           >
             <source :src="item.url" />
           </audio>
@@ -225,26 +282,24 @@ function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof 
       class="pointer-events-none absolute inset-0 z-[3] flex flex-col justify-between p-[clamp(1.25rem,2.6vw,2.25rem)]"
     >
       <div class="grid gap-4">
-        <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,34rem)_minmax(0,1fr)] items-center gap-3">
-          <span class="inline-flex h-11 w-11 items-center justify-center justify-self-start border border-white/14 bg-black/40 text-[#f7f1ea]/72 backdrop-blur-[18px]">
-            <component :is="getItemIcon(activeItem.type)" class="h-3.5 w-3.5 stroke-2" aria-hidden="true" />
-          </span>
-          <h2
-            v-if="activeItem.title"
-            data-testid="vibe-root-title"
-            class="m-0 w-full truncate px-2 text-center text-[0.95rem] leading-none tracking-[-0.04em] min-[721px]:text-[1.2rem]"
-          >
-            {{ activeItem.title }}
-          </h2>
-          <div v-else class="min-h-px" aria-hidden="true" />
+        <div class="flex min-h-11 items-center justify-between gap-4">
+          <div class="min-w-0 flex-1">
+            <h2
+              v-if="activeItem.title"
+              data-testid="vibe-root-title"
+              class="m-0 truncate text-left text-[0.82rem] leading-none tracking-[-0.04em] min-[721px]:text-[1.2rem]"
+            >
+              {{ activeItem.title }}
+            </h2>
+          </div>
           <span
             data-testid="vibe-root-pagination"
-            class="inline-flex items-center justify-self-end gap-3 border border-white/14 bg-black/40 px-4 py-3 text-[0.74rem] font-bold uppercase tracking-[0.2em] text-[#f7f1ea]/72 backdrop-blur-[18px]"
+            class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap border border-white/14 bg-black/40 px-3 py-2 text-[0.63rem] font-bold uppercase tracking-[0.12em] text-[#f7f1ea]/72 backdrop-blur-[18px] min-[721px]:gap-3 min-[721px]:px-4 min-[721px]:py-3 min-[721px]:text-[0.74rem] min-[721px]:tracking-[0.2em]"
           >
-            <span>{{ resolvedActiveIndex + 1 }} / {{ items.length }}</span>
+            <span class="whitespace-nowrap">{{ resolvedActiveIndex + 1 }} / {{ items.length }}</span>
             <span
               v-if="paginationDetail"
-              class="border-l border-white/12 pl-3 text-[#f7f1ea]/56"
+              class="whitespace-nowrap border-l border-white/12 pl-2 text-[#f7f1ea]/56 min-[721px]:pl-3"
             >
               {{ paginationDetail }}
             </span>

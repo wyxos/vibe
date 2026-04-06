@@ -1,14 +1,10 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
+import { createMediaUiState, DEFAULT_MEDIA_UI_STATE, isImageElementReady, syncMediaUiState, type MediaUiState } from './assetState'
 import { formatPlaybackTime } from './format'
 import { useVibeRootDataSource, type VibeRootProps } from './useVibeRootDataSource'
 import { getRenderedItems, getRenderedRange, getVirtualSlideStyle } from './virtualization'
 
-interface MediaUiState {
-  currentTime: number
-  duration: number
-  paused: boolean
-}
 export type {
   VibeGetItemsParams,
   VibeGetItemsResult,
@@ -17,12 +13,6 @@ export type {
   VibeRootEmit,
   VibeRootProps,
 } from './useVibeRootDataSource'
-
-const DEFAULT_MEDIA_UI_STATE: MediaUiState = {
-  currentTime: 0,
-  duration: 0,
-  paused: true,
-}
 
 export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'update:activeIndex', value: number) => void) {
   const dataSource = useVibeRootDataSource(props, emit)
@@ -42,6 +32,7 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
   const dragOffset = ref(0)
   const isDragging = ref(false)
   const viewportHeight = ref(1)
+  const imageReadyStates = ref<Record<string, boolean>>({})
   const mediaStates = ref<Record<string, MediaUiState>>({})
 
   const videoElements = new Map<string, HTMLVideoElement>()
@@ -289,6 +280,12 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
     audioElements.delete(id)
   }
 
+  function registerImageElement(id: string, element: unknown) {
+    if (element instanceof HTMLImageElement && isImageElementReady(element)) {
+      imageReadyStates.value[id] = true
+    }
+  }
+
   function pauseAndReset(media: HTMLMediaElement, id: string) {
     media.pause()
 
@@ -343,18 +340,13 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
 
   function ensureMediaState(id: string) {
     if (!mediaStates.value[id]) {
-      mediaStates.value[id] = { ...DEFAULT_MEDIA_UI_STATE }
+      mediaStates.value[id] = createMediaUiState()
     }
-
     return mediaStates.value[id]
   }
 
-  function updateMediaState(id: string, media: HTMLMediaElement) {
-    const state = ensureMediaState(id)
-
-    state.currentTime = Number.isFinite(media.currentTime) ? media.currentTime : 0
-    state.duration = Number.isFinite(media.duration) ? media.duration : 0
-    state.paused = media.paused
+  function updateMediaState(id: string, media: HTMLMediaElement, eventType?: string) {
+    syncMediaUiState(ensureMediaState(id), media, eventType)
   }
 
   function setMediaUiState(id: string, currentTime: number, media: HTMLMediaElement) {
@@ -366,10 +358,13 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
   }
 
   function onMediaEvent(id: string, event: Event) {
-    if (event.currentTarget instanceof HTMLMediaElement) {
-      updateMediaState(id, event.currentTarget)
+    const media = event.currentTarget instanceof HTMLMediaElement ? event.currentTarget : event.target instanceof HTMLMediaElement ? event.target : null
+    if (media) {
+      updateMediaState(id, media, event.type)
     }
   }
+
+  function onImageLoad(id: string) { imageReadyStates.value[id] = true }
 
   function getMediaElementById(id: string) {
     return videoElements.get(id) ?? audioElements.get(id) ?? null
@@ -436,6 +431,14 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
     return item.type === 'audio'
   }
 
+  function isImageReady(id: string) {
+    return Boolean(imageReadyStates.value[id])
+  }
+
+  function isMediaReady(id: string) {
+    return mediaStates.value[id]?.ready ?? false
+  }
+
   function getImageSource(item: (typeof items.value)[number]) {
     return item.url
   }
@@ -462,7 +465,10 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
     items,
     loading,
     mediaStates,
+    isImageReady,
+    isMediaReady,
     onAudioCoverClick,
+    onImageLoad,
     onMediaEvent,
     onMediaSeekInput,
     onPointerCancel,
@@ -472,6 +478,7 @@ export function useVibeRoot(props: Readonly<VibeRootProps>, emit: (event: 'updat
     onVideoClick,
     onWheel,
     registerAudioElement,
+    registerImageElement,
     registerVideoElement,
     renderedItems,
     renderedRange,

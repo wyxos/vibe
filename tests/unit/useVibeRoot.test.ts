@@ -182,6 +182,53 @@ describe('useVibeRoot', () => {
     viewer.unmount()
   })
 
+  it('tracks media readiness for video and audio loading states', async () => {
+    const videoItem = createVideoItem('video-ready')
+    const audioItem = createAudioItem('audio-ready')
+    const viewer = await mountUseVibeRoot({
+      items: [videoItem, audioItem],
+      activeIndex: 0,
+    })
+
+    const video = createStubMediaElement('video', {
+      currentTime: 0,
+      duration: 12,
+      paused: true,
+    })
+    const audio = createStubMediaElement('audio', {
+      currentTime: 0,
+      duration: 18,
+      paused: true,
+    })
+
+    viewer.api.registerVideoElement(videoItem.id, video.element)
+    viewer.api.registerAudioElement(audioItem.id, audio.element)
+
+    expect(viewer.api.isMediaReady(videoItem.id)).toBe(false)
+    expect(viewer.api.isMediaReady(audioItem.id)).toBe(false)
+
+    viewer.api.onMediaEvent(videoItem.id, {
+      currentTarget: video.element,
+      type: 'canplay',
+    } as Event)
+    viewer.api.onMediaEvent(audioItem.id, {
+      currentTarget: audio.element,
+      type: 'canplay',
+    } as Event)
+
+    expect(viewer.api.isMediaReady(videoItem.id)).toBe(true)
+    expect(viewer.api.isMediaReady(audioItem.id)).toBe(true)
+
+    viewer.api.onMediaEvent(videoItem.id, {
+      currentTarget: video.element,
+      type: 'waiting',
+    } as Event)
+
+    expect(viewer.api.isMediaReady(videoItem.id)).toBe(false)
+
+    viewer.unmount()
+  })
+
   it('keeps the custom seekbar state at the requested time until the media catches up', async () => {
     const videoItem = createVideoItem('video-laggy')
     const viewer = await mountUseVibeRoot({

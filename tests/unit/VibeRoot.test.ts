@@ -1,10 +1,14 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import VibeRoot from '@/components/VibeRoot.vue'
 import type { VibeViewerItem } from '@/components/vibeViewer'
 
 describe('VibeRoot', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('hides the centered title when the active item has no title', () => {
     const wrapper = mount(VibeRoot, {
       props: {
@@ -31,6 +35,50 @@ describe('VibeRoot', () => {
 
     wrapper.unmount()
   })
+
+  it('shows an image spinner until the active image finishes loading', async () => {
+    const wrapper = mount(VibeRoot, {
+      props: {
+        items: [createImageItem('image-3', 'Image loading')],
+      },
+    })
+
+    expect(wrapper.get('[data-testid="vibe-root-asset-spinner"]').exists()).toBe(true)
+    expect(wrapper.get('img').classes()).toContain('opacity-0')
+
+    await wrapper.get('img').trigger('load')
+
+    expect(wrapper.find('[data-testid="vibe-root-asset-spinner"]').exists()).toBe(false)
+    expect(wrapper.get('img').classes()).toContain('opacity-100')
+
+    wrapper.unmount()
+  })
+
+  it('shows media spinners before video and audio are ready', () => {
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+
+    const videoWrapper = mount(VibeRoot, {
+      props: {
+        items: [createVideoItem('video-1', 'Video loading')],
+      },
+    })
+
+    expect(videoWrapper.get('[data-testid="vibe-root-asset-spinner"]').exists()).toBe(true)
+    expect(videoWrapper.get('video').classes()).toContain('opacity-0')
+
+    videoWrapper.unmount()
+
+    const audioWrapper = mount(VibeRoot, {
+      props: {
+        items: [createAudioItem('audio-1', 'Audio loading')],
+      },
+    })
+
+    expect(audioWrapper.get('[data-testid="vibe-root-asset-spinner"]').exists()).toBe(true)
+
+    audioWrapper.unmount()
+  })
 })
 
 function createImageItem(id: string, title?: string): VibeViewerItem {
@@ -45,6 +93,26 @@ function createImageItem(id: string, title?: string): VibeViewerItem {
       url: `https://example.com/${id}-preview.jpg`,
       width: 320,
       height: 180,
+    },
+  }
+}
+
+function createVideoItem(id: string, title?: string): VibeViewerItem {
+  return {
+    ...createImageItem(id, title),
+    type: 'video',
+    url: `https://example.com/${id}.mp4`,
+  }
+}
+
+function createAudioItem(id: string, title?: string): VibeViewerItem {
+  return {
+    id,
+    type: 'audio',
+    title,
+    url: `https://example.com/${id}.mp3`,
+    preview: {
+      url: `https://example.com/${id}.mp3`,
     },
   }
 }
