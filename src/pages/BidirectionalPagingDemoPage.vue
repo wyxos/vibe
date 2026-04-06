@@ -74,6 +74,17 @@ watch(
   },
 )
 
+watch(
+  () => hasReachedTopAfterScroll.value,
+  (hasReachedTop) => {
+    if (!hasReachedTop) {
+      return
+    }
+
+    void maybePrefetchAround()
+  },
+)
+
 onMounted(async () => {
   await loadPage(String(INITIAL_PAGE), 'initial')
 })
@@ -241,6 +252,7 @@ function syncListScrollState(scrollTop: number) {
 
   if (hasSeenNonTopListScroll.value) {
     hasReachedTopAfterScroll.value = true
+    void nextTick().then(() => maybePrefetchAround())
   }
 }
 </script>

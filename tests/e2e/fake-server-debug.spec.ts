@@ -56,12 +56,12 @@ test('bidirectional paging demo prepends earlier pages when navigating upward', 
       return node.scrollHeight > node.clientHeight
     })
   }).toBe(true)
-
-  await listScroll.evaluate((element) => {
-    const node = element as HTMLElement
-    node.scrollTop = Math.min(node.scrollHeight - node.clientHeight, Math.max(node.clientHeight * 0.75, 320))
-    node.dispatchEvent(new Event('scroll', { bubbles: true }))
-  })
+  await expect.poll(async () => {
+    return listScroll.evaluate((element) => {
+      const node = element as HTMLElement
+      return node.scrollTop
+    })
+  }).toBeGreaterThan(0)
 
   await listScroll.evaluate((element) => {
     const node = element as HTMLElement
