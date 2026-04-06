@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getVibeMasonryEnterStartY } from '@/components/vibe-root/useVibeMasonryMotion'
+import { getVibeMasonryEnterOrder, getVibeMasonryEnterStartY } from '@/components/vibe-root/useVibeMasonryMotion'
 
 describe('useVibeMasonryMotion', () => {
   it('starts prepended items above the viewport and appended items below it', () => {
@@ -19,5 +19,10 @@ describe('useVibeMasonryMotion', () => {
       scrollTop: 1_000,
       viewportHeight: 800,
     })).toBe(2_040)
+  })
+
+  it('reverses prepend stagger order and keeps append order unchanged', () => {
+    expect(getVibeMasonryEnterOrder(['0', '1', '2', '3'], 'bottom')).toEqual(['0', '1', '2', '3'])
+    expect(getVibeMasonryEnterOrder(['0', '1', '2', '3'], 'top')).toEqual(['3', '2', '1', '0'])
   })
 })

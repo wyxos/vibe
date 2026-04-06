@@ -10,6 +10,14 @@ const ENTER_STAGGER_MS = 40
 const MAX_ENTER_STAGGER_TOTAL_MS = 400
 export type VibeMasonryEnterDirection = 'bottom' | 'top'
 
+export function getVibeMasonryEnterOrder(itemIds: string[], direction: VibeMasonryEnterDirection) {
+  if (direction === 'top') {
+    return [...itemIds].reverse()
+  }
+
+  return itemIds
+}
+
 export function getVibeMasonryEnterStartY(options: {
   direction: VibeMasonryEnterDirection
   itemHeight: number
@@ -69,9 +77,11 @@ export function useVibeMasonryMotion(options: {
         return
       }
 
+      const enterDirection = enterDirectionById.value.get(idsToAnimate[0]) ?? 'bottom'
+      const orderedIdsToAnimate = getVibeMasonryEnterOrder(idsToAnimate, enterDirection)
       const nextDelayById = new Map(enterDelayById.value)
-      for (let index = 0; index < idsToAnimate.length; index += 1) {
-        nextDelayById.set(idsToAnimate[index], Math.min(index * ENTER_STAGGER_MS, MAX_ENTER_STAGGER_TOTAL_MS))
+      for (let index = 0; index < orderedIdsToAnimate.length; index += 1) {
+        nextDelayById.set(orderedIdsToAnimate[index], Math.min(index * ENTER_STAGGER_MS, MAX_ENTER_STAGGER_TOTAL_MS))
       }
       enterDelayById.value = nextDelayById
 

@@ -23,12 +23,15 @@ const isPrefetchingNext = ref(false)
 const isPrefetchingPrevious = ref(false)
 const errorMessage = ref<string | null>(null)
 const hasSeenNonTopListScroll = ref(false)
-const hasReachedTopAfterScroll = ref(false)
+const isListViewportAtTop = ref(false)
+const topEdgeIntentVersion = ref(0)
+const consumedTopEdgeIntentVersion = ref(0)
 
 const loadedPages = new Set<string>()
 const inFlightPages = new Set<string>()
 
 let listScrollViewport: HTMLElement | null = null
+let topWheelLockedUntil = 0
 
 const isViewerLoading = computed(() => isLoadingInitial.value || isPrefetchingNext.value || isPrefetchingPrevious.value)
 const currentVisiblePage = computed(() => {
@@ -75,9 +78,9 @@ watch(
 )
 
 watch(
-  () => hasReachedTopAfterScroll.value,
-  (hasReachedTop) => {
-    if (!hasReachedTop) {
+  () => topEdgeIntentVersion.value,
+  (version) => {
+    if (version <= 0) {
       return
     }
 
@@ -99,6 +102,7 @@ async function maybePrefetchAround() {
   }
 
   if (previousPage.value && canPrefetchPreviousPage()) {
+    consumedTopEdgeIntentVersion.value = topEdgeIntentVersion.value
     await loadPage(previousPage.value, 'prepend')
   }
 
@@ -140,7 +144,8 @@ async function loadPage(pageToken: string, mode: 'initial' | 'prepend' | 'append
       earliestLoadedPage.value = response.page
       latestLoadedPage.value = response.page
       hasSeenNonTopListScroll.value = false
-      hasReachedTopAfterScroll.value = false
+      topEdgeIntentVersion.value = 0
+      consumedTopEdgeIntentVersion.value = 0
     }
     else if (mode === 'prepend') {
       items.value = [...response.items, ...items.value]
@@ -200,16 +205,16 @@ async function retryInitialLoad() {
 }
 
 function canPrefetchPreviousPage() {
-  if (activeIndex.value >= PREFETCH_OFFSET) {
-    return false
-  }
-
   const requiresScrollIntent = typeof window !== 'undefined' && window.innerWidth >= 1024
   if (!requiresScrollIntent) {
+    return activeIndex.value < PREFETCH_OFFSET
+  }
+
+  if (isListViewportAtTop.value && topEdgeIntentVersion.value > consumedTopEdgeIntentVersion.value) {
     return true
   }
 
-  return hasReachedTopAfterScroll.value
+  return false
 }
 
 function connectListScrollListener() {
@@ -258,20 +263,31 @@ function onListViewportWheel(event: WheelEvent) {
     return
   }
 
-  hasReachedTopAfterScroll.value = true
-  void maybePrefetchAround()
+  const now = Date.now()
+  if (now < topWheelLockedUntil) {
+    return
+  }
+
+  topWheelLockedUntil = now + 250
+  registerTopEdgeIntent()
 }
 
 function syncListScrollState(scrollTop: number) {
+  const wasAtTop = isListViewportAtTop.value
+  isListViewportAtTop.value = scrollTop <= TOP_SCROLL_THRESHOLD_PX
+
   if (scrollTop > TOP_SCROLL_THRESHOLD_PX) {
     hasSeenNonTopListScroll.value = true
     return
   }
 
-  if (hasSeenNonTopListScroll.value) {
-    hasReachedTopAfterScroll.value = true
-    void nextTick().then(() => maybePrefetchAround())
+  if (!wasAtTop && hasSeenNonTopListScroll.value) {
+    registerTopEdgeIntent()
   }
+}
+
+function registerTopEdgeIntent() {
+  topEdgeIntentVersion.value += 1
 }
 </script>
 
