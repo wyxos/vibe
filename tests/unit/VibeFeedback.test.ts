@@ -40,7 +40,7 @@ describe('VibeLayout feedback states', () => {
 
     const wrapper = mount(Layout, {
       props: {
-        getItems: vi.fn(),
+        resolve: vi.fn(),
       },
     })
 

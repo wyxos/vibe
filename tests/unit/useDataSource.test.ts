@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { VibeGetItemsParams, VibeGetItemsResult } from '@/components/viewer-core/useDataSource'
+import type { VibeResolveParams, VibeResolveResult } from '@/components/viewer-core/useDataSource'
 import type { VibeViewerItem } from '@/components/viewer'
 
 import { mountUseDataSource } from '../helpers/mountUseDataSource'
 
 describe('useDataSource', () => {
-  it('loads the initial page from getItems with the default page size', async () => {
-    const getItems = vi.fn(async ({ cursor, pageSize }: VibeGetItemsParams) => {
+  it('loads the initial page from resolve with the default page size', async () => {
+    const resolve = vi.fn(async ({ cursor, pageSize }: VibeResolveParams) => {
       expect(cursor).toBeNull()
       expect(pageSize).toBe(25)
 
@@ -17,12 +17,12 @@ describe('useDataSource', () => {
     })
 
     const source = await mountUseDataSource({
-      getItems,
+      resolve,
     })
 
     await source.flush()
 
-    expect(getItems).toHaveBeenCalledTimes(1)
+    expect(resolve).toHaveBeenCalledTimes(1)
     expect(source.api.items.value).toHaveLength(25)
     expect(source.api.activeIndex.value).toBe(0)
     expect(source.api.hasNextPage.value).toBe(true)
@@ -31,8 +31,8 @@ describe('useDataSource', () => {
   })
 
   it('prefetches the next page near the end and avoids duplicate cursor requests', async () => {
-    const deferred = createDeferred<VibeGetItemsResult>()
-    const getItems = vi.fn(({ cursor }: VibeGetItemsParams) => {
+    const deferred = createDeferred<VibeResolveResult>()
+    const resolve = vi.fn(({ cursor }: VibeResolveParams) => {
       if (cursor === 'page-2') {
         return deferred.promise
       }
@@ -43,7 +43,7 @@ describe('useDataSource', () => {
     })
 
     const source = await mountUseDataSource({
-      getItems,
+      resolve,
     })
 
     await source.flush()
@@ -52,8 +52,8 @@ describe('useDataSource', () => {
     source.api.setActiveIndex(23)
     await source.flush()
 
-    expect(getItems).toHaveBeenCalledTimes(2)
-    expect(getItems).toHaveBeenLastCalledWith({
+    expect(resolve).toHaveBeenCalledTimes(2)
+    expect(resolve).toHaveBeenLastCalledWith({
       cursor: 'page-2',
       pageSize: 25,
     })
@@ -74,7 +74,7 @@ describe('useDataSource', () => {
   })
 
   it('prepends an unseen previous page when previousPage is available', async () => {
-    const getItems = vi.fn(async ({ cursor }: VibeGetItemsParams) => {
+    const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
       if (cursor === 'page-9') {
         return createPageResult('page-9', {
           nextPage: 'page-10',
@@ -89,7 +89,7 @@ describe('useDataSource', () => {
     })
 
     const source = await mountUseDataSource({
-      getItems,
+      resolve,
       initialCursor: 'page-10',
     })
 
@@ -97,8 +97,8 @@ describe('useDataSource', () => {
     source.api.setActiveIndex(1)
     await source.flush()
 
-    expect(getItems).toHaveBeenCalledTimes(2)
-    expect(getItems).toHaveBeenLastCalledWith({
+    expect(resolve).toHaveBeenCalledTimes(2)
+    expect(resolve).toHaveBeenLastCalledWith({
       cursor: 'page-9',
       pageSize: 25,
     })
@@ -109,13 +109,13 @@ describe('useDataSource', () => {
   })
 
   it('does not fetch an unseen previous page when previousPage is missing', async () => {
-    const getItems = vi.fn(async () => createPageResult('page-1', {
+    const resolve = vi.fn(async () => createPageResult('page-1', {
       nextPage: 'page-2',
       previousPage: null,
     }))
 
     const source = await mountUseDataSource({
-      getItems,
+      resolve,
       initialCursor: 'page-1',
     })
 
@@ -123,20 +123,20 @@ describe('useDataSource', () => {
     source.api.setActiveIndex(1)
     await source.flush()
 
-    expect(getItems).toHaveBeenCalledTimes(1)
+    expect(resolve).toHaveBeenCalledTimes(1)
 
     source.unmount()
   })
 
   it('retries the initial load after a failure', async () => {
-    const getItems = vi.fn()
+    const resolve = vi.fn()
       .mockRejectedValueOnce(new Error('Temporary failure'))
       .mockResolvedValueOnce(createPageResult('page-1', {
         nextPage: 'page-2',
       }))
 
     const source = await mountUseDataSource({
-      getItems,
+      resolve,
     })
 
     await source.flush()
@@ -148,7 +148,7 @@ describe('useDataSource', () => {
     await source.api.retryInitialLoad()
     await source.flush()
 
-    expect(getItems).toHaveBeenCalledTimes(2)
+    expect(resolve).toHaveBeenCalledTimes(2)
     expect(source.api.errorMessage.value).toBeNull()
     expect(source.api.items.value).toHaveLength(25)
 
@@ -156,7 +156,7 @@ describe('useDataSource', () => {
   })
 
   it('removes duplicate ids across loaded pages, restores them in place, and undoes batches in reverse order', async () => {
-    const getItems = vi.fn(async ({ cursor }: VibeGetItemsParams) => {
+    const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
       if (cursor === 'page-2') {
         return {
           items: [
@@ -181,7 +181,7 @@ describe('useDataSource', () => {
     })
 
     const source = await mountUseDataSource({
-      getItems,
+      resolve,
       pageSize: 3,
     })
 
@@ -226,7 +226,7 @@ function createPageResult(
     nextPage?: string | null
     previousPage?: string | null
   } = {},
-): VibeGetItemsResult {
+): VibeResolveResult {
   return {
     items: createItems(pageLabel),
     nextPage: options.nextPage ?? null,

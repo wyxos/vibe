@@ -10,12 +10,12 @@ const DEFAULT_PAGE_SIZE = 25
 const PREFETCH_OFFSET = 3
 const INITIAL_CURSOR_KEY = '__vibe_initial_cursor__'
 
-export interface VibeGetItemsParams {
+export interface VibeResolveParams {
   cursor: string | null
   pageSize: number
 }
 
-export interface VibeGetItemsResult {
+export interface VibeResolveResult {
   items: VibeViewerItem[]
   nextPage: string | null
   previousPage?: string | null
@@ -33,13 +33,13 @@ export interface VibeControlledProps extends VibeSharedProps {
   activeIndex?: number
   loading?: boolean
   hasNextPage?: boolean
-  getItems?: never
+  resolve?: never
   initialCursor?: never
   pageSize?: never
 }
 
 export interface VibeAutoProps {
-  getItems: (params: VibeGetItemsParams) => Promise<VibeGetItemsResult>
+  resolve: (params: VibeResolveParams) => Promise<VibeResolveResult>
   initialCursor?: string | null
   pageSize?: number
   items?: never
@@ -89,7 +89,7 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
   let hasWarnedMixedProps = false
   let occurrenceSequence = 0
 
-  const isAutoMode = computed(() => typeof autoProps.getItems === 'function')
+  const isAutoMode = computed(() => typeof autoProps.resolve === 'function')
   const pageSize = computed(() => normalizePageSize(autoProps.pageSize))
   const sourceItems = computed(() => isAutoMode.value ? autoSourceItems.value : controlledSourceItems.value)
   const items = computed(() => filterRemovedItems(sourceItems.value, removedIds.value))
@@ -112,14 +112,14 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
   )
 
   watch(
-    [() => controlledProps.items, () => autoProps.getItems],
-    ([maybeItems, maybeGetItems]) => {
-      if (!Array.isArray(maybeItems) || typeof maybeGetItems !== 'function' || hasWarnedMixedProps) {
+    [() => controlledProps.items, () => autoProps.resolve],
+    ([maybeItems, maybeResolve]) => {
+      if (!Array.isArray(maybeItems) || typeof maybeResolve !== 'function' || hasWarnedMixedProps) {
         return
       }
 
       hasWarnedMixedProps = true
-      console.warn('[Vibe] `getItems` and `items` were both provided. `getItems` mode will be used.')
+      console.warn('[Vibe] `resolve` and `items` were both provided. `resolve` mode will be used.')
     },
     {
       immediate: true,
@@ -235,7 +235,7 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
   }
 
   async function loadPage(cursor: string | null, mode: 'initial' | 'append' | 'prepend') {
-    if (!autoProps.getItems) {
+    if (!autoProps.resolve) {
       return
     }
 
@@ -259,7 +259,7 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     }
 
     try {
-      const response = await autoProps.getItems({
+      const response = await autoProps.resolve({
         cursor,
         pageSize: pageSize.value,
       })

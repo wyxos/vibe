@@ -3,8 +3,8 @@ import type { App, Plugin } from 'vue'
 import Layout from './components/Layout.vue'
 export type { VibeViewerAsset, VibeViewerItem, VibeViewerType } from './components/viewer'
 export type {
-  VibeGetItemsParams,
-  VibeGetItemsResult,
+  VibeResolveParams,
+  VibeResolveResult,
   VibeAutoProps,
   VibeControlledProps,
   VibeHandle,

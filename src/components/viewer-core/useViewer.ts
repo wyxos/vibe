@@ -8,8 +8,8 @@ import { useMedia } from './useMedia'
 import { getRenderedItems, getRenderedRange, getVirtualSlideStyle } from './virtualization'
 
 export type {
-  VibeGetItemsParams,
-  VibeGetItemsResult,
+  VibeResolveParams,
+  VibeResolveResult,
   VibeAutoProps,
   VibeControlledProps,
   VibeEmit,

@@ -5,7 +5,7 @@ import { useRoute } from 'vue-router'
 
 import Layout from '@/components/Layout.vue'
 import type { VibeViewerItem } from '@/components/viewer'
-import type { VibeGetItemsParams, VibeGetItemsResult } from '@/components/viewer-core/useViewer'
+import type { VibeResolveParams, VibeResolveResult } from '@/components/viewer-core/useViewer'
 import { getFakeMediaItemIcon } from '@/demo/fakeMediaItemIcon'
 import { fetchFakeMediaPage } from '@/demo/fakeServer'
 
@@ -31,7 +31,7 @@ watch(
   },
 )
 
-async function getItems({ cursor, pageSize }: VibeGetItemsParams): Promise<VibeGetItemsResult> {
+async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeResolveResult> {
   const page = normalizeRequestedPage(cursor)
 
   maybeFailPage(page)
@@ -77,7 +77,7 @@ function renderItemIcon(item: VibeViewerItem, icon: unknown) {
 
 <template>
   <section class="relative h-full min-h-0 bg-[#05060a]">
-    <Layout :get-items="getItems">
+    <Layout :resolve="resolve">
       <template #item-icon="{ item, icon }">
         <component :is="renderItemIcon(item, icon)" class="h-6 w-6 stroke-[1.9]" aria-hidden="true" />
       </template>
