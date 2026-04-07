@@ -267,6 +267,36 @@ describe('useVibeRoot', () => {
 
     viewer.unmount()
   })
+
+  it('does not mark a hidden image as ready before it has a real source', async () => {
+    const imageItem = createImageItem('image-hidden')
+    const viewer = await mountUseVibeRoot({
+      items: [imageItem],
+      activeIndex: 0,
+    })
+
+    const hiddenImage = document.createElement('img')
+
+    Object.defineProperties(hiddenImage, {
+      complete: {
+        configurable: true,
+        get: () => true,
+      },
+      currentSrc: {
+        configurable: true,
+        get: () => '',
+      },
+    })
+
+    viewer.api.registerImageElement(imageItem.id, hiddenImage)
+    expect(viewer.api.isImageReady(imageItem.id)).toBe(false)
+
+    hiddenImage.setAttribute('src', imageItem.url)
+    viewer.api.registerImageElement(imageItem.id, hiddenImage)
+    expect(viewer.api.isImageReady(imageItem.id)).toBe(true)
+
+    viewer.unmount()
+  })
 })
 
 function createImageItem(id: string): VibeViewerItem {

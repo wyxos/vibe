@@ -166,6 +166,11 @@ test('desktop masonry list scroll loads one page per bottom hit', async ({ page 
   await page.waitForTimeout(1_400)
   await scrollViewport.evaluate((element) => {
     const node = element as HTMLElement
+    node.scrollTop = Math.max(0, node.scrollHeight - node.clientHeight - 240)
+    node.dispatchEvent(new Event('scroll', { bubbles: true }))
+  })
+  await scrollViewport.evaluate((element) => {
+    const node = element as HTMLElement
     node.scrollTop = node.scrollHeight
     node.dispatchEvent(new Event('scroll', { bubbles: true }))
     node.dispatchEvent(new WheelEvent('wheel', {
@@ -218,6 +223,140 @@ test('desktop fullscreen seekbar moves the active video forward instead of snapp
   }).toBeGreaterThan(1)
 })
 
+test('desktop fullscreen responds to wheel navigation and video click play/pause', async ({ page }) => {
+  await page.setViewportSize({
+    width: 1_100,
+    height: 650,
+  })
+
+  await gotoRoute(page, '/')
+
+  const root = page.getByTestId('vibe-root')
+  const listSurface = page.getByTestId('vibe-root-list-surface')
+  const fullscreenSurface = page.getByTestId('vibe-root-fullscreen-surface')
+  const progress = fullscreenSurface.getByTestId('vibe-root-pagination')
+  const videoCard = listSurface.locator('[data-testid="vibe-list-card"][data-index="1"]')
+  const activeVideo = fullscreenSurface.locator('[data-active="true"] video')
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'list')
+  await expect(videoCard).toBeVisible()
+
+  await videoCard.locator('button').click()
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'fullscreen')
+  await expect(activeVideo).toBeVisible()
+  await expect.poll(async () => activeVideo.evaluate((video) => video.paused)).toBe(false)
+
+  await activeVideo.click()
+  await expect.poll(async () => activeVideo.evaluate((video) => video.paused)).toBe(true)
+
+  await activeVideo.click()
+  await expect.poll(async () => activeVideo.evaluate((video) => video.paused)).toBe(false)
+
+  await page.mouse.move(550, 325)
+  await page.mouse.wheel(0, 720)
+
+  await expect(progress).toContainText('3 / 25')
+})
+
+test('desktop fullscreen audio cover toggles play/pause and seekbar updates current time', async ({ page }) => {
+  await page.setViewportSize({
+    width: 1_100,
+    height: 650,
+  })
+
+  await gotoRoute(page, '/')
+
+  const root = page.getByTestId('vibe-root')
+  const listSurface = page.getByTestId('vibe-root-list-surface')
+  const fullscreenSurface = page.getByTestId('vibe-root-fullscreen-surface')
+  const imageCard = listSurface.locator('[data-testid="vibe-list-card"][data-index="0"]')
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'list')
+  await expect(imageCard).toBeVisible({ timeout: 15_000 })
+  await imageCard.locator('button').click()
+
+  for (let step = 0; step < 11; step += 1) {
+    await page.keyboard.press('ArrowDown')
+  }
+
+  const coverButton = fullscreenSurface.getByRole('button', { name: /Voiceover rough cut/ })
+  const activeAudio = fullscreenSurface.locator('[data-active="true"] audio')
+  const seekbar = fullscreenSurface.getByLabel('Seek active media')
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'fullscreen')
+  await expect(coverButton).toBeVisible()
+  await expect(seekbar).toBeVisible()
+  await expect.poll(async () => activeAudio.evaluate((audio) => Number.isFinite(audio.duration) ? audio.duration : 0)).toBeGreaterThan(0)
+  await expect.poll(async () => activeAudio.evaluate((audio) => audio.paused)).toBe(false)
+
+  await coverButton.click()
+  await expect.poll(async () => activeAudio.evaluate((audio) => audio.paused)).toBe(true)
+
+  await coverButton.click()
+  await expect.poll(async () => activeAudio.evaluate((audio) => audio.paused)).toBe(false)
+
+  const targetTime = await activeAudio.evaluate((audio) => Math.max(audio.duration * 0.45, 1))
+
+  await seekbar.evaluate((input, nextValue) => {
+    const range = input as HTMLInputElement
+    range.value = String(nextValue)
+    range.dispatchEvent(new Event('input', { bubbles: true }))
+  }, targetTime)
+
+  await expect.poll(async () => activeAudio.evaluate((audio) => audio.currentTime)).toBeGreaterThan(1)
+
+  await expect(listSurface).toHaveAttribute('data-visible', 'false')
+})
+
+test('desktop grid previews use the preview asset and fullscreen waits for the original image to fade in', async ({ page }) => {
+  const previewUrl = 'https://picsum.photos/id/1015/720/480'
+  const originalUrl = 'https://picsum.photos/id/1015/2400/1600'
+  const previewBody = makeSvgPreview('preview', '#2563eb')
+  const originalBody = makeSvgPreview('original', '#dc2626')
+  const originalResponseGate = createDeferred<void>()
+
+  await page.route(previewUrl, async (route) => {
+    await route.fulfill({
+      body: previewBody,
+      contentType: 'image/svg+xml',
+    })
+  })
+  await page.route(originalUrl, async (route) => {
+    await originalResponseGate.promise
+    await route.fulfill({
+      body: originalBody,
+      contentType: 'image/svg+xml',
+    })
+  })
+
+  await page.setViewportSize({
+    width: 1_100,
+    height: 650,
+  })
+
+  await gotoRoute(page, '/')
+
+  const root = page.getByTestId('vibe-root')
+  const fullscreenSurface = page.getByTestId('vibe-root-fullscreen-surface')
+  const previewCard = page.locator('[data-testid="vibe-list-card"][data-index="0"]')
+  const previewImage = previewCard.locator('img')
+  const fullscreenImage = fullscreenSurface.locator('[data-active="true"] img')
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'list')
+  await expect(previewImage).toHaveAttribute('src', previewUrl, { timeout: 15_000 })
+
+  await previewCard.locator('button').click()
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'fullscreen')
+  await expect(fullscreenImage).toHaveAttribute('src', originalUrl, { timeout: 15_000 })
+  await expect(fullscreenImage).toHaveClass(/opacity-0/)
+  await expect(fullscreenSurface.getByTestId('vibe-root-asset-spinner')).toBeVisible()
+  originalResponseGate.resolve()
+  await expect.poll(async () => fullscreenImage.evaluate((image) => getComputedStyle(image).opacity)).toBe('1')
+  await expect(fullscreenSurface.getByTestId('vibe-root-asset-spinner')).toHaveCount(0)
+})
+
 test('mobile home viewer always boots in fullscreen mode', async ({ page }) => {
   await page.setViewportSize({
     width: 430,
@@ -242,6 +381,17 @@ function normalizeWhitespace(value: string | null) {
   return value?.replace(/\s+/g, ' ').trim() ?? ''
 }
 
+function makeSvgPreview(label: string, fill: string) {
+  return [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">',
+    `<rect width="1280" height="720" fill="${fill}" />`,
+    '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#fff" font-family="Arial, sans-serif" font-size="64">',
+    label,
+    '</text>',
+    '</svg>',
+  ].join('')
+}
+
 async function getPaginationState(locator: Locator) {
   const text = normalizeWhitespace(await locator.textContent())
   const match = text.match(/^(\d+)\s*\/\s*(\d+)$/)
@@ -256,5 +406,21 @@ async function getPaginationState(locator: Locator) {
   return {
     active: Number.parseInt(match[1], 10),
     total: Number.parseInt(match[2], 10),
+  }
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+
+  const promise = new Promise<T>((innerResolve, innerReject) => {
+    resolve = innerResolve
+    reject = innerReject
+  })
+
+  return {
+    promise,
+    reject,
+    resolve,
   }
 }

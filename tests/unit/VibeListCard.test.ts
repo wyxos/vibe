@@ -45,6 +45,33 @@ describe('VibeListCard', () => {
     wrapper.unmount()
   })
 
+  it('aborts an attached image preview when the tile leaves view', async () => {
+    const removeAttribute = vi.spyOn(HTMLImageElement.prototype, 'removeAttribute')
+    const srcSetter = vi.spyOn(HTMLImageElement.prototype, 'src', 'set')
+
+    const wrapper = mount(VibeListCard, {
+      props: {
+        item: createImageItem('image-abort'),
+      },
+    })
+
+    await flushDom()
+
+    intersectionObservers[0].trigger(wrapper.element as Element, true, 0.75)
+    await flushDom()
+
+    expect(wrapper.get('img').attributes('src')).toBe('https://example.com/image-abort-preview.jpg')
+
+    intersectionObservers[0].trigger(wrapper.element as Element, false, 0)
+    await flushDom()
+
+    expect(removeAttribute).toHaveBeenCalledWith('src')
+    expect(srcSetter).toHaveBeenCalledWith('')
+    expect(wrapper.find('img').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
   it('autoplays video previews when they enter view and detaches them when they leave', async () => {
     const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
     const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})

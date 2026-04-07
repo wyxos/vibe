@@ -17,7 +17,7 @@ export function createMediaUiState(): MediaUiState {
 }
 
 export function isImageElementReady(element: HTMLImageElement) {
-  return element.complete
+  return element.complete && Boolean(element.currentSrc || element.getAttribute('src'))
 }
 
 export function syncMediaUiState(state: MediaUiState, media: HTMLMediaElement, eventType?: string) {
