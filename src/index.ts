@@ -1,22 +1,23 @@
 import type { App, Plugin } from 'vue'
 
-import VibeRoot from './components/VibeRoot.vue'
-export type { VibeViewerAsset, VibeViewerItem, VibeViewerType } from './components/vibeViewer'
+import VibeInstance from './components/Vibe.vue'
+export type { VibeViewerAsset, VibeViewerItem, VibeViewerType } from './components/viewer'
 export type {
   VibeGetItemsParams,
   VibeGetItemsResult,
-  VibeRootAutoProps,
-  VibeRootControlledProps,
-  VibeRootHandle,
-  VibeRootProps,
-} from './components/vibe-root/useVibeRoot'
+  VibeAutoProps,
+  VibeControlledProps,
+  VibeHandle,
+  VibeProps,
+} from './components/viewer-core/useViewer'
 
-export { VibeRoot }
+export const Vibe = VibeInstance
+export { VibeInstance }
 
 export const VibePlugin: Plugin = {
   install(app: App) {
-    app.component('VibeRoot', VibeRoot)
+    app.component('Vibe', Vibe)
   },
 }
 
-export default VibeRoot
+export default Vibe

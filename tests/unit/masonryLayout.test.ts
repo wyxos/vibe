@@ -7,8 +7,8 @@ import {
   getColumnWidth,
   getMasonryDimensions,
   getVisibleIndicesFromBuckets,
-} from '@/components/vibe-root/masonryLayout'
-import type { VibeViewerItem } from '@/components/vibeViewer'
+} from '@/components/viewer-core/masonryLayout'
+import type { VibeViewerItem } from '@/components/viewer'
 
 describe('masonryLayout', () => {
   it('prefers preview dimensions, then original dimensions, then a square fallback', () => {

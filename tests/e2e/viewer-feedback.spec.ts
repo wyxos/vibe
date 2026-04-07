@@ -5,9 +5,9 @@ import { expect, gotoRoute, test } from './fixtures'
 test('home route exposes retry UI after an initial load failure and recovers on retry', async ({ page }) => {
   await gotoRoute(page, '/?failPage=1&failCount=1')
 
-  const listSurface = page.getByTestId('vibe-root-list-surface')
+  const listSurface = page.getByTestId('vibe-list-surface')
   const retryButton = page.getByRole('button', { name: 'Retry' })
-  const progress = listSurface.getByTestId('vibe-root-pagination')
+  const progress = listSurface.getByTestId('vibe-pagination')
 
   await expect(retryButton).toBeVisible({ timeout: 15_000 })
 
@@ -25,8 +25,8 @@ test('home route keeps visible items while a later page fails and recovers on th
 
   await gotoRoute(page, '/?failPage=2&failCount=1')
 
-  const listSurface = page.getByTestId('vibe-root-list-surface')
-  const progress = listSurface.getByTestId('vibe-root-pagination')
+  const listSurface = page.getByTestId('vibe-list-surface')
+  const progress = listSurface.getByTestId('vibe-pagination')
   const scrollViewport = listSurface.getByTestId('vibe-list-scroll')
   const warning = page.getByText('Simulated page 2 failure.')
 
@@ -53,8 +53,8 @@ test('desktop append motion keeps bottom-entering cards on the forward stagger o
 
   await gotoRoute(page, '/')
 
-  const listSurface = page.getByTestId('vibe-root-list-surface')
-  const progress = listSurface.getByTestId('vibe-root-pagination')
+  const listSurface = page.getByTestId('vibe-list-surface')
+  const progress = listSurface.getByTestId('vibe-pagination')
   const scrollViewport = listSurface.getByTestId('vibe-list-scroll')
 
   await expect(progress).toHaveText('1 / 25', { timeout: 15_000 })
@@ -85,8 +85,8 @@ test('desktop prepend motion keeps top-entering cards on the reversed stagger or
 
   await gotoRoute(page, '/demo/advanced-integration')
 
-  const listSurface = page.getByTestId('vibe-root-list-surface')
-  const progress = listSurface.getByTestId('vibe-root-pagination')
+  const listSurface = page.getByTestId('vibe-list-surface')
+  const progress = listSurface.getByTestId('vibe-pagination')
   const scrollViewport = listSurface.getByTestId('vibe-list-scroll')
 
   await expect(progress).toContainText('P10 · V10', { timeout: 15_000 })
@@ -121,9 +121,9 @@ test('broken demo assets surface 404 and generic preload errors in list and full
 
   await gotoRoute(page, '/')
 
-  const root = page.getByTestId('vibe-root')
-  const listSurface = page.getByTestId('vibe-root-list-surface')
-  const fullscreenSurface = page.getByTestId('vibe-root-fullscreen-surface')
+  const root = page.getByTestId('vibe')
+  const listSurface = page.getByTestId('vibe-list-surface')
+  const fullscreenSurface = page.getByTestId('vibe-fullscreen-surface')
   const scrollViewport = listSurface.getByTestId('vibe-list-scroll')
   const firstCard = listSurface.locator('[data-testid="vibe-list-card"][data-index="0"]')
   const missingCard = listSurface.locator('[data-testid="vibe-list-card"][data-item-id="img-missing-proof-0012"]')
@@ -155,7 +155,7 @@ test('broken demo assets surface 404 and generic preload errors in list and full
   await page.keyboard.press('ArrowDown')
   await expect(fullscreenSurface).toContainText('Load error', { timeout: 15_000 })
   await expect(fullscreenSurface).toContainText('Load error')
-  await expect(fullscreenSurface.getByTestId('vibe-root-media-bar')).toHaveCount(0)
+  await expect(fullscreenSurface.getByTestId('vibe-media-bar')).toHaveCount(0)
 })
 
 async function hitBottom(scrollViewport: Locator) {

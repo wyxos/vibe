@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 
-import { getItemIcon, getItemLabel } from '@/components/vibe-root/media'
+import { getItemIcon, getItemLabel } from '@/components/viewer-core/media'
 import { getFakeMediaItemIcon, getFakeMediaTypeLabel } from '@/demo/fakeMediaItemIcon'
 import {
   createFakeMediaServer,
@@ -27,7 +27,7 @@ const nextPage = computed(() => response.value?.nextPage ?? null)
 const previousPage = computed(() => response.value?.previousPage ?? null)
 const canGoPrevious = computed(() => page.value > 1 && !isLoading.value)
 const canGoNext = computed(() => page.value < totalPages.value && !isLoading.value)
-const vibeRootContractSnapshot = computed(() => {
+const vibeContractSnapshot = computed(() => {
   if (!response.value) {
     return null
   }
@@ -290,8 +290,8 @@ function getDebugItemIcon(item: FakeMediaItem) {
           </div>
 
           <div class="border border-white/12 bg-black/72 p-4 shadow-[0_24px_60px_-42px_rgba(0,0,0,0.88)]">
-            <p class="text-[0.68rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/42">VibeRoot callback shape</p>
-            <pre data-testid="fake-server-callback-snapshot" class="mt-3 overflow-auto text-xs leading-6 text-[#f7f1ea]/78">{{ JSON.stringify(vibeRootContractSnapshot, null, 2) }}</pre>
+            <p class="text-[0.68rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/42">Vibe callback shape</p>
+            <pre data-testid="fake-server-callback-snapshot" class="mt-3 overflow-auto text-xs leading-6 text-[#f7f1ea]/78">{{ JSON.stringify(vibeContractSnapshot, null, 2) }}</pre>
           </div>
 
           <div class="border border-white/10 bg-black/20 p-4">
@@ -300,7 +300,7 @@ function getDebugItemIcon(item: FakeMediaItem) {
               <li>Every item exposes `id`, `type`, `url`, and optionally `title` and `preview`.</li>
               <li>`type` is capped at `image`, `video`, `audio`, and `other`.</li>
               <li>Consumers can keep richer subtype fields and provide a custom `item-icon` slot for `other` items.</li>
-              <li>`VibeRoot` consumes a strict callback result of `items`, `nextPage`, and optional `previousPage`.</li>
+              <li>`Vibe` consumes a strict callback result of `items`, `nextPage`, and optional `previousPage`.</li>
               <li>Main `width` and `height` describe the main `url` asset, not preview-first dimensions.</li>
               <li>Preview dimensions only appear under `preview.width` and `preview.height`.</li>
               <li>The viewer can consume the same item objects without mime, file-size, or timestamp fields.</li>

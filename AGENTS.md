@@ -36,7 +36,7 @@ npm run build:types
 - Source overview: `src/` → see `src/AGENTS.md`
 - Public entrypoint: `src/index.ts`
 - Demo shell: `src/App.vue`
-- Public components: `src/components/VibeRoot.vue`
+- Public components: `src/components/Vibe.vue`
 
 ## Definition of Done
 

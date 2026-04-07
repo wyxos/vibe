@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getRenderedItems, getRenderedRange, getVirtualSlideStyle } from '@/components/vibe-root/virtualization'
+import { getRenderedItems, getRenderedRange, getVirtualSlideStyle } from '@/components/viewer-core/virtualization'
 
 const createItems = (count: number) =>
   Array.from({ length: count }, (_, index) => ({

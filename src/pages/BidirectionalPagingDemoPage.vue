@@ -3,9 +3,9 @@ import type { Component } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Laugh, Heart, ThumbsDown, ThumbsUp } from 'lucide-vue-next'
 
-import VibeRoot from '@/components/VibeRoot.vue'
-import type { VibeViewerItem } from '@/components/vibeViewer'
-import type { VibeRootHandle } from '@/components/vibe-root/useVibeRoot'
+import Vibe from '@/components/Vibe.vue'
+import type { VibeViewerItem } from '@/components/viewer'
+import type { VibeHandle } from '@/components/viewer-core/useViewer'
 import { getFakeMediaItemIcon } from '@/demo/fakeMediaItemIcon'
 import { fetchFakeMediaPage } from '@/demo/fakeServer'
 
@@ -29,13 +29,13 @@ const isLoadingInitial = ref(true)
 const isPrefetchingNext = ref(false)
 const isPrefetchingPrevious = ref(false)
 const errorMessage = ref<string | null>(null)
-const vibeRootRef = ref<VibeRootHandle | null>(null)
+const vibeRef = ref<VibeHandle | null>(null)
 
 const loadedPages = new Set<string>()
 const inFlightPages = new Set<string>()
 
 const isViewerLoading = computed(() => isLoadingInitial.value || isPrefetchingNext.value || isPrefetchingPrevious.value)
-const vibeStatus = computed(() => vibeRootRef.value?.status ?? null)
+const vibeStatus = computed(() => vibeRef.value?.status ?? null)
 const currentVisiblePage = computed(() => {
   if (earliestLoadedPage.value == null || items.value.length === 0) {
     return INITIAL_PAGE
@@ -232,7 +232,7 @@ function renderItemIcon(item: VibeViewerItem, icon: unknown) {
 }
 
 function removeItemById(id: string) {
-  vibeRootRef.value?.remove(id)
+  vibeRef.value?.remove(id)
 }
 
 function onWindowKeydown(event: KeyboardEvent) {
@@ -250,7 +250,7 @@ function onWindowKeydown(event: KeyboardEvent) {
   }
 
   event.preventDefault()
-  vibeRootRef.value?.undo()
+  vibeRef.value?.undo()
 }
 </script>
 
@@ -272,8 +272,8 @@ function onWindowKeydown(event: KeyboardEvent) {
       {{ errorMessage }}
     </div>
 
-    <VibeRoot
-      ref="vibeRootRef"
+    <Vibe
+      ref="vibeRef"
       :items="items"
       :active-index="activeIndex"
       :loading="isViewerLoading"
@@ -330,6 +330,6 @@ function onWindowKeydown(event: KeyboardEvent) {
           </div>
         </div>
       </template>
-    </VibeRoot>
+    </Vibe>
   </section>
 </template>

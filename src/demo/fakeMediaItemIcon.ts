@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
 import { Boxes, Database, FileArchive, FileText } from 'lucide-vue-next'
 
-import type { VibeViewerItem } from '@/components/vibeViewer'
+import type { VibeViewerItem } from '@/components/viewer'
 
 export type FakeMediaFileKind = 'archive' | 'copy' | 'dataset' | 'document' | 'legal' | 'model'
 

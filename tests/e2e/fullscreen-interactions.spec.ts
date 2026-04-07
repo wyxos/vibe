@@ -8,9 +8,9 @@ test('mobile fullscreen supports touch-style swipe navigation in both directions
 
   await gotoRoute(page, '/')
 
-  const root = page.getByTestId('vibe-root')
+  const root = page.getByTestId('vibe')
   const stage = root.locator(':scope > div').first()
-  const progress = page.getByTestId('vibe-root-pagination')
+  const progress = page.getByTestId('vibe-pagination')
 
   await expect(root).toHaveAttribute('data-surface-mode', 'fullscreen')
   await expect(stage).toBeVisible()

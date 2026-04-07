@@ -21,7 +21,7 @@ test('fake-server debug route paginates and shows response metadata', async ({ p
   await expect(cards).toHaveCount(25)
   await expect(page.getByText('Main dimensions').first()).toBeVisible()
   await expect(page.getByText('Preview dimensions').first()).toBeVisible()
-  await expect(page.getByText('VibeRoot callback shape')).toBeVisible()
+  await expect(page.getByText('Vibe callback shape')).toBeVisible()
 
   await nextButton.click()
 
@@ -40,9 +40,9 @@ test('bidirectional paging demo prepends earlier pages when navigating upward', 
 
   await gotoRoute(page, '/demo/advanced-integration')
 
-  const root = page.getByTestId('vibe-root')
-  const listSurface = page.getByTestId('vibe-root-list-surface')
-  const progress = listSurface.getByTestId('vibe-root-pagination')
+  const root = page.getByTestId('vibe')
+  const listSurface = page.getByTestId('vibe-list-surface')
+  const progress = listSurface.getByTestId('vibe-pagination')
   const listScroll = listSurface.getByTestId('vibe-list-scroll')
 
   await expect(root).toHaveAttribute('data-surface-mode', 'list')
@@ -101,8 +101,8 @@ test('bidirectional paging demo reactions remove an item and Ctrl+Z restores it'
 
   await gotoRoute(page, '/demo/advanced-integration')
 
-  const listSurface = page.getByTestId('vibe-root-list-surface')
-  const progress = listSurface.getByTestId('vibe-root-pagination')
+  const listSurface = page.getByTestId('vibe-list-surface')
+  const progress = listSurface.getByTestId('vibe-pagination')
   const firstCard = listSurface.locator('[data-testid="vibe-list-card"][data-index="14"]')
   const firstCardInner = firstCard.getByTestId('vibe-list-card-inner')
   const statusBar = page.getByTestId('advanced-demo-status-bar')
@@ -138,7 +138,7 @@ test('advanced integration demo footer bar is only visible in grid mode', async 
 
   await gotoRoute(page, '/demo/advanced-integration')
 
-  const root = page.getByTestId('vibe-root')
+  const root = page.getByTestId('vibe')
   const statusBar = page.getByTestId('advanced-demo-status-bar')
   const firstCardButton = page.locator('[data-testid="vibe-list-card"][data-index="14"] button').first()
 

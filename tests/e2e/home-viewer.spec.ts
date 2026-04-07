@@ -30,9 +30,9 @@ test('desktop home viewer starts in the masonry list and virtualizes visible car
 
   await gotoRoute(page, '/')
 
-  const root = page.getByTestId('vibe-root')
-  const listSurface = page.getByTestId('vibe-root-list-surface')
-  const progress = listSurface.getByTestId('vibe-root-pagination')
+  const root = page.getByTestId('vibe')
+  const listSurface = page.getByTestId('vibe-list-surface')
+  const progress = listSurface.getByTestId('vibe-pagination')
   const cards = listSurface.getByTestId('vibe-list-card')
 
   await expect(root).toBeVisible()
@@ -58,11 +58,11 @@ test('desktop home viewer opens fullscreen from a tile and can return to the lis
 
   await gotoRoute(page, '/')
 
-  const root = page.getByTestId('vibe-root')
-  const listSurface = page.getByTestId('vibe-root-list-surface')
-  const fullscreenSurface = page.getByTestId('vibe-root-fullscreen-surface')
+  const root = page.getByTestId('vibe')
+  const listSurface = page.getByTestId('vibe-list-surface')
+  const fullscreenSurface = page.getByTestId('vibe-fullscreen-surface')
   const cards = listSurface.getByTestId('vibe-list-card')
-  const progress = fullscreenSurface.getByTestId('vibe-root-pagination')
+  const progress = fullscreenSurface.getByTestId('vibe-pagination')
 
   await expect(root).toHaveAttribute('data-surface-mode', 'list')
   await expect(listSurface).toHaveAttribute('data-visible', 'true')
@@ -75,14 +75,14 @@ test('desktop home viewer opens fullscreen from a tile and can return to the lis
   await expect(listSurface).toHaveAttribute('data-visible', 'false')
   await expect(fullscreenSurface).toHaveAttribute('data-visible', 'true')
   await expect(progress).toContainText('2 / 25')
-  await expect(page.getByTestId('vibe-root-back-to-list')).toBeVisible()
+  await expect(page.getByTestId('vibe-back-to-list')).toBeVisible()
 
-  await page.getByTestId('vibe-root-back-to-list').click()
+  await page.getByTestId('vibe-back-to-list').click()
 
   await expect(root).toHaveAttribute('data-surface-mode', 'list')
   await expect(listSurface).toHaveAttribute('data-visible', 'true')
   await expect(fullscreenSurface).toHaveAttribute('data-visible', 'false')
-  await expect(page.getByTestId('vibe-root-back-to-list')).toHaveCount(0)
+  await expect(page.getByTestId('vibe-back-to-list')).toHaveCount(0)
 })
 
 test('desktop fullscreen returns to grid mode when Escape is pressed', async ({ page }) => {
@@ -93,9 +93,9 @@ test('desktop fullscreen returns to grid mode when Escape is pressed', async ({ 
 
   await gotoRoute(page, '/')
 
-  const root = page.getByTestId('vibe-root')
-  const listSurface = page.getByTestId('vibe-root-list-surface')
-  const fullscreenSurface = page.getByTestId('vibe-root-fullscreen-surface')
+  const root = page.getByTestId('vibe')
+  const listSurface = page.getByTestId('vibe-list-surface')
+  const fullscreenSurface = page.getByTestId('vibe-fullscreen-surface')
   const cards = listSurface.getByTestId('vibe-list-card')
 
   await expect(root).toHaveAttribute('data-surface-mode', 'list')
@@ -112,7 +112,7 @@ test('desktop fullscreen returns to grid mode when Escape is pressed', async ({ 
   await expect(root).toHaveAttribute('data-surface-mode', 'list')
   await expect(listSurface).toHaveAttribute('data-visible', 'true')
   await expect(fullscreenSurface).toHaveAttribute('data-visible', 'false')
-  await expect(page.getByTestId('vibe-root-back-to-list')).toHaveCount(0)
+  await expect(page.getByTestId('vibe-back-to-list')).toHaveCount(0)
 })
 
 test('desktop home viewer auto-loads the next page and keeps the list virtualized after returning', async ({ page }) => {
@@ -123,11 +123,11 @@ test('desktop home viewer auto-loads the next page and keeps the list virtualize
 
   await gotoRoute(page, '/')
 
-  const root = page.getByTestId('vibe-root')
-  const listSurface = page.getByTestId('vibe-root-list-surface')
-  const fullscreenSurface = page.getByTestId('vibe-root-fullscreen-surface')
-  const listProgress = listSurface.getByTestId('vibe-root-pagination')
-  const fullscreenProgress = fullscreenSurface.getByTestId('vibe-root-pagination')
+  const root = page.getByTestId('vibe')
+  const listSurface = page.getByTestId('vibe-list-surface')
+  const fullscreenSurface = page.getByTestId('vibe-fullscreen-surface')
+  const listProgress = listSurface.getByTestId('vibe-pagination')
+  const fullscreenProgress = fullscreenSurface.getByTestId('vibe-pagination')
   const cards = listSurface.getByTestId('vibe-list-card')
 
   await expect(root).toHaveAttribute('data-surface-mode', 'list')
@@ -143,7 +143,7 @@ test('desktop home viewer auto-loads the next page and keeps the list virtualize
   }
 
   await expect.poll(async () => normalizeWhitespace(await fullscreenProgress.textContent())).toContain('/ 50')
-  await page.getByTestId('vibe-root-back-to-list').click()
+  await page.getByTestId('vibe-back-to-list').click()
   await expect(root).toHaveAttribute('data-surface-mode', 'list')
   await expect.poll(async () => cards.count()).toBeLessThan(50)
 })
@@ -156,9 +156,9 @@ test('desktop masonry list scroll loads one page per bottom hit', async ({ page 
 
   await gotoRoute(page, '/')
 
-  const root = page.getByTestId('vibe-root')
-  const listSurface = page.getByTestId('vibe-root-list-surface')
-  const progress = listSurface.getByTestId('vibe-root-pagination')
+  const root = page.getByTestId('vibe')
+  const listSurface = page.getByTestId('vibe-list-surface')
+  const progress = listSurface.getByTestId('vibe-pagination')
   const scrollViewport = listSurface.getByTestId('vibe-list-scroll')
 
   await expect(root).toHaveAttribute('data-surface-mode', 'list')
@@ -220,9 +220,9 @@ test('desktop fullscreen seekbar moves the active video forward instead of snapp
 
   await gotoRoute(page, '/')
 
-  const root = page.getByTestId('vibe-root')
-  const listSurface = page.getByTestId('vibe-root-list-surface')
-  const fullscreenSurface = page.getByTestId('vibe-root-fullscreen-surface')
+  const root = page.getByTestId('vibe')
+  const listSurface = page.getByTestId('vibe-list-surface')
+  const fullscreenSurface = page.getByTestId('vibe-fullscreen-surface')
   const videoCard = listSurface.locator('[data-testid="vibe-list-card"][data-index="1"]')
 
   await expect(root).toHaveAttribute('data-surface-mode', 'list')
@@ -261,10 +261,10 @@ test('desktop fullscreen responds to wheel navigation and video click play/pause
 
   await gotoRoute(page, '/')
 
-  const root = page.getByTestId('vibe-root')
-  const listSurface = page.getByTestId('vibe-root-list-surface')
-  const fullscreenSurface = page.getByTestId('vibe-root-fullscreen-surface')
-  const progress = fullscreenSurface.getByTestId('vibe-root-pagination')
+  const root = page.getByTestId('vibe')
+  const listSurface = page.getByTestId('vibe-list-surface')
+  const fullscreenSurface = page.getByTestId('vibe-fullscreen-surface')
+  const progress = fullscreenSurface.getByTestId('vibe-pagination')
   const videoCard = listSurface.locator('[data-testid="vibe-list-card"][data-index="1"]')
   const activeVideo = fullscreenSurface.locator('[data-active="true"] video')
 
@@ -297,9 +297,9 @@ test('desktop fullscreen audio cover toggles play/pause and seekbar updates curr
 
   await gotoRoute(page, '/')
 
-  const root = page.getByTestId('vibe-root')
-  const listSurface = page.getByTestId('vibe-root-list-surface')
-  const fullscreenSurface = page.getByTestId('vibe-root-fullscreen-surface')
+  const root = page.getByTestId('vibe')
+  const listSurface = page.getByTestId('vibe-list-surface')
+  const fullscreenSurface = page.getByTestId('vibe-fullscreen-surface')
   const imageCard = listSurface.locator('[data-testid="vibe-list-card"][data-index="0"]')
 
   await expect(root).toHaveAttribute('data-surface-mode', 'list')
@@ -367,8 +367,8 @@ test('desktop grid previews use the preview asset and fullscreen waits for the o
 
   await gotoRoute(page, '/')
 
-  const root = page.getByTestId('vibe-root')
-  const fullscreenSurface = page.getByTestId('vibe-root-fullscreen-surface')
+  const root = page.getByTestId('vibe')
+  const fullscreenSurface = page.getByTestId('vibe-fullscreen-surface')
   const previewCard = page.locator('[data-testid="vibe-list-card"][data-index="0"]')
   const previewImage = previewCard.locator('img')
   const fullscreenImage = fullscreenSurface.locator('[data-active="true"] img')
@@ -381,10 +381,10 @@ test('desktop grid previews use the preview asset and fullscreen waits for the o
   await expect(root).toHaveAttribute('data-surface-mode', 'fullscreen')
   await expect(fullscreenImage).toHaveAttribute('src', originalUrl, { timeout: 15_000 })
   await expect(fullscreenImage).toHaveClass(/opacity-0/)
-  await expect(fullscreenSurface.getByTestId('vibe-root-asset-spinner')).toBeVisible()
+  await expect(fullscreenSurface.getByTestId('vibe-asset-spinner')).toBeVisible()
   originalResponseGate.resolve()
   await expect.poll(async () => fullscreenImage.evaluate((image) => getComputedStyle(image).opacity)).toBe('1')
-  await expect(fullscreenSurface.getByTestId('vibe-root-asset-spinner')).toHaveCount(0)
+  await expect(fullscreenSurface.getByTestId('vibe-asset-spinner')).toHaveCount(0)
 })
 
 test('mobile home viewer always boots in fullscreen mode', async ({ page }) => {
@@ -395,8 +395,8 @@ test('mobile home viewer always boots in fullscreen mode', async ({ page }) => {
 
   await gotoRoute(page, '/')
 
-  const root = page.getByTestId('vibe-root')
-  const progress = page.getByTestId('vibe-root-pagination')
+  const root = page.getByTestId('vibe')
+  const progress = page.getByTestId('vibe-pagination')
 
   await expect(root).toHaveAttribute('data-surface-mode', 'fullscreen')
   await expect(page.getByTestId('vibe-list-scroll')).toHaveCount(0)

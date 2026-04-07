@@ -1,4 +1,4 @@
-import type { VibeViewerAsset, VibeViewerItem, VibeViewerType } from '@/components/vibeViewer'
+import type { VibeViewerAsset, VibeViewerItem, VibeViewerType } from '@/components/viewer'
 
 import { fakeMediaFileItems } from '@/demo/fakeMediaFileItems'
 import { fakeMediaVisualItems } from '@/demo/fakeMediaVisualItems'

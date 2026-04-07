@@ -1,4 +1,4 @@
-import type { VibeViewerItem } from '@/components/vibeViewer'
+import type { VibeViewerItem } from '@/components/viewer'
 
 const FLOWER_VIDEO_URL = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
 

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import type { VibeViewerItem } from '@/components/vibeViewer'
+import type { VibeViewerItem } from '@/components/viewer'
 
-import { getListRenderableAsset } from '@/components/vibe-root/listPreview'
+import { getListRenderableAsset } from '@/components/viewer-core/listPreview'
 
 describe('listPreview', () => {
   it('prefers the preview asset for image tiles', () => {

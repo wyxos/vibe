@@ -30,16 +30,17 @@ npm run build:types
 
 The package currently exports a single placeholder component and plugin from `src/index.ts`:
 
-- `VibeRoot`
+- `VibeInstance`
+- `Vibe`
 - `VibePlugin`
-- default export: `VibeRoot`
+- default export: `Vibe`
 
 Compiled CSS is emitted to `lib/style.css` during the library build.
 
 ## Project layout
 
 - `src/App.vue`: blank demo shell
-- `src/components/VibeRoot.vue`: placeholder exported component
+- `src/components/Vibe.vue`: placeholder exported component
 - `src/index.ts`: package entrypoint
 - `src/style.css`: Tailwind import and app-level styles
 - `vite.config.ts`: demo build config
