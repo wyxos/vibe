@@ -14,6 +14,7 @@ test('workspace header opens a right-side menu with navigation routes', async ({
   await menuButton.click()
 
   await expect(menuSheet).toHaveAttribute('data-open', 'true')
+  await expect(menuSheet.getByRole('link', { name: 'Documentation' })).toBeVisible()
   await expect(menuSheet.getByRole('link', { name: 'Advanced Integration Demo' })).toBeVisible()
 
   await menuSheet.getByRole('link', { name: 'Advanced Integration Demo' }).click()

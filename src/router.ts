@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import BidirectionalPagingDemoPage from '@/pages/BidirectionalPagingDemoPage.vue'
+import DocumentationPage from '@/pages/DocumentationPage.vue'
 import FakeServerDebugPage from '@/pages/FakeServerDebugPage.vue'
 import HomePage from '@/pages/HomePage.vue'
 import WorkspaceLayout from '@/pages/WorkspaceLayout.vue'
@@ -19,6 +20,11 @@ export const router = createRouter({
           path: '',
           name: 'home',
           component: HomePage,
+        },
+        {
+          path: 'documentation',
+          name: 'documentation',
+          component: DocumentationPage,
         },
         {
           path: 'demo/advanced-integration',

@@ -1,0 +1,339 @@
+import type { DocumentationCodeLanguage } from '@/demo/documentationCode'
+
+export interface DocumentationSection {
+  id: string
+  label: string
+  title: string
+  description: string[]
+  code: string
+  language: DocumentationCodeLanguage
+  notes?: string[]
+}
+
+export interface DocumentationGroup {
+  title: string
+  items: DocumentationSection[]
+}
+
+export const documentationGroups: DocumentationGroup[] = [
+  {
+    title: 'Getting Started',
+    items: [
+      {
+        id: 'installation',
+        label: 'Installation',
+        title: 'Installation',
+        description: [
+          'Install the package and import the bundled stylesheet once in your app entry.',
+          'The package ships its own compiled CSS, so you do not need Tailwind scanning for the component styles.',
+        ],
+        code: `npm i @wyxos/vibe`,
+        language: 'bash',
+      },
+      {
+        id: 'quick-start',
+        label: 'Quick Start',
+        title: 'Quick Start',
+        description: [
+          'The default export is the plugin, so the shortest setup is plugin-first.',
+          'That registers the global component as VibeLayout.',
+        ],
+        code: `import { createApp } from 'vue'
+import App from './App.vue'
+
+import Vibe from '@wyxos/vibe'
+import '@wyxos/vibe/style.css'
+
+createApp(App)
+  .use(Vibe)
+  .mount('#app')`,
+        language: 'ts',
+      },
+    ],
+  },
+  {
+    title: 'Data Flow',
+    items: [
+      {
+        id: 'item-contract',
+        label: 'Item Contract',
+        title: 'Item Contract',
+        description: [
+          'Vibe only needs a small media contract: id, type, url, and optional title, preview, and dimensions.',
+          'The type surface is intentionally capped at image, video, audio, and other.',
+        ],
+        code: `type VibeViewerItem = {
+  id: string
+  type: 'image' | 'video' | 'audio' | 'other'
+  title?: string
+  url: string
+  width?: number
+  height?: number
+  preview?: {
+    url: string
+    width?: number
+    height?: number
+  }
+  [key: string]: unknown
+}`,
+        language: 'ts',
+        notes: [
+          'Grid prefers preview.url, then falls back to url.',
+          'Fullscreen uses url.',
+          'Grid layout prefers preview dimensions, then root dimensions, then a square fallback tile.',
+        ],
+      },
+      {
+        id: 'auto-resolve',
+        label: 'Auto Resolve',
+        title: 'Auto Resolve',
+        description: [
+          'Use resolve when you want Vibe to own the common paging loop internally.',
+          'The cursor is opaque, so the app can return page numbers or string cursors.',
+        ],
+        code: `import {
+  VibeLayout,
+  type VibeResolveParams,
+  type VibeResolveResult,
+} from '@wyxos/vibe'
+
+async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeResolveResult> {
+  const response = await fetch(\`/api/feed?cursor=\${cursor ?? ''}&pageSize=\${pageSize}\`)
+  return await response.json()
+}
+
+<VibeLayout :resolve="resolve" />`,
+        language: 'vue',
+        notes: [
+          'Resolve must return items and nextPage.',
+          'previousPage is optional and enables previous-page loading.',
+        ],
+      },
+      {
+        id: 'controlled-mode',
+        label: 'Controlled Mode',
+        title: 'Controlled Mode',
+        description: [
+          'Use controlled mode when the app owns aggregation, paging policy, or feed state outside the component.',
+          'The component still manages rendering, navigation, fullscreen, removal state, and grid behavior.',
+        ],
+        code: `<script setup lang="ts">
+import { ref } from 'vue'
+import { VibeLayout, type VibeViewerItem } from '@wyxos/vibe'
+
+const items = ref<VibeViewerItem[]>([])
+const activeIndex = ref(0)
+const loading = ref(false)
+const hasNextPage = ref(true)
+const hasPreviousPage = ref(false)
+
+async function requestNextPage() {}
+async function requestPreviousPage() {}
+</script>
+
+<template>
+  <VibeLayout
+    :items="items"
+    :active-index="activeIndex"
+    :loading="loading"
+    :has-next-page="hasNextPage"
+    :has-previous-page="hasPreviousPage"
+    :request-next-page="requestNextPage"
+    :request-previous-page="requestPreviousPage"
+    @update:active-index="activeIndex = $event"
+  />
+</template>`,
+        language: 'vue',
+      },
+    ],
+  },
+  {
+    title: 'Customization',
+    items: [
+      {
+        id: 'item-icon',
+        label: 'Item Icon',
+        title: 'Item Icon Slot',
+        description: [
+          'Use item-icon when the app wants to customize icons, especially for richer other subtypes.',
+          'The slot receives the current item and Vibe’s fallback icon component.',
+        ],
+        code: `<VibeLayout :resolve="resolve">
+  <template #item-icon="{ item, icon }">
+    <component :is="item.type === 'other' ? MyCustomIcon : icon" />
+  </template>
+</VibeLayout>`,
+        language: 'vue',
+      },
+      {
+        id: 'grid-overlay',
+        label: 'Grid Overlay',
+        title: 'Grid Overlay Slot',
+        description: [
+          'Use grid-item-overlay to add per-item controls such as reactions, moderation actions, or badges.',
+          'The overlay runs on desktop grid mode only and receives hover, focus, and openFullscreen helpers.',
+        ],
+        code: `<VibeLayout :resolve="resolve">
+  <template #grid-item-overlay="{ item, hovered }">
+    <div v-if="hovered" class="absolute inset-x-0 bottom-0 p-3">
+      <div class="pointer-events-auto bg-black/45 px-3 py-2 backdrop-blur">
+        <button type="button">Like {{ item.title }}</button>
+      </div>
+    </div>
+  </template>
+</VibeLayout>`,
+        language: 'vue',
+      },
+      {
+        id: 'grid-footer',
+        label: 'Grid Footer',
+        title: 'Grid Footer Slot',
+        description: [
+          'Use grid-footer to render app-owned UI under the masonry surface.',
+          'This is useful for status bars, feed telemetry, or context-specific actions.',
+        ],
+        code: `<VibeLayout ref="vibe" :resolve="resolve">
+  <template #grid-footer>
+    <div class="bg-black/55 px-4 py-3 backdrop-blur">
+      Items loaded: {{ vibe?.status.itemCount ?? 0 }}
+    </div>
+  </template>
+</VibeLayout>`,
+        language: 'vue',
+      },
+    ],
+  },
+  {
+    title: 'API Reference',
+    items: [
+      {
+        id: 'api-components',
+        label: 'Components',
+        title: 'Components',
+        description: [
+          'The package exports a plugin-first surface and a named component export.',
+          'Use the plugin for global registration or import VibeLayout directly for local registration.',
+        ],
+        code: `import Vibe, { VibeLayout, VibePlugin } from '@wyxos/vibe'
+
+app.use(Vibe)
+// or
+app.use(VibePlugin)
+// or direct component usage
+// <VibeLayout />`,
+        language: 'ts',
+      },
+      {
+        id: 'api-props',
+        label: 'Props',
+        title: 'Props',
+        description: [
+          'VibeLayout supports two prop modes: auto mode with resolve, and controlled mode with items.',
+          'resolve and items are mutually exclusive.',
+        ],
+        code: `type VibeAutoProps = {
+  resolve: (params: VibeResolveParams) => Promise<VibeResolveResult>
+  initialCursor?: string | null
+  pageSize?: number
+}
+
+type VibeControlledProps = {
+  items: VibeViewerItem[]
+  activeIndex?: number
+  loading?: boolean
+  hasNextPage?: boolean
+  hasPreviousPage?: boolean
+  paginationDetail?: string | null
+  requestNextPage?: (() => void | Promise<void>) | null
+  requestPreviousPage?: (() => void | Promise<void>) | null
+}`,
+        language: 'ts',
+      },
+      {
+        id: 'api-events',
+        label: 'Events',
+        title: 'Events',
+        description: [
+          'The public event surface is intentionally small.',
+          'Use update:activeIndex to observe or control the active item index.',
+        ],
+        code: `<script setup lang="ts">
+import { ref } from 'vue'
+
+const activeIndex = ref(0)
+</script>
+
+<template>
+  <VibeLayout
+    :items="items"
+    :active-index="activeIndex"
+    @update:active-index="activeIndex = $event"
+  />
+</template>`,
+        language: 'vue',
+      },
+      {
+        id: 'api-slots',
+        label: 'Slots',
+        title: 'Slots',
+        description: [
+          'The current customization surface is slot-based and intentionally focused on grid and icon composition.',
+          'The slot names are item-icon, grid-item-overlay, and grid-footer.',
+        ],
+        code: `<VibeLayout :resolve="resolve">
+  <template #item-icon="{ item, icon }">
+    <component :is="icon" />
+  </template>
+
+  <template #grid-item-overlay="{ item, hovered }">
+    <div v-if="hovered">{{ item.title }}</div>
+  </template>
+
+  <template #grid-footer>
+    <div>Footer UI</div>
+  </template>
+</VibeLayout>`,
+        language: 'vue',
+      },
+      {
+        id: 'api-handle',
+        label: 'Handle',
+        title: 'Exposed Handle',
+        description: [
+          'VibeLayout exposes a handle for remove, restore, undo, and lightweight status inspection.',
+          'Removal works by item id and preserves original order when items are restored.',
+        ],
+        code: `import { ref } from 'vue'
+import type { VibeHandle } from '@wyxos/vibe'
+
+const vibe = ref<VibeHandle | null>(null)
+
+vibe.value?.remove(['item-2', 'item-5'])
+vibe.value?.undo()
+console.log(vibe.value?.status.itemCount)`,
+        language: 'ts',
+        notes: [
+          'Handle methods: remove, restore, undo, getRemovedIds, clearRemoved.',
+          'Status exposes activeIndex, loadState, itemCount, removedCount, surfaceMode, and next/previous availability.',
+        ],
+      },
+      {
+        id: 'api-types',
+        label: 'Types',
+        title: 'Types',
+        description: [
+          'The main public types are exported from the package entrypoint.',
+          'Import only the pieces your app needs: item contract, resolve contract, props, or handle.',
+        ],
+        code: `import type {
+  VibeViewerItem,
+  VibeResolveParams,
+  VibeResolveResult,
+  VibeProps,
+  VibeHandle,
+} from '@wyxos/vibe'`,
+        language: 'ts',
+      },
+    ],
+  },
+]
