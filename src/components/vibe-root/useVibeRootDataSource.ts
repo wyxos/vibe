@@ -1,7 +1,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 
 import type { VibeViewerItem } from '../vibeViewer'
-import { reconcileVibeOccurrenceKeys } from './itemIdentity'
+import { getVibeOccurrenceKey, reconcileVibeOccurrenceKeys } from './itemIdentity'
 import { useVibeRemovalState } from './removalState'
 
 export type { VibeRootHandle, VibeRootRemoveResult } from './removalState'
@@ -381,6 +381,7 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
   }
 
   function remove(ids: string | string[]) {
+    const anchorOccurrenceKey = getActiveOccurrenceKey()
     const result = removeRemovedIds(ids)
 
     if (!result.ids.length) {
@@ -390,38 +391,41 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
     if (isAutoMode.value && pendingAppendSourceItems.value.length > 0 && !filterRemovedItems(pendingAppendSourceItems.value, removedIds.value).length) {
       void commitPendingAppend()
     }
-    syncActiveIndexAfterVisibilityChange()
+    syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
 
     return result
   }
 
   function restore(ids: string | string[]) {
+    const anchorOccurrenceKey = getActiveOccurrenceKey()
     const result = restoreRemovedIds(ids)
 
     if (!result.ids.length) {
       return result
     }
 
-    syncActiveIndexAfterVisibilityChange()
+    syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
 
     return result
   }
 
   function undo() {
+    const anchorOccurrenceKey = getActiveOccurrenceKey()
     const result = undoRemovedIds()
 
     if (!result?.ids.length) {
       return result
     }
 
-    syncActiveIndexAfterVisibilityChange()
+    syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
 
     return result
   }
 
   function resetRemovedItems() {
+    const anchorOccurrenceKey = getActiveOccurrenceKey()
     clearRemoved()
-    syncActiveIndexAfterVisibilityChange()
+    syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
   }
 
   function setAutoPrefetchEnabled(nextValue: boolean) {
@@ -442,7 +446,12 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
     return resolvedItems.items
   }
 
-  function syncActiveIndexAfterVisibilityChange() {
+  function getActiveOccurrenceKey() {
+    const currentItem = items.value[clamp(activeIndex.value, 0, Math.max(0, items.value.length - 1))]
+    return currentItem ? getVibeOccurrenceKey(currentItem) : null
+  }
+
+  function syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey: string | null = null) {
     if (!items.value.length) {
       if (isAutoMode.value) {
         autoActiveIndex.value = 0
@@ -450,7 +459,10 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
       return
     }
 
-    const clampedIndex = clamp(activeIndex.value, 0, items.value.length - 1)
+    const anchoredIndex = anchorOccurrenceKey
+      ? items.value.findIndex((item) => getVibeOccurrenceKey(item) === anchorOccurrenceKey)
+      : -1
+    const clampedIndex = anchoredIndex >= 0 ? anchoredIndex : clamp(activeIndex.value, 0, items.value.length - 1)
     if (isAutoMode.value) {
       autoActiveIndex.value = clampedIndex
       return

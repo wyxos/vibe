@@ -411,6 +411,7 @@ describe('VibeRoot', () => {
 
     wrapper.unmount()
   })
+
 })
 
 function createImageItem(id: string, title?: string, overrides: Partial<VibeViewerItem> = {}): VibeViewerItem {

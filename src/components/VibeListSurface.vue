@@ -8,6 +8,7 @@ import { useVibeMasonryList } from './vibe-root/useVibeMasonryList'
 import VibeListCard from './VibeListCard.vue'
 
 const props = withDefaults(defineProps<{
+  active?: boolean
   activeIndex?: number
   commitPendingAppend?: (() => void | Promise<void>) | null
   hasNextPage?: boolean
@@ -20,6 +21,7 @@ const props = withDefaults(defineProps<{
   requestPreviousPage?: (() => void | Promise<void>) | null
   restoreToken: number
 }>(), {
+  active: true,
   activeIndex: 0,
   commitPendingAppend: null,
   hasNextPage: false,
@@ -31,6 +33,7 @@ const props = withDefaults(defineProps<{
   requestPreviousPage: null,
 })
 const slots = defineSlots<{
+  'grid-footer'?: () => unknown
   'grid-item-overlay'?: (props: {
     active: boolean
     focused: boolean
@@ -48,6 +51,7 @@ const emit = defineEmits<{
 }>()
 
 const list = useVibeMasonryList({
+  active: toRef(props, 'active'),
   items: toRef(props, 'items'),
   activeIndex: toRef(props, 'activeIndex'),
   loading: toRef(props, 'loading'),
@@ -132,7 +136,20 @@ const list = useVibeMasonryList({
       />
     </div>
 
-    <div v-if="list.footerStatusMessage.value" class="pointer-events-none absolute inset-x-0 bottom-0 z-[2] flex justify-center px-6 pb-6">
+    <div
+      v-if="slots['grid-footer']"
+      class="pointer-events-none absolute inset-x-0 bottom-0 z-[2] px-5 pb-5 sm:px-6"
+    >
+      <div class="mx-auto flex w-full max-w-[1600px] justify-center">
+        <slot name="grid-footer" />
+      </div>
+    </div>
+
+    <div
+      v-if="list.footerStatusMessage.value"
+      class="pointer-events-none absolute inset-x-0 bottom-0 z-[3] flex justify-center px-6"
+      :class="slots['grid-footer'] ? 'pb-24' : 'pb-6'"
+    >
       <span class="inline-flex items-center border border-white/14 bg-black/55 px-4 py-3 text-[0.7rem] font-bold uppercase tracking-[0.18em] text-[#f7f1ea]/72 backdrop-blur-[18px]">
         {{ list.footerStatusMessage.value }}
       </span>

@@ -10,6 +10,7 @@ import VibeListSurface from './VibeListSurface.vue'
 
 const props = defineProps<VibeRootProps>()
 const slots = defineSlots<{
+  'grid-footer'?: () => unknown
   'grid-item-overlay'?: (props: {
     active: boolean
     focused: boolean
@@ -96,6 +97,7 @@ defineExpose<VibeRootHandle>({
           class="absolute inset-0 z-[2]"
         >
           <VibeListSurface
+            :active="root.surfaceMode.value === 'list'"
             :items="root.items.value"
             :active-index="root.activeIndex.value"
             :loading="root.loading.value"
@@ -110,6 +112,9 @@ defineExpose<VibeRootHandle>({
             @open-fullscreen="root.openFullscreen"
             @update:active-index="root.setActiveIndex"
           >
+            <template v-if="slots['grid-footer']" #grid-footer>
+              <slot name="grid-footer" />
+            </template>
             <template v-if="slots['grid-item-overlay']" #grid-item-overlay="slotProps">
               <slot name="grid-item-overlay" v-bind="slotProps" />
             </template>

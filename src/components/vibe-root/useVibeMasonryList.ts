@@ -29,6 +29,7 @@ const SCROLLBAR_MIN_THUMB_HEIGHT_PX = 48
 const PREPEND_MOVE_MOTION_MS = 500
 const EDGE_COOLDOWN_MS = 1000
 export function useVibeMasonryList(options: {
+  active: Ref<boolean>
   items: Ref<VibeViewerItem[]>
   activeIndex: Ref<number>
   loading: Ref<boolean>
@@ -96,7 +97,6 @@ export function useVibeMasonryList(options: {
     const progress = maxScrollTop > 0 ? clamp(scrollTop.value / maxScrollTop, 0, 1) : 0
     return SCROLLBAR_INSET_PX + maxThumbTravel * progress
   })
-
   const motion = useVibeMasonryMotion({
     items: options.items,
     visibleIndices: renderedIndices,
@@ -168,13 +168,11 @@ export function useVibeMasonryList(options: {
         await nextTick()
         preserveScrollAnchor(anchorId, oldPositionsById)
       }
-      else if (previousIds.length > 0) {
+      else if (options.active.value && previousIds.length > 0) {
         syncBoundaryIndexFromScroll()
       }
     },
-    {
-      immediate: true,
-    },
+    { immediate: true },
   )
 
   watch(
@@ -185,9 +183,7 @@ export function useVibeMasonryList(options: {
       reservedContentHeight.value = measureContentHeight([...options.items.value, ...options.pendingAppendItems.value])
       schedulePendingAppendCommit()
     },
-    {
-      immediate: true,
-    },
+    { immediate: true },
   )
 
   watch(
@@ -268,6 +264,7 @@ export function useVibeMasonryList(options: {
   }
 
   function onScroll() {
+    if (!options.active.value) return
     scrollTop.value = scrollViewportRef.value?.scrollTop ?? 0
     viewportHeight.value = getViewportHeight()
     previousPageBoundary.syncBoundary()
@@ -289,6 +286,7 @@ export function useVibeMasonryList(options: {
   }
 
   function onWheel(event: WheelEvent) {
+    if (!options.active.value) return
     previousPageBoundary.onWheel(event)
     nextPageBoundary.onWheel(event)
     maybeRequestMoreAtBoundary()
@@ -472,9 +470,7 @@ export function useVibeMasonryList(options: {
   }
 
   function clearAppendCommitTimer() {
-    if (!appendCommitTimer) {
-      return
-    }
+    if (!appendCommitTimer) return
     clearTimeout(appendCommitTimer)
     appendCommitTimer = null
   }

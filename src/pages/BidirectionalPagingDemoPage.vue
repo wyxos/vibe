@@ -99,7 +99,6 @@ const demoStatusEntries = computed(() => [
     value: String(vibeStatus.value?.itemCount ?? items.value.length),
   },
 ])
-const statusBarOffsetClass = computed(() => vibeStatus.value?.surfaceMode === 'fullscreen' ? 'bottom-24' : 'bottom-5')
 
 watch(
   () => items.value.length,
@@ -311,15 +310,11 @@ function onWindowKeydown(event: KeyboardEvent) {
       <template #item-icon="{ item, icon }">
         <component :is="renderItemIcon(item, icon)" class="h-6 w-6 stroke-[1.9]" aria-hidden="true" />
       </template>
-    </VibeRoot>
-
-    <div
-      data-testid="advanced-demo-status-bar"
-      class="pointer-events-none absolute inset-x-0 z-40 px-5 sm:px-6"
-      :class="statusBarOffsetClass"
-    >
-      <div class="mx-auto flex w-full max-w-[1600px] justify-center">
-        <div class="pointer-events-auto flex w-full max-w-[1120px] flex-wrap items-center justify-center gap-x-5 gap-y-2 border border-white/12 bg-black/55 px-4 py-3 backdrop-blur-[18px] sm:px-5">
+      <template #grid-footer>
+        <div
+          data-testid="advanced-demo-status-bar"
+          class="pointer-events-auto flex w-full max-w-[1120px] flex-wrap items-center justify-center gap-x-5 gap-y-2 border border-white/12 bg-black/55 px-4 py-3 backdrop-blur-[18px] sm:px-5"
+        >
           <div
             v-for="entry in demoStatusEntries"
             :key="entry.key"
@@ -334,7 +329,7 @@ function onWindowKeydown(event: KeyboardEvent) {
             </span>
           </div>
         </div>
-      </div>
-    </div>
+      </template>
+    </VibeRoot>
   </section>
 </template>

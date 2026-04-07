@@ -130,6 +130,27 @@ test('bidirectional paging demo reactions remove an item and Ctrl+Z restores it'
   await expect(page.getByTestId('advanced-demo-status-loaded-items')).toContainText('25')
 })
 
+test('advanced integration demo footer bar is only visible in grid mode', async ({ page }) => {
+  await page.setViewportSize({
+    width: 1_100,
+    height: 650,
+  })
+
+  await gotoRoute(page, '/demo/bidirectional-paging')
+
+  const root = page.getByTestId('vibe-root')
+  const statusBar = page.getByTestId('advanced-demo-status-bar')
+  const firstCardButton = page.locator('[data-testid="vibe-list-card"][data-index="14"] button').first()
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'list')
+  await expect(statusBar).toBeVisible({ timeout: 15_000 })
+
+  await firstCardButton.click()
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'fullscreen')
+  await expect(statusBar).toBeHidden()
+})
+
 function normalizeWhitespace(value: string | null) {
   return value?.replace(/\s+/g, ' ').trim() ?? ''
 }
