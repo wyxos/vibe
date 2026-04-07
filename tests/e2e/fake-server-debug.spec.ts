@@ -105,9 +105,16 @@ test('bidirectional paging demo reactions remove an item and Ctrl+Z restores it'
   const progress = listSurface.getByTestId('vibe-root-pagination')
   const firstCard = listSurface.locator('[data-testid="vibe-list-card"][data-index="14"]')
   const firstCardInner = firstCard.getByTestId('vibe-list-card-inner')
+  const statusBar = page.getByTestId('advanced-demo-status-bar')
 
   await expect(progress).toContainText('13 / 25', { timeout: 15_000 })
   await expect(firstCard).toBeVisible()
+  await expect(statusBar).toBeVisible()
+  await expect(page.getByTestId('advanced-demo-status-current-page')).toContainText('P10')
+  await expect(page.getByTestId('advanced-demo-status-next-page')).toContainText('P11')
+  await expect(page.getByTestId('advanced-demo-status-previous-page')).toContainText('P9')
+  await expect(page.getByTestId('advanced-demo-status-load-state')).toContainText('loaded')
+  await expect(page.getByTestId('advanced-demo-status-loaded-items')).toContainText('25')
 
   await firstCardInner.dispatchEvent('pointerenter')
   await expect(firstCardInner.getByTestId('demo-reaction-bar')).toBeVisible()
@@ -115,10 +122,12 @@ test('bidirectional paging demo reactions remove an item and Ctrl+Z restores it'
   await firstCardInner.getByTestId('demo-reaction-button').first().click()
 
   await expect.poll(async () => (await getPaginationState(progress)).total).toBe(24)
+  await expect(page.getByTestId('advanced-demo-status-loaded-items')).toContainText('24')
 
   await page.keyboard.press('Control+z')
 
   await expect.poll(async () => (await getPaginationState(progress)).total).toBe(25)
+  await expect(page.getByTestId('advanced-demo-status-loaded-items')).toContainText('25')
 })
 
 function normalizeWhitespace(value: string | null) {

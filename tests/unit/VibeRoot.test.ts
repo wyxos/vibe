@@ -378,6 +378,9 @@ describe('VibeRoot', () => {
     expect(typeof handle.remove).toBe('function')
     expect(typeof handle.restore).toBe('function')
     expect(typeof handle.undo).toBe('function')
+    expect(handle.status.itemCount).toBe(3)
+    expect(handle.status.loadState).toBe('loaded')
+    expect(handle.status.surfaceMode).toBe('list')
     expect(wrapper.findAll('[data-testid="vibe-list-card"]')).toHaveLength(3)
 
     expect(handle.remove('duplicate').ids).toEqual(['duplicate'])
@@ -385,12 +388,16 @@ describe('VibeRoot', () => {
 
     expect(wrapper.findAll('[data-testid="vibe-list-card"]')).toHaveLength(1)
     expect(handle.getRemovedIds()).toEqual(['duplicate'])
+    expect(handle.status.itemCount).toBe(1)
+    expect(handle.status.removedCount).toBe(1)
 
     expect(handle.undo()?.ids).toEqual(['duplicate'])
     await flushDom()
 
     expect(wrapper.findAll('[data-testid="vibe-list-card"]')).toHaveLength(3)
     expect(handle.getRemovedIds()).toEqual([])
+    expect(handle.status.itemCount).toBe(3)
+    expect(handle.status.removedCount).toBe(0)
 
     handle.remove('duplicate')
     await flushDom()
@@ -400,6 +407,7 @@ describe('VibeRoot', () => {
     await flushDom()
 
     expect(wrapper.findAll('[data-testid="vibe-list-card"]')).toHaveLength(3)
+    expect(handle.status.itemCount).toBe(3)
 
     wrapper.unmount()
   })

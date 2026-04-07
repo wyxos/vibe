@@ -4,11 +4,24 @@ export interface VibeRootRemoveResult {
   ids: string[]
 }
 
+export interface VibeRootStatus {
+  activeIndex: number
+  errorMessage: string | null
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+  isAutoMode: boolean
+  itemCount: number
+  loadState: 'failed' | 'loaded' | 'loading'
+  removedCount: number
+  surfaceMode: 'fullscreen' | 'list'
+}
+
 export interface VibeRootHandle {
   clearRemoved: () => void
   getRemovedIds: () => string[]
   remove: (ids: string | string[]) => VibeRootRemoveResult
   restore: (ids: string | string[]) => VibeRootRemoveResult
+  status: Readonly<VibeRootStatus>
   undo: () => VibeRootRemoveResult | null
 }
 

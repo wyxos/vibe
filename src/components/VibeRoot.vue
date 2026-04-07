@@ -32,6 +32,7 @@ defineExpose<VibeRootHandle>({
   getRemovedIds: root.getRemovedIds,
   remove: root.remove,
   restore: root.restore,
+  status: root.status,
   undo: root.undo,
 })
 </script>

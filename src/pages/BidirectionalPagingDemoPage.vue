@@ -35,6 +35,7 @@ const loadedPages = new Set<string>()
 const inFlightPages = new Set<string>()
 
 const isViewerLoading = computed(() => isLoadingInitial.value || isPrefetchingNext.value || isPrefetchingPrevious.value)
+const vibeStatus = computed(() => vibeRootRef.value?.status ?? null)
 const currentVisiblePage = computed(() => {
   if (earliestLoadedPage.value == null || items.value.length === 0) {
     return INITIAL_PAGE
@@ -56,6 +57,49 @@ const loadedPageRangeLabel = computed(() => {
 const paginationDetailLabel = computed(() => {
   return `${loadedPageRangeLabel.value} · V${currentVisiblePage.value}`
 })
+const demoStatusCurrentPage = computed(() => {
+  if (!vibeStatus.value || earliestLoadedPage.value == null || vibeStatus.value.itemCount === 0) {
+    return 'N/A'
+  }
+
+  return `P${earliestLoadedPage.value + Math.floor(vibeStatus.value.activeIndex / PAGE_SIZE)}`
+})
+const demoStatusLoadState = computed(() => {
+  return vibeStatus.value?.loadState ?? (isViewerLoading.value ? 'loading' : (errorMessage.value ? 'failed' : 'loaded'))
+})
+const demoStatusEntries = computed(() => [
+  {
+    key: 'current-page',
+    label: 'Viewing',
+    testId: 'advanced-demo-status-current-page',
+    value: demoStatusCurrentPage.value,
+  },
+  {
+    key: 'next-page',
+    label: 'Next',
+    testId: 'advanced-demo-status-next-page',
+    value: nextPage.value ? `P${nextPage.value}` : 'N/A',
+  },
+  {
+    key: 'previous-page',
+    label: 'Previous',
+    testId: 'advanced-demo-status-previous-page',
+    value: previousPage.value ? `P${previousPage.value}` : 'N/A',
+  },
+  {
+    key: 'load-state',
+    label: 'Status',
+    testId: 'advanced-demo-status-load-state',
+    value: demoStatusLoadState.value,
+  },
+  {
+    key: 'loaded-items',
+    label: 'Total',
+    testId: 'advanced-demo-status-loaded-items',
+    value: String(vibeStatus.value?.itemCount ?? items.value.length),
+  },
+])
+const statusBarOffsetClass = computed(() => vibeStatus.value?.surfaceMode === 'fullscreen' ? 'bottom-24' : 'bottom-5')
 
 watch(
   () => items.value.length,
@@ -268,5 +312,29 @@ function onWindowKeydown(event: KeyboardEvent) {
         <component :is="renderItemIcon(item, icon)" class="h-6 w-6 stroke-[1.9]" aria-hidden="true" />
       </template>
     </VibeRoot>
+
+    <div
+      data-testid="advanced-demo-status-bar"
+      class="pointer-events-none absolute inset-x-0 z-40 px-5 sm:px-6"
+      :class="statusBarOffsetClass"
+    >
+      <div class="mx-auto flex w-full max-w-[1600px] justify-center">
+        <div class="pointer-events-auto flex w-full max-w-[1120px] flex-wrap items-center justify-center gap-x-5 gap-y-2 border border-white/12 bg-black/55 px-4 py-3 backdrop-blur-[18px] sm:px-5">
+          <div
+            v-for="entry in demoStatusEntries"
+            :key="entry.key"
+            :data-testid="entry.testId"
+            class="flex items-baseline gap-2"
+          >
+            <span class="text-[0.6rem] font-bold uppercase tracking-[0.24em] text-[#f7f1ea]/46">
+              {{ entry.label }}
+            </span>
+            <span class="text-[0.72rem] font-medium uppercase tracking-[0.18em] text-[#f7f1ea]/82">
+              {{ entry.value }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 </template>

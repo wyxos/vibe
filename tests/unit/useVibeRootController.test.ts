@@ -22,6 +22,7 @@ vi.mock('@/components/vibe-root/useVibeRootDataSource', () => ({
     pendingAppendItems: dataSourceMock.pendingAppendItems,
     prefetchNextPage: dataSourceMock.prefetchNextPage,
     prefetchPreviousPage: dataSourceMock.prefetchPreviousPage,
+    removedCount: dataSourceMock.removedCount,
     retryInitialLoad: dataSourceMock.retryInitialLoad,
     setActiveIndex: dataSourceMock.setActiveIndex,
     setAutoPrefetchEnabled: dataSourceMock.setAutoPrefetchEnabled,
@@ -42,6 +43,7 @@ function createDataSourceMock() {
   const pendingAppendItems = ref<VibeViewerItem[]>([])
   const prefetchNextPage = vi.fn(async () => {})
   const prefetchPreviousPage = vi.fn(async () => {})
+  const removedCount = ref(0)
   const retryInitialLoad = vi.fn(async () => {})
   const setActiveIndex = vi.fn((nextIndex: number) => {
     activeIndex.value = nextIndex
@@ -62,6 +64,7 @@ function createDataSourceMock() {
     pendingAppendItems,
     prefetchNextPage,
     prefetchPreviousPage,
+    removedCount,
     retryInitialLoad,
     setActiveIndex,
     setAutoPrefetchEnabled,
@@ -229,6 +232,7 @@ function resetDataSourceMock() {
   dataSourceMock.pendingAppendItems.value = []
   dataSourceMock.prefetchNextPage.mockClear()
   dataSourceMock.prefetchPreviousPage.mockClear()
+  dataSourceMock.removedCount.value = 0
   dataSourceMock.retryInitialLoad.mockClear()
   dataSourceMock.setActiveIndex.mockClear()
   dataSourceMock.setAutoPrefetchEnabled.mockClear()

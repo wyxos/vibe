@@ -1,6 +1,7 @@
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, readonly, ref, watch, watchEffect } from 'vue'
 
 import { isEditableTarget } from './dom'
+import type { VibeRootStatus } from './removalState'
 import { useVibeRootDataSource, type VibeRootEmit, type VibeRootProps } from './useVibeRootDataSource'
 
 export const DESKTOP_BREAKPOINT_PX = 1024
@@ -12,6 +13,17 @@ export function useVibeRootController(props: Readonly<VibeRootProps>, emit: Vibe
   const viewportWidth = ref(0)
   const desktopSurface = ref<VibeDesktopSurface>('list')
   const listRestoreToken = ref(0)
+  const status = reactive<VibeRootStatus>({
+    activeIndex: 0,
+    errorMessage: null,
+    hasNextPage: false,
+    hasPreviousPage: false,
+    isAutoMode: false,
+    itemCount: 0,
+    loadState: 'loaded',
+    removedCount: 0,
+    surfaceMode: 'list',
+  })
 
   const isDesktop = computed(() => viewportWidth.value >= DESKTOP_BREAKPOINT_PX)
   const surfaceMode = computed<VibeDesktopSurface>(() => isDesktop.value ? desktopSurface.value : 'fullscreen')
@@ -46,6 +58,20 @@ export function useVibeRootController(props: Readonly<VibeRootProps>, emit: Vibe
       immediate: true,
     },
   )
+
+  watchEffect(() => {
+    status.activeIndex = dataSource.activeIndex.value
+    status.errorMessage = dataSource.errorMessage.value
+    status.hasNextPage = dataSource.hasNextPage.value
+    status.hasPreviousPage = dataSource.hasPreviousPage.value
+    status.isAutoMode = dataSource.isAutoMode.value
+    status.itemCount = dataSource.items.value.length
+    status.loadState = dataSource.loading.value
+      ? 'loading'
+      : (dataSource.errorMessage.value ? 'failed' : 'loaded')
+    status.removedCount = dataSource.removedCount.value
+    status.surfaceMode = surfaceMode.value
+  })
 
   onMounted(() => {
     updateViewportWidth()
@@ -101,6 +127,7 @@ export function useVibeRootController(props: Readonly<VibeRootProps>, emit: Vibe
     openFullscreen,
     returnToList,
     showBackToList,
+    status: readonly(status),
     surfaceMode,
   }
 }

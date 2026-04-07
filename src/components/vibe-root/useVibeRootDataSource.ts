@@ -101,6 +101,7 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
   )
   const hasNextPage = computed(() => isAutoMode.value ? Boolean(nextPage.value) : (controlledProps.hasNextPage ?? false))
   const hasPreviousPage = computed(() => isAutoMode.value ? Boolean(previousPage.value) : (controlledProps.hasPreviousPage ?? false))
+  const removedCount = computed(() => removedIds.value.size)
   const paginationDetail = computed(() => controlledProps.paginationDetail ?? null)
   const pendingAppendItems = computed(() => filterRemovedItems(pendingAppendSourceItems.value, removedIds.value))
   const canRetryInitialLoad = computed(() =>
@@ -476,6 +477,7 @@ export function useVibeRootDataSource(props: Readonly<VibeRootProps>, emit: Vibe
     pendingAppendItems,
     prefetchNextPage,
     prefetchPreviousPage,
+    removedCount,
     remove,
     restore,
     retryInitialLoad,
