@@ -265,6 +265,50 @@ describe('VibeRoot', () => {
     wrapper.unmount()
   })
 
+  it('forwards a grid overlay slot and keeps overlay actions from opening fullscreen', async () => {
+    setViewportWidth(1_280)
+
+    const overlayClick = vi.fn()
+    const wrapper = mount(VibeRoot, {
+      props: {
+        items: [createImageItem('image-overlay-slot', 'Overlay slot image')],
+      },
+      slots: {
+        'grid-item-overlay': ({ hovered }: { hovered: boolean }) =>
+          h(
+            'button',
+            {
+              class: 'pointer-events-auto',
+              'data-hovered': hovered ? 'true' : 'false',
+              'data-testid': 'grid-overlay-action',
+              onClick: overlayClick,
+            },
+            'Like',
+          ),
+      },
+    })
+
+    await flushDom()
+
+    await wrapper.get('[data-testid="vibe-list-card-inner"]').trigger('pointerenter')
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="grid-overlay-action"]').attributes('data-hovered')).toBe('true')
+
+    await wrapper.get('[data-testid="grid-overlay-action"]').trigger('click')
+    await flushDom()
+
+    expect(overlayClick).toHaveBeenCalledTimes(1)
+    expect(wrapper.get('[data-testid="vibe-root"]').attributes('data-surface-mode')).toBe('list')
+
+    await wrapper.get('[data-testid="vibe-list-card-open"]').trigger('click')
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="vibe-root"]').attributes('data-surface-mode')).toBe('fullscreen')
+
+    wrapper.unmount()
+  })
+
   it('renders list images even when the URL has no file extension', async () => {
     setViewportWidth(1_280)
 

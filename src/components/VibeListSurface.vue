@@ -30,6 +30,14 @@ const props = withDefaults(defineProps<{
   requestPreviousPage: null,
 })
 const slots = defineSlots<{
+  'grid-item-overlay'?: (props: {
+    active: boolean
+    focused: boolean
+    hovered: boolean
+    index: number
+    item: VibeViewerItem
+    openFullscreen: () => void
+  }) => unknown
   'item-icon'?: (props: { icon: Component; item: VibeViewerItem }) => unknown
 }>()
 
@@ -95,21 +103,19 @@ const list = useVibeMasonryList({
           class="absolute will-change-transform"
           :style="list.getCardStyle(index)"
         >
-          <button
-            type="button"
-            class="block h-full w-full cursor-pointer text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f7f1ea]"
-            :aria-label="item.title || `Open item ${index + 1}`"
-            @click="emit('open-fullscreen', index)"
+          <VibeListCard
+            :active="index === list.resolvedActiveIndex.value"
+            :index="index"
+            :item="item"
+            @open="emit('open-fullscreen', index)"
           >
-            <VibeListCard
-              :active="index === list.resolvedActiveIndex.value"
-              :item="item"
-            >
-              <template v-if="slots['item-icon']" #item-icon="slotProps">
-                <slot name="item-icon" v-bind="slotProps" />
-              </template>
-            </VibeListCard>
-          </button>
+            <template v-if="slots['grid-item-overlay']" #grid-item-overlay="slotProps">
+              <slot name="grid-item-overlay" v-bind="slotProps" />
+            </template>
+            <template v-if="slots['item-icon']" #item-icon="slotProps">
+              <slot name="item-icon" v-bind="slotProps" />
+            </template>
+          </VibeListCard>
         </article>
       </div>
     </div>

@@ -10,16 +10,33 @@ import { getVibeAssetErrorLabel, resolveVibeAssetErrorKind, type VibeAssetErrorK
 import { playMediaElement } from './vibe-root/mediaPlayback'
 import { defaultVibeAssetLoadQueue, type VibeAssetLoadLease } from './vibe-root/useVibeAssetLoadQueue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   active?: boolean
+  index?: number
   item: VibeViewerItem
+}>(), {
+  active: false,
+  index: 0,
+})
+const emit = defineEmits<{
+  open: []
 }>()
 defineSlots<{
+  'grid-item-overlay'?: (props: {
+    active: boolean
+    focused: boolean
+    hovered: boolean
+    index: number
+    item: VibeViewerItem
+    openFullscreen: () => void
+  }) => unknown
   'item-icon'?: (props: { icon: Component; item: VibeViewerItem }) => unknown
 }>()
 
 const renderableAsset = computed(() => getListRenderableAsset(props.item))
 const isInView = ref(false)
+const isFocused = ref(false)
+const isHovered = ref(false)
 const isReady = ref(renderableAsset.value.kind === 'fallback')
 const loadErrorKind = ref<VibeAssetErrorKind | null>(null)
 const imageRef = ref<HTMLImageElement | null>(null)
@@ -309,18 +326,49 @@ function normalizeAssetUrl(url: string | null) {
     return url
   }
 }
+
+function openFullscreen() {
+  emit('open')
+}
+
+function onFocusIn() {
+  isFocused.value = true
+}
+
+function onFocusOut(event: FocusEvent) {
+  const nextTarget = event.relatedTarget
+
+  if (rootRef.value && nextTarget instanceof Node && rootRef.value.contains(nextTarget)) {
+    return
+  }
+
+  isFocused.value = false
+}
 </script>
 
 <template>
   <div
     ref="rootRef"
+    data-testid="vibe-list-card-inner"
     class="group relative h-full w-full overflow-hidden border bg-[#0a0b0f] text-[#f7f1ea] transition-[border-color,transform] duration-300"
     :class="props.active ? 'border-white/28' : 'border-white/12 hover:border-white/24'"
+    @focusin="onFocusIn"
+    @focusout="onFocusOut"
+    @pointerenter="isHovered = true"
+    @pointerleave="isHovered = false"
   >
+    <button
+      type="button"
+      data-testid="vibe-list-card-open"
+      class="absolute inset-0 z-[1] block h-full w-full cursor-pointer text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f7f1ea]"
+      :aria-label="props.item.title || `Open item ${props.index + 1}`"
+      @click="openFullscreen"
+    />
+
     <div
       v-if="shouldShowSpinner"
       data-testid="vibe-list-card-spinner"
-      class="pointer-events-none absolute inset-0 z-[2] grid place-items-center bg-black/18"
+      class="pointer-events-none absolute inset-0 z-[4] grid place-items-center bg-black/18"
     >
       <span class="inline-flex h-12 w-12 items-center justify-center border border-white/14 bg-black/55 backdrop-blur-[18px]">
         <LoaderCircle class="h-5 w-5 animate-spin stroke-[1.9] text-[#f7f1ea]/78" aria-hidden="true" />
@@ -382,5 +430,16 @@ function normalizeAssetUrl(url: string | null) {
       </div>
     </div>
 
+    <div class="pointer-events-none absolute inset-0 z-[3]">
+      <slot
+        name="grid-item-overlay"
+        :active="props.active"
+        :focused="isFocused"
+        :hovered="isHovered"
+        :index="props.index"
+        :item="props.item"
+        :open-fullscreen="openFullscreen"
+      />
+    </div>
   </div>
 </template>

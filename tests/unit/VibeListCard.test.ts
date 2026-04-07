@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { nextTick } from 'vue'
+import { h, nextTick } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { resolveVibeAssetErrorKindMock } = vi.hoisted(() => ({
@@ -165,6 +165,58 @@ describe('VibeListCard', () => {
 
     expect(wrapper.get('[data-testid="vibe-list-card-error"]').attributes('data-kind')).toBe('not-found')
     expect(wrapper.text()).toContain('404')
+
+    wrapper.unmount()
+  })
+
+  it('exposes grid overlay slot state and does not treat overlay actions as open clicks', async () => {
+    const onOpen = vi.fn()
+    const onOverlayClick = vi.fn()
+
+    const wrapper = mount(VibeListCard, {
+      props: {
+        item: createImageItem('image-overlay'),
+        onOpen,
+      },
+      slots: {
+        'grid-item-overlay': ({ focused, hovered }: { focused: boolean; hovered: boolean }) =>
+          h(
+            'button',
+            {
+              class: 'pointer-events-auto',
+              'data-state': focused ? 'focused' : hovered ? 'hovered' : 'idle',
+              'data-testid': 'overlay-action',
+              onClick: onOverlayClick,
+            },
+            'React',
+          ),
+      },
+    })
+
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="overlay-action"]').attributes('data-state')).toBe('idle')
+
+    await wrapper.get('[data-testid="vibe-list-card-inner"]').trigger('pointerenter')
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="overlay-action"]').attributes('data-state')).toBe('hovered')
+
+    await wrapper.get('[data-testid="overlay-action"]').trigger('click')
+    await flushDom()
+
+    expect(onOverlayClick).toHaveBeenCalledTimes(1)
+    expect(onOpen).not.toHaveBeenCalled()
+
+    await wrapper.get('[data-testid="vibe-list-card-open"]').trigger('focusin')
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="overlay-action"]').attributes('data-state')).toBe('focused')
+
+    await wrapper.get('[data-testid="vibe-list-card-open"]').trigger('click')
+    await flushDom()
+
+    expect(onOpen).toHaveBeenCalledTimes(1)
 
     wrapper.unmount()
   })

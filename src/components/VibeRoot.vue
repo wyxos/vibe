@@ -10,6 +10,14 @@ import VibeListSurface from './VibeListSurface.vue'
 
 const props = defineProps<VibeRootProps>()
 const slots = defineSlots<{
+  'grid-item-overlay'?: (props: {
+    active: boolean
+    focused: boolean
+    hovered: boolean
+    index: number
+    item: VibeViewerItem
+    openFullscreen: () => void
+  }) => unknown
   'item-icon'?: (props: { icon: Component; item: VibeViewerItem }) => unknown
 }>()
 
@@ -93,6 +101,9 @@ const root = useVibeRootController(props, emit)
             @open-fullscreen="root.openFullscreen"
             @update:active-index="root.setActiveIndex"
           >
+            <template v-if="slots['grid-item-overlay']" #grid-item-overlay="slotProps">
+              <slot name="grid-item-overlay" v-bind="slotProps" />
+            </template>
             <template v-if="slots['item-icon']" #item-icon="slotProps">
               <slot name="item-icon" v-bind="slotProps" />
             </template>
