@@ -3,6 +3,7 @@ import type { Component } from 'vue'
 import { toRef } from 'vue'
 
 import type { VibeViewerItem } from './vibeViewer'
+import { getVibeOccurrenceKey } from './vibe-root/itemIdentity'
 import { useVibeMasonryList } from './vibe-root/useVibeMasonryList'
 import VibeListCard from './VibeListCard.vue'
 
@@ -95,11 +96,12 @@ const list = useVibeMasonryList({
       >
         <article
           v-for="{ item, index } in list.renderedItems.value"
-          :key="item.id"
+          :key="getVibeOccurrenceKey(item)"
           data-testid="vibe-list-card"
           :data-active="index === list.resolvedActiveIndex.value ? 'true' : 'false'"
           :data-index="index"
           :data-item-id="item.id"
+          :data-occurrence-key="getVibeOccurrenceKey(item)"
           class="absolute will-change-transform"
           :style="list.getCardStyle(index)"
         >

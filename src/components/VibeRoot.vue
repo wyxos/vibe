@@ -2,7 +2,7 @@
 import type { Component } from 'vue'
 
 import type { VibeViewerItem } from './vibeViewer'
-import type { VibeRootProps } from './vibe-root/useVibeRoot'
+import type { VibeRootHandle, VibeRootProps } from './vibe-root/useVibeRoot'
 import { useVibeRootController } from './vibe-root/useVibeRootController'
 
 import VibeFullscreenSurface from './VibeFullscreenSurface.vue'
@@ -26,6 +26,14 @@ const emit = defineEmits<{
 }>()
 
 const root = useVibeRootController(props, emit)
+
+defineExpose<VibeRootHandle>({
+  clearRemoved: root.clearRemoved,
+  getRemovedIds: root.getRemovedIds,
+  remove: root.remove,
+  restore: root.restore,
+  undo: root.undo,
+})
 </script>
 
 <template>

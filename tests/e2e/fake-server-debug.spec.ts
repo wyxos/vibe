@@ -93,6 +93,51 @@ test('bidirectional paging demo prepends earlier pages when navigating upward', 
   await expect(progress).toContainText('P8-10 · V8')
 })
 
+test('bidirectional paging demo reactions remove an item and Ctrl+Z restores it', async ({ page }) => {
+  await page.setViewportSize({
+    width: 1_100,
+    height: 650,
+  })
+
+  await gotoRoute(page, '/demo/bidirectional-paging')
+
+  const listSurface = page.getByTestId('vibe-root-list-surface')
+  const progress = listSurface.getByTestId('vibe-root-pagination')
+  const firstCard = listSurface.locator('[data-testid="vibe-list-card"][data-index="14"]')
+  const firstCardInner = firstCard.getByTestId('vibe-list-card-inner')
+
+  await expect(progress).toContainText('13 / 25', { timeout: 15_000 })
+  await expect(firstCard).toBeVisible()
+
+  await firstCardInner.dispatchEvent('pointerenter')
+  await expect(firstCardInner.getByTestId('demo-reaction-bar')).toBeVisible()
+
+  await firstCardInner.getByTestId('demo-reaction-button').first().click()
+
+  await expect.poll(async () => (await getPaginationState(progress)).total).toBe(24)
+
+  await page.keyboard.press('Control+z')
+
+  await expect.poll(async () => (await getPaginationState(progress)).total).toBe(25)
+})
+
 function normalizeWhitespace(value: string | null) {
   return value?.replace(/\s+/g, ' ').trim() ?? ''
+}
+
+async function getPaginationState(locator: import('@playwright/test').Locator) {
+  const text = normalizeWhitespace(await locator.textContent())
+  const match = text.match(/^(\d+)\s*\/\s*(\d+)/)
+
+  if (!match) {
+    return {
+      active: -1,
+      total: -1,
+    }
+  }
+
+  return {
+    active: Number.parseInt(match[1], 10),
+    total: Number.parseInt(match[2], 10),
+  }
 }

@@ -154,6 +154,70 @@ describe('useVibeRootDataSource', () => {
 
     source.unmount()
   })
+
+  it('removes duplicate ids across loaded pages, restores them in place, and undoes batches in reverse order', async () => {
+    const getItems = vi.fn(async ({ cursor }: VibeGetItemsParams) => {
+      if (cursor === 'page-2') {
+        return {
+          items: [
+            createSimpleItem('3'),
+            createSimpleItem('4'),
+            createSimpleItem('5'),
+          ],
+          nextPage: null,
+          previousPage: 'page-1',
+        }
+      }
+
+      return {
+        items: [
+          createSimpleItem('1'),
+          createSimpleItem('2'),
+          createSimpleItem('3'),
+        ],
+        nextPage: 'page-2',
+        previousPage: null,
+      }
+    })
+
+    const source = await mountUseVibeRootDataSource({
+      getItems,
+      pageSize: 3,
+    })
+
+    await source.flush()
+    await source.api.prefetchNextPage()
+    await source.flush()
+    await source.api.commitPendingAppend()
+    await source.flush()
+
+    expect(getVisibleIds(source.api.items.value)).toEqual(['1', '2', '3', '3', '4', '5'])
+
+    expect(source.api.remove('3').ids).toEqual(['3'])
+    expect(getVisibleIds(source.api.items.value)).toEqual(['1', '2', '4', '5'])
+
+    source.api.remove('2')
+    source.api.remove('5')
+    expect(getVisibleIds(source.api.items.value)).toEqual(['1', '4'])
+
+    expect(source.api.undo()?.ids).toEqual(['5'])
+    expect(getVisibleIds(source.api.items.value)).toEqual(['1', '4', '5'])
+
+    expect(source.api.undo()?.ids).toEqual(['2'])
+    expect(getVisibleIds(source.api.items.value)).toEqual(['1', '2', '4', '5'])
+
+    expect(source.api.undo()?.ids).toEqual(['3'])
+    expect(getVisibleIds(source.api.items.value)).toEqual(['1', '2', '3', '3', '4', '5'])
+
+    source.api.remove('3')
+    expect(getVisibleIds(source.api.items.value)).toEqual(['1', '2', '4', '5'])
+
+    expect(source.api.restore('3').ids).toEqual(['3'])
+    expect(getVisibleIds(source.api.items.value)).toEqual(['1', '2', '3', '3', '4', '5'])
+    expect(source.api.getRemovedIds()).toEqual([])
+
+    source.unmount()
+  })
 })
 
 function createPageResult(
@@ -184,6 +248,26 @@ function createItems(prefix: string): VibeViewerItem[] {
       height: 180,
     },
   }))
+}
+
+function createSimpleItem(id: string): VibeViewerItem {
+  return {
+    id,
+    type: 'image',
+    title: `Item ${id}`,
+    url: `https://example.com/${id}.jpg`,
+    width: 1_920,
+    height: 1_080,
+    preview: {
+      url: `https://example.com/${id}-preview.jpg`,
+      width: 320,
+      height: 180,
+    },
+  }
+}
+
+function getVisibleIds(items: VibeViewerItem[]) {
+  return items.map((item) => item.id)
 }
 
 function createDeferred<T>() {

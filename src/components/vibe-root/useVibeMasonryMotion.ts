@@ -3,6 +3,7 @@ import { onBeforeUnmount, ref, watch, type ComputedRef, type Ref } from 'vue'
 import type { VibeViewerItem } from '../vibeViewer'
 
 import type { LayoutPosition } from './masonryLayout'
+import { getVibeOccurrenceKey } from './itemIdentity'
 
 const CARD_MOTION_MS = 300
 const ENTER_MOTION_MS = 600
@@ -72,7 +73,7 @@ export function useVibeMasonryMotion(options: {
       const idsToAnimate: string[] = []
 
       for (const index of visibleIndices) {
-        const itemId = options.items.value[index]?.id
+        const itemId = options.items.value[index] ? getVibeOccurrenceKey(options.items.value[index]) : null
         if (!itemId || !enterStartIds.value.has(itemId) || scheduledEnterIds.has(itemId)) {
           continue
         }
@@ -142,8 +143,9 @@ export function useVibeMasonryMotion(options: {
     const nextStartIds = new Set(enterStartIds.value)
     const nextEnterDirectionById = new Map(enterDirectionById.value)
     for (const item of items) {
-      nextStartIds.add(item.id)
-      nextEnterDirectionById.set(item.id, direction)
+      const itemId = getVibeOccurrenceKey(item)
+      nextStartIds.add(itemId)
+      nextEnterDirectionById.set(itemId, direction)
     }
     enterStartIds.value = nextStartIds
     enterDirectionById.value = nextEnterDirectionById
@@ -236,9 +238,10 @@ export function useVibeMasonryMotion(options: {
     const item = options.items.value[index]
     const position = options.positions.value[index] ?? { x: 0, y: 0 }
     const height = options.heights.value[index] ?? options.columnWidth.value
-    const moveOffset = item ? moveOffsets.value.get(item.id) ?? { dx: 0, dy: 0 } : { dx: 0, dy: 0 }
-    const enterDirection = item ? enterDirectionById.value.get(item.id) ?? 'bottom' : 'bottom'
-    const enterStartY = item && enterStartIds.value.has(item.id)
+    const itemId = item ? getVibeOccurrenceKey(item) : null
+    const moveOffset = itemId ? moveOffsets.value.get(itemId) ?? { dx: 0, dy: 0 } : { dx: 0, dy: 0 }
+    const enterDirection = itemId ? enterDirectionById.value.get(itemId) ?? 'bottom' : 'bottom'
+    const enterStartY = itemId && enterStartIds.value.has(itemId)
       ? getVibeMasonryEnterStartY({
           columnWidth: options.columnWidth.value,
           direction: enterDirection,

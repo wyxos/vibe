@@ -147,6 +147,25 @@ describe('useVibeRootController', () => {
 
     controller.unmount()
   })
+
+  it('returns desktop fullscreen to list mode when Escape is pressed', async () => {
+    setViewportWidth(1_280)
+
+    const controller = await mountController()
+
+    controller.api.openFullscreen(2)
+    await controller.flush()
+
+    expect(controller.api.surfaceMode.value).toBe('fullscreen')
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await controller.flush()
+
+    expect(controller.api.surfaceMode.value).toBe('list')
+    expect(controller.api.listRestoreToken.value).toBe(2)
+
+    controller.unmount()
+  })
 })
 
 async function mountController(initialProps: Partial<VibeRootProps> = { items: [] }) {

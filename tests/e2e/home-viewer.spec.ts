@@ -85,6 +85,36 @@ test('desktop home viewer opens fullscreen from a tile and can return to the lis
   await expect(page.getByTestId('vibe-root-back-to-list')).toHaveCount(0)
 })
 
+test('desktop fullscreen returns to grid mode when Escape is pressed', async ({ page }) => {
+  await page.setViewportSize({
+    width: 1_100,
+    height: 650,
+  })
+
+  await gotoRoute(page, '/')
+
+  const root = page.getByTestId('vibe-root')
+  const listSurface = page.getByTestId('vibe-root-list-surface')
+  const fullscreenSurface = page.getByTestId('vibe-root-fullscreen-surface')
+  const cards = listSurface.getByTestId('vibe-list-card')
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'list')
+  await expect.poll(async () => cards.count()).toBeGreaterThan(1)
+
+  await cards.nth(1).locator('button').click()
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'fullscreen')
+  await expect(listSurface).toHaveAttribute('data-visible', 'false')
+  await expect(fullscreenSurface).toHaveAttribute('data-visible', 'true')
+
+  await page.keyboard.press('Escape')
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'list')
+  await expect(listSurface).toHaveAttribute('data-visible', 'true')
+  await expect(fullscreenSurface).toHaveAttribute('data-visible', 'false')
+  await expect(page.getByTestId('vibe-root-back-to-list')).toHaveCount(0)
+})
+
 test('desktop home viewer auto-loads the next page and keeps the list virtualized after returning', async ({ page }) => {
   await page.setViewportSize({
     width: 1_100,

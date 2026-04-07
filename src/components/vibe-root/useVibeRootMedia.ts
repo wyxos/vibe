@@ -2,6 +2,7 @@ import { computed, nextTick, ref, watch, type Ref } from 'vue'
 
 import type { VibeViewerItem } from '../vibeViewer'
 import { createMediaUiState, DEFAULT_MEDIA_UI_STATE, isImageElementReady, syncMediaUiState, type MediaUiState } from './assetState'
+import { getVibeOccurrenceKey } from './itemIdentity'
 import { getVibeAssetErrorLabel, resolveVibeAssetErrorKind, type VibeAssetErrorKind } from './loadError'
 import { playMediaElement } from './mediaPlayback'
 
@@ -17,16 +18,18 @@ export function useVibeRootMedia(options: {
 
   const videoElements = new Map<string, HTMLVideoElement>()
   const audioElements = new Map<string, HTMLAudioElement>()
+  const activeItemKey = computed(() => options.activeItem.value ? getVibeOccurrenceKey(options.activeItem.value) : null)
+  const activeMediaItemKey = computed(() => options.activeMediaItem.value ? getVibeOccurrenceKey(options.activeMediaItem.value) : null)
 
   const activeMediaState = computed(() => {
-    if (!options.activeMediaItem.value) {
+    if (!activeMediaItemKey.value) {
       return DEFAULT_MEDIA_UI_STATE
     }
 
-    return mediaStates.value[options.activeMediaItem.value.id] ?? DEFAULT_MEDIA_UI_STATE
+    return mediaStates.value[activeMediaItemKey.value] ?? DEFAULT_MEDIA_UI_STATE
   })
   const activeMediaDuration = computed(() => {
-    if (!options.activeMediaItem.value) {
+    if (!activeMediaItemKey.value) {
       return 0
     }
 
@@ -39,10 +42,10 @@ export function useVibeRootMedia(options: {
 
     return clamp((activeMediaState.value.currentTime / activeMediaDuration.value) * 100, 0, 100)
   })
-  const activeAssetErrorKind = computed(() => options.activeItem.value ? getAssetErrorKind(options.activeItem.value.id) : null)
+  const activeAssetErrorKind = computed(() => activeItemKey.value ? getAssetErrorKind(activeItemKey.value) : null)
 
   watch(
-    () => options.activeItem.value?.id ?? null,
+    () => activeItemKey.value,
     async () => {
       await syncMediaPlayback()
     },
@@ -97,7 +100,7 @@ export function useVibeRootMedia(options: {
 
     await nextTick()
 
-    const activeId = options.activeItem.value?.id ?? null
+    const activeId = activeItemKey.value
 
     for (const [id, element] of videoElements.entries()) {
       if (id !== activeId || mediaStates.value[id]?.errorKind) {
@@ -182,7 +185,7 @@ export function useVibeRootMedia(options: {
 
   function onMediaSeekInput(event: Event) {
     const media = getActiveMediaElement()
-    const activeId = options.activeMediaItem.value?.id
+    const activeId = activeMediaItemKey.value
 
     if (!media || !activeId || !(event.target instanceof HTMLInputElement)) {
       return
@@ -269,7 +272,7 @@ export function useVibeRootMedia(options: {
   }
 
   function getActiveMediaElement() {
-    return options.activeMediaItem.value ? getMediaElementById(options.activeMediaItem.value.id) : null
+    return activeMediaItemKey.value ? getMediaElementById(activeMediaItemKey.value) : null
   }
 
   function toggleMediaPlayback(media: HTMLMediaElement | null) {

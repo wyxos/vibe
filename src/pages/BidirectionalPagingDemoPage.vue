@@ -1,15 +1,23 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { Laugh, Heart, ThumbsDown, ThumbsUp } from 'lucide-vue-next'
 
 import VibeRoot from '@/components/VibeRoot.vue'
 import type { VibeViewerItem } from '@/components/vibeViewer'
+import type { VibeRootHandle } from '@/components/vibe-root/useVibeRoot'
 import { getFakeMediaItemIcon } from '@/demo/fakeMediaItemIcon'
 import { fetchFakeMediaPage } from '@/demo/fakeServer'
 
 const INITIAL_PAGE = 10
 const INITIAL_ACTIVE_OFFSET = 12
 const PAGE_SIZE = 25
+const REACTION_ACTIONS = [
+  { icon: Heart, label: 'Favorite' },
+  { icon: ThumbsUp, label: 'Like' },
+  { icon: Laugh, label: 'Funny' },
+  { icon: ThumbsDown, label: 'Dislike' },
+] as const
 const items = ref<VibeViewerItem[]>([])
 const activeIndex = ref(0)
 const earliestLoadedPage = ref<number | null>(null)
@@ -21,6 +29,7 @@ const isLoadingInitial = ref(true)
 const isPrefetchingNext = ref(false)
 const isPrefetchingPrevious = ref(false)
 const errorMessage = ref<string | null>(null)
+const vibeRootRef = ref<VibeRootHandle | null>(null)
 
 const loadedPages = new Set<string>()
 const inFlightPages = new Set<string>()
@@ -63,7 +72,12 @@ watch(
 )
 
 onMounted(async () => {
+  window.addEventListener('keydown', onWindowKeydown)
   await loadPage(String(INITIAL_PAGE), 'initial')
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onWindowKeydown)
 })
 
 async function loadPage(pageToken: string, mode: 'initial' | 'prepend' | 'append') {
@@ -173,6 +187,28 @@ async function requestPreviousPage() {
 function renderItemIcon(item: VibeViewerItem, icon: unknown) {
   return (getFakeMediaItemIcon(item) ?? icon) as Component
 }
+
+function removeItemById(id: string) {
+  vibeRootRef.value?.remove(id)
+}
+
+function onWindowKeydown(event: KeyboardEvent) {
+  if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'z') {
+    return
+  }
+
+  if (event.defaultPrevented) {
+    return
+  }
+
+  const target = event.target
+  if (target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) {
+    return
+  }
+
+  event.preventDefault()
+  vibeRootRef.value?.undo()
+}
 </script>
 
 <template>
@@ -194,6 +230,7 @@ function renderItemIcon(item: VibeViewerItem, icon: unknown) {
     </div>
 
     <VibeRoot
+      ref="vibeRootRef"
       :items="items"
       :active-index="activeIndex"
       :loading="isViewerLoading"
@@ -204,6 +241,29 @@ function renderItemIcon(item: VibeViewerItem, icon: unknown) {
       :request-previous-page="requestPreviousPage"
       @update:active-index="activeIndex = $event"
     >
+      <template #grid-item-overlay="{ focused, hovered, item }">
+        <div
+          v-if="hovered || focused"
+          class="absolute inset-x-0 bottom-0 p-3"
+        >
+          <div
+            data-testid="demo-reaction-bar"
+            class="pointer-events-auto flex items-center justify-center gap-2 border border-white/12 bg-black/45 px-3 py-2 backdrop-blur-[18px]"
+          >
+            <button
+              v-for="action in REACTION_ACTIONS"
+              :key="action.label"
+              type="button"
+              class="inline-flex h-9 w-9 items-center justify-center border border-white/12 bg-white/[0.03] text-[#f7f1ea]/76 transition hover:border-white/24 hover:bg-white/[0.08] hover:text-[#f7f1ea]"
+              :aria-label="`${action.label} ${item.title ?? item.id}`"
+              data-testid="demo-reaction-button"
+              @click.stop.prevent="removeItemById(item.id)"
+            >
+              <component :is="action.icon" class="h-4 w-4 stroke-[2]" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      </template>
       <template #item-icon="{ item, icon }">
         <component :is="renderItemIcon(item, icon)" class="h-6 w-6 stroke-[1.9]" aria-hidden="true" />
       </template>

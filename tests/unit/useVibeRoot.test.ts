@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import type { VibeViewerItem } from '@/components/vibeViewer'
+import { getVibeOccurrenceKey } from '@/components/vibe-root/itemIdentity'
 
 import { mountUseVibeRoot } from '../helpers/mountUseVibeRoot'
 
@@ -117,8 +118,11 @@ describe('useVibeRoot', () => {
       paused: true,
     })
 
-    viewer.api.registerVideoElement(videoItem.id, video.element)
-    viewer.api.registerAudioElement(audioItem.id, audio.element)
+    const resolvedVideoKey = getVibeOccurrenceKey(viewer.api.items.value[0])
+    const resolvedAudioKey = getVibeOccurrenceKey(viewer.api.items.value[1])
+
+    viewer.api.registerVideoElement(resolvedVideoKey, video.element)
+    viewer.api.registerAudioElement(resolvedAudioKey, audio.element)
 
     viewer.props.activeIndex = 1
     await viewer.flush()
@@ -145,7 +149,7 @@ describe('useVibeRoot', () => {
     } as Event)
 
     expect(video.currentTime()).toBe(12)
-    expect(viewer.api.mediaStates.value[videoItem.id]).toMatchObject({
+    expect(viewer.api.mediaStates.value[resolvedVideoKey]).toMatchObject({
       currentTime: 12,
       duration: 12,
       paused: false,
@@ -167,16 +171,18 @@ describe('useVibeRoot', () => {
       paused: true,
     })
 
-    viewer.api.registerAudioElement(audioItem.id, audio.element)
+    const resolvedAudioKey = getVibeOccurrenceKey(viewer.api.items.value[0])
+
+    viewer.api.registerAudioElement(resolvedAudioKey, audio.element)
     await viewer.flush()
 
     audio.play.mockClear()
     audio.pause.mockClear()
 
-    viewer.api.onAudioCoverClick({ button: 0 } as MouseEvent, audioItem.id)
+    viewer.api.onAudioCoverClick({ button: 0 } as MouseEvent, resolvedAudioKey)
     expect(audio.play).toHaveBeenCalledTimes(1)
 
-    viewer.api.onAudioCoverClick({ button: 0 } as MouseEvent, audioItem.id)
+    viewer.api.onAudioCoverClick({ button: 0 } as MouseEvent, resolvedAudioKey)
     expect(audio.pause).toHaveBeenCalledTimes(1)
 
     viewer.unmount()
@@ -201,30 +207,33 @@ describe('useVibeRoot', () => {
       paused: true,
     })
 
-    viewer.api.registerVideoElement(videoItem.id, video.element)
-    viewer.api.registerAudioElement(audioItem.id, audio.element)
+    const resolvedVideoKey = getVibeOccurrenceKey(viewer.api.items.value[0])
+    const resolvedAudioKey = getVibeOccurrenceKey(viewer.api.items.value[1])
 
-    expect(viewer.api.isMediaReady(videoItem.id)).toBe(false)
-    expect(viewer.api.isMediaReady(audioItem.id)).toBe(false)
+    viewer.api.registerVideoElement(resolvedVideoKey, video.element)
+    viewer.api.registerAudioElement(resolvedAudioKey, audio.element)
 
-    viewer.api.onMediaEvent(videoItem.id, {
+    expect(viewer.api.isMediaReady(resolvedVideoKey)).toBe(false)
+    expect(viewer.api.isMediaReady(resolvedAudioKey)).toBe(false)
+
+    viewer.api.onMediaEvent(resolvedVideoKey, {
       currentTarget: video.element,
       type: 'canplay',
     } as Event)
-    viewer.api.onMediaEvent(audioItem.id, {
+    viewer.api.onMediaEvent(resolvedAudioKey, {
       currentTarget: audio.element,
       type: 'canplay',
     } as Event)
 
-    expect(viewer.api.isMediaReady(videoItem.id)).toBe(true)
-    expect(viewer.api.isMediaReady(audioItem.id)).toBe(true)
+    expect(viewer.api.isMediaReady(resolvedVideoKey)).toBe(true)
+    expect(viewer.api.isMediaReady(resolvedAudioKey)).toBe(true)
 
-    viewer.api.onMediaEvent(videoItem.id, {
+    viewer.api.onMediaEvent(resolvedVideoKey, {
       currentTarget: video.element,
       type: 'waiting',
     } as Event)
 
-    expect(viewer.api.isMediaReady(videoItem.id)).toBe(false)
+    expect(viewer.api.isMediaReady(resolvedVideoKey)).toBe(false)
 
     viewer.unmount()
   })
@@ -243,7 +252,9 @@ describe('useVibeRoot', () => {
       delaySeekUpdates: true,
     })
 
-    viewer.api.registerVideoElement(videoItem.id, video.element)
+    const resolvedVideoKey = getVibeOccurrenceKey(viewer.api.items.value[0])
+
+    viewer.api.registerVideoElement(resolvedVideoKey, video.element)
 
     const seekInput = document.createElement('input')
     seekInput.value = '7.5'
@@ -252,18 +263,18 @@ describe('useVibeRoot', () => {
     } as Event)
 
     expect(video.currentTime()).toBe(0)
-    expect(viewer.api.mediaStates.value[videoItem.id]).toMatchObject({
+    expect(viewer.api.mediaStates.value[resolvedVideoKey]).toMatchObject({
       currentTime: 7.5,
       duration: 12,
       paused: false,
     })
 
     video.flushPendingSeek()
-    viewer.api.onMediaEvent(videoItem.id, {
+    viewer.api.onMediaEvent(resolvedVideoKey, {
       currentTarget: video.element,
     } as Event)
 
-    expect(viewer.api.mediaStates.value[videoItem.id]?.currentTime).toBe(7.5)
+    expect(viewer.api.mediaStates.value[resolvedVideoKey]?.currentTime).toBe(7.5)
 
     viewer.unmount()
   })
@@ -288,12 +299,14 @@ describe('useVibeRoot', () => {
       },
     })
 
-    viewer.api.registerImageElement(imageItem.id, hiddenImage)
-    expect(viewer.api.isImageReady(imageItem.id)).toBe(false)
+    const resolvedImageKey = getVibeOccurrenceKey(viewer.api.items.value[0])
+
+    viewer.api.registerImageElement(resolvedImageKey, hiddenImage)
+    expect(viewer.api.isImageReady(resolvedImageKey)).toBe(false)
 
     hiddenImage.setAttribute('src', imageItem.url)
-    viewer.api.registerImageElement(imageItem.id, hiddenImage)
-    expect(viewer.api.isImageReady(imageItem.id)).toBe(true)
+    viewer.api.registerImageElement(resolvedImageKey, hiddenImage)
+    expect(viewer.api.isImageReady(resolvedImageKey)).toBe(true)
 
     viewer.unmount()
   })

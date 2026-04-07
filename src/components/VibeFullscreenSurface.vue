@@ -4,6 +4,7 @@ import { computed, toRef } from 'vue'
 import { ArrowLeft, LoaderCircle, Pause, Play, TriangleAlert } from 'lucide-vue-next'
 
 import type { VibeViewerItem } from './vibeViewer'
+import { getVibeOccurrenceKey } from './vibe-root/itemIdentity'
 import type { VibeRootControlledProps } from './vibe-root/useVibeRoot'
 import { useVibeRoot } from './vibe-root/useVibeRoot'
 import { getItemIcon, getItemLabel } from './vibe-root/media'
@@ -56,6 +57,8 @@ function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof 
 }
 
 function isAssetLoading(index: number, item: (typeof props.items)[number]) {
+  const itemKey = getItemKey(item)
+
   if (!shouldLoadSlideAsset(index)) {
     return false
   }
@@ -64,27 +67,27 @@ function isAssetLoading(index: number, item: (typeof props.items)[number]) {
     return false
   }
 
-  if (viewer.getAssetErrorKind(item.id)) {
+  if (viewer.getAssetErrorKind(itemKey)) {
     return false
   }
 
   if (item.type === 'image') {
-    return !viewer.isImageReady(item.id)
+    return !viewer.isImageReady(itemKey)
   }
 
   if (item.type === 'video' || item.type === 'audio') {
-    return !viewer.isMediaReady(item.id)
+    return !viewer.isMediaReady(itemKey)
   }
 
   return false
 }
 
 function getAssetErrorKind(item: (typeof props.items)[number]) {
-  return viewer.getAssetErrorKind(item.id)
+  return viewer.getAssetErrorKind(getItemKey(item))
 }
 
 function getAssetErrorLabel(item: (typeof props.items)[number]) {
-  return viewer.getAssetErrorLabel(item.id) ?? 'Load error'
+  return viewer.getAssetErrorLabel(getItemKey(item)) ?? 'Load error'
 }
 
 function isAssetErrored(index: number, item: (typeof props.items)[number]) {
@@ -110,6 +113,10 @@ function getFullscreenMediaSource(index: number, item: (typeof props.items)[numb
 
   return item.url
 }
+
+function getItemKey(item: (typeof props.items)[number]) {
+  return getVibeOccurrenceKey(item)
+}
 </script>
 
 <template>
@@ -127,9 +134,10 @@ function getFullscreenMediaSource(index: number, item: (typeof props.items)[numb
     <div v-if="viewer.items.value.length > 0" class="relative z-[1] h-full min-h-0">
       <article
         v-for="{ item, index } in viewer.renderedItems.value"
-        :key="item.id"
+        :key="getItemKey(item)"
         data-testid="vibe-root-slide"
         :data-item-id="item.id"
+        :data-occurrence-key="getItemKey(item)"
         :data-index="index"
         :data-active="index === viewer.resolvedActiveIndex.value"
         :aria-hidden="index === viewer.resolvedActiveIndex.value ? 'false' : 'true'"
@@ -170,35 +178,35 @@ function getFullscreenMediaSource(index: number, item: (typeof props.items)[numb
             :alt="item.title ?? ''"
             draggable="false"
             class="block h-auto max-h-full w-auto max-w-full object-contain shadow-[0_40px_120px_-60px_rgba(0,0,0,0.9)] transition-opacity duration-300"
-            :class="viewer.isImageReady(item.id) ? 'opacity-100' : 'opacity-0'"
-            :ref="(element) => viewer.registerImageElement(item.id, element)"
-            @load="viewer.onImageLoad(item.id)"
-            @error="viewer.onImageError(item.id, item.url)"
+            :class="viewer.isImageReady(getItemKey(item)) ? 'opacity-100' : 'opacity-0'"
+            :ref="(element) => viewer.registerImageElement(getItemKey(item), element)"
+            @load="viewer.onImageLoad(getItemKey(item))"
+            @error="viewer.onImageError(getItemKey(item), item.url)"
           />
 
           <video
             v-else
             class="block h-auto max-h-full w-auto max-w-full cursor-pointer object-contain shadow-[0_40px_120px_-60px_rgba(0,0,0,0.9)] transition-opacity duration-300"
-            :class="viewer.isMediaReady(item.id) ? 'opacity-100' : 'opacity-0'"
+            :class="viewer.isMediaReady(getItemKey(item)) ? 'opacity-100' : 'opacity-0'"
             playsinline
             muted
             :src="getFullscreenMediaSource(index, item)"
             :preload="shouldLoadSlideAsset(index) ? 'metadata' : 'none'"
-            :ref="(element) => viewer.registerVideoElement(item.id, element)"
-            @click.stop="viewer.onVideoClick($event, item.id)"
-            @canplay="viewer.onMediaEvent(item.id, $event)"
-            @durationchange="viewer.onMediaEvent(item.id, $event)"
-            @error="viewer.onMediaError(item.id, item.url)"
-            @loadstart="viewer.onMediaEvent(item.id, $event)"
-            @loadedmetadata="viewer.onMediaEvent(item.id, $event)"
-            @pause="viewer.onMediaEvent(item.id, $event)"
-            @play="viewer.onMediaEvent(item.id, $event)"
-            @playing="viewer.onMediaEvent(item.id, $event)"
-            @seeking="viewer.onMediaEvent(item.id, $event)"
-            @seeked="viewer.onMediaEvent(item.id, $event)"
-            @stalled="viewer.onMediaEvent(item.id, $event)"
-            @timeupdate="viewer.onMediaEvent(item.id, $event)"
-            @waiting="viewer.onMediaEvent(item.id, $event)"
+            :ref="(element) => viewer.registerVideoElement(getItemKey(item), element)"
+            @click.stop="viewer.onVideoClick($event, getItemKey(item))"
+            @canplay="viewer.onMediaEvent(getItemKey(item), $event)"
+            @durationchange="viewer.onMediaEvent(getItemKey(item), $event)"
+            @error="viewer.onMediaError(getItemKey(item), item.url)"
+            @loadstart="viewer.onMediaEvent(getItemKey(item), $event)"
+            @loadedmetadata="viewer.onMediaEvent(getItemKey(item), $event)"
+            @pause="viewer.onMediaEvent(getItemKey(item), $event)"
+            @play="viewer.onMediaEvent(getItemKey(item), $event)"
+            @playing="viewer.onMediaEvent(getItemKey(item), $event)"
+            @seeking="viewer.onMediaEvent(getItemKey(item), $event)"
+            @seeked="viewer.onMediaEvent(getItemKey(item), $event)"
+            @stalled="viewer.onMediaEvent(getItemKey(item), $event)"
+            @timeupdate="viewer.onMediaEvent(getItemKey(item), $event)"
+            @waiting="viewer.onMediaEvent(getItemKey(item), $event)"
           />
         </div>
 
@@ -209,9 +217,9 @@ function getFullscreenMediaSource(index: number, item: (typeof props.items)[numb
           <button
             type="button"
             class="relative grid aspect-square w-[clamp(320px,46vw,560px)] max-w-[calc(100vw-2.5rem)] place-items-center border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02)),radial-gradient(circle_at_center,rgba(16,185,129,0.14),transparent_58%)] text-[#f7f1ea] transition-[border-color,background] duration-200 hover:border-white/30 hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.03)),radial-gradient(circle_at_center,rgba(16,185,129,0.18),transparent_58%)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f7f1ea]"
-            :aria-label="(viewer.mediaStates.value[item.id]?.paused ?? true) ? getMediaActionLabel('Play', item) : getMediaActionLabel('Pause', item)"
+            :aria-label="(viewer.mediaStates.value[getItemKey(item)]?.paused ?? true) ? getMediaActionLabel('Play', item) : getMediaActionLabel('Pause', item)"
             :disabled="Boolean(getAssetErrorKind(item))"
-            @click="viewer.onAudioCoverClick($event, item.id)"
+            @click="viewer.onAudioCoverClick($event, getItemKey(item))"
           >
             <div
               v-if="isAssetLoading(index, item)"
@@ -249,7 +257,7 @@ function getFullscreenMediaSource(index: number, item: (typeof props.items)[numb
 
               <div class="pointer-events-none absolute bottom-4 right-4 inline-flex h-10 w-10 items-center justify-center border border-white/14 bg-black/50 backdrop-blur-[18px]">
                 <component
-                  :is="(viewer.mediaStates.value[item.id]?.paused ?? true) ? Play : Pause"
+                  :is="(viewer.mediaStates.value[getItemKey(item)]?.paused ?? true) ? Play : Pause"
                   class="h-4 w-4 stroke-2"
                   aria-hidden="true"
                 />
@@ -261,20 +269,20 @@ function getFullscreenMediaSource(index: number, item: (typeof props.items)[numb
             :src="getFullscreenMediaSource(index, item)"
             :preload="shouldLoadSlideAsset(index) ? 'metadata' : 'none'"
             class="pointer-events-none absolute h-px w-px opacity-0"
-            :ref="(element) => viewer.registerAudioElement(item.id, element)"
-            @canplay="viewer.onMediaEvent(item.id, $event)"
-            @durationchange="viewer.onMediaEvent(item.id, $event)"
-            @error="viewer.onMediaError(item.id, item.url)"
-            @loadstart="viewer.onMediaEvent(item.id, $event)"
-            @loadedmetadata="viewer.onMediaEvent(item.id, $event)"
-            @pause="viewer.onMediaEvent(item.id, $event)"
-            @play="viewer.onMediaEvent(item.id, $event)"
-            @playing="viewer.onMediaEvent(item.id, $event)"
-            @seeking="viewer.onMediaEvent(item.id, $event)"
-            @seeked="viewer.onMediaEvent(item.id, $event)"
-            @stalled="viewer.onMediaEvent(item.id, $event)"
-            @timeupdate="viewer.onMediaEvent(item.id, $event)"
-            @waiting="viewer.onMediaEvent(item.id, $event)"
+            :ref="(element) => viewer.registerAudioElement(getItemKey(item), element)"
+            @canplay="viewer.onMediaEvent(getItemKey(item), $event)"
+            @durationchange="viewer.onMediaEvent(getItemKey(item), $event)"
+            @error="viewer.onMediaError(getItemKey(item), item.url)"
+            @loadstart="viewer.onMediaEvent(getItemKey(item), $event)"
+            @loadedmetadata="viewer.onMediaEvent(getItemKey(item), $event)"
+            @pause="viewer.onMediaEvent(getItemKey(item), $event)"
+            @play="viewer.onMediaEvent(getItemKey(item), $event)"
+            @playing="viewer.onMediaEvent(getItemKey(item), $event)"
+            @seeking="viewer.onMediaEvent(getItemKey(item), $event)"
+            @seeked="viewer.onMediaEvent(getItemKey(item), $event)"
+            @stalled="viewer.onMediaEvent(getItemKey(item), $event)"
+            @timeupdate="viewer.onMediaEvent(getItemKey(item), $event)"
+            @waiting="viewer.onMediaEvent(getItemKey(item), $event)"
           />
         </div>
 

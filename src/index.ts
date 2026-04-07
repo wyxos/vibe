@@ -7,6 +7,7 @@ export type {
   VibeGetItemsResult,
   VibeRootAutoProps,
   VibeRootControlledProps,
+  VibeRootHandle,
   VibeRootProps,
 } from './components/vibe-root/useVibeRoot'
 

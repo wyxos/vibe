@@ -16,6 +16,7 @@ vi.mock('@/components/vibe-root/loadError', () => ({
 
 import VibeRoot from '@/components/VibeRoot.vue'
 import type { VibeViewerItem } from '@/components/vibeViewer'
+import type { VibeRootHandle } from '@/components/vibe-root/useVibeRoot'
 
 const DEFAULT_VIEWPORT_WIDTH = window.innerWidth
 const CustomOtherIcon = defineComponent({
@@ -353,6 +354,52 @@ describe('VibeRoot', () => {
 
     expect(wrapper.get('[data-testid="vibe-root"]').attributes('data-surface-mode')).toBe('list')
     expect(wrapper.get('[data-testid="vibe-list-card"]').attributes('style')).toContain('height: 296px;')
+
+    wrapper.unmount()
+  })
+
+  it('exposes remove, restore, and undo that operate on duplicate ids', async () => {
+    setViewportWidth(1_280)
+
+    const wrapper = mount(VibeRoot, {
+      props: {
+        items: [
+          createImageItem('duplicate', 'Duplicate 1'),
+          createImageItem('stable', 'Stable'),
+          createImageItem('duplicate', 'Duplicate 2'),
+        ],
+      },
+    })
+
+    await flushDom()
+
+    const handle = wrapper.vm as unknown as VibeRootHandle
+
+    expect(typeof handle.remove).toBe('function')
+    expect(typeof handle.restore).toBe('function')
+    expect(typeof handle.undo).toBe('function')
+    expect(wrapper.findAll('[data-testid="vibe-list-card"]')).toHaveLength(3)
+
+    expect(handle.remove('duplicate').ids).toEqual(['duplicate'])
+    await flushDom()
+
+    expect(wrapper.findAll('[data-testid="vibe-list-card"]')).toHaveLength(1)
+    expect(handle.getRemovedIds()).toEqual(['duplicate'])
+
+    expect(handle.undo()?.ids).toEqual(['duplicate'])
+    await flushDom()
+
+    expect(wrapper.findAll('[data-testid="vibe-list-card"]')).toHaveLength(3)
+    expect(handle.getRemovedIds()).toEqual([])
+
+    handle.remove('duplicate')
+    await flushDom()
+    expect(wrapper.findAll('[data-testid="vibe-list-card"]')).toHaveLength(1)
+
+    expect(handle.restore('duplicate').ids).toEqual(['duplicate'])
+    await flushDom()
+
+    expect(wrapper.findAll('[data-testid="vibe-list-card"]')).toHaveLength(3)
 
     wrapper.unmount()
   })

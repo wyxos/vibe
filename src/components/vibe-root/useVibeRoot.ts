@@ -13,6 +13,7 @@ export type {
   VibeRootAutoProps,
   VibeRootControlledProps,
   VibeRootEmit,
+  VibeRootHandle,
   VibeRootProps,
 } from './useVibeRootDataSource'
 

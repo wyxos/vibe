@@ -15,7 +15,7 @@ import {
   getVibeMasonryViewportWidth,
 } from './masonryViewport'
 import { useVibeMasonryEdgeBoundary } from './useVibeMasonryEdgeBoundary'
-
+import { getVibeOccurrenceKey } from './itemIdentity'
 const BUCKET_PX = 600
 const CONTENT_INSET_PX = 24
 const GAP_PX = 16
@@ -28,7 +28,6 @@ const SCROLLBAR_INSET_PX = 24
 const SCROLLBAR_MIN_THUMB_HEIGHT_PX = 48
 const PREPEND_MOVE_MOTION_MS = 500
 const EDGE_COOLDOWN_MS = 1000
-
 export function useVibeMasonryList(options: {
   items: Ref<VibeViewerItem[]>
   activeIndex: Ref<number>
@@ -53,7 +52,6 @@ export function useVibeMasonryList(options: {
   const layoutContentHeight = ref(0)
   const layoutIndexById = ref<Map<string, number>>(new Map())
   const reservedContentHeight = ref<number | null>(null)
-
   const availableWidth = computed(() => Math.max(ITEM_WIDTH_PX, viewportWidth.value - CONTENT_INSET_PX * 2))
   const columnCount = computed(() => getColumnCount(availableWidth.value, ITEM_WIDTH_PX))
   const columnWidth = computed(() => getColumnWidth(availableWidth.value, columnCount.value, ITEM_WIDTH_PX, GAP_PX))
@@ -140,14 +138,15 @@ export function useVibeMasonryList(options: {
   let isSettlingReservedHeight = false
 
   watch(
-    [() => options.items.value.map((item) => item.id), columnCount, columnWidth],
+    [() => options.items.value.map((item) => getVibeOccurrenceKey(item)), columnCount, columnWidth],
     async ([currentIds], [previousIds = []]) => {
       const oldPositionsById = snapshotPositionsById(options.items.value, layoutIndexById.value, layoutPositions.value)
       const previousIdSet = new Set(previousIds)
-      const addedItems = options.items.value.filter((item) => !previousIdSet.has(item.id))
+      const addedItems = options.items.value.filter((item) => !previousIdSet.has(getVibeOccurrenceKey(item)))
       const isPrepend = currentIds.length > previousIds.length && previousIds.length > 0 && currentIds[0] !== previousIds[0]
       const shouldPreserveAnchor = isPrepend && scrollTop.value > CONTENT_INSET_PX + GAP_PX
-      const anchorId = shouldPreserveAnchor ? options.items.value[resolvedActiveIndex.value]?.id ?? null : null
+      const anchorItem = shouldPreserveAnchor ? options.items.value[resolvedActiveIndex.value] : null
+      const anchorId = anchorItem ? getVibeOccurrenceKey(anchorItem) : null
       rebuildLayout()
       if (addedItems.length > 0) {
         motion.markEnter(addedItems, isPrepend ? 'top' : 'bottom')
@@ -161,7 +160,7 @@ export function useVibeMasonryList(options: {
 
       motion.playFlipMoveAnimation(
         oldPositionsById,
-        new Set(addedItems.map((item) => item.id)),
+        new Set(addedItems.map((item) => getVibeOccurrenceKey(item))),
         isPrepend ? PREPEND_MOVE_MOTION_MS : undefined,
       )
 
@@ -179,7 +178,7 @@ export function useVibeMasonryList(options: {
   )
 
   watch(
-    [() => options.pendingAppendItems.value.map((item) => item.id), columnCount, columnWidth, viewportHeight],
+    [() => options.pendingAppendItems.value.map((item) => getVibeOccurrenceKey(item)), columnCount, columnWidth, viewportHeight],
     ([pendingIds]) => {
       clearAppendCommitTimer()
       if (!pendingIds.length) return
@@ -296,11 +295,14 @@ export function useVibeMasonryList(options: {
   }
 
   function getCardStyle(index: number) {
+    const item = options.items.value[index]
+    const itemKey = item ? getVibeOccurrenceKey(item) : ''
+
     return {
       height: `${layoutHeights.value[index] ?? columnWidth.value}px`,
       width: `${columnWidth.value}px`,
-      transition: motion.getCardTransition(options.items.value[index].id),
-      transitionDelay: motion.getCardTransitionDelay(options.items.value[index].id),
+      transition: itemKey ? motion.getCardTransition(itemKey) : undefined,
+      transitionDelay: itemKey ? motion.getCardTransitionDelay(itemKey) : undefined,
       transform: motion.getCardTransform(index),
     }
   }
@@ -473,7 +475,6 @@ export function useVibeMasonryList(options: {
     if (!appendCommitTimer) {
       return
     }
-
     clearTimeout(appendCommitTimer)
     appendCommitTimer = null
   }
@@ -494,7 +495,6 @@ export function useVibeMasonryList(options: {
     scrollViewportRef,
   }
 }
-
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }

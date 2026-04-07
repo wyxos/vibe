@@ -1,4 +1,5 @@
 import type { VibeViewerItem } from '../vibeViewer'
+import { getVibeOccurrenceKey } from './itemIdentity'
 
 export type LayoutPosition = {
   x: number
@@ -109,7 +110,7 @@ export function buildMasonryLayout(
 
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index]
-    indexById.set(item.id, index)
+    indexById.set(getVibeOccurrenceKey(item), index)
 
     let bestColumn = 0
     for (let column = 1; column < columnHeights.length; column += 1) {
@@ -190,14 +191,14 @@ export function snapshotPositionsById(items: VibeViewerItem[], indexById: Map<st
   const snapshot = new Map<string, LayoutPosition>()
 
   for (const item of items) {
-    const index = indexById.get(item.id)
+    const index = indexById.get(getVibeOccurrenceKey(item))
     if (index == null) {
       continue
     }
 
     const position = positions[index]
     if (position) {
-      snapshot.set(item.id, position)
+      snapshot.set(getVibeOccurrenceKey(item), position)
     }
   }
 

@@ -1,5 +1,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
+import { isEditableTarget } from './dom'
 import { useVibeRootDataSource, type VibeRootEmit, type VibeRootProps } from './useVibeRootDataSource'
 
 export const DESKTOP_BREAKPOINT_PX = 1024
@@ -48,10 +49,12 @@ export function useVibeRootController(props: Readonly<VibeRootProps>, emit: Vibe
 
   onMounted(() => {
     updateViewportWidth()
+    window.addEventListener('keydown', onWindowKeydown)
     window.addEventListener('resize', updateViewportWidth)
   })
 
   onBeforeUnmount(() => {
+    window.removeEventListener('keydown', onWindowKeydown)
     window.removeEventListener('resize', updateViewportWidth)
   })
 
@@ -70,6 +73,21 @@ export function useVibeRootController(props: Readonly<VibeRootProps>, emit: Vibe
 
     desktopSurface.value = 'list'
     listRestoreToken.value += 1
+  }
+
+  function onWindowKeydown(event: KeyboardEvent) {
+    if (
+      event.defaultPrevented
+      || event.key !== 'Escape'
+      || !isDesktop.value
+      || surfaceMode.value !== 'fullscreen'
+      || isEditableTarget(event.target)
+    ) {
+      return
+    }
+
+    event.preventDefault()
+    returnToList()
   }
 
   function updateViewportWidth() {
