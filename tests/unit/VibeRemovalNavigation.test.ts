@@ -2,13 +2,13 @@ import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import Vibe from '@/components/Vibe.vue'
+import Layout from '@/components/Layout.vue'
 import type { VibeHandle } from '@/components/viewer-core/useViewer'
 import type { VibeViewerItem } from '@/components/viewer'
 
 const DEFAULT_VIEWPORT_WIDTH = window.innerWidth
 
-describe('Vibe removal navigation', () => {
+describe('VibeLayout removal navigation', () => {
   afterEach(() => {
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
   })
@@ -16,7 +16,7 @@ describe('Vibe removal navigation', () => {
   it('keeps the current fullscreen item anchored when a batched undo restores items before it', async () => {
     setViewportWidth(1_280)
 
-    let wrapper = mount(Vibe, {
+    let wrapper = mount(Layout, {
       props: {
         activeIndex: 0,
         items: Array.from({ length: 7 }, (_, index) => createImageItem(`item-${index + 1}`, `Item ${index + 1}`)),

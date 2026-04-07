@@ -14,7 +14,7 @@ vi.mock('@/components/viewer-core/loadError', () => ({
   resolveVibeAssetErrorKind: resolveVibeAssetErrorKindMock,
 }))
 
-import Vibe from '@/components/Vibe.vue'
+import Layout from '@/components/Layout.vue'
 import type { VibeViewerItem } from '@/components/viewer'
 import type { VibeHandle } from '@/components/viewer-core/useViewer'
 
@@ -24,7 +24,7 @@ const CustomOtherIcon = defineComponent({
   template: '<svg data-testid="custom-other-icon" />',
 })
 
-describe('Vibe', () => {
+describe('VibeLayout', () => {
   afterEach(() => {
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
     resolveVibeAssetErrorKindMock.mockReset()
@@ -37,7 +37,7 @@ describe('Vibe', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
 
-    const wrapper = mount(Vibe, {
+    const wrapper = mount(Layout, {
       props: {
         items: [createImageItem('image-1', 'Aurora moodboard'), createVideoItem('video-1', 'Launch loop teaser'), createOtherItem('archive-1', 'Release assets')],
       },
@@ -60,7 +60,7 @@ describe('Vibe', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
 
-    let wrapper = mount(Vibe, {
+    let wrapper = mount(Layout, {
       props: {
         activeIndex: 0,
         items: [createImageItem('image-2', 'Aurora moodboard'), createVideoItem('video-2', 'Launch loop teaser')],
@@ -99,7 +99,7 @@ describe('Vibe', () => {
     setViewportWidth(390)
 
     const item = createImageItem('image-3', undefined)
-    const wrapper = mount(Vibe, {
+    const wrapper = mount(Layout, {
       props: {
         items: [item],
       },
@@ -117,7 +117,7 @@ describe('Vibe', () => {
   it('shows an image spinner until the active image finishes loading', async () => {
     setViewportWidth(390)
 
-    const wrapper = mount(Vibe, {
+    const wrapper = mount(Layout, {
       props: {
         items: [createImageItem('image-4', 'Image loading')],
       },
@@ -141,7 +141,7 @@ describe('Vibe', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
 
-    const videoWrapper = mount(Vibe, {
+    const videoWrapper = mount(Layout, {
       props: {
         items: [createVideoItem('video-3', 'Video loading')],
       },
@@ -154,7 +154,7 @@ describe('Vibe', () => {
 
     videoWrapper.unmount()
 
-    const audioWrapper = mount(Vibe, {
+    const audioWrapper = mount(Layout, {
       props: {
         items: [createAudioItem('audio-1', 'Audio loading')],
       },
@@ -171,7 +171,7 @@ describe('Vibe', () => {
     setViewportWidth(390)
     resolveVibeAssetErrorKindMock.mockResolvedValueOnce('not-found')
 
-    const wrapper = mount(Vibe, {
+    const wrapper = mount(Layout, {
       props: {
         items: [createImageItem('image-404', 'Missing image')],
       },
@@ -191,7 +191,7 @@ describe('Vibe', () => {
     setViewportWidth(390)
     resolveVibeAssetErrorKindMock.mockResolvedValueOnce('generic')
 
-    const wrapper = mount(Vibe, {
+    const wrapper = mount(Layout, {
       props: {
         items: [createAudioItem('audio-broken', 'Broken audio')],
       },
@@ -211,7 +211,7 @@ describe('Vibe', () => {
   it('renders fallback list tiles for non-previewable items on desktop', async () => {
     setViewportWidth(1_280)
 
-    const wrapper = mount(Vibe, {
+    const wrapper = mount(Layout, {
       props: {
         items: [createOtherItem('archive-2', 'Archive fallback', {
           preview: {
@@ -240,7 +240,7 @@ describe('Vibe', () => {
   it('renders a custom item-icon slot for other items in list and fullscreen mode', async () => {
     setViewportWidth(1_280)
 
-    const wrapper = mount(Vibe, {
+    const wrapper = mount(Layout, {
       props: {
         items: [createOtherItem('other-custom-icon', 'Custom icon item')],
       },
@@ -270,7 +270,7 @@ describe('Vibe', () => {
     setViewportWidth(1_280)
 
     const overlayClick = vi.fn()
-    const wrapper = mount(Vibe, {
+    const wrapper = mount(Layout, {
       props: {
         items: [createImageItem('image-overlay-slot', 'Overlay slot image')],
       },
@@ -313,7 +313,7 @@ describe('Vibe', () => {
   it('renders list images even when the URL has no file extension', async () => {
     setViewportWidth(1_280)
 
-    const wrapper = mount(Vibe, {
+    const wrapper = mount(Layout, {
       props: {
         items: [createImageItem('image-5', 'Extensionless image', {
           url: 'https://picsum.photos/id/1003/1800/2700',
@@ -338,7 +338,7 @@ describe('Vibe', () => {
   it('renders ultra-wide image previews as square desktop tiles', async () => {
     setViewportWidth(1_280)
 
-    const wrapper = mount(Vibe, {
+    const wrapper = mount(Layout, {
       props: {
         items: [createImageItem('image-6', 'Square preview clamp', {
           preview: {
@@ -361,7 +361,7 @@ describe('Vibe', () => {
   it('exposes remove, restore, and undo that operate on duplicate ids', async () => {
     setViewportWidth(1_280)
 
-    const wrapper = mount(Vibe, {
+    const wrapper = mount(Layout, {
       props: {
         items: [
           createImageItem('duplicate', 'Duplicate 1'),

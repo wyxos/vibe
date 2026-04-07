@@ -3,7 +3,7 @@ import type { Component } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Laugh, Heart, ThumbsDown, ThumbsUp } from 'lucide-vue-next'
 
-import Vibe from '@/components/Vibe.vue'
+import Layout from '@/components/Layout.vue'
 import type { VibeViewerItem } from '@/components/viewer'
 import type { VibeHandle } from '@/components/viewer-core/useViewer'
 import { getFakeMediaItemIcon } from '@/demo/fakeMediaItemIcon'
@@ -272,7 +272,7 @@ function onWindowKeydown(event: KeyboardEvent) {
       {{ errorMessage }}
     </div>
 
-    <Vibe
+    <Layout
       ref="vibeRef"
       :items="items"
       :active-index="activeIndex"
@@ -330,6 +330,6 @@ function onWindowKeydown(event: KeyboardEvent) {
           </div>
         </div>
       </template>
-    </Vibe>
+    </Layout>
   </section>
 </template>

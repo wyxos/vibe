@@ -3,7 +3,7 @@ import type { Component } from 'vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
-import Vibe from '@/components/Vibe.vue'
+import Layout from '@/components/Layout.vue'
 import type { VibeViewerItem } from '@/components/viewer'
 import type { VibeGetItemsParams, VibeGetItemsResult } from '@/components/viewer-core/useViewer'
 import { getFakeMediaItemIcon } from '@/demo/fakeMediaItemIcon'
@@ -77,10 +77,10 @@ function renderItemIcon(item: VibeViewerItem, icon: unknown) {
 
 <template>
   <section class="relative h-full min-h-0 bg-[#05060a]">
-    <Vibe :get-items="getItems">
+    <Layout :get-items="getItems">
       <template #item-icon="{ item, icon }">
         <component :is="renderItemIcon(item, icon)" class="h-6 w-6 stroke-[1.9]" aria-hidden="true" />
       </template>
-    </Vibe>
+    </Layout>
   </section>
 </template>

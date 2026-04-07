@@ -1,6 +1,6 @@
 import type { App, Plugin } from 'vue'
 
-import VibeInstance from './components/Vibe.vue'
+import Layout from './components/Layout.vue'
 export type { VibeViewerAsset, VibeViewerItem, VibeViewerType } from './components/viewer'
 export type {
   VibeGetItemsParams,
@@ -11,13 +11,12 @@ export type {
   VibeProps,
 } from './components/viewer-core/useViewer'
 
-export const Vibe = VibeInstance
-export { VibeInstance }
+export const VibeLayout = Layout
 
 export const VibePlugin: Plugin = {
   install(app: App) {
-    app.component('Vibe', Vibe)
+    app.component('VibeLayout', VibeLayout)
   },
 }
 
-export default Vibe
+export default VibePlugin

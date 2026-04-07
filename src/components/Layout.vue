@@ -9,7 +9,7 @@ import FullscreenSurface from './FullscreenSurface.vue'
 import ListSurface from './ListSurface.vue'
 
 defineOptions({
-  name: 'Vibe',
+  name: 'VibeLayout',
 })
 
 const props = defineProps<VibeProps>()
@@ -78,7 +78,7 @@ defineExpose<VibeHandle>({
           {{
             viewer.loading.value
               ? 'Pulling the first page from the fake server.'
-              : 'Attach items to Vibe to turn this screen into the viewer.'
+              : 'Attach items to VibeLayout to turn this screen into the viewer.'
           }}
         </p>
     </div>

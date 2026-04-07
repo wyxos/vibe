@@ -40,7 +40,7 @@ npm run build:types
 - Main workspace: `src/pages/HomePage.vue`
 - Debug surface: `src/pages/FakeServerDebugPage.vue`
 - Demo helpers: `src/demo/**`
-- Public component: `src/components/Vibe.vue`
+- Public component: `src/components/Layout.vue`
 
 ## Pre-PR Checks
 

@@ -22,9 +22,9 @@ vi.mock('@/components/ListSurface.vue', () => ({
   },
 }))
 
-import Vibe from '@/components/Vibe.vue'
+import Layout from '@/components/Layout.vue'
 
-describe('Vibe feedback states', () => {
+describe('VibeLayout feedback states', () => {
   beforeEach(() => {
     resetControllerState()
   })
@@ -38,7 +38,7 @@ describe('Vibe feedback states', () => {
     controllerState.errorMessage.value = 'Temporary failure'
     controllerState.items.value = []
 
-    const wrapper = mount(Vibe, {
+    const wrapper = mount(Layout, {
       props: {
         getItems: vi.fn(),
       },
@@ -60,7 +60,7 @@ describe('Vibe feedback states', () => {
     controllerState.errorMessage.value = 'Temporary failure'
     controllerState.items.value = [createItem('warning-image')]
 
-    const wrapper = mount(Vibe, {
+    const wrapper = mount(Layout, {
       props: {
         items: controllerState.items.value,
       },

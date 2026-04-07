@@ -28,19 +28,18 @@ npm run build:types
 
 ## Package surface
 
-The package currently exports a single placeholder component and plugin from `src/index.ts`:
+The package currently exports a plugin-first surface from `src/index.ts`:
 
-- `VibeInstance`
-- `Vibe`
+- `VibeLayout`
 - `VibePlugin`
-- default export: `Vibe`
+- default export: `VibePlugin`
 
 Compiled CSS is emitted to `lib/style.css` during the library build.
 
 ## Project layout
 
 - `src/App.vue`: blank demo shell
-- `src/components/Vibe.vue`: placeholder exported component
+- `src/components/Layout.vue`: placeholder exported component
 - `src/index.ts`: package entrypoint
 - `src/style.css`: Tailwind import and app-level styles
 - `vite.config.ts`: demo build config
