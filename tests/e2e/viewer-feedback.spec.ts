@@ -113,6 +113,51 @@ test('desktop prepend motion keeps top-entering cards on the reversed stagger or
   }
 })
 
+test('broken demo assets surface 404 and generic preload errors in list and fullscreen', async ({ page }) => {
+  await page.setViewportSize({
+    width: 2_560,
+    height: 1_440,
+  })
+
+  await gotoRoute(page, '/')
+
+  const root = page.getByTestId('vibe-root')
+  const listSurface = page.getByTestId('vibe-root-list-surface')
+  const fullscreenSurface = page.getByTestId('vibe-root-fullscreen-surface')
+  const scrollViewport = listSurface.getByTestId('vibe-list-scroll')
+  const firstCard = listSurface.locator('[data-testid="vibe-list-card"][data-index="0"]')
+  const missingCard = listSurface.locator('[data-testid="vibe-list-card"][data-item-id="img-missing-proof-0012"]')
+  const brokenAssetCard = listSurface.locator('[data-testid="vibe-list-card"][data-item-id="img-broken-preview-0013"]')
+
+  await expect(root).toHaveAttribute('data-surface-mode', 'list')
+  await scrollNearBottomOfFirstPage(scrollViewport)
+  await expect(missingCard).toHaveCount(1, { timeout: 15_000 })
+  await expect(missingCard).toBeVisible()
+  await expect(missingCard.getByTestId('vibe-list-card-error')).toHaveAttribute('data-kind', 'not-found', { timeout: 15_000 })
+  await expect(missingCard).toContainText('404')
+  await expect(brokenAssetCard).toBeVisible()
+  await expect(brokenAssetCard.getByTestId('vibe-list-card-error')).toHaveAttribute('data-kind', 'generic', { timeout: 15_000 })
+  await expect(brokenAssetCard).toContainText('Load error')
+
+  await scrollViewport.evaluate((element) => {
+    const node = element as HTMLElement
+    node.scrollTop = 0
+    node.dispatchEvent(new Event('scroll', { bubbles: true }))
+  })
+  await expect(firstCard).toBeVisible()
+  await firstCard.locator('button').click()
+  await expect(root).toHaveAttribute('data-surface-mode', 'fullscreen')
+  for (let step = 0; step < 11; step += 1) {
+    await page.keyboard.press('ArrowDown')
+  }
+  await expect(fullscreenSurface).toContainText('404', { timeout: 15_000 })
+
+  await page.keyboard.press('ArrowDown')
+  await expect(fullscreenSurface).toContainText('Load error', { timeout: 15_000 })
+  await expect(fullscreenSurface).toContainText('Load error')
+  await expect(fullscreenSurface.getByTestId('vibe-root-media-bar')).toHaveCount(0)
+})
+
 async function hitBottom(scrollViewport: Locator) {
   await scrollViewport.evaluate((element) => {
     const node = element as HTMLElement
@@ -129,6 +174,14 @@ async function moveAwayFromBottom(scrollViewport: Locator) {
   await scrollViewport.evaluate((element) => {
     const node = element as HTMLElement
     node.scrollTop = Math.max(0, node.scrollHeight - node.clientHeight - 240)
+    node.dispatchEvent(new Event('scroll', { bubbles: true }))
+  })
+}
+
+async function scrollNearBottomOfFirstPage(scrollViewport: Locator) {
+  await scrollViewport.evaluate((element) => {
+    const node = element as HTMLElement
+    node.scrollTop = Math.max(0, node.scrollHeight - node.clientHeight - 280)
     node.dispatchEvent(new Event('scroll', { bubbles: true }))
   })
 }

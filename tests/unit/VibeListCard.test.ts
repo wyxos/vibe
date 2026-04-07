@@ -2,6 +2,17 @@ import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const { resolveVibeAssetErrorKindMock } = vi.hoisted(() => ({
+  resolveVibeAssetErrorKindMock: vi.fn(async () => 'generic' as const),
+}))
+
+vi.mock('@/components/vibe-root/loadError', () => ({
+  getVibeAssetErrorLabel(kind: 'generic' | 'not-found') {
+    return kind === 'not-found' ? '404' : 'Load error'
+  },
+  resolveVibeAssetErrorKind: resolveVibeAssetErrorKindMock,
+}))
+
 import VibeListCard from '@/components/VibeListCard.vue'
 import type { VibeViewerItem } from '@/components/vibeViewer'
 
@@ -10,6 +21,8 @@ describe('VibeListCard', () => {
 
   beforeEach(() => {
     intersectionObservers = []
+    resolveVibeAssetErrorKindMock.mockReset()
+    resolveVibeAssetErrorKindMock.mockResolvedValue('generic')
     vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
     MockIntersectionObserver.instances = intersectionObservers
   })
@@ -68,6 +81,32 @@ describe('VibeListCard', () => {
     expect(removeAttribute).toHaveBeenCalledWith('src')
     expect(srcSetter).toHaveBeenCalledWith('')
     expect(wrapper.find('img').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="vibe-list-card-error"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('ignores stale image error events after an out-of-view abort', async () => {
+    const wrapper = mount(VibeListCard, {
+      props: {
+        item: createImageItem('image-stale-error'),
+      },
+    })
+
+    await flushDom()
+
+    intersectionObservers[0].trigger(wrapper.element as Element, true, 0.75)
+    await flushDom()
+
+    const image = wrapper.get('img').element as HTMLImageElement
+
+    intersectionObservers[0].trigger(wrapper.element as Element, false, 0)
+    await flushDom()
+
+    image.dispatchEvent(new Event('error'))
+    await flushDom()
+
+    expect(wrapper.find('[data-testid="vibe-list-card-error"]').exists()).toBe(false)
 
     wrapper.unmount()
   })
@@ -103,6 +142,29 @@ describe('VibeListCard', () => {
     expect(pause).toHaveBeenCalled()
     expect(load).toHaveBeenCalled()
     expect(wrapper.find('video').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('shows a 404 error state when an image preview fails with a not-found response', async () => {
+    resolveVibeAssetErrorKindMock.mockResolvedValueOnce('not-found')
+
+    const wrapper = mount(VibeListCard, {
+      props: {
+        item: createImageItem('image-missing'),
+      },
+    })
+
+    await flushDom()
+
+    intersectionObservers[0].trigger(wrapper.element as Element, true, 0.75)
+    await flushDom()
+
+    await wrapper.get('img').trigger('error')
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="vibe-list-card-error"]').attributes('data-kind')).toBe('not-found')
+    expect(wrapper.text()).toContain('404')
 
     wrapper.unmount()
   })

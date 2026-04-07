@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import type { Component } from 'vue'
 import { computed, toRef } from 'vue'
-import { ArrowLeft, LoaderCircle, Pause, Play } from 'lucide-vue-next'
+import { ArrowLeft, LoaderCircle, Pause, Play, TriangleAlert } from 'lucide-vue-next'
 
+import type { VibeViewerItem } from './vibeViewer'
 import type { VibeRootControlledProps } from './vibe-root/useVibeRoot'
 import { useVibeRoot } from './vibe-root/useVibeRoot'
 import { getItemIcon, getItemLabel } from './vibe-root/media'
@@ -18,6 +20,9 @@ const props = withDefaults(defineProps<VibeRootControlledProps & {
   paginationDetail: null,
   showBackToList: false,
 })
+defineSlots<{
+  'item-icon'?: (props: { icon: Component; item: VibeViewerItem }) => unknown
+}>()
 
 const emit = defineEmits<{
   'back-to-list': []
@@ -36,8 +41,9 @@ const viewer = useVibeRoot(
 
 const activeStageToneClass = computed(() => getStageToneClass(viewer.activeItem.value?.type ?? 'image'))
 const mediaStatusOffsetClass = computed(() =>
-  viewer.activeMediaItem.value ? 'bottom-[5.8rem] max-[720px]:bottom-[7.4rem]' : 'bottom-[1.8rem] max-[720px]:bottom-[1.3rem]',
+  viewer.activeMediaItem.value && !viewer.activeAssetErrorKind.value ? 'bottom-[5.8rem] max-[720px]:bottom-[7.4rem]' : 'bottom-[1.8rem] max-[720px]:bottom-[1.3rem]',
 )
+const showMediaBar = computed(() => Boolean(viewer.activeMediaItem.value) && !viewer.activeAssetErrorKind.value)
 
 function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof viewer.activeItem.value>) {
   const label = item.title?.trim()
@@ -58,6 +64,10 @@ function isAssetLoading(index: number, item: (typeof props.items)[number]) {
     return false
   }
 
+  if (viewer.getAssetErrorKind(item.id)) {
+    return false
+  }
+
   if (item.type === 'image') {
     return !viewer.isImageReady(item.id)
   }
@@ -67,6 +77,18 @@ function isAssetLoading(index: number, item: (typeof props.items)[number]) {
   }
 
   return false
+}
+
+function getAssetErrorKind(item: (typeof props.items)[number]) {
+  return viewer.getAssetErrorKind(item.id)
+}
+
+function getAssetErrorLabel(item: (typeof props.items)[number]) {
+  return viewer.getAssetErrorLabel(item.id) ?? 'Load error'
+}
+
+function isAssetErrored(index: number, item: (typeof props.items)[number]) {
+  return shouldLoadSlideAsset(index) && index === viewer.resolvedActiveIndex.value && Boolean(getAssetErrorKind(item))
 }
 
 function shouldLoadSlideAsset(index: number) {
@@ -128,8 +150,22 @@ function getFullscreenMediaSource(index: number, item: (typeof props.items)[numb
             </span>
           </div>
 
+          <div
+            v-if="isAssetErrored(index, item)"
+            data-testid="vibe-root-asset-error"
+            :data-kind="getAssetErrorKind(item)"
+            class="grid h-full w-full place-items-center"
+          >
+            <div class="grid justify-items-center gap-4 border border-white/14 bg-black/45 px-8 py-7 text-center backdrop-blur-[18px]">
+              <TriangleAlert class="h-7 w-7 stroke-[1.9] text-[#f7f1ea]/72" aria-hidden="true" />
+              <p class="m-0 text-[0.82rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/70">
+                {{ getAssetErrorLabel(item) }}
+              </p>
+            </div>
+          </div>
+
           <img
-            v-if="item.type === 'image'"
+            v-else-if="item.type === 'image'"
             :src="getFullscreenImageSource(index, item)"
             :alt="item.title ?? ''"
             draggable="false"
@@ -137,7 +173,7 @@ function getFullscreenMediaSource(index: number, item: (typeof props.items)[numb
             :class="viewer.isImageReady(item.id) ? 'opacity-100' : 'opacity-0'"
             :ref="(element) => viewer.registerImageElement(item.id, element)"
             @load="viewer.onImageLoad(item.id)"
-            @error="viewer.onImageLoad(item.id)"
+            @error="viewer.onImageError(item.id, item.url)"
           />
 
           <video
@@ -152,7 +188,7 @@ function getFullscreenMediaSource(index: number, item: (typeof props.items)[numb
             @click.stop="viewer.onVideoClick($event, item.id)"
             @canplay="viewer.onMediaEvent(item.id, $event)"
             @durationchange="viewer.onMediaEvent(item.id, $event)"
-            @error="viewer.onMediaEvent(item.id, $event)"
+            @error="viewer.onMediaError(item.id, item.url)"
             @loadstart="viewer.onMediaEvent(item.id, $event)"
             @loadedmetadata="viewer.onMediaEvent(item.id, $event)"
             @pause="viewer.onMediaEvent(item.id, $event)"
@@ -174,6 +210,7 @@ function getFullscreenMediaSource(index: number, item: (typeof props.items)[numb
             type="button"
             class="relative grid aspect-square w-[clamp(320px,46vw,560px)] max-w-[calc(100vw-2.5rem)] place-items-center border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02)),radial-gradient(circle_at_center,rgba(16,185,129,0.14),transparent_58%)] text-[#f7f1ea] transition-[border-color,background] duration-200 hover:border-white/30 hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.03)),radial-gradient(circle_at_center,rgba(16,185,129,0.18),transparent_58%)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f7f1ea]"
             :aria-label="(viewer.mediaStates.value[item.id]?.paused ?? true) ? getMediaActionLabel('Play', item) : getMediaActionLabel('Pause', item)"
+            :disabled="Boolean(getAssetErrorKind(item))"
             @click="viewer.onAudioCoverClick($event, item.id)"
           >
             <div
@@ -186,20 +223,38 @@ function getFullscreenMediaSource(index: number, item: (typeof props.items)[numb
               </span>
             </div>
 
-            <div class="pointer-events-none absolute inset-0 border border-white/8 bg-[radial-gradient(circle,rgba(16,185,129,0.16),transparent_66%)]" />
-            <div class="pointer-events-none absolute h-[clamp(220px,30vw,360px)] w-[clamp(220px,30vw,360px)] border border-white/8 bg-[radial-gradient(circle,rgba(255,255,255,0.08),transparent_62%)]" />
+            <template v-if="getAssetErrorKind(item)">
+              <div class="pointer-events-none absolute inset-0 border border-white/8 bg-[radial-gradient(circle,rgba(239,68,68,0.12),transparent_66%)]" />
+              <div
+                data-testid="vibe-root-asset-error"
+                :data-kind="getAssetErrorKind(item)"
+                class="relative z-[1] grid justify-items-center gap-4"
+              >
+                <TriangleAlert class="h-7 w-7 stroke-[1.9] text-[#f7f1ea]/72" aria-hidden="true" />
+                <p class="m-0 text-[0.82rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/70">
+                  {{ getAssetErrorLabel(item) }}
+                </p>
+              </div>
+            </template>
 
-            <div class="relative z-[1] inline-flex min-h-[4.25rem] min-w-[4.25rem] items-center justify-center border border-white/18 bg-emerald-500/12 p-4 backdrop-blur-[20px]">
-              <component :is="getItemIcon(item.type)" class="h-6 w-6 stroke-[1.9]" aria-hidden="true" />
-            </div>
+            <template v-else>
+              <div class="pointer-events-none absolute inset-0 border border-white/8 bg-[radial-gradient(circle,rgba(16,185,129,0.16),transparent_66%)]" />
+              <div class="pointer-events-none absolute h-[clamp(220px,30vw,360px)] w-[clamp(220px,30vw,360px)] border border-white/8 bg-[radial-gradient(circle,rgba(255,255,255,0.08),transparent_62%)]" />
 
-            <div class="pointer-events-none absolute bottom-4 right-4 inline-flex h-10 w-10 items-center justify-center border border-white/14 bg-black/50 backdrop-blur-[18px]">
-              <component
-                :is="(viewer.mediaStates.value[item.id]?.paused ?? true) ? Play : Pause"
-                class="h-4 w-4 stroke-2"
-                aria-hidden="true"
-              />
-            </div>
+              <div class="relative z-[1] inline-flex min-h-[4.25rem] min-w-[4.25rem] items-center justify-center border border-white/18 bg-emerald-500/12 p-4 backdrop-blur-[20px]">
+                <slot name="item-icon" :icon="getItemIcon(item.type)" :item="item">
+                  <component :is="getItemIcon(item.type)" class="h-6 w-6 stroke-[1.9]" aria-hidden="true" />
+                </slot>
+              </div>
+
+              <div class="pointer-events-none absolute bottom-4 right-4 inline-flex h-10 w-10 items-center justify-center border border-white/14 bg-black/50 backdrop-blur-[18px]">
+                <component
+                  :is="(viewer.mediaStates.value[item.id]?.paused ?? true) ? Play : Pause"
+                  class="h-4 w-4 stroke-2"
+                  aria-hidden="true"
+                />
+              </div>
+            </template>
           </button>
 
           <audio
@@ -209,7 +264,7 @@ function getFullscreenMediaSource(index: number, item: (typeof props.items)[numb
             :ref="(element) => viewer.registerAudioElement(item.id, element)"
             @canplay="viewer.onMediaEvent(item.id, $event)"
             @durationchange="viewer.onMediaEvent(item.id, $event)"
-            @error="viewer.onMediaEvent(item.id, $event)"
+            @error="viewer.onMediaError(item.id, item.url)"
             @loadstart="viewer.onMediaEvent(item.id, $event)"
             @loadedmetadata="viewer.onMediaEvent(item.id, $event)"
             @pause="viewer.onMediaEvent(item.id, $event)"
@@ -228,7 +283,9 @@ function getFullscreenMediaSource(index: number, item: (typeof props.items)[numb
           class="relative z-[1] grid w-full max-w-[1100px] justify-items-center gap-6 px-[clamp(2rem,4vw,3rem)] py-[clamp(2rem,4vw,3rem)] text-center"
         >
           <div class="inline-flex min-h-[4.25rem] min-w-[4.25rem] items-center justify-center border border-white/18 bg-white/8 p-4 backdrop-blur-[20px]">
-            <component :is="getItemIcon(item.type)" class="h-6 w-6 stroke-[1.9]" aria-hidden="true" />
+            <slot name="item-icon" :icon="getItemIcon(item.type)" :item="item">
+              <component :is="getItemIcon(item.type)" class="h-6 w-6 stroke-[1.9]" aria-hidden="true" />
+            </slot>
           </div>
         </div>
       </article>
@@ -281,7 +338,7 @@ function getFullscreenMediaSource(index: number, item: (typeof props.items)[numb
     </div>
 
     <div
-      v-if="viewer.activeMediaItem.value"
+      v-if="showMediaBar"
       data-testid="vibe-root-media-bar"
       class="absolute inset-x-0 bottom-0 z-[5] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.42)_24%,rgba(0,0,0,0.78))] px-[clamp(1rem,2.6vw,2.25rem)] pt-4 pb-[1.15rem]"
     >

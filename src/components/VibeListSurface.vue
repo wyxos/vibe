@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Component } from 'vue'
 import { toRef } from 'vue'
 
 import type { VibeViewerItem } from './vibeViewer'
@@ -28,6 +29,9 @@ const props = withDefaults(defineProps<{
   requestNextPage: null,
   requestPreviousPage: null,
 })
+const slots = defineSlots<{
+  'item-icon'?: (props: { icon: Component; item: VibeViewerItem }) => unknown
+}>()
 
 const emit = defineEmits<{
   'open-fullscreen': [index: number]
@@ -87,6 +91,7 @@ const list = useVibeMasonryList({
           data-testid="vibe-list-card"
           :data-active="index === list.resolvedActiveIndex.value ? 'true' : 'false'"
           :data-index="index"
+          :data-item-id="item.id"
           class="absolute will-change-transform"
           :style="list.getCardStyle(index)"
         >
@@ -96,7 +101,14 @@ const list = useVibeMasonryList({
             :aria-label="item.title || `Open item ${index + 1}`"
             @click="emit('open-fullscreen', index)"
           >
-            <VibeListCard :active="index === list.resolvedActiveIndex.value" :item="item" />
+            <VibeListCard
+              :active="index === list.resolvedActiveIndex.value"
+              :item="item"
+            >
+              <template v-if="slots['item-icon']" #item-icon="slotProps">
+                <slot name="item-icon" v-bind="slotProps" />
+              </template>
+            </VibeListCard>
           </button>
         </article>
       </div>

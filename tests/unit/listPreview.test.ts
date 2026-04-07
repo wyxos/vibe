@@ -91,7 +91,7 @@ describe('listPreview', () => {
   it('renders non-visual items as fallbacks even when preview URLs exist', () => {
     const asset = getListRenderableAsset({
       id: 'document-1',
-      type: 'document',
+      type: 'other',
       title: 'Document tile',
       url: 'https://example.com/document-1.pdf',
       preview: {

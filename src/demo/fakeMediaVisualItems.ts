@@ -141,4 +141,30 @@ export const fakeMediaVisualItems: VibeViewerItem[] = [
       height: 450,
     },
   },
+  {
+    id: 'img-missing-proof',
+    type: 'image',
+    title: 'Missing proof sheet',
+    url: '/demo-missing/proof-sheet-404.jpg',
+    width: 1920,
+    height: 1080,
+    preview: {
+      url: '/demo-missing/proof-sheet-404.jpg',
+      width: 480,
+      height: 270,
+    },
+  },
+  {
+    id: 'img-broken-preview',
+    type: 'image',
+    title: 'Broken preview asset',
+    url: '/demo-invalid/broken-preview.jpg',
+    width: 1600,
+    height: 900,
+    preview: {
+      url: '/demo-invalid/broken-preview.jpg',
+      width: 640,
+      height: 360,
+    },
+  },
 ]

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 
 import { getItemIcon, getItemLabel } from '@/components/vibe-root/media'
+import { getFakeMediaItemIcon, getFakeMediaTypeLabel } from '@/demo/fakeMediaItemIcon'
 import {
   createFakeMediaServer,
   type FakeMediaItem,
@@ -96,13 +97,13 @@ function cardTone(item: FakeMediaItem) {
       return 'border-sky-300/26 bg-sky-300/[0.045]'
     case 'audio':
       return 'border-emerald-300/26 bg-emerald-300/[0.045]'
-    case 'document':
-      return 'border-violet-300/26 bg-violet-300/[0.045]'
-    case 'archive':
-      return 'border-rose-300/26 bg-rose-300/[0.045]'
     default:
       return 'border-white/14 bg-white/[0.04]'
   }
+}
+
+function getDebugItemIcon(item: FakeMediaItem) {
+  return getFakeMediaItemIcon(item) ?? getItemIcon(item.type)
 }
 </script>
 
@@ -216,7 +217,7 @@ function cardTone(item: FakeMediaItem) {
                 <div v-else class="grid h-full place-items-center px-4 text-center">
                   <div class="grid justify-items-center gap-3">
                     <span class="inline-flex h-12 w-12 items-center justify-center border border-white/12 bg-black/34 text-[#f7f1ea]/72">
-                      <component :is="getItemIcon(item.type)" class="h-4 w-4 stroke-[2]" aria-hidden="true" />
+                      <component :is="getDebugItemIcon(item)" class="h-4 w-4 stroke-[2]" aria-hidden="true" />
                     </span>
                     <p class="text-[0.7rem] font-bold uppercase tracking-[0.24em] text-[#f7f1ea]/54">
                       {{ item.preview ? 'Preview available' : getItemLabel(item.type) }}
@@ -225,8 +226,8 @@ function cardTone(item: FakeMediaItem) {
                 </div>
 
                 <span class="absolute left-3 top-3 inline-flex items-center gap-2 border border-white/12 bg-black/60 px-3 py-2 text-[0.66rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/76 backdrop-blur-[14px]">
-                  <component :is="getItemIcon(item.type)" class="h-3.5 w-3.5 stroke-[2]" aria-hidden="true" />
-                  <span>{{ getItemLabel(item.type) }}</span>
+                  <component :is="getDebugItemIcon(item)" class="h-3.5 w-3.5 stroke-[2]" aria-hidden="true" />
+                  <span>{{ getFakeMediaTypeLabel(item) }}</span>
                 </span>
               </div>
 
@@ -239,7 +240,7 @@ function cardTone(item: FakeMediaItem) {
                     <p class="mt-1 break-all text-[0.78rem] uppercase tracking-[0.18em] text-[#f7f1ea]/42">{{ item.id }}</p>
                   </div>
                   <span class="border border-white/12 bg-black/36 px-3 py-2 text-[0.68rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/68">
-                    {{ item.type }}
+                    {{ getFakeMediaTypeLabel(item) }}
                   </span>
                 </div>
 
@@ -297,6 +298,8 @@ function cardTone(item: FakeMediaItem) {
             <p class="text-[0.68rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/42">What to verify</p>
             <ul class="mt-3 grid gap-2 text-sm leading-6 text-[#f7f1ea]/68">
               <li>Every item exposes `id`, `type`, `url`, and optionally `title` and `preview`.</li>
+              <li>`type` is capped at `image`, `video`, `audio`, and `other`.</li>
+              <li>Consumers can keep richer subtype fields and provide a custom `item-icon` slot for `other` items.</li>
               <li>`VibeRoot` consumes a strict callback result of `items`, `nextPage`, and optional `previousPage`.</li>
               <li>Main `width` and `height` describe the main `url` asset, not preview-first dimensions.</li>
               <li>Preview dimensions only appear under `preview.width` and `preview.height`.</li>

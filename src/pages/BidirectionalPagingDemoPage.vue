@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import type { Component } from 'vue'
 import { computed, onMounted, ref, watch } from 'vue'
 
 import VibeRoot from '@/components/VibeRoot.vue'
 import type { VibeViewerItem } from '@/components/vibeViewer'
+import { getFakeMediaItemIcon } from '@/demo/fakeMediaItemIcon'
 import { fetchFakeMediaPage } from '@/demo/fakeServer'
 
 const INITIAL_PAGE = 10
@@ -167,6 +169,10 @@ async function requestPreviousPage() {
 
   await loadPage(previousPage.value, 'prepend')
 }
+
+function renderItemIcon(item: VibeViewerItem, icon: unknown) {
+  return (getFakeMediaItemIcon(item) ?? icon) as Component
+}
 </script>
 
 <template>
@@ -197,6 +203,10 @@ async function requestPreviousPage() {
       :request-next-page="requestNextPage"
       :request-previous-page="requestPreviousPage"
       @update:active-index="activeIndex = $event"
-    />
+    >
+      <template #item-icon="{ item, icon }">
+        <component :is="renderItemIcon(item, icon)" class="h-6 w-6 stroke-[1.9]" aria-hidden="true" />
+      </template>
+    </VibeRoot>
   </section>
 </template>

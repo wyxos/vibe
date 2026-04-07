@@ -1,20 +1,27 @@
 <script setup lang="ts">
+import type { Component } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { LoaderCircle } from 'lucide-vue-next'
+import { LoaderCircle, TriangleAlert } from 'lucide-vue-next'
 
 import type { VibeViewerItem } from './vibeViewer'
 import { getItemIcon } from './vibe-root/media'
 import { getListRenderableAsset } from './vibe-root/listPreview'
+import { getVibeAssetErrorLabel, resolveVibeAssetErrorKind, type VibeAssetErrorKind } from './vibe-root/loadError'
+import { playMediaElement } from './vibe-root/mediaPlayback'
 import { defaultVibeAssetLoadQueue, type VibeAssetLoadLease } from './vibe-root/useVibeAssetLoadQueue'
 
 const props = defineProps<{
   active?: boolean
   item: VibeViewerItem
 }>()
+defineSlots<{
+  'item-icon'?: (props: { icon: Component; item: VibeViewerItem }) => unknown
+}>()
 
 const renderableAsset = computed(() => getListRenderableAsset(props.item))
 const isInView = ref(false)
 const isReady = ref(renderableAsset.value.kind === 'fallback')
+const loadErrorKind = ref<VibeAssetErrorKind | null>(null)
 const imageRef = ref<HTMLImageElement | null>(null)
 const rootRef = ref<HTMLElement | null>(null)
 const scrollRootRef = ref<HTMLElement | null>(null)
@@ -34,8 +41,9 @@ const isQueueEligible = computed(() =>
 )
 const shouldRenderImage = computed(() => renderableAsset.value.kind === 'image' && Boolean(attachedAssetUrl.value))
 const shouldRenderVideo = computed(() => renderableAsset.value.kind === 'video' && Boolean(attachedAssetUrl.value))
+const shouldRenderError = computed(() => Boolean(loadErrorKind.value))
 const shouldShowSpinner = computed(() =>
-  isQueueEligible.value && (!canAttachAsset.value || !isReady.value),
+  isQueueEligible.value && !loadErrorKind.value && (!canAttachAsset.value || !isReady.value),
 )
 
 let intersectionObserver: IntersectionObserver | null = null
@@ -47,6 +55,7 @@ watch(
     const isFallback = renderableAsset.value.kind === 'fallback'
 
     isReady.value = isFallback
+    loadErrorKind.value = null
 
     if (isFallback) {
       canAttachAsset.value = true
@@ -100,22 +109,42 @@ onBeforeUnmount(() => {
 })
 
 function onImageLoad() {
+  if (!isCurrentAssetElement(imageRef.value)) {
+    return
+  }
+
   isReady.value = true
+  loadErrorKind.value = null
   releaseLoadLease()
 }
 
-function onImageError() {
-  isReady.value = true
+async function onImageError() {
+  if (!isCurrentAssetElement(imageRef.value)) {
+    return
+  }
+
+  isReady.value = false
+  loadErrorKind.value = 'generic'
+  loadErrorKind.value = await resolveVibeAssetErrorKind(attachedAssetUrl.value ?? props.item.url)
   releaseLoadLease()
 }
 
 function onVideoReady() {
+  if (!isCurrentAssetElement(videoRef.value)) {
+    return
+  }
+
   isReady.value = true
+  loadErrorKind.value = null
   releaseLoadLease()
   syncVideoPlayback()
 }
 
 function onVideoLoading() {
+  if (!isCurrentAssetElement(videoRef.value)) {
+    return
+  }
+
   isReady.value = false
 }
 
@@ -141,6 +170,7 @@ function syncAssetQueue() {
     onGrant() {
       canAttachAsset.value = true
       isReady.value = false
+      loadErrorKind.value = null
     },
     url: renderableAsset.value.url ?? props.item.url,
   })
@@ -152,11 +182,16 @@ function syncVideoPlayback() {
     return
   }
 
+  if (loadErrorKind.value) {
+    video.pause()
+    return
+  }
+
   if (attachedAssetUrl.value && isInView.value && isReady.value) {
     video.muted = true
     video.loop = true
     video.playsInline = true
-    void video.play().catch(() => {})
+    playMediaElement(video)
     return
   }
 
@@ -171,14 +206,16 @@ function syncVideoPlayback() {
 }
 
 function teardownAssetLoad(resetMedia = true) {
+  canAttachAsset.value = renderableAsset.value.kind === 'fallback'
+  loadErrorKind.value = null
+  isReady.value = renderableAsset.value.kind === 'fallback'
+
   if (resetMedia) {
     abortImageLoad()
     abortVideoLoad()
   }
 
   releaseLoadLease()
-  canAttachAsset.value = renderableAsset.value.kind === 'fallback'
-  isReady.value = renderableAsset.value.kind === 'fallback'
 }
 
 function releaseLoadLease() {
@@ -247,6 +284,31 @@ function getLoadPriority() {
 
   return Math.abs(((itemBounds.top + itemBounds.bottom) / 2) - viewportCenter)
 }
+
+function isCurrentAssetElement(element: HTMLImageElement | HTMLVideoElement | null) {
+  const expectedUrl = normalizeAssetUrl(attachedAssetUrl.value)
+
+  if (!element || !expectedUrl) {
+    return false
+  }
+
+  const actualUrl = normalizeAssetUrl(('currentSrc' in element && element.currentSrc) || element.getAttribute('src'))
+
+  return actualUrl === expectedUrl
+}
+
+function normalizeAssetUrl(url: string | null) {
+  if (!url) {
+    return null
+  }
+
+  try {
+    return new URL(url, window.location.href).href
+  }
+  catch {
+    return url
+  }
+}
 </script>
 
 <template>
@@ -266,7 +328,7 @@ function getLoadPriority() {
     </div>
 
     <img
-      v-if="shouldRenderImage && attachedAssetUrl"
+      v-if="shouldRenderImage && attachedAssetUrl && !shouldRenderError"
       ref="imageRef"
       :src="attachedAssetUrl"
       :alt="renderableAsset.label"
@@ -278,7 +340,7 @@ function getLoadPriority() {
     />
 
     <video
-      v-else-if="shouldRenderVideo && attachedAssetUrl"
+      v-else-if="shouldRenderVideo && attachedAssetUrl && !shouldRenderError"
       ref="videoRef"
       :src="attachedAssetUrl"
       muted
@@ -296,11 +358,27 @@ function getLoadPriority() {
     />
 
     <div
+      v-else-if="shouldRenderError"
+      data-testid="vibe-list-card-error"
+      :data-kind="loadErrorKind"
+      class="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.12),transparent_65%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]"
+    >
+      <div class="grid justify-items-center gap-3 px-4 text-center">
+        <TriangleAlert class="h-6 w-6 stroke-[1.8] text-[#f7f1ea]/78" aria-hidden="true" />
+        <span class="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/72">
+          {{ getVibeAssetErrorLabel(loadErrorKind!) }}
+        </span>
+      </div>
+    </div>
+
+    <div
       v-else
       class="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_65%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]"
     >
       <div class="inline-flex h-14 w-14 items-center justify-center border border-white/16 bg-black/20">
-        <component :is="getItemIcon(props.item.type)" class="h-6 w-6 stroke-[1.8] text-[#f7f1ea]/78" aria-hidden="true" />
+        <slot name="item-icon" :icon="getItemIcon(props.item.type)" :item="props.item">
+          <component :is="getItemIcon(props.item.type)" class="h-6 w-6 stroke-[1.8] text-[#f7f1ea]/78" aria-hidden="true" />
+        </slot>
       </div>
     </div>
 

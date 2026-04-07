@@ -1,4 +1,4 @@
-export type VibeViewerType = 'image' | 'video' | 'audio' | 'document' | 'archive' | 'other'
+export type VibeViewerType = 'image' | 'video' | 'audio' | 'other'
 
 export interface VibeViewerAsset {
   url: string
@@ -14,4 +14,5 @@ export interface VibeViewerItem {
   preview?: VibeViewerAsset
   width?: number
   height?: number
+  [key: string]: unknown
 }

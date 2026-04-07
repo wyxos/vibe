@@ -276,7 +276,7 @@ test('desktop fullscreen audio cover toggles play/pause and seekbar updates curr
   await expect(imageCard).toBeVisible({ timeout: 15_000 })
   await imageCard.locator('button').click()
 
-  for (let step = 0; step < 11; step += 1) {
+  for (let step = 0; step < 13; step += 1) {
     await page.keyboard.press('ArrowDown')
   }
 

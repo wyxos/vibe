@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import type { Component } from 'vue'
+
+import type { VibeViewerItem } from './vibeViewer'
 import type { VibeRootProps } from './vibe-root/useVibeRoot'
 import { useVibeRootController } from './vibe-root/useVibeRootController'
 
@@ -6,6 +9,9 @@ import VibeFullscreenSurface from './VibeFullscreenSurface.vue'
 import VibeListSurface from './VibeListSurface.vue'
 
 const props = defineProps<VibeRootProps>()
+const slots = defineSlots<{
+  'item-icon'?: (props: { icon: Component; item: VibeViewerItem }) => unknown
+}>()
 
 const emit = defineEmits<{
   'update:activeIndex': [value: number]
@@ -74,19 +80,23 @@ const root = useVibeRootController(props, emit)
         >
           <VibeListSurface
             :items="root.items.value"
-          :active-index="root.activeIndex.value"
-          :loading="root.loading.value"
-          :has-next-page="root.hasNextPage.value"
-          :has-previous-page="root.hasPreviousPage.value"
-          :pending-append-items="root.pendingAppendItems.value"
-          :commit-pending-append="root.commitPendingAppend"
-          :pagination-detail="root.paginationDetail.value"
-          :request-next-page="root.prefetchNextPage"
-          :request-previous-page="root.prefetchPreviousPage"
-          :restore-token="root.listRestoreToken.value"
-          @open-fullscreen="root.openFullscreen"
-          @update:active-index="root.setActiveIndex"
-          />
+            :active-index="root.activeIndex.value"
+            :loading="root.loading.value"
+            :has-next-page="root.hasNextPage.value"
+            :has-previous-page="root.hasPreviousPage.value"
+            :pending-append-items="root.pendingAppendItems.value"
+            :commit-pending-append="root.commitPendingAppend"
+            :pagination-detail="root.paginationDetail.value"
+            :request-next-page="root.prefetchNextPage"
+            :request-previous-page="root.prefetchPreviousPage"
+            :restore-token="root.listRestoreToken.value"
+            @open-fullscreen="root.openFullscreen"
+            @update:active-index="root.setActiveIndex"
+          >
+            <template v-if="slots['item-icon']" #item-icon="slotProps">
+              <slot name="item-icon" v-bind="slotProps" />
+            </template>
+          </VibeListSurface>
         </div>
       </Transition>
 
@@ -116,7 +126,11 @@ const root = useVibeRootController(props, emit)
             :show-back-to-list="root.showBackToList.value"
             @back-to-list="root.returnToList"
             @update:active-index="root.setActiveIndex"
-          />
+          >
+            <template v-if="slots['item-icon']" #item-icon="slotProps">
+              <slot name="item-icon" v-bind="slotProps" />
+            </template>
+          </VibeFullscreenSurface>
         </div>
       </Transition>
     </template>
@@ -132,6 +146,10 @@ const root = useVibeRootController(props, emit)
       :show-back-to-list="false"
       @back-to-list="root.returnToList"
       @update:active-index="root.setActiveIndex"
-    />
+    >
+      <template v-if="slots['item-icon']" #item-icon="slotProps">
+        <slot name="item-icon" v-bind="slotProps" />
+      </template>
+    </VibeFullscreenSurface>
   </section>
 </template>

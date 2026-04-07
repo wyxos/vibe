@@ -1,10 +1,10 @@
-import { computed, nextTick, ref, watch, type Ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 
-import { createMediaUiState, DEFAULT_MEDIA_UI_STATE, isImageElementReady, syncMediaUiState, type MediaUiState } from './assetState'
 import { isEditableTarget, isInteractiveTarget } from './dom'
 import { formatPlaybackTime } from './format'
 import { useVibeRootActivation } from './useVibeRootActivation'
 import { useVibeRootDataSource, type VibeRootProps } from './useVibeRootDataSource'
+import { useVibeRootMedia } from './useVibeRootMedia'
 import { getRenderedItems, getRenderedRange, getVirtualSlideStyle } from './virtualization'
 
 export type {
@@ -40,11 +40,6 @@ export function useVibeRoot(
   const dragOffset = ref(0)
   const isDragging = ref(false)
   const viewportHeight = ref(1)
-  const imageReadyStates = ref<Record<string, boolean>>({})
-  const mediaStates = ref<Record<string, MediaUiState>>({})
-
-  const videoElements = new Map<string, HTMLVideoElement>()
-  const audioElements = new Map<string, HTMLAudioElement>()
   const isEnabled = options.enabled ?? computed(() => true)
 
   let activePointerId: number | null = null
@@ -68,26 +63,11 @@ export function useVibeRoot(
 
     return null
   })
-  const activeMediaState = computed(() => {
-    if (!activeMediaItem.value) {
-      return DEFAULT_MEDIA_UI_STATE
-    }
-
-    return mediaStates.value[activeMediaItem.value.id] ?? DEFAULT_MEDIA_UI_STATE
-  })
-  const activeMediaDuration = computed(() => {
-    if (!activeMediaItem.value) {
-      return 0
-    }
-
-    return activeMediaState.value.duration
-  })
-  const activeMediaProgress = computed(() => {
-    if (activeMediaDuration.value <= 0) {
-      return 0
-    }
-
-    return clamp((activeMediaState.value.currentTime / activeMediaDuration.value) * 100, 0, 100)
+  const media = useVibeRootMedia({
+    activeItem,
+    activeMediaItem,
+    isEnabled,
+    itemCount: computed(() => items.value.length),
   })
   const isAtEnd = computed(() => items.value.length > 0 && resolvedActiveIndex.value === items.value.length - 1)
   const statusMessage = computed(() => {
@@ -109,27 +89,14 @@ export function useVibeRoot(
   const renderedRange = computed(() => getRenderedRange(resolvedActiveIndex.value, items.value.length))
   const renderedItems = computed(() => getRenderedItems(items.value, resolvedActiveIndex.value))
 
-  watch(resolvedActiveIndex, async () => {
-    await syncMediaPlayback()
-  })
-
-  watch(
-    () => items.value.length,
-    async () => {
-      await syncMediaPlayback()
-    },
-  )
-
   useVibeRootActivation({
     enabled: isEnabled,
     onDisable() {
       resetDragState()
-      pauseAndResetAllMedia()
-      imageReadyStates.value = {}
-      mediaStates.value = {}
+      media.resetMediaState()
     },
     onEnable() {
-      return syncMediaPlayback()
+      return media.syncMediaPlayback()
     },
     onKeydown,
     onResize: updateViewportHeight,
@@ -263,172 +230,16 @@ export function useVibeRoot(
     }
   }
 
-  function registerVideoElement(id: string, element: unknown) {
-    if (element instanceof HTMLVideoElement) {
-      videoElements.set(id, element)
-      updateMediaState(id, element)
-      return
-    }
-
-    videoElements.delete(id)
-  }
-
-  function registerAudioElement(id: string, element: unknown) {
-    if (element instanceof HTMLAudioElement) {
-      audioElements.set(id, element)
-      updateMediaState(id, element)
-      return
-    }
-
-    audioElements.delete(id)
-  }
-
-  function registerImageElement(id: string, element: unknown) {
-    if (element instanceof HTMLImageElement && isImageElementReady(element)) {
-      imageReadyStates.value[id] = true
-    }
-  }
-
-  function pauseAndReset(media: HTMLMediaElement, id: string) {
-    media.pause()
-
-    try {
-      media.currentTime = 0
-    }
-    catch {
-      // Ignore reset failures for streams or not-yet-ready elements.
-    }
-
-    updateMediaState(id, media)
-  }
-
-  function pauseAndResetAllMedia() {
-    for (const [id, media] of videoElements.entries()) {
-      pauseAndReset(media, id)
-    }
-
-    for (const [id, media] of audioElements.entries()) {
-      pauseAndReset(media, id)
-    }
-  }
-
-  async function syncMediaPlayback() {
-    if (!isEnabled.value) {
-      pauseAndResetAllMedia()
-      return
-    }
-
-    await nextTick()
-
-    const activeId = activeItem.value?.id ?? null
-
-    for (const [id, element] of videoElements.entries()) {
-      if (id !== activeId) {
-        pauseAndReset(element, id)
-        continue
-      }
-
-      element.muted = true
-      element.loop = false
-      element.playsInline = true
-      void element.play().catch(() => {})
-      updateMediaState(id, element)
-    }
-
-    for (const [id, element] of audioElements.entries()) {
-      if (id !== activeId) {
-        pauseAndReset(element, id)
-        continue
-      }
-
-      void element.play().catch(() => {})
-      updateMediaState(id, element)
-    }
-  }
-
-  function ensureMediaState(id: string) {
-    if (!mediaStates.value[id]) {
-      mediaStates.value[id] = createMediaUiState()
-    }
-    return mediaStates.value[id]
-  }
-
-  function updateMediaState(id: string, media: HTMLMediaElement, eventType?: string) {
-    syncMediaUiState(ensureMediaState(id), media, eventType)
-  }
-
-  function setMediaUiState(id: string, currentTime: number, media: HTMLMediaElement) {
-    const state = ensureMediaState(id)
-
-    state.currentTime = currentTime
-    state.duration = Number.isFinite(media.duration) ? media.duration : state.duration
-    state.paused = media.paused
-  }
-
-  function onMediaEvent(id: string, event: Event) {
-    const media = event.currentTarget instanceof HTMLMediaElement ? event.currentTarget : event.target instanceof HTMLMediaElement ? event.target : null
-    if (media) {
-      updateMediaState(id, media, event.type)
-    }
-  }
-
-  function onImageLoad(id: string) { imageReadyStates.value[id] = true }
-
-  function getMediaElementById(id: string) {
-    return videoElements.get(id) ?? audioElements.get(id) ?? null
-  }
-
-  function getActiveMediaElement() {
-    return activeMediaItem.value ? getMediaElementById(activeMediaItem.value.id) : null
-  }
-
-  function toggleMediaPlayback(media: HTMLMediaElement | null) {
-    if (!media) {
-      return
-    }
-
-    if (media.paused) {
-      void media.play().catch(() => {})
-      return
-    }
-
-    media.pause()
-  }
-
   function onVideoClick(event: MouseEvent, id: string) {
-    if (event.button !== 0 || Date.now() < suppressMediaToggleUntil) {
-      return
-    }
-
-    toggleMediaPlayback(videoElements.get(id) ?? null)
+    media.onVideoClick(event, id, suppressMediaToggleUntil)
   }
 
   function onAudioCoverClick(event: MouseEvent, id: string) {
-    if (event.button !== 0 || Date.now() < suppressMediaToggleUntil) {
-      return
-    }
-
-    toggleMediaPlayback(getMediaElementById(id))
+    media.onAudioCoverClick(event, id, suppressMediaToggleUntil)
   }
 
   function onMediaSeekInput(event: Event) {
-    const media = getActiveMediaElement()
-    const activeId = activeMediaItem.value?.id
-
-    if (!media || !activeId || !(event.target instanceof HTMLInputElement)) {
-      return
-    }
-
-    const nextTime = Number.parseFloat(event.target.value)
-
-    if (!Number.isFinite(nextTime)) {
-      return
-    }
-
-    const clampedTime = clamp(nextTime, 0, activeMediaDuration.value || 0)
-
-    setMediaUiState(activeId, clampedTime, media)
-    media.currentTime = clampedTime
+    media.onMediaSeekInput(event)
   }
 
   function isVisual(item: (typeof items.value)[number]) {
@@ -439,31 +250,22 @@ export function useVibeRoot(
     return item.type === 'audio'
   }
 
-  function isImageReady(id: string) {
-    return Boolean(imageReadyStates.value[id])
-  }
-
-  function isMediaReady(id: string) {
-    return mediaStates.value[id]?.ready ?? false
-  }
-
-  function getImageSource(item: (typeof items.value)[number]) {
-    return item.url
-  }
-
   function getSlideStyle(index: number) {
     return getVirtualSlideStyle(index, resolvedActiveIndex.value, viewportHeight.value, dragOffset.value, isDragging.value)
   }
   return {
     activeItem,
-    activeMediaDuration,
+    activeAssetErrorKind: media.activeAssetErrorKind,
+    activeMediaDuration: media.activeMediaDuration,
     activeMediaItem,
-    activeMediaProgress,
-    activeMediaState,
+    activeMediaProgress: media.activeMediaProgress,
+    activeMediaState: media.activeMediaState,
     canRetryInitialLoad,
     errorMessage,
+    getAssetErrorKind: media.getAssetErrorKind,
+    getAssetErrorLabel: media.getAssetErrorLabel,
     formatPlaybackTime,
-    getImageSource,
+    getImageSource: media.getImageSource,
     getSlideStyle,
     hasNextPage,
     isAtEnd,
@@ -471,12 +273,14 @@ export function useVibeRoot(
     isVisual,
     items,
     loading,
-    mediaStates,
-    isImageReady,
-    isMediaReady,
+    mediaStates: media.mediaStates,
+    isImageReady: media.isImageReady,
+    isMediaReady: media.isMediaReady,
     onAudioCoverClick,
-    onImageLoad,
-    onMediaEvent,
+    onImageError: media.onImageError,
+    onImageLoad: media.onImageLoad,
+    onMediaEvent: media.onMediaEvent,
+    onMediaError: media.onMediaError,
     onMediaSeekInput,
     onPointerCancel,
     onPointerDown,
@@ -484,9 +288,9 @@ export function useVibeRoot(
     onPointerUp,
     onVideoClick,
     onWheel,
-    registerAudioElement,
-    registerImageElement,
-    registerVideoElement,
+    registerAudioElement: media.registerAudioElement,
+    registerImageElement: media.registerImageElement,
+    registerVideoElement: media.registerVideoElement,
     renderedItems,
     renderedRange,
     resolvedActiveIndex,

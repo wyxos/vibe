@@ -42,7 +42,7 @@ describe('masonryLayout', () => {
     })
 
     expect(getMasonryDimensions(createItem('archive-square', {
-      type: 'archive',
+      type: 'other',
       preview: {
         url: 'https://example.com/archive-square-preview.jpg',
         width: 480,

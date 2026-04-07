@@ -1,9 +1,9 @@
-import type { VibeViewerItem } from '@/components/vibeViewer'
+import type { FakeMediaDemoItem } from '@/demo/fakeMediaItemIcon'
 
 const T_REX_ROAR_AUDIO_URL = 'https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3'
 const KALIMBA_AUDIO_URL = 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3'
 
-export const fakeMediaFileItems: VibeViewerItem[] = [
+export const fakeMediaFileItems: FakeMediaDemoItem[] = [
   {
     id: 'audio-voiceover-cut',
     type: 'audio',
@@ -15,7 +15,8 @@ export const fakeMediaFileItems: VibeViewerItem[] = [
   },
   {
     id: 'doc-brand-guidelines',
-    type: 'document',
+    type: 'other',
+    fileKind: 'document',
     title: 'Brand guidelines',
     url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     preview: {
@@ -26,13 +27,15 @@ export const fakeMediaFileItems: VibeViewerItem[] = [
   },
   {
     id: 'archive-release-assets',
-    type: 'archive',
+    type: 'other',
+    fileKind: 'archive',
     title: 'Release assets bundle',
     url: 'https://example.com/files/release-assets-v03.zip',
   },
   {
     id: 'other-scene-model',
     type: 'other',
+    fileKind: 'model',
     title: 'Trade-show booth model',
     url: 'https://example.com/files/trade-show-booth.glb',
   },
@@ -47,7 +50,8 @@ export const fakeMediaFileItems: VibeViewerItem[] = [
   },
   {
     id: 'doc-q2-roadmap',
-    type: 'document',
+    type: 'other',
+    fileKind: 'document',
     title: 'Q2 roadmap draft',
     url: 'https://example.com/files/q2-roadmap-draft.pptx',
     preview: {
@@ -59,6 +63,7 @@ export const fakeMediaFileItems: VibeViewerItem[] = [
   {
     id: 'other-dataset-export',
     type: 'other',
+    fileKind: 'dataset',
     title: 'Analytics export',
     url: 'https://example.com/files/analytics-export.json',
   },
@@ -73,19 +78,22 @@ export const fakeMediaFileItems: VibeViewerItem[] = [
   },
   {
     id: 'doc-legal-brief',
-    type: 'document',
+    type: 'other',
+    fileKind: 'legal',
     title: 'Vendor legal brief',
     url: 'https://example.com/files/vendor-legal-brief.docx',
   },
   {
     id: 'archive-caption-bundle',
-    type: 'archive',
+    type: 'other',
+    fileKind: 'archive',
     title: 'Caption exports',
     url: 'https://example.com/files/caption-exports.tar',
   },
   {
     id: 'other-copy-deck',
     type: 'other',
+    fileKind: 'copy',
     title: 'Campaign copy deck',
     url: 'https://example.com/files/campaign-copy-deck.md',
   },

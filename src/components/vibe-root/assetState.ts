@@ -1,13 +1,17 @@
+import type { VibeAssetErrorKind } from './loadError'
+
 export interface MediaUiState {
   currentTime: number
   duration: number
   paused: boolean
   ready: boolean
+  errorKind: VibeAssetErrorKind | null
 }
 
 export const DEFAULT_MEDIA_UI_STATE: MediaUiState = {
   currentTime: 0,
   duration: 0,
+  errorKind: null,
   paused: true,
   ready: false,
 }
@@ -24,12 +28,15 @@ export function syncMediaUiState(state: MediaUiState, media: HTMLMediaElement, e
   state.currentTime = Number.isFinite(media.currentTime) ? media.currentTime : 0
   state.duration = Number.isFinite(media.duration) ? media.duration : 0
   state.paused = media.paused
+  if (eventType && eventType !== 'error') {
+    state.errorKind = null
+  }
   state.ready = getMediaReadyState(media, eventType)
 }
 
 function getMediaReadyState(media: HTMLMediaElement, eventType?: string) {
   if (eventType === 'error') {
-    return true
+    return false
   }
 
   if (eventType === 'loadstart' || eventType === 'waiting' || eventType === 'stalled') {

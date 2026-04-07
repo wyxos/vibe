@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { AudioLines, Clapperboard, File, FileArchive, FileText, ImagePlus } from 'lucide-vue-next'
+import { AudioLines, Clapperboard, File, ImagePlus } from 'lucide-vue-next'
 
 import type { VibeViewerType } from '../vibeViewer'
 
@@ -7,8 +7,6 @@ const ITEM_ICON_BY_TYPE: Record<VibeViewerType, Component> = {
   image: ImagePlus,
   video: Clapperboard,
   audio: AudioLines,
-  document: FileText,
-  archive: FileArchive,
   other: File,
 }
 
@@ -16,8 +14,6 @@ const ITEM_LABEL_BY_TYPE: Record<VibeViewerType, string> = {
   image: 'Image',
   video: 'Video',
   audio: 'Audio',
-  document: 'Document',
-  archive: 'Archive',
   other: 'File',
 }
 

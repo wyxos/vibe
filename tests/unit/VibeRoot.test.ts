@@ -1,15 +1,33 @@
 import { mount } from '@vue/test-utils'
-import { nextTick } from 'vue'
+import type { Component } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+
+const { resolveVibeAssetErrorKindMock } = vi.hoisted(() => ({
+  resolveVibeAssetErrorKindMock: vi.fn(async () => 'generic' as const),
+}))
+
+vi.mock('@/components/vibe-root/loadError', () => ({
+  getVibeAssetErrorLabel(kind: 'generic' | 'not-found') {
+    return kind === 'not-found' ? '404' : 'Load error'
+  },
+  resolveVibeAssetErrorKind: resolveVibeAssetErrorKindMock,
+}))
 
 import VibeRoot from '@/components/VibeRoot.vue'
 import type { VibeViewerItem } from '@/components/vibeViewer'
 
 const DEFAULT_VIEWPORT_WIDTH = window.innerWidth
+const CustomOtherIcon = defineComponent({
+  name: 'CustomOtherIcon',
+  template: '<svg data-testid="custom-other-icon" />',
+})
 
 describe('VibeRoot', () => {
   afterEach(() => {
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
+    resolveVibeAssetErrorKindMock.mockReset()
+    resolveVibeAssetErrorKindMock.mockResolvedValue('generic')
     vi.restoreAllMocks()
   })
 
@@ -20,7 +38,7 @@ describe('VibeRoot', () => {
 
     const wrapper = mount(VibeRoot, {
       props: {
-        items: [createImageItem('image-1', 'Aurora moodboard'), createVideoItem('video-1', 'Launch loop teaser'), createArchiveItem('archive-1', 'Release assets')],
+        items: [createImageItem('image-1', 'Aurora moodboard'), createVideoItem('video-1', 'Launch loop teaser'), createOtherItem('archive-1', 'Release assets')],
       },
     })
 
@@ -148,12 +166,53 @@ describe('VibeRoot', () => {
     audioWrapper.unmount()
   })
 
+  it('renders a 404 state for a fullscreen image load failure', async () => {
+    setViewportWidth(390)
+    resolveVibeAssetErrorKindMock.mockResolvedValueOnce('not-found')
+
+    const wrapper = mount(VibeRoot, {
+      props: {
+        items: [createImageItem('image-404', 'Missing image')],
+      },
+    })
+
+    await wrapper.get('img').trigger('error')
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="vibe-root-asset-error"]').attributes('data-kind')).toBe('not-found')
+    expect(wrapper.text()).toContain('404')
+    expect(wrapper.find('[data-testid="vibe-root-asset-spinner"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('renders a generic error state for a fullscreen audio load failure and hides the media bar', async () => {
+    setViewportWidth(390)
+    resolveVibeAssetErrorKindMock.mockResolvedValueOnce('generic')
+
+    const wrapper = mount(VibeRoot, {
+      props: {
+        items: [createAudioItem('audio-broken', 'Broken audio')],
+      },
+    })
+
+    await flushDom()
+    await wrapper.get('audio').trigger('error')
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="vibe-root-asset-error"]').attributes('data-kind')).toBe('generic')
+    expect(wrapper.text()).toContain('Load error')
+    expect(wrapper.find('[data-testid="vibe-root-media-bar"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
   it('renders fallback list tiles for non-previewable items on desktop', async () => {
     setViewportWidth(1_280)
 
     const wrapper = mount(VibeRoot, {
       props: {
-        items: [createArchiveItem('archive-2', 'Archive fallback', {
+        items: [createOtherItem('archive-2', 'Archive fallback', {
           preview: {
             url: 'https://example.com/archive-2-preview.jpg',
             width: 320,
@@ -173,6 +232,35 @@ describe('VibeRoot', () => {
     expect(listSurface.text()).not.toContain('Archive fallback')
     expect(wrapper.get('[data-testid="vibe-list-card"]').attributes('style')).toContain('height: 296px;')
     expect(wrapper.get('[data-testid="vibe-list-card"] button').classes()).toContain('h-full')
+
+    wrapper.unmount()
+  })
+
+  it('renders a custom item-icon slot for other items in list and fullscreen mode', async () => {
+    setViewportWidth(1_280)
+
+    const wrapper = mount(VibeRoot, {
+      props: {
+        items: [createOtherItem('other-custom-icon', 'Custom icon item')],
+      },
+      slots: {
+        'item-icon': ({ item, icon }: { icon: unknown; item: VibeViewerItem }) =>
+          h((item.type === 'other' ? CustomOtherIcon : icon) as Component),
+      },
+    })
+
+    await flushDom()
+
+    const listSurface = wrapper.get('[data-testid="vibe-root-list-surface"]')
+    const fullscreenSurface = wrapper.get('[data-testid="vibe-root-fullscreen-surface"]')
+
+    expect(listSurface.find('[data-testid="custom-other-icon"]').exists()).toBe(true)
+
+    await wrapper.get('[data-testid="vibe-list-card"] button').trigger('click')
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="vibe-root"]').attributes('data-surface-mode')).toBe('fullscreen')
+    expect(fullscreenSurface.find('[data-testid="custom-other-icon"]').exists()).toBe(true)
 
     wrapper.unmount()
   })
@@ -268,10 +356,10 @@ function createAudioItem(id: string, title?: string): VibeViewerItem {
   }
 }
 
-function createArchiveItem(id: string, title?: string, overrides: Partial<VibeViewerItem> = {}): VibeViewerItem {
+function createOtherItem(id: string, title?: string, overrides: Partial<VibeViewerItem> = {}): VibeViewerItem {
   return {
     id,
-    type: 'archive',
+    type: 'other',
     title,
     url: `https://example.com/${id}.zip`,
     ...overrides,
