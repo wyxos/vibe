@@ -83,7 +83,7 @@ test('desktop prepend motion keeps top-entering cards on the reversed stagger or
     height: 650,
   })
 
-  await gotoRoute(page, '/demo/bidirectional-paging')
+  await gotoRoute(page, '/demo/advanced-integration')
 
   const listSurface = page.getByTestId('vibe-root-list-surface')
   const progress = listSurface.getByTestId('vibe-root-pagination')

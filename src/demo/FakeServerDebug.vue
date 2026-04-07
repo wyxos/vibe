@@ -112,7 +112,7 @@ function getDebugItemIcon(item: FakeMediaItem) {
     <div class="mx-auto flex min-h-full w-full max-w-[1600px] flex-col gap-5 px-5 py-5 sm:px-6">
       <div class="grid gap-5 border border-white/12 bg-black/20 px-5 py-5 shadow-[0_28px_80px_-50px_rgba(0,0,0,0.88)] backdrop-blur-[18px] xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
         <div class="space-y-3">
-          <p class="text-[0.68rem] font-bold uppercase tracking-[0.32em] text-[#f7f1ea]/46">Workspace debug</p>
+          <p class="text-[0.68rem] font-bold uppercase tracking-[0.32em] text-[#f7f1ea]/46">Server debug</p>
           <h1 class="text-[clamp(2rem,4vw,3.35rem)] font-semibold leading-[0.94] tracking-[-0.05em]">
             Fake paginated media server
           </h1>

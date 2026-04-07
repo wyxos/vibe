@@ -21,8 +21,8 @@ export const router = createRouter({
           component: HomePage,
         },
         {
-          path: 'demo/bidirectional-paging',
-          name: 'demo-bidirectional-paging',
+          path: 'demo/advanced-integration',
+          name: 'demo-advanced-integration',
           component: BidirectionalPagingDemoPage,
         },
         {

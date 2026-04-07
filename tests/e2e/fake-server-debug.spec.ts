@@ -38,7 +38,7 @@ test('bidirectional paging demo prepends earlier pages when navigating upward', 
     height: 650,
   })
 
-  await gotoRoute(page, '/demo/bidirectional-paging')
+  await gotoRoute(page, '/demo/advanced-integration')
 
   const root = page.getByTestId('vibe-root')
   const listSurface = page.getByTestId('vibe-root-list-surface')
@@ -99,7 +99,7 @@ test('bidirectional paging demo reactions remove an item and Ctrl+Z restores it'
     height: 650,
   })
 
-  await gotoRoute(page, '/demo/bidirectional-paging')
+  await gotoRoute(page, '/demo/advanced-integration')
 
   const listSurface = page.getByTestId('vibe-root-list-surface')
   const progress = listSurface.getByTestId('vibe-root-pagination')
@@ -136,7 +136,7 @@ test('advanced integration demo footer bar is only visible in grid mode', async 
     height: 650,
   })
 
-  await gotoRoute(page, '/demo/bidirectional-paging')
+  await gotoRoute(page, '/demo/advanced-integration')
 
   const root = page.getByTestId('vibe-root')
   const statusBar = page.getByTestId('advanced-demo-status-bar')

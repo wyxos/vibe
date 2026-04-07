@@ -15,7 +15,7 @@ const workspaceLinks = [
     label: 'Home',
   },
   {
-    to: '/demo/bidirectional-paging',
+    to: '/demo/advanced-integration',
     label: 'Advanced Integration Demo',
   },
   {
@@ -70,21 +70,22 @@ function onKeydown(event: KeyboardEvent) {
   <section class="flex h-full min-h-0 flex-col bg-[#05060a] text-[#f7f1ea]">
     <header class="relative z-40 border-b border-white/12 bg-[linear-gradient(180deg,rgba(6,7,10,0.96),rgba(6,7,10,0.84))] backdrop-blur-[20px]">
       <div class="mx-auto flex min-h-[4.75rem] w-full max-w-[1600px] items-center justify-between gap-4 px-5 py-4 sm:px-6">
-        <div class="min-w-0">
-          <p class="text-[0.68rem] font-bold uppercase tracking-[0.32em] text-[#f7f1ea]/52">
+        <RouterLink
+          to="/"
+          class="inline-flex min-w-0 items-center gap-3 text-[#f7f1ea] transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f7f1ea]"
+        >
+          <img src="/logo.svg" alt="" class="h-9 w-9 shrink-0" />
+          <span class="truncate text-[0.9rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/82">
             Vibe {{ packageJson.version }}
-          </p>
-          <p class="mt-1 text-[0.9rem] font-medium tracking-[-0.02em] text-[#f7f1ea]/78">
-            Workspace demos
-          </p>
-        </div>
+          </span>
+        </RouterLink>
 
         <button
           ref="menuButtonRef"
           data-testid="workspace-menu-button"
           type="button"
           class="inline-flex h-11 w-11 items-center justify-center border border-white/14 bg-black/20 text-[#f7f1ea]/82 transition hover:border-white/28 hover:bg-black/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f7f1ea]"
-          aria-label="Open workspace menu"
+          aria-label="Open demo menu"
           :aria-expanded="isMenuOpen ? 'true' : 'false'"
           :aria-controls="'workspace-menu-sheet'"
           @click="toggleMenu"
@@ -108,7 +109,7 @@ function onKeydown(event: KeyboardEvent) {
         class="absolute inset-0 bg-black/58 transition duration-300"
         :class="isMenuOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'"
         :tabindex="isMenuOpen ? 0 : -1"
-        aria-label="Close workspace menu"
+        aria-label="Close demo menu"
         @click="closeMenu"
       />
 
@@ -122,29 +123,31 @@ function onKeydown(event: KeyboardEvent) {
         :inert="!isMenuOpen"
         role="dialog"
         aria-modal="true"
-        aria-label="Workspace navigation"
+        aria-label="Demo navigation"
       >
         <div class="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-5 sm:px-6">
-          <div class="min-w-0">
-            <p class="text-[0.68rem] font-bold uppercase tracking-[0.32em] text-[#f7f1ea]/46">
-              Navigate
-            </p>
-            <p class="mt-2 text-[1.05rem] leading-tight tracking-[-0.03em] text-[#f7f1ea]/82">
-              Workspace routes
-            </p>
-          </div>
+          <RouterLink
+            to="/"
+            class="inline-flex min-w-0 items-center gap-3 text-[#f7f1ea] transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f7f1ea]"
+            @click="closeMenu"
+          >
+            <img src="/logo.svg" alt="" class="h-9 w-9 shrink-0" />
+            <span class="truncate text-[0.88rem] font-bold uppercase tracking-[0.24em] text-[#f7f1ea]/82">
+              Vibe {{ packageJson.version }}
+            </span>
+          </RouterLink>
 
           <button
             type="button"
             class="inline-flex h-11 w-11 items-center justify-center border border-white/12 bg-black/30 text-[#f7f1ea]/72 transition hover:border-white/24 hover:bg-black/45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f7f1ea]"
-            aria-label="Close workspace menu"
+            aria-label="Close demo menu"
             @click="closeMenu"
           >
             <X class="h-4 w-4 stroke-[2.2]" aria-hidden="true" />
           </button>
         </div>
 
-        <nav class="flex flex-1 flex-col px-5 py-4 sm:px-6" aria-label="Workspace">
+        <nav class="flex flex-1 flex-col px-5 py-4 sm:px-6" aria-label="Demos">
           <RouterLink
             v-for="link in workspaceLinks"
             :key="link.to"

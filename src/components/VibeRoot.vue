@@ -70,13 +70,13 @@ defineExpose<VibeRootHandle>({
       <h2 class="m-0 text-[clamp(2rem,4.4vw,3.6rem)] leading-[0.95] tracking-[-0.05em]">
         {{ root.loading.value ? 'Loading the viewer' : 'No items available' }}
       </h2>
-      <p class="m-0 text-[clamp(0.98rem,1.3vw,1.12rem)] leading-[1.8] text-[#f7f1ea]/70">
-        {{
-          root.loading.value
-            ? 'Pulling the first page from the fake server.'
-            : 'Attach items to VibeRoot to turn this screen into the workspace.'
-        }}
-      </p>
+        <p class="m-0 text-[clamp(0.98rem,1.3vw,1.12rem)] leading-[1.8] text-[#f7f1ea]/70">
+          {{
+            root.loading.value
+              ? 'Pulling the first page from the fake server.'
+              : 'Attach items to VibeRoot to turn this screen into the viewer.'
+          }}
+        </p>
     </div>
 
     <template v-else-if="root.isDesktop.value">

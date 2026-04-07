@@ -25,7 +25,7 @@ const isImmersiveRoute = computed(() => route.meta.immersive === true)
               Vibe {{ packageJson.version }}
             </p>
             <h1 class="text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl">
-              Blank workspace with routed demos
+              Blank shell with routed demos
             </h1>
           </div>
 
