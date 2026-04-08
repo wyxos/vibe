@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createAssetErrorBatchReporter, DEFAULT_ASSET_ERROR_BATCH_WINDOW_MS, type VibeAssetErrorEvent } from '@/components/viewer-core/assetErrors'
+import {
+  createAssetErrorBatchReporter,
+  createAssetLoadBatchReporter,
+  DEFAULT_ASSET_ERROR_BATCH_WINDOW_MS,
+  type VibeAssetErrorEvent,
+  type VibeAssetLoadEvent,
+} from '@/components/viewer-core/assetErrors'
 
 describe('createAssetErrorBatchReporter', () => {
   afterEach(() => {
@@ -39,6 +45,47 @@ describe('createAssetErrorBatchReporter', () => {
 
     expect(emitErrors).toHaveBeenCalledTimes(2)
     expect(emitErrors.mock.calls[1][0]).toEqual([failedEvent])
+
+    reporter.stop()
+  })
+})
+
+describe('createAssetLoadBatchReporter', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('dedupes identical successes within one batch and allows the same success again later', async () => {
+    vi.useFakeTimers()
+
+    const emitLoads = vi.fn()
+    const reporter = createAssetLoadBatchReporter(emitLoads)
+    const loadedEvent: VibeAssetLoadEvent = {
+      item: {
+        id: 'ready-image',
+        type: 'image',
+        title: 'Ready image',
+        url: 'https://example.com/ready-image.jpg',
+      },
+      occurrenceKey: 'ready-image',
+      surface: 'grid',
+      url: 'https://example.com/ready-image-preview.jpg',
+    }
+
+    reporter.report(loadedEvent)
+    reporter.report({ ...loadedEvent })
+
+    await vi.advanceTimersByTimeAsync(DEFAULT_ASSET_ERROR_BATCH_WINDOW_MS)
+
+    expect(emitLoads).toHaveBeenCalledTimes(1)
+    expect(emitLoads.mock.calls[0][0]).toEqual([loadedEvent])
+
+    reporter.report(loadedEvent)
+
+    await vi.advanceTimersByTimeAsync(DEFAULT_ASSET_ERROR_BATCH_WINDOW_MS)
+
+    expect(emitLoads).toHaveBeenCalledTimes(2)
+    expect(emitLoads.mock.calls[1][0]).toEqual([loadedEvent])
 
     reporter.stop()
   })

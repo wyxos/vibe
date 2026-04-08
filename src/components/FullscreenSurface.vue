@@ -5,7 +5,7 @@ import { ArrowLeft, LoaderCircle, Pause, Play, TriangleAlert } from 'lucide-vue-
 
 import type { VibeViewerItem } from './viewer'
 import { getVibeOccurrenceKey } from './viewer-core/itemIdentity'
-import type { VibeAssetErrorReporter } from './viewer-core/assetErrors'
+import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './viewer-core/assetErrors'
 import type { VibeControlledProps } from './viewer-core/useViewer'
 import { useViewer } from './viewer-core/useViewer'
 import { getItemIcon, getItemLabel } from './viewer-core/media'
@@ -14,6 +14,7 @@ import { getSlideToneClass, getStageToneClass } from './viewer-core/theme'
 const props = withDefaults(defineProps<VibeControlledProps & {
   active?: boolean
   reportAssetError?: VibeAssetErrorReporter | null
+  reportAssetLoad?: VibeAssetLoadReporter | null
   showBackToList?: boolean
 }>(), {
   active: true,
@@ -22,6 +23,7 @@ const props = withDefaults(defineProps<VibeControlledProps & {
   loading: false,
   paginationDetail: null,
   reportAssetError: null,
+  reportAssetLoad: null,
   showBackToList: false,
 })
 defineSlots<{
@@ -41,6 +43,7 @@ const viewer = useViewer(
   {
     enabled: toRef(props, 'active'),
     onAssetError: props.reportAssetError ?? undefined,
+    onAssetLoad: props.reportAssetLoad ?? undefined,
   },
 )
 
@@ -184,7 +187,7 @@ function getItemKey(item: (typeof props.items)[number]) {
             class="block h-auto max-h-full w-auto max-w-full object-contain shadow-[0_40px_120px_-60px_rgba(0,0,0,0.9)] transition-opacity duration-300"
             :class="viewer.isImageReady(getItemKey(item)) ? 'opacity-100' : 'opacity-0'"
             :ref="(element) => viewer.registerImageElement(getItemKey(item), element)"
-            @load="viewer.onImageLoad(getItemKey(item))"
+            @load="viewer.onImageLoad(getItemKey(item), item.url)"
             @error="viewer.onImageError(getItemKey(item), item.url)"
           />
 

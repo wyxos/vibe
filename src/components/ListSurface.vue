@@ -3,7 +3,7 @@ import type { Component } from 'vue'
 import { toRef } from 'vue'
 
 import type { VibeViewerItem } from './viewer'
-import type { VibeAssetErrorReporter } from './viewer-core/assetErrors'
+import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './viewer-core/assetErrors'
 import { getVibeOccurrenceKey } from './viewer-core/itemIdentity'
 import { useVibeMasonryList } from './viewer-core/useMasonryList'
 import ListCard from './ListCard.vue'
@@ -19,6 +19,7 @@ const props = withDefaults(defineProps<{
   pendingAppendItems?: VibeViewerItem[]
   paginationDetail?: string | null
   reportAssetError?: VibeAssetErrorReporter | null
+  reportAssetLoad?: VibeAssetLoadReporter | null
   requestNextPage?: (() => void | Promise<void>) | null
   requestPreviousPage?: (() => void | Promise<void>) | null
   restoreToken: number
@@ -32,6 +33,7 @@ const props = withDefaults(defineProps<{
   pendingAppendItems: () => [],
   paginationDetail: null,
   reportAssetError: null,
+  reportAssetLoad: null,
   requestNextPage: null,
   requestPreviousPage: null,
 })
@@ -117,6 +119,7 @@ const list = useVibeMasonryList({
             :index="index"
             :item="item"
             :report-asset-error="props.reportAssetError"
+            :report-asset-load="props.reportAssetLoad"
             @open="emit('open-fullscreen', index)"
           >
             <template v-if="slots['grid-item-overlay']" #grid-item-overlay="slotProps">

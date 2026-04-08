@@ -281,14 +281,18 @@ type VibeControlledProps = {
         label: 'Events',
         title: 'Events',
         description: [
-          'The public event surface stays intentionally small, but it now includes batched preload failure reporting.',
-          'Use update:activeIndex to observe the visible item and asset-errors to observe grouped media preload failures.',
+          'The public event surface stays intentionally small, but it now includes batched preload success and failure reporting.',
+          'Use update:activeIndex to observe the visible item, asset-loads for grouped preload successes, and asset-errors for grouped preload failures.',
         ],
         code: `<script setup lang="ts">
 import { ref } from 'vue'
-import type { VibeAssetErrorEvent } from '@wyxos/vibe'
+import type { VibeAssetErrorEvent, VibeAssetLoadEvent } from '@wyxos/vibe'
 
 const activeIndex = ref(0)
+
+function onAssetLoads(loads: VibeAssetLoadEvent[]) {
+  console.log(loads)
+}
 
 function onAssetErrors(errors: VibeAssetErrorEvent[]) {
   console.log(errors)
@@ -299,15 +303,42 @@ function onAssetErrors(errors: VibeAssetErrorEvent[]) {
   <VibeLayout
     :items="items"
     :active-index="activeIndex"
+    @asset-loads="onAssetLoads"
     @asset-errors="onAssetErrors"
     @update:active-index="activeIndex = $event"
   />
 </template>`,
         language: 'vue',
         notes: [
+          'asset-loads emits an array payload, not a single success event.',
           'asset-errors emits an array payload, not a single error.',
-          'The batch is micro-buffered and deduped within the same short window.',
+          'Both batches are micro-buffered and deduped within the same short window.',
           'If the same item fails again later, it may emit again in a later batch.',
+        ],
+      },
+      {
+        id: 'api-asset-loads',
+        label: 'Asset Loads',
+        title: 'Asset Load Events',
+        description: [
+          'asset-loads is emitted as a batched array so consumer apps can react to successful asset readiness without one event per loaded preview or fullscreen asset.',
+          'The payload includes the loaded item, the occurrence key, the asset URL, and the surface where it loaded.',
+        ],
+        code: `type VibeAssetLoadEvent = {
+  item: VibeViewerItem
+  occurrenceKey: string
+  url: string
+  surface: 'grid' | 'fullscreen'
+}
+
+function onAssetLoads(loads: VibeAssetLoadEvent[]) {
+  console.log(loads)
+}`,
+        language: 'ts',
+        notes: [
+          'Grid load events usually report preview.url when a preview exists.',
+          'Fullscreen load events report the original item.url.',
+          'Identical successes are deduped inside the same batch window.',
         ],
       },
       {
@@ -394,6 +425,8 @@ console.log(vibe.value?.status.fillDelayRemainingMs)`,
   VibeAssetErrorEvent,
   VibeAssetErrorKind,
   VibeAssetErrorSurface,
+  VibeAssetLoadEvent,
+  VibeAssetLoadSurface,
   VibeViewerItem,
   VibeResolveParams,
   VibeResolveResult,

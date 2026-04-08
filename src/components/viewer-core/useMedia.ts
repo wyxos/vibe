@@ -1,7 +1,7 @@
 import { computed, nextTick, ref, watch, type Ref } from 'vue'
 
 import type { VibeViewerItem } from '../viewer'
-import type { VibeAssetErrorReporter } from './assetErrors'
+import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './assetErrors'
 import { createMediaUiState, DEFAULT_MEDIA_UI_STATE, isImageElementReady, syncMediaUiState, type MediaUiState } from './assetState'
 import { getVibeOccurrenceKey } from './itemIdentity'
 import { getVibeAssetErrorLabel, resolveVibeAssetErrorKind, type VibeAssetErrorKind } from './loadError'
@@ -13,6 +13,7 @@ export function useMedia(options: {
   isEnabled: Ref<boolean>
   itemCount: Ref<number>
   onAssetError?: VibeAssetErrorReporter
+  onAssetLoad?: VibeAssetLoadReporter
 }) {
   const imageReadyStates = ref<Record<string, boolean>>({})
   const imageErrorKinds = ref<Record<string, VibeAssetErrorKind | null>>({})
@@ -20,6 +21,7 @@ export function useMedia(options: {
 
   const videoElements = new Map<string, HTMLVideoElement>()
   const audioElements = new Map<string, HTMLAudioElement>()
+  const reportedLoadKeys = new Set<string>()
   const activeItemKey = computed(() => options.activeItem.value ? getVibeOccurrenceKey(options.activeItem.value) : null)
   const activeMediaItemKey = computed(() => options.activeMediaItem.value ? getVibeOccurrenceKey(options.activeMediaItem.value) : null)
 
@@ -84,6 +86,7 @@ export function useMedia(options: {
     if (element instanceof HTMLImageElement && isImageElementReady(element)) {
       imageReadyStates.value[id] = true
       imageErrorKinds.value[id] = null
+      reportAssetLoad(id, element.currentSrc || element.src || resolveActiveImageUrl())
     }
   }
 
@@ -92,6 +95,7 @@ export function useMedia(options: {
     imageErrorKinds.value = {}
     imageReadyStates.value = {}
     mediaStates.value = {}
+    reportedLoadKeys.clear()
   }
 
   async function syncMediaPlayback() {
@@ -132,13 +136,20 @@ export function useMedia(options: {
     const media = event.currentTarget instanceof HTMLMediaElement ? event.currentTarget : event.target instanceof HTMLMediaElement ? event.target : null
 
     if (media) {
+      const previousReady = mediaStates.value[id]?.ready ?? false
       updateMediaState(id, media, event.type)
+      const nextReady = mediaStates.value[id]?.ready ?? false
+
+      if (!previousReady && nextReady) {
+        reportAssetLoad(id, media.currentSrc || media.src || resolveActiveMediaUrl())
+      }
     }
   }
 
-  function onImageLoad(id: string) {
+  function onImageLoad(id: string, url: string) {
     imageReadyStates.value[id] = true
     imageErrorKinds.value[id] = null
+    reportAssetLoad(id, url)
   }
 
   async function onImageError(id: string, url: string) {
@@ -313,6 +324,35 @@ export function useMedia(options: {
     }
 
     media.pause()
+  }
+
+  function reportAssetLoad(id: string, url: string | null) {
+    const item = options.activeMediaItem.value ?? options.activeItem.value
+
+    if (!item || !url) {
+      return
+    }
+
+    const loadKey = `${id}|${url}`
+    if (reportedLoadKeys.has(loadKey)) {
+      return
+    }
+
+    reportedLoadKeys.add(loadKey)
+    options.onAssetLoad?.({
+      item,
+      occurrenceKey: id,
+      surface: 'fullscreen',
+      url,
+    })
+  }
+
+  function resolveActiveImageUrl() {
+    return options.activeItem.value?.url ?? null
+  }
+
+  function resolveActiveMediaUrl() {
+    return options.activeMediaItem.value?.url ?? options.activeItem.value?.url ?? null
   }
 
   return {

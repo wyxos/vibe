@@ -6,6 +6,8 @@ export type {
   VibeAssetErrorEvent,
   VibeAssetErrorKind,
   VibeAssetErrorSurface,
+  VibeAssetLoadEvent,
+  VibeAssetLoadSurface,
   VibeResolveParams,
   VibeResolveResult,
   VibeAutoProps,

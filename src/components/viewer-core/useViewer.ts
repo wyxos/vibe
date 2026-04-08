@@ -1,6 +1,6 @@
 import { computed, ref, type Ref } from 'vue'
 
-import type { VibeAssetErrorReporter } from './assetErrors'
+import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './assetErrors'
 import { isEditableTarget, isInteractiveTarget } from './dom'
 import { formatPlaybackTime } from './format'
 import { useActivation } from './useActivation'
@@ -21,7 +21,7 @@ export type {
 } from './useDataSource'
 export type { VibeAssetErrorKind } from './loadError'
 export type { VibeStatus } from './removalState'
-export type { VibeAssetErrorEvent, VibeAssetErrorReporter, VibeAssetErrorSurface } from './assetErrors'
+export type { VibeAssetErrorEvent, VibeAssetErrorReporter, VibeAssetErrorSurface, VibeAssetLoadEvent, VibeAssetLoadReporter, VibeAssetLoadSurface } from './assetErrors'
 
 export function useViewer(
   props: Readonly<VibeProps>,
@@ -29,6 +29,7 @@ export function useViewer(
   options: {
     enabled?: Ref<boolean>
     onAssetError?: VibeAssetErrorReporter
+    onAssetLoad?: VibeAssetLoadReporter
   } = {},
 ) {
   const dataSource = useDataSource(props, emit)
@@ -77,6 +78,7 @@ export function useViewer(
     isEnabled,
     itemCount: computed(() => items.value.length),
     onAssetError: options.onAssetError,
+    onAssetLoad: options.onAssetLoad,
   })
   const isAtEnd = computed(() => items.value.length > 0 && resolvedActiveIndex.value === items.value.length - 1)
   const statusMessage = computed(() => {

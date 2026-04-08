@@ -2,7 +2,7 @@
 import { onBeforeUnmount, type Component } from 'vue'
 
 import type { VibeViewerItem } from './viewer'
-import { createAssetErrorBatchReporter, type VibeAssetErrorEvent } from './viewer-core/assetErrors'
+import { createAssetErrorBatchReporter, createAssetLoadBatchReporter, type VibeAssetErrorEvent, type VibeAssetLoadEvent } from './viewer-core/assetErrors'
 import type { VibeHandle, VibeProps } from './viewer-core/useViewer'
 import { useController } from './viewer-core/useController'
 
@@ -29,6 +29,7 @@ const slots = defineSlots<{
 
 const emit = defineEmits<{
   'asset-errors': [errors: VibeAssetErrorEvent[]]
+  'asset-loads': [loads: VibeAssetLoadEvent[]]
   'update:activeIndex': [value: number]
 }>()
 
@@ -36,9 +37,13 @@ const viewer = useController(props, emit)
 const assetErrorBatch = createAssetErrorBatchReporter((errors) => {
   emit('asset-errors', errors)
 })
+const assetLoadBatch = createAssetLoadBatchReporter((loads) => {
+  emit('asset-loads', loads)
+})
 
 onBeforeUnmount(() => {
   assetErrorBatch.stop()
+  assetLoadBatch.stop()
 })
 
 defineExpose<VibeHandle>({
@@ -120,6 +125,7 @@ defineExpose<VibeHandle>({
             :commit-pending-append="viewer.commitPendingAppend"
             :pagination-detail="viewer.paginationDetail.value"
             :report-asset-error="assetErrorBatch.report"
+            :report-asset-load="assetLoadBatch.report"
             :request-next-page="viewer.prefetchNextPage"
             :request-previous-page="viewer.prefetchPreviousPage"
             :restore-token="viewer.listRestoreToken.value"
@@ -163,6 +169,7 @@ defineExpose<VibeHandle>({
             :has-next-page="viewer.hasNextPage.value"
             :pagination-detail="viewer.paginationDetail.value"
             :report-asset-error="assetErrorBatch.report"
+            :report-asset-load="assetLoadBatch.report"
             :show-back-to-list="viewer.showBackToList.value"
             @back-to-list="viewer.returnToList"
             @update:active-index="viewer.setActiveIndex"
@@ -184,6 +191,7 @@ defineExpose<VibeHandle>({
       :has-next-page="viewer.hasNextPage.value"
       :pagination-detail="viewer.paginationDetail.value"
       :report-asset-error="assetErrorBatch.report"
+      :report-asset-load="assetLoadBatch.report"
       :show-back-to-list="false"
       @back-to-list="viewer.returnToList"
       @update:active-index="viewer.setActiveIndex"

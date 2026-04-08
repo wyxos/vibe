@@ -347,7 +347,19 @@ console.log(vibe.value?.status.itemCount)
 `VibeLayout` emits:
 
 - `update:activeIndex`
+- `asset-loads`
 - `asset-errors`
+
+`asset-loads` is micro-batched and emits an array payload:
+
+```ts
+type VibeAssetLoadEvent = {
+  item: VibeViewerItem
+  occurrenceKey: string
+  url: string
+  surface: 'grid' | 'fullscreen'
+}
+```
 
 `asset-errors` is micro-batched and emits an array payload:
 
@@ -365,7 +377,11 @@ Example:
 
 ```vue
 <script setup lang="ts">
-import type { VibeAssetErrorEvent } from '@wyxos/vibe'
+import type { VibeAssetErrorEvent, VibeAssetLoadEvent } from '@wyxos/vibe'
+
+function onAssetLoads(loads: VibeAssetLoadEvent[]) {
+  console.log(loads)
+}
 
 function onAssetErrors(errors: VibeAssetErrorEvent[]) {
   console.log(errors)
@@ -375,6 +391,7 @@ function onAssetErrors(errors: VibeAssetErrorEvent[]) {
 <template>
   <VibeLayout
     :resolve="resolve"
+    @asset-loads="onAssetLoads"
     @asset-errors="onAssetErrors"
   />
 </template>
@@ -382,6 +399,9 @@ function onAssetErrors(errors: VibeAssetErrorEvent[]) {
 
 Notes:
 
+- successful loads that happen close together are batched into one event
+- grid load events usually report `preview.url` when a preview exists
+- fullscreen load events report `item.url`
 - multiple failures that happen close together are batched into one event
 - identical failures are deduped inside the same batch
 - if the same item fails again later, it can emit again in a later batch

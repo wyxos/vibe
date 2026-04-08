@@ -4,7 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { LoaderCircle, TriangleAlert } from 'lucide-vue-next'
 
 import type { VibeViewerItem } from './viewer'
-import type { VibeAssetErrorReporter } from './viewer-core/assetErrors'
+import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './viewer-core/assetErrors'
 import { getVibeOccurrenceKey } from './viewer-core/itemIdentity'
 import { getItemIcon } from './viewer-core/media'
 import { getListRenderableAsset } from './viewer-core/listPreview'
@@ -17,10 +17,12 @@ const props = withDefaults(defineProps<{
   index?: number
   item: VibeViewerItem
   reportAssetError?: VibeAssetErrorReporter | null
+  reportAssetLoad?: VibeAssetLoadReporter | null
 }>(), {
   active: false,
   index: 0,
   reportAssetError: null,
+  reportAssetLoad: null,
 })
 const emit = defineEmits<{
   open: []
@@ -69,6 +71,7 @@ const shouldShowSpinner = computed(() =>
 
 let intersectionObserver: IntersectionObserver | null = null
 let loadLease: VibeAssetLoadLease | null = null
+const reportedLoadKeys = new Set<string>()
 
 watch(
   [attachedAssetUrl, () => renderableAsset.value.kind],
@@ -136,6 +139,7 @@ function onImageLoad() {
 
   isReady.value = true
   loadErrorKind.value = null
+  reportAssetLoad(attachedAssetUrl.value ?? props.item.url)
   releaseLoadLease()
 }
 
@@ -167,6 +171,7 @@ function onVideoReady() {
 
   isReady.value = true
   loadErrorKind.value = null
+  reportAssetLoad(attachedAssetUrl.value ?? props.item.url)
   releaseLoadLease()
   syncVideoPlayback()
 }
@@ -252,6 +257,26 @@ function teardownAssetLoad(resetMedia = true) {
 function releaseLoadLease() {
   loadLease?.release()
   loadLease = null
+}
+
+function reportAssetLoad(url: string | null) {
+  if (!url) {
+    return
+  }
+
+  const occurrenceKey = getVibeOccurrenceKey(props.item)
+  const loadKey = `${occurrenceKey}|${url}`
+  if (reportedLoadKeys.has(loadKey)) {
+    return
+  }
+
+  reportedLoadKeys.add(loadKey)
+  props.reportAssetLoad?.({
+    item: props.item,
+    occurrenceKey,
+    surface: 'grid',
+    url,
+  })
 }
 
 function abortImageLoad() {
