@@ -89,7 +89,7 @@ createApp(App)
         title: 'Auto Resolve',
         description: [
           'Use resolve when you want Vibe to own the common paging loop internally.',
-          'The cursor is opaque, so the app can return page numbers or string cursors.',
+          'The cursor is opaque, so the app can return page numbers or string cursors, and Vibe will preserve them in status.',
         ],
         code: `import {
   VibeLayout,
@@ -107,6 +107,30 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
         notes: [
           'Resolve must return items and nextPage.',
           'previousPage is optional and enables previous-page loading.',
+          'Auto mode defaults to dynamic feed behavior.',
+        ],
+      },
+      {
+        id: 'feed-strategies',
+        label: 'Feed Strategies',
+        title: 'Dynamic And Static Feed Strategies',
+        description: [
+          'Dynamic mode keeps resolving forward or backward until it has enough items to satisfy the current page size, then commits that batch once.',
+          'Static mode reloads the current edge cursor in place before advancing when local removals have underfilled the current boundary page.',
+        ],
+        code: `<VibeLayout
+  :resolve="resolve"
+  mode="dynamic"
+  :page-size="25"
+  :fill-delay-ms="1000"
+  :fill-delay-step-ms="250"
+/>`,
+        language: 'vue',
+        notes: [
+          'dynamic is the default mode.',
+          'fill-delay-ms controls the base delay before the first chained fill request.',
+          'fill-delay-step-ms adds extra delay for each additional chained request in the same fill cycle.',
+          'Status exposes phase, raw cursors, fill counts, and the live delay countdown.',
         ],
       },
       {
@@ -234,7 +258,10 @@ app.use(VibePlugin)
         code: `type VibeAutoProps = {
   resolve: (params: VibeResolveParams) => Promise<VibeResolveResult>
   initialCursor?: string | null
+  mode?: 'dynamic' | 'static'
   pageSize?: number
+  fillDelayMs?: number
+  fillDelayStepMs?: number
 }
 
 type VibeControlledProps = {
@@ -254,23 +281,60 @@ type VibeControlledProps = {
         label: 'Events',
         title: 'Events',
         description: [
-          'The public event surface is intentionally small.',
-          'Use update:activeIndex to observe or control the active item index.',
+          'The public event surface stays intentionally small, but it now includes batched preload failure reporting.',
+          'Use update:activeIndex to observe the visible item and asset-errors to observe grouped media preload failures.',
         ],
         code: `<script setup lang="ts">
 import { ref } from 'vue'
+import type { VibeAssetErrorEvent } from '@wyxos/vibe'
 
 const activeIndex = ref(0)
+
+function onAssetErrors(errors: VibeAssetErrorEvent[]) {
+  console.log(errors)
+}
 </script>
 
 <template>
   <VibeLayout
     :items="items"
     :active-index="activeIndex"
+    @asset-errors="onAssetErrors"
     @update:active-index="activeIndex = $event"
   />
 </template>`,
         language: 'vue',
+        notes: [
+          'asset-errors emits an array payload, not a single error.',
+          'The batch is micro-buffered and deduped within the same short window.',
+          'If the same item fails again later, it may emit again in a later batch.',
+        ],
+      },
+      {
+        id: 'api-asset-errors',
+        label: 'Asset Errors',
+        title: 'Asset Error Events',
+        description: [
+          'asset-errors is emitted as a batched array so consumer apps can handle bursts of preload failures without getting one event per failed asset.',
+          'The payload includes the failed item, the occurrence key, the asset URL, the resolved error kind, and the surface where it failed.',
+        ],
+        code: `type VibeAssetErrorEvent = {
+  item: VibeViewerItem
+  occurrenceKey: string
+  url: string
+  kind: 'generic' | 'not-found'
+  surface: 'grid' | 'fullscreen'
+}
+
+function onAssetErrors(errors: VibeAssetErrorEvent[]) {
+  console.log(errors)
+}`,
+        language: 'ts',
+        notes: [
+          'Multiple failures inside the same short window are emitted together.',
+          'Identical failures are deduped inside the same batch.',
+          'If the same item fails again later, it may emit again in a later batch.',
+        ],
       },
       {
         id: 'api-slots',
@@ -310,11 +374,12 @@ const vibe = ref<VibeHandle | null>(null)
 
 vibe.value?.remove(['item-2', 'item-5'])
 vibe.value?.undo()
-console.log(vibe.value?.status.itemCount)`,
+console.log(vibe.value?.status.nextCursor)
+console.log(vibe.value?.status.fillDelayRemainingMs)`,
         language: 'ts',
         notes: [
           'Handle methods: remove, restore, undo, getRemovedIds, clearRemoved.',
-          'Status exposes activeIndex, loadState, itemCount, removedCount, surfaceMode, and next/previous availability.',
+          'Status exposes activeIndex, currentCursor, nextCursor, previousCursor, mode, phase, fill counts, loadState, itemCount, removedCount, and surfaceMode.',
         ],
       },
       {
@@ -326,6 +391,9 @@ console.log(vibe.value?.status.itemCount)`,
           'Import only the pieces your app needs: item contract, resolve contract, props, or handle.',
         ],
         code: `import type {
+  VibeAssetErrorEvent,
+  VibeAssetErrorKind,
+  VibeAssetErrorSurface,
   VibeViewerItem,
   VibeResolveParams,
   VibeResolveResult,

@@ -29,6 +29,7 @@ describe('VibeLayout', () => {
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
     resolveVibeAssetErrorKindMock.mockReset()
     resolveVibeAssetErrorKindMock.mockResolvedValue('generic')
+    vi.useRealTimers()
     vi.restoreAllMocks()
   })
 

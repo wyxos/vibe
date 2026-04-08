@@ -4,6 +4,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { LoaderCircle, TriangleAlert } from 'lucide-vue-next'
 
 import type { VibeViewerItem } from './viewer'
+import type { VibeAssetErrorReporter } from './viewer-core/assetErrors'
+import { getVibeOccurrenceKey } from './viewer-core/itemIdentity'
 import { getItemIcon } from './viewer-core/media'
 import { getListRenderableAsset } from './viewer-core/listPreview'
 import { getVibeAssetErrorLabel, resolveVibeAssetErrorKind, type VibeAssetErrorKind } from './viewer-core/loadError'
@@ -14,9 +16,11 @@ const props = withDefaults(defineProps<{
   active?: boolean
   index?: number
   item: VibeViewerItem
+  reportAssetError?: VibeAssetErrorReporter | null
 }>(), {
   active: false,
   index: 0,
+  reportAssetError: null,
 })
 const emit = defineEmits<{
   open: []
@@ -140,9 +144,19 @@ async function onImageError() {
     return
   }
 
+  const failedUrl = attachedAssetUrl.value ?? props.item.url
+
   isReady.value = false
   loadErrorKind.value = 'generic'
-  loadErrorKind.value = await resolveVibeAssetErrorKind(attachedAssetUrl.value ?? props.item.url)
+  const resolvedKind = await resolveVibeAssetErrorKind(failedUrl)
+  loadErrorKind.value = resolvedKind
+  props.reportAssetError?.({
+    item: props.item,
+    occurrenceKey: getVibeOccurrenceKey(props.item),
+    url: failedUrl,
+    kind: resolvedKind,
+    surface: 'grid',
+  })
   releaseLoadLease()
 }
 

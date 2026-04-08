@@ -5,6 +5,7 @@ import { ArrowLeft, LoaderCircle, Pause, Play, TriangleAlert } from 'lucide-vue-
 
 import type { VibeViewerItem } from './viewer'
 import { getVibeOccurrenceKey } from './viewer-core/itemIdentity'
+import type { VibeAssetErrorReporter } from './viewer-core/assetErrors'
 import type { VibeControlledProps } from './viewer-core/useViewer'
 import { useViewer } from './viewer-core/useViewer'
 import { getItemIcon, getItemLabel } from './viewer-core/media'
@@ -12,6 +13,7 @@ import { getSlideToneClass, getStageToneClass } from './viewer-core/theme'
 
 const props = withDefaults(defineProps<VibeControlledProps & {
   active?: boolean
+  reportAssetError?: VibeAssetErrorReporter | null
   showBackToList?: boolean
 }>(), {
   active: true,
@@ -19,6 +21,7 @@ const props = withDefaults(defineProps<VibeControlledProps & {
   hasNextPage: false,
   loading: false,
   paginationDetail: null,
+  reportAssetError: null,
   showBackToList: false,
 })
 defineSlots<{
@@ -37,6 +40,7 @@ const viewer = useViewer(
   },
   {
     enabled: toRef(props, 'active'),
+    onAssetError: props.reportAssetError ?? undefined,
   },
 )
 

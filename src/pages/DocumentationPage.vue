@@ -59,19 +59,6 @@ function isActiveSection(id: string) {
 <template>
   <section data-testid="documentation-page" class="h-full overflow-auto bg-[#05060a] text-[#f7f1ea]">
     <div class="px-5 py-6 sm:px-6 lg:px-8">
-      <div class="border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] px-5 py-6 sm:px-6">
-        <p class="text-[0.72rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/44">
-          Documentation
-        </p>
-        <h1 class="mt-3 text-[clamp(2.1rem,4.3vw,4.2rem)] font-semibold leading-[0.92] tracking-[-0.05em] text-[#f7f1ea]">
-          Build against the current Vibe surface
-        </h1>
-        <p class="mt-4 max-w-[70ch] text-[0.98rem] leading-7 text-[#f7f1ea]/68 sm:text-[1.04rem]">
-          This page documents the current plugin surface, loading modes, customization slots, and exposed instance API for
-          <span class="font-semibold text-[#f7f1ea]"> VibeLayout</span>.
-        </p>
-      </div>
-
       <div class="mt-6 grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-8">
         <aside
           data-testid="documentation-aside"

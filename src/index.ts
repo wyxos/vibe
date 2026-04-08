@@ -3,6 +3,9 @@ import type { App, Plugin } from 'vue'
 import Layout from './components/Layout.vue'
 export type { VibeViewerAsset, VibeViewerItem, VibeViewerType } from './components/viewer'
 export type {
+  VibeAssetErrorEvent,
+  VibeAssetErrorKind,
+  VibeAssetErrorSurface,
   VibeResolveParams,
   VibeResolveResult,
   VibeAutoProps,

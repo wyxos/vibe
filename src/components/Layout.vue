@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { Component } from 'vue'
+import { onBeforeUnmount, type Component } from 'vue'
 
 import type { VibeViewerItem } from './viewer'
+import { createAssetErrorBatchReporter, type VibeAssetErrorEvent } from './viewer-core/assetErrors'
 import type { VibeHandle, VibeProps } from './viewer-core/useViewer'
 import { useController } from './viewer-core/useController'
 
@@ -27,10 +28,18 @@ const slots = defineSlots<{
 }>()
 
 const emit = defineEmits<{
+  'asset-errors': [errors: VibeAssetErrorEvent[]]
   'update:activeIndex': [value: number]
 }>()
 
 const viewer = useController(props, emit)
+const assetErrorBatch = createAssetErrorBatchReporter((errors) => {
+  emit('asset-errors', errors)
+})
+
+onBeforeUnmount(() => {
+  assetErrorBatch.stop()
+})
 
 defineExpose<VibeHandle>({
   clearRemoved: viewer.clearRemoved,
@@ -110,6 +119,7 @@ defineExpose<VibeHandle>({
             :pending-append-items="viewer.pendingAppendItems.value"
             :commit-pending-append="viewer.commitPendingAppend"
             :pagination-detail="viewer.paginationDetail.value"
+            :report-asset-error="assetErrorBatch.report"
             :request-next-page="viewer.prefetchNextPage"
             :request-previous-page="viewer.prefetchPreviousPage"
             :restore-token="viewer.listRestoreToken.value"
@@ -152,6 +162,7 @@ defineExpose<VibeHandle>({
             :loading="viewer.loading.value"
             :has-next-page="viewer.hasNextPage.value"
             :pagination-detail="viewer.paginationDetail.value"
+            :report-asset-error="assetErrorBatch.report"
             :show-back-to-list="viewer.showBackToList.value"
             @back-to-list="viewer.returnToList"
             @update:active-index="viewer.setActiveIndex"
@@ -172,6 +183,7 @@ defineExpose<VibeHandle>({
       :loading="viewer.loading.value"
       :has-next-page="viewer.hasNextPage.value"
       :pagination-detail="viewer.paginationDetail.value"
+      :report-asset-error="assetErrorBatch.report"
       :show-back-to-list="false"
       @back-to-list="viewer.returnToList"
       @update:active-index="viewer.setActiveIndex"

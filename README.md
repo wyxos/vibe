@@ -78,6 +78,18 @@ Optional auto-mode pacing props:
 - `fill-delay-ms`: base delay before the first chained fill request
 - `fill-delay-step-ms`: extra delay added for each additional chained fill request in the same fill cycle
 
+Optional auto-mode feed strategy:
+
+```vue
+<VibeLayout
+  :resolve="resolve"
+  mode="dynamic"
+/>
+```
+
+- `dynamic` is the default
+- `static` reloads the current boundary cursor before advancing when the currently visible boundary page is underfilled
+
 ## What Vibe does
 
 - Desktop masonry list with virtualization and staged page growth
@@ -162,6 +174,19 @@ In this mode, Vibe owns:
 - optional previous-page loading
 - duplicate cursor protection
 - initial retry state
+
+Auto mode also supports two feed strategies:
+
+- `dynamic`:
+  - default behavior
+  - if a resolve returns fewer items than `pageSize`, Vibe enters a fill loop
+  - it waits `fillDelayMs`, then `fillDelayMs + fillDelayStepMs`, and so on for each chained request
+  - it keeps accumulating results until the collected count reaches `pageSize` or there is no further cursor
+  - then it commits that batch into the layout once
+- `static`:
+  - before advancing at the bottom or top, Vibe checks whether the current boundary page is underfilled after local removals
+  - if it is, Vibe reloads that same cursor in place first
+  - only once that boundary page is full again will the next edge hit advance to the next or previous cursor
 
 ### Controlled mode
 
@@ -290,13 +315,20 @@ Available state:
 ```ts
 type VibeStatus = {
   activeIndex: number
+  currentCursor: string | null
   errorMessage: string | null
+  fillCollectedCount: number | null
   fillDelayRemainingMs: number | null
+  fillTargetCount: number | null
   hasNextPage: boolean
   hasPreviousPage: boolean
   isAutoMode: boolean
   itemCount: number
   loadState: 'failed' | 'loaded' | 'loading'
+  mode: 'dynamic' | 'static' | null
+  nextCursor: string | null
+  phase: 'failed' | 'filling' | 'idle' | 'loading' | 'reloading'
+  previousCursor: string | null
   removedCount: number
   surfaceMode: 'fullscreen' | 'list'
 }
@@ -309,6 +341,50 @@ vibe.value?.remove(['item-2', 'item-5'])
 vibe.value?.undo()
 console.log(vibe.value?.status.itemCount)
 ```
+
+## Events
+
+`VibeLayout` emits:
+
+- `update:activeIndex`
+- `asset-errors`
+
+`asset-errors` is micro-batched and emits an array payload:
+
+```ts
+type VibeAssetErrorEvent = {
+  item: VibeViewerItem
+  occurrenceKey: string
+  url: string
+  kind: 'generic' | 'not-found'
+  surface: 'grid' | 'fullscreen'
+}
+```
+
+Example:
+
+```vue
+<script setup lang="ts">
+import type { VibeAssetErrorEvent } from '@wyxos/vibe'
+
+function onAssetErrors(errors: VibeAssetErrorEvent[]) {
+  console.log(errors)
+}
+</script>
+
+<template>
+  <VibeLayout
+    :resolve="resolve"
+    @asset-errors="onAssetErrors"
+  />
+</template>
+```
+
+Notes:
+
+- multiple failures that happen close together are batched into one event
+- identical failures are deduped inside the same batch
+- if the same item fails again later, it can emit again in a later batch
 
 ## Surface behavior
 
@@ -329,8 +405,10 @@ npm run dev
 
 Routes:
 
-- `/` – default feed demo
-- `/demo/advanced-integration` – controlled/manual integration demo
+- `/` – clean default demo
+- `/documentation` – in-app documentation
+- `/demo/dynamic-feed` – dynamic feed fill-loop demo
+- `/demo/advanced-integration` – advanced static integration demo
 - `/debug/fake-server` – fake-server inspection route
 
 ## Local development

@@ -1,6 +1,7 @@
 import { computed, nextTick, ref, watch, type Ref } from 'vue'
 
 import type { VibeViewerItem } from '../viewer'
+import type { VibeAssetErrorReporter } from './assetErrors'
 import { createMediaUiState, DEFAULT_MEDIA_UI_STATE, isImageElementReady, syncMediaUiState, type MediaUiState } from './assetState'
 import { getVibeOccurrenceKey } from './itemIdentity'
 import { getVibeAssetErrorLabel, resolveVibeAssetErrorKind, type VibeAssetErrorKind } from './loadError'
@@ -11,6 +12,7 @@ export function useMedia(options: {
   activeMediaItem: Ref<VibeViewerItem | null>
   isEnabled: Ref<boolean>
   itemCount: Ref<number>
+  onAssetError?: VibeAssetErrorReporter
 }) {
   const imageReadyStates = ref<Record<string, boolean>>({})
   const imageErrorKinds = ref<Record<string, VibeAssetErrorKind | null>>({})
@@ -140,14 +142,28 @@ export function useMedia(options: {
   }
 
   async function onImageError(id: string, url: string) {
+    const failedItem = options.activeItem.value
+
     imageReadyStates.value[id] = false
     imageErrorKinds.value[id] = 'generic'
-    imageErrorKinds.value[id] = await resolveVibeAssetErrorKind(url)
+    const resolvedKind = await resolveVibeAssetErrorKind(url)
+    imageErrorKinds.value[id] = resolvedKind
+
+    if (failedItem) {
+      options.onAssetError?.({
+        item: failedItem,
+        occurrenceKey: id,
+        url,
+        kind: resolvedKind,
+        surface: 'fullscreen',
+      })
+    }
   }
 
   async function onMediaError(id: string, url: string) {
     const media = getMediaElementById(id)
     const state = ensureMediaState(id)
+    const failedItem = options.activeMediaItem.value ?? options.activeItem.value
 
     if (media) {
       media.pause()
@@ -164,7 +180,18 @@ export function useMedia(options: {
     state.paused = true
     state.ready = false
     state.errorKind = 'generic'
-    state.errorKind = await resolveVibeAssetErrorKind(url)
+    const resolvedKind = await resolveVibeAssetErrorKind(url)
+    state.errorKind = resolvedKind
+
+    if (failedItem) {
+      options.onAssetError?.({
+        item: failedItem,
+        occurrenceKey: id,
+        url,
+        kind: resolvedKind,
+        surface: 'fullscreen',
+      })
+    }
   }
 
   function onVideoClick(event: MouseEvent, id: string, suppressMediaToggleUntil: number) {
