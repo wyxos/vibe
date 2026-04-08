@@ -1,9 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import type { VibeResolveParams, VibeResolveResult } from '@/components/viewer-core/useDataSource'
-import type { VibeViewerItem } from '@/components/viewer'
 
 import { mountUseDataSource } from '../helpers/mountUseDataSource'
+import {
+  createDeferred,
+  createItems,
+  createPageResult,
+  createSimpleItem,
+  getVisibleIds,
+} from '../helpers/useDataSourceTestUtils'
 
 describe('useDataSource', () => {
   it('loads the initial page from resolve with the default page size', async () => {
@@ -108,6 +114,120 @@ describe('useDataSource', () => {
     source.unmount()
   })
 
+  it('dynamically fills the initial batch until it reaches the page size', async () => {
+    const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
+      if (cursor === 'page-2') {
+        return createPageResult('page-2', {
+          itemCount: 3,
+          nextPage: 'page-3',
+          previousPage: 'page-1',
+        })
+      }
+
+      if (cursor === 'page-3') {
+        return createPageResult('page-3', {
+          itemCount: 25,
+          nextPage: 'page-4',
+          previousPage: 'page-2',
+        })
+      }
+
+      return createPageResult('page-1', {
+        itemCount: 20,
+        nextPage: 'page-2',
+      })
+    })
+
+    const source = await mountUseDataSource({
+      resolve,
+    })
+
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(3)
+    expect(resolve).toHaveBeenNthCalledWith(1, {
+      cursor: null,
+      pageSize: 25,
+    })
+    expect(resolve).toHaveBeenNthCalledWith(2, {
+      cursor: 'page-2',
+      pageSize: 25,
+    })
+    expect(resolve).toHaveBeenNthCalledWith(3, {
+      cursor: 'page-3',
+      pageSize: 25,
+    })
+    expect(source.api.mode.value).toBe('dynamic')
+    expect(source.api.items.value).toHaveLength(48)
+    expect(source.api.nextCursor.value).toBe('page-4')
+    expect(source.api.currentCursor.value).toBeNull()
+    expect(source.api.phase.value).toBe('idle')
+    expect(source.api.fillCollectedCount.value).toBeNull()
+    expect(source.api.fillTargetCount.value).toBeNull()
+
+    source.unmount()
+  })
+
+  it('fills appended batches in dynamic mode before exposing them for commit', async () => {
+    const deferred = createDeferred<VibeResolveResult>()
+    const resolve = vi.fn(({ cursor }: VibeResolveParams) => {
+      if (cursor === 'page-2') {
+        return deferred.promise
+      }
+
+      if (cursor === 'page-3') {
+        return Promise.resolve(createPageResult('page-3', {
+          itemCount: 22,
+          nextPage: 'page-4',
+          previousPage: 'page-2',
+        }))
+      }
+
+      return Promise.resolve(createPageResult('page-1', {
+        nextPage: 'page-2',
+      }))
+    })
+
+    const source = await mountUseDataSource({
+      resolve,
+      mode: 'dynamic',
+    })
+
+    await source.flush()
+
+    source.api.setActiveIndex(24)
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(2)
+    expect(source.api.loading.value).toBe(true)
+
+    deferred.resolve(createPageResult('page-2', {
+      itemCount: 3,
+      nextPage: 'page-3',
+      previousPage: 'page-1',
+    }))
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(3)
+    expect(source.api.phase.value).toBe('filling')
+    expect(source.api.fillCollectedCount.value).toBe(3)
+    expect(source.api.fillTargetCount.value).toBe(25)
+
+    await source.flush()
+
+    expect(source.api.pendingAppendItems.value).toHaveLength(25)
+    expect(source.api.nextCursor.value).toBe('page-2')
+
+    await source.api.commitPendingAppend()
+    await source.flush()
+
+    expect(source.api.items.value).toHaveLength(50)
+    expect(source.api.nextCursor.value).toBe('page-4')
+    expect(source.api.phase.value).toBe('idle')
+
+    source.unmount()
+  })
+
   it('does not fetch an unseen previous page when previousPage is missing', async () => {
     const resolve = vi.fn(async () => createPageResult('page-1', {
       nextPage: 'page-2',
@@ -124,6 +244,127 @@ describe('useDataSource', () => {
     await source.flush()
 
     expect(resolve).toHaveBeenCalledTimes(1)
+
+    source.unmount()
+  })
+
+  it('reloads the current trailing cursor in static mode before advancing to the next cursor', async () => {
+    let rootPageLoads = 0
+    const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
+      if (cursor === 'page-2') {
+        return createPageResult('page-2', {
+          nextPage: 'page-3',
+          previousPage: 'page-1',
+        })
+      }
+
+      rootPageLoads += 1
+
+      return createPageResult(rootPageLoads === 1 ? 'page-1' : 'page-1-refilled', {
+        nextPage: 'page-2',
+      })
+    })
+
+    const source = await mountUseDataSource({
+      resolve,
+      mode: 'static',
+    })
+
+    await source.flush()
+
+    expect(source.api.items.value).toHaveLength(25)
+
+    source.api.remove(createItems('page-1').slice(0, 5).map((item) => item.id))
+    await source.flush()
+
+    expect(source.api.items.value).toHaveLength(20)
+
+    await source.api.prefetchNextPage()
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(2)
+    expect(resolve).toHaveBeenLastCalledWith({
+      cursor: null,
+      pageSize: 25,
+    })
+    expect(source.api.phase.value).toBe('idle')
+    expect(source.api.items.value).toHaveLength(25)
+    expect(getVisibleIds(source.api.items.value).slice(0, 5)).toEqual([
+      'page-1-refilled-item-1',
+      'page-1-refilled-item-2',
+      'page-1-refilled-item-3',
+      'page-1-refilled-item-4',
+      'page-1-refilled-item-5',
+    ])
+
+    await source.api.prefetchNextPage()
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(3)
+    expect(resolve).toHaveBeenLastCalledWith({
+      cursor: 'page-2',
+      pageSize: 25,
+    })
+    expect(source.api.pendingAppendItems.value).toHaveLength(25)
+
+    source.unmount()
+  })
+
+  it('reloads the current leading cursor in static mode before prepending a previous cursor', async () => {
+    let pageTwoLoads = 0
+    const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
+      if (cursor === 'page-1') {
+        return createPageResult('page-1', {
+          nextPage: 'page-2',
+        })
+      }
+
+      pageTwoLoads += 1
+
+      return createPageResult(pageTwoLoads === 1 ? 'page-2' : 'page-2-refilled', {
+        nextPage: 'page-3',
+        previousPage: 'page-1',
+      })
+    })
+
+    const source = await mountUseDataSource({
+      initialCursor: 'page-2',
+      mode: 'static',
+      resolve,
+    })
+
+    await source.flush()
+
+    source.api.remove(createItems('page-2').slice(0, 5).map((item) => item.id))
+    await source.flush()
+
+    expect(source.api.items.value).toHaveLength(20)
+
+    await source.api.prefetchPreviousPage()
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(2)
+    expect(resolve).toHaveBeenLastCalledWith({
+      cursor: 'page-2',
+      pageSize: 25,
+    })
+    expect(source.api.items.value).toHaveLength(25)
+    expect(getVisibleIds(source.api.items.value).slice(0, 5)).toEqual([
+      'page-2-refilled-item-1',
+      'page-2-refilled-item-2',
+      'page-2-refilled-item-3',
+      'page-2-refilled-item-4',
+      'page-2-refilled-item-5',
+    ])
+
+    await source.api.prefetchPreviousPage()
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(3)
+    expect(resolve).toHaveBeenLastCalledWith({
+      cursor: 'page-1',
+      pageSize: 25,
+    })
 
     source.unmount()
   })
@@ -219,69 +460,3 @@ describe('useDataSource', () => {
     source.unmount()
   })
 })
-
-function createPageResult(
-  pageLabel: string,
-  options: {
-    nextPage?: string | null
-    previousPage?: string | null
-  } = {},
-): VibeResolveResult {
-  return {
-    items: createItems(pageLabel),
-    nextPage: options.nextPage ?? null,
-    previousPage: options.previousPage,
-  }
-}
-
-function createItems(prefix: string): VibeViewerItem[] {
-  return Array.from({ length: 25 }, (_, index) => ({
-    id: `${prefix}-item-${index + 1}`,
-    type: index % 5 === 0 ? 'video' : 'image',
-    title: `${prefix} item ${index + 1}`,
-    url: `https://example.com/${prefix}-item-${index + 1}.jpg`,
-    width: 1_920,
-    height: 1_080,
-    preview: {
-      url: `https://example.com/${prefix}-item-${index + 1}-preview.jpg`,
-      width: 320,
-      height: 180,
-    },
-  }))
-}
-
-function createSimpleItem(id: string): VibeViewerItem {
-  return {
-    id,
-    type: 'image',
-    title: `Item ${id}`,
-    url: `https://example.com/${id}.jpg`,
-    width: 1_920,
-    height: 1_080,
-    preview: {
-      url: `https://example.com/${id}-preview.jpg`,
-      width: 320,
-      height: 180,
-    },
-  }
-}
-
-function getVisibleIds(items: VibeViewerItem[]) {
-  return items.map((item) => item.id)
-}
-
-function createDeferred<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-
-  const promise = new Promise<T>((innerResolve, innerReject) => {
-    resolve = innerResolve
-    reject = innerReject
-  })
-
-  return {
-    promise,
-    reject,
-    resolve,
-  }
-}

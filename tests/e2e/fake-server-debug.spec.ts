@@ -32,7 +32,7 @@ test('fake-server debug route paginates and shows response metadata', async ({ p
   await expect(cards).toHaveCount(25)
 })
 
-test('bidirectional paging demo prepends earlier pages when navigating upward', async ({ page }) => {
+test('advanced static demo exposes raw cursor footer labels', async ({ page }) => {
   await page.setViewportSize({
     width: 1_100,
     height: 650,
@@ -41,59 +41,18 @@ test('bidirectional paging demo prepends earlier pages when navigating upward', 
   await gotoRoute(page, '/demo/advanced-integration')
 
   const root = page.getByTestId('vibe')
-  const listSurface = page.getByTestId('vibe-list-surface')
-  const progress = listSurface.getByTestId('vibe-pagination')
-  const listScroll = listSurface.getByTestId('vibe-list-scroll')
+  const statusBar = page.getByTestId('advanced-static-status-bar')
 
   await expect(root).toHaveAttribute('data-surface-mode', 'list')
-  await expect(progress).toContainText('13 / 25', { timeout: 15_000 })
-  await expect(progress).toContainText('P10 · V10')
-  await page.waitForTimeout(500)
-  await expect(progress).toContainText('/ 25')
-  await expect(progress).toContainText('P10 · V10')
-  await expect.poll(async () => {
-    return listScroll.evaluate((element) => {
-      const node = element as HTMLElement
-      return node.scrollHeight > node.clientHeight
-    })
-  }).toBe(true)
-  await expect.poll(async () => {
-    return listScroll.evaluate((element) => {
-      const node = element as HTMLElement
-      return node.scrollTop
-    })
-  }).toBeGreaterThan(0)
-
-  await listScroll.evaluate((element) => {
-    const node = element as HTMLElement
-    node.scrollTop = 0
-    node.dispatchEvent(new Event('scroll', { bubbles: true }))
-  })
-
-  await expect.poll(async () => normalizeWhitespace(await progress.textContent())).toContain('/ 50')
-  await expect(progress).toContainText('P9-10 · V9')
-  await listScroll.evaluate((element) => {
-    element.dispatchEvent(new WheelEvent('wheel', {
-      bubbles: true,
-      deltaY: -160,
-    }))
-  })
-  await page.waitForTimeout(1_200)
-  await expect(progress).toContainText('/ 50')
-
-  await page.waitForTimeout(1_400)
-  await listScroll.evaluate((element) => {
-    element.dispatchEvent(new WheelEvent('wheel', {
-      bubbles: true,
-      deltaY: -160,
-    }))
-  })
-
-  await expect.poll(async () => normalizeWhitespace(await progress.textContent())).toContain('/ 75')
-  await expect(progress).toContainText('P8-10 · V8')
+  await expect(statusBar.getByTestId('advanced-static-status-current')).toContainText('10', { timeout: 15_000 })
+  await expect(statusBar.getByTestId('advanced-static-status-next')).toContainText('11')
+  await expect(statusBar.getByTestId('advanced-static-status-previous')).toContainText('9')
+  await expect(statusBar.getByTestId('advanced-static-status-status')).toContainText('static')
+  await expect(statusBar.getByTestId('advanced-static-status-fill')).toContainText('25 / 25')
+  await expect(statusBar.getByTestId('advanced-static-status-total')).toContainText('25')
 })
 
-test('bidirectional paging demo reactions remove an item and Ctrl+Z restores it', async ({ page }) => {
+test('bidirectional paging demo reactions remove an item and update the status bar', async ({ page }) => {
   await page.setViewportSize({
     width: 1_100,
     height: 650,
@@ -103,18 +62,18 @@ test('bidirectional paging demo reactions remove an item and Ctrl+Z restores it'
 
   const listSurface = page.getByTestId('vibe-list-surface')
   const progress = listSurface.getByTestId('vibe-pagination')
-  const firstCard = listSurface.locator('[data-testid="vibe-list-card"][data-index="14"]')
+  const firstCard = listSurface.locator('[data-testid="vibe-list-card"][data-index="0"]')
   const firstCardInner = firstCard.getByTestId('vibe-list-card-inner')
-  const statusBar = page.getByTestId('advanced-demo-status-bar')
+  const statusBar = page.getByTestId('advanced-static-status-bar')
 
-  await expect(progress).toContainText('13 / 25', { timeout: 15_000 })
+  await expect(progress).toContainText('1 / 25', { timeout: 15_000 })
   await expect(firstCard).toBeVisible()
   await expect(statusBar).toBeVisible()
-  await expect(page.getByTestId('advanced-demo-status-current-page')).toContainText('P10')
-  await expect(page.getByTestId('advanced-demo-status-next-page')).toContainText('P11')
-  await expect(page.getByTestId('advanced-demo-status-previous-page')).toContainText('P9')
-  await expect(page.getByTestId('advanced-demo-status-load-state')).toContainText('loaded')
-  await expect(page.getByTestId('advanced-demo-status-loaded-items')).toContainText('25')
+  await expect(page.getByTestId('advanced-static-status-current')).toContainText('10')
+  await expect(page.getByTestId('advanced-static-status-next')).toContainText('11')
+  await expect(page.getByTestId('advanced-static-status-previous')).toContainText('9')
+  await expect(page.getByTestId('advanced-static-status-status')).toContainText('idle')
+  await expect(page.getByTestId('advanced-static-status-total')).toContainText('25')
 
   await firstCardInner.dispatchEvent('pointerenter')
   await expect(firstCardInner.getByTestId('demo-reaction-bar')).toBeVisible()
@@ -122,12 +81,12 @@ test('bidirectional paging demo reactions remove an item and Ctrl+Z restores it'
   await firstCardInner.getByTestId('demo-reaction-button').first().click()
 
   await expect.poll(async () => (await getPaginationState(progress)).total).toBe(24)
-  await expect(page.getByTestId('advanced-demo-status-loaded-items')).toContainText('24')
+  await expect(page.getByTestId('advanced-static-status-total')).toContainText('24')
 
   await page.keyboard.press('Control+z')
 
   await expect.poll(async () => (await getPaginationState(progress)).total).toBe(25)
-  await expect(page.getByTestId('advanced-demo-status-loaded-items')).toContainText('25')
+  await expect(page.getByTestId('advanced-static-status-total')).toContainText('25')
 })
 
 test('advanced integration demo footer bar is only visible in grid mode', async ({ page }) => {
@@ -139,8 +98,8 @@ test('advanced integration demo footer bar is only visible in grid mode', async 
   await gotoRoute(page, '/demo/advanced-integration')
 
   const root = page.getByTestId('vibe')
-  const statusBar = page.getByTestId('advanced-demo-status-bar')
-  const firstCardButton = page.locator('[data-testid="vibe-list-card"][data-index="14"] button').first()
+  const statusBar = page.getByTestId('advanced-static-status-bar')
+  const firstCardButton = page.locator('[data-testid="vibe-list-card"][data-index="0"] button').first()
 
   await expect(root).toHaveAttribute('data-surface-mode', 'list')
   await expect(statusBar).toBeVisible({ timeout: 15_000 })
@@ -149,6 +108,38 @@ test('advanced integration demo footer bar is only visible in grid mode', async 
 
   await expect(root).toHaveAttribute('data-surface-mode', 'fullscreen')
   await expect(statusBar).toBeHidden()
+})
+
+test('advanced static demo reloads the current cursor before advancing after local removals', async ({ page }) => {
+  await page.setViewportSize({
+    width: 2_560,
+    height: 1_207,
+  })
+
+  await gotoRoute(page, '/demo/advanced-integration')
+
+  const listSurface = page.getByTestId('vibe-list-surface')
+  const progress = listSurface.getByTestId('vibe-pagination')
+  const scrollViewport = listSurface.getByTestId('vibe-list-scroll')
+  const statusBar = page.getByTestId('advanced-static-status-bar')
+  const firstCardInner = listSurface.locator('[data-testid="vibe-list-card"][data-index="0"]').getByTestId('vibe-list-card-inner')
+
+  await expect(progress).toContainText('1 / 25', { timeout: 15_000 })
+  await firstCardInner.dispatchEvent('pointerenter')
+  await firstCardInner.getByTestId('demo-reaction-button').first().click()
+  await expect.poll(async () => (await getPaginationState(progress)).total).toBe(24)
+
+  await hitBottom(scrollViewport)
+
+  await expect.poll(async () => (await getPaginationState(progress)).total).toBe(25)
+  await expect(statusBar.getByTestId('advanced-static-status-current')).toContainText('10')
+  await expect(statusBar.getByTestId('advanced-static-status-next')).toContainText('11')
+
+  await page.waitForTimeout(2_600)
+  await moveAwayFromBottom(scrollViewport)
+  await hitBottom(scrollViewport)
+
+  await expect.poll(async () => (await getPaginationState(progress)).total).toBeGreaterThan(25)
 })
 
 function normalizeWhitespace(value: string | null) {
@@ -170,4 +161,24 @@ async function getPaginationState(locator: import('@playwright/test').Locator) {
     active: Number.parseInt(match[1], 10),
     total: Number.parseInt(match[2], 10),
   }
+}
+
+async function hitBottom(scrollViewport: import('@playwright/test').Locator) {
+  await scrollViewport.evaluate((element) => {
+    const node = element as HTMLElement
+    node.scrollTop = node.scrollHeight
+    node.dispatchEvent(new Event('scroll', { bubbles: true }))
+    node.dispatchEvent(new WheelEvent('wheel', {
+      bubbles: true,
+      deltaY: 180,
+    }))
+  })
+}
+
+async function moveAwayFromBottom(scrollViewport: import('@playwright/test').Locator) {
+  await scrollViewport.evaluate((element) => {
+    const node = element as HTMLElement
+    node.scrollTop = Math.max(0, node.scrollHeight - node.clientHeight - 240)
+    node.dispatchEvent(new Event('scroll', { bubbles: true }))
+  })
 }

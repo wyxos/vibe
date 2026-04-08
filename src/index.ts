@@ -7,8 +7,11 @@ export type {
   VibeResolveResult,
   VibeAutoProps,
   VibeControlledProps,
+  VibeFeedMode,
   VibeHandle,
+  VibeLoadPhase,
   VibeProps,
+  VibeStatus,
 } from './components/viewer-core/useViewer'
 
 export const VibeLayout = Layout

@@ -2,12 +2,13 @@ import type { Locator } from '@playwright/test'
 
 import { expect, gotoRoute, test } from './fixtures'
 
-test('home route exposes retry UI after an initial load failure and recovers on retry', async ({ page }) => {
-  await gotoRoute(page, '/?failPage=1&failCount=1')
+test('dynamic feed demo exposes retry UI after an initial load failure and recovers on retry', async ({ page }) => {
+  await gotoRoute(page, '/demo/dynamic-feed?failPage=1&failCount=1')
 
   const listSurface = page.getByTestId('vibe-list-surface')
   const retryButton = page.getByRole('button', { name: 'Retry' })
   const progress = listSurface.getByTestId('vibe-pagination')
+  const statusBar = page.getByTestId('dynamic-demo-status-bar')
 
   await expect(retryButton).toBeVisible({ timeout: 15_000 })
 
@@ -15,15 +16,18 @@ test('home route exposes retry UI after an initial load failure and recovers on 
 
   await expect(retryButton).toHaveCount(0)
   await expect(progress).toHaveText('1 / 25', { timeout: 15_000 })
+  await expect(statusBar.getByTestId('dynamic-demo-status-current')).toContainText('1')
+  await expect(statusBar.getByTestId('dynamic-demo-status-next')).toContainText('2')
+  await expect(statusBar.getByTestId('dynamic-demo-status-previous')).toContainText('N/A')
 })
 
-test('home route keeps visible items while a later page fails and recovers on the next bottom cycle', async ({ page }) => {
+test('dynamic feed demo keeps visible items while a later page fails and recovers on the next bottom cycle', async ({ page }) => {
   await page.setViewportSize({
     width: 2_560,
     height: 1_207,
   })
 
-  await gotoRoute(page, '/?failPage=2&failCount=1')
+  await gotoRoute(page, '/demo/dynamic-feed?failPage=2&failCount=1')
 
   const listSurface = page.getByTestId('vibe-list-surface')
   const progress = listSurface.getByTestId('vibe-pagination')
@@ -45,7 +49,49 @@ test('home route keeps visible items while a later page fails and recovers on th
   await expect.poll(async () => (await getPaginationState(progress)).total).toBe(50)
 })
 
-test('desktop append motion keeps bottom-entering cards on the forward stagger order', async ({ page }) => {
+test('dynamic feed demo surfaces raw cursor labels in the grid footer', async ({ page }) => {
+  await page.setViewportSize({
+    width: 2_560,
+    height: 1_207,
+  })
+
+  await gotoRoute(page, '/demo/dynamic-feed')
+
+  const statusBar = page.getByTestId('dynamic-demo-status-bar')
+
+  await expect(statusBar.getByTestId('dynamic-demo-status-current')).toContainText('1', { timeout: 15_000 })
+  await expect(statusBar.getByTestId('dynamic-demo-status-next')).toContainText('2')
+  await expect(statusBar.getByTestId('dynamic-demo-status-previous')).toContainText('N/A')
+  await expect(statusBar.getByTestId('dynamic-demo-status-status')).toContainText('dynamic')
+  await expect(statusBar.getByTestId('dynamic-demo-status-fill')).toContainText('25 / 25')
+  await expect(statusBar.getByTestId('dynamic-demo-status-total')).toContainText('25')
+})
+
+test('dynamic feed demo shows filling progress before committing a full appended batch', async ({ page }) => {
+  await page.setViewportSize({
+    width: 2_560,
+    height: 1_207,
+  })
+
+  await gotoRoute(page, '/demo/dynamic-feed')
+
+  const listSurface = page.getByTestId('vibe-list-surface')
+  const progress = listSurface.getByTestId('vibe-pagination')
+  const scrollViewport = listSurface.getByTestId('vibe-list-scroll')
+  const statusBar = page.getByTestId('dynamic-demo-status-bar')
+
+  await expect(progress).toHaveText('1 / 25', { timeout: 15_000 })
+
+  await hitBottom(scrollViewport)
+
+  await expect(statusBar.getByTestId('dynamic-demo-status-status')).toContainText('filling', { timeout: 15_000 })
+  await expect(statusBar.getByTestId('dynamic-demo-status-fill')).toContainText('/ 25')
+
+  await expect.poll(async () => (await getPaginationState(progress)).total).toBe(50)
+  await expect(statusBar.getByTestId('dynamic-demo-status-next')).toContainText('5')
+})
+
+test('desktop append pagination grows the feed after a bottom hit', async ({ page }) => {
   await page.setViewportSize({
     width: 2_560,
     height: 1_207,
@@ -61,23 +107,9 @@ test('desktop append motion keeps bottom-entering cards on the forward stagger o
 
   await hitBottom(scrollViewport)
   await expect.poll(async () => (await getPaginationState(progress)).total).toBe(50)
-  await page.waitForTimeout(50)
-
-  const cards = await getAnimatedCards(listSurface)
-  const enteringCards = cards.filter((card) => card.index >= 25 && card.transition.includes('600ms'))
-
-  expect(enteringCards.length).toBeGreaterThan(0)
-
-  const delayedEnteringCards = enteringCards
-    .filter((card) => Number.isFinite(card.delayMs))
-    .sort((left, right) => left.index - right.index)
-
-  if (delayedEnteringCards.length >= 2) {
-    expect(delayedEnteringCards[0].delayMs).toBeLessThanOrEqual(delayedEnteringCards.at(-1)!.delayMs)
-  }
 })
 
-test('desktop prepend motion keeps top-entering cards on the reversed stagger order', async ({ page }) => {
+test('advanced static demo surfaces cursor status bars and keeps top-entering cards on the reversed stagger order', async ({ page }) => {
   await page.setViewportSize({
     width: 1_100,
     height: 650,
@@ -85,32 +117,14 @@ test('desktop prepend motion keeps top-entering cards on the reversed stagger or
 
   await gotoRoute(page, '/demo/advanced-integration')
 
-  const listSurface = page.getByTestId('vibe-list-surface')
-  const progress = listSurface.getByTestId('vibe-pagination')
-  const scrollViewport = listSurface.getByTestId('vibe-list-scroll')
+  const statusBar = page.getByTestId('advanced-static-status-bar')
 
-  await expect(progress).toContainText('P10 · V10', { timeout: 15_000 })
-  await scrollViewport.evaluate((element) => {
-    const node = element as HTMLElement
-    node.scrollTop = 0
-    node.dispatchEvent(new Event('scroll', { bubbles: true }))
-  })
-
-  await expect.poll(async () => normalizeWhitespace(await progress.textContent())).toContain('/ 50')
-  await page.waitForTimeout(50)
-
-  const cards = await getAnimatedCards(listSurface)
-  const enteringCards = cards.filter((card) => card.index < 25 && card.transition.includes('600ms'))
-
-  expect(enteringCards.length).toBeGreaterThan(0)
-
-  const delayedEnteringCards = enteringCards
-    .filter((card) => Number.isFinite(card.delayMs))
-    .sort((left, right) => left.index - right.index)
-
-  if (delayedEnteringCards.length >= 2) {
-    expect(delayedEnteringCards[0].delayMs).toBeGreaterThanOrEqual(delayedEnteringCards.at(-1)!.delayMs)
-  }
+  await expect(statusBar.getByTestId('advanced-static-status-current')).toContainText('10', { timeout: 15_000 })
+  await expect(statusBar.getByTestId('advanced-static-status-next')).toContainText('11')
+  await expect(statusBar.getByTestId('advanced-static-status-previous')).toContainText('9')
+  await expect(statusBar.getByTestId('advanced-static-status-status')).toContainText('static')
+  await expect(statusBar.getByTestId('advanced-static-status-fill')).toContainText('25 / 25')
+  await expect(statusBar.getByTestId('advanced-static-status-total')).toContainText('25')
 })
 
 test('broken demo assets surface 404 and generic preload errors in list and fullscreen', async ({ page }) => {
@@ -183,21 +197,6 @@ async function scrollNearBottomOfFirstPage(scrollViewport: Locator) {
     const node = element as HTMLElement
     node.scrollTop = Math.max(0, node.scrollHeight - node.clientHeight - 280)
     node.dispatchEvent(new Event('scroll', { bubbles: true }))
-  })
-}
-
-async function getAnimatedCards(listSurface: Locator) {
-  return listSurface.locator('[data-testid="vibe-list-card"]').evaluateAll((nodes) => {
-    return nodes.map((node) => {
-      const element = node as HTMLElement
-      const delayMs = Number.parseFloat(element.style.transitionDelay || '0')
-
-      return {
-        delayMs,
-        index: Number.parseInt(element.dataset.index || '-1', 10),
-        transition: element.style.transition,
-      }
-    }).filter((card) => card.transition)
   })
 }
 

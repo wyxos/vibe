@@ -1,14 +1,12 @@
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import type { VibeViewerItem } from '../viewer'
 import { getVibeOccurrenceKey, reconcileVibeOccurrenceKeys } from './itemIdentity'
 import { useVibeRemovalState } from './removalState'
+import { useAutoResolveSource } from './useAutoResolveSource'
 
 export type { VibeHandle, VibeRemoveResult } from './removalState'
-
-const DEFAULT_PAGE_SIZE = 25
-const PREFETCH_OFFSET = 3
-const INITIAL_CURSOR_KEY = '__vibe_initial_cursor__'
+export type { VibeFeedMode, VibeLoadPhase } from './removalState'
 
 export interface VibeResolveParams {
   cursor: string | null
@@ -33,6 +31,7 @@ export interface VibeControlledProps extends VibeSharedProps {
   activeIndex?: number
   loading?: boolean
   hasNextPage?: boolean
+  mode?: never
   resolve?: never
   initialCursor?: never
   pageSize?: never
@@ -41,6 +40,7 @@ export interface VibeControlledProps extends VibeSharedProps {
 export interface VibeAutoProps {
   resolve: (params: VibeResolveParams) => Promise<VibeResolveResult>
   initialCursor?: string | null
+  mode?: import('./removalState').VibeFeedMode
   pageSize?: number
   items?: never
   activeIndex?: never
@@ -59,20 +59,6 @@ export type VibeEmit = (event: 'update:activeIndex', value: number) => void
 export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
   const controlledProps = props as Partial<VibeControlledProps>
   const autoProps = props as Partial<VibeAutoProps>
-
-  const autoSourceItems = ref<VibeViewerItem[]>([])
-  const controlledSourceItems = ref<VibeViewerItem[]>([])
-  const autoActiveIndex = ref(0)
-  const nextPage = ref<string | null>(null)
-  const previousPage = ref<string | null>(null)
-  const pendingAppendSourceItems = ref<VibeViewerItem[]>([])
-  const pendingAppendNextPage = ref<string | null>(null)
-  const errorMessage = ref<string | null>(null)
-  const isLoadingInitial = ref(false)
-  const isPrefetchingNext = ref(false)
-  const isPrefetchingPrevious = ref(false)
-  const isAwaitingAppendCommit = ref(false)
-  const isAutoPrefetchEnabled = ref(true)
   const removalState = useVibeRemovalState()
   const {
     clearRemoved,
@@ -82,34 +68,33 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     restore: restoreRemovedIds,
     undo: undoRemovedIds,
   } = removalState
-
-  const loadedCursors = new Set<string>()
-  const inFlightCursors = new Set<string>()
+  const autoSource = useAutoResolveSource({
+    emit,
+    initialCursor: autoProps.initialCursor,
+    mode: autoProps.mode,
+    pageSize: autoProps.pageSize,
+    removedIds,
+    resolve: autoProps.resolve,
+  })
 
   let hasWarnedMixedProps = false
   let occurrenceSequence = 0
-
+  const controlledSourceItems = ref<VibeViewerItem[]>([])
   const isAutoMode = computed(() => typeof autoProps.resolve === 'function')
-  const pageSize = computed(() => normalizePageSize(autoProps.pageSize))
-  const sourceItems = computed(() => isAutoMode.value ? autoSourceItems.value : controlledSourceItems.value)
-  const items = computed(() => filterRemovedItems(sourceItems.value, removedIds.value))
-  const activeIndex = computed(() => isAutoMode.value ? autoActiveIndex.value : (controlledProps.activeIndex ?? 0))
-  const loading = computed(() =>
-    isAutoMode.value
-      ? (isLoadingInitial.value || isPrefetchingNext.value || isPrefetchingPrevious.value || isAwaitingAppendCommit.value)
-      : (controlledProps.loading ?? false),
-  )
-  const hasNextPage = computed(() => isAutoMode.value ? Boolean(nextPage.value) : (controlledProps.hasNextPage ?? false))
-  const hasPreviousPage = computed(() => isAutoMode.value ? Boolean(previousPage.value) : (controlledProps.hasPreviousPage ?? false))
+  const controlledItems = computed(() => {
+    if (!removedIds.value.size) {
+      return controlledSourceItems.value
+    }
+
+    return controlledSourceItems.value.filter((item) => !removedIds.value.has(item.id))
+  })
+  const items = computed(() => isAutoMode.value ? autoSource.items.value : controlledItems.value)
+  const activeIndex = computed(() => isAutoMode.value ? autoSource.activeIndex.value : (controlledProps.activeIndex ?? 0))
+  const loading = computed(() => isAutoMode.value ? autoSource.loading.value : (controlledProps.loading ?? false))
+  const hasNextPage = computed(() => isAutoMode.value ? autoSource.hasNextPage.value : (controlledProps.hasNextPage ?? false))
+  const hasPreviousPage = computed(() => isAutoMode.value ? autoSource.hasPreviousPage.value : (controlledProps.hasPreviousPage ?? false))
   const removedCount = computed(() => removedIds.value.size)
   const paginationDetail = computed(() => controlledProps.paginationDetail ?? null)
-  const pendingAppendItems = computed(() => filterRemovedItems(pendingAppendSourceItems.value, removedIds.value))
-  const canRetryInitialLoad = computed(() =>
-    isAutoMode.value
-    && !items.value.length
-    && !loading.value
-    && Boolean(errorMessage.value),
-  )
 
   watch(
     [() => controlledProps.items, () => autoProps.resolve],
@@ -133,68 +118,15 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
         return
       }
 
-      const nextResolvedItems = reconcileVibeOccurrenceKeys(nextItems, controlledSourceItems.value, occurrenceSequence)
-      controlledSourceItems.value = nextResolvedItems.items
-      occurrenceSequence = nextResolvedItems.nextSequence
+      const resolvedItems = reconcileVibeOccurrenceKeys(nextItems, controlledSourceItems.value, occurrenceSequence)
+      controlledSourceItems.value = resolvedItems.items
+      occurrenceSequence = resolvedItems.nextSequence
     },
     {
       deep: true,
       immediate: true,
     },
   )
-
-  watch(
-    () => items.value.length,
-    (length) => {
-      if (!isAutoMode.value) {
-        return
-      }
-
-      if (length === 0) {
-        autoActiveIndex.value = 0
-        return
-      }
-
-      if (autoActiveIndex.value > length - 1) {
-        autoActiveIndex.value = length - 1
-      }
-    },
-  )
-
-  watch(
-    () => autoActiveIndex.value,
-    () => {
-      if (!isAutoMode.value || !isAutoPrefetchEnabled.value) {
-        return
-      }
-
-      void maybePrefetchAround()
-    },
-  )
-
-  onMounted(() => {
-    if (!isAutoMode.value) {
-      return
-    }
-
-    void loadPage(autoProps.initialCursor ?? null, 'initial')
-  })
-
-  function normalizePageSize(value: number | undefined) {
-    if (!value || !Number.isFinite(value) || value < 1) {
-      return DEFAULT_PAGE_SIZE
-    }
-
-    return Math.floor(value)
-  }
-
-  function clamp(value: number, min: number, max: number) {
-    return Math.min(Math.max(value, min), max)
-  }
-
-  function getCursorKey(cursor: string | null) {
-    return cursor ?? INITIAL_CURSOR_KEY
-  }
 
   function setActiveIndex(nextIndex: number) {
     const nextItems = items.value
@@ -206,178 +138,13 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     const clampedIndex = clamp(nextIndex, 0, nextItems.length - 1)
 
     if (isAutoMode.value) {
-      if (clampedIndex === autoActiveIndex.value) {
-        return
-      }
-
-      autoActiveIndex.value = clampedIndex
-      emit('update:activeIndex', clampedIndex)
+      autoSource.setActiveIndex(clampedIndex)
       return
     }
 
     if (clampedIndex !== (controlledProps.activeIndex ?? 0)) {
       emit('update:activeIndex', clampedIndex)
     }
-  }
-
-  async function maybePrefetchAround() {
-    if (!items.value.length || isLoadingInitial.value) {
-      return
-    }
-
-    if (previousPage.value && autoActiveIndex.value < PREFETCH_OFFSET) {
-      await loadPage(previousPage.value, 'prepend')
-    }
-
-    if (nextPage.value && autoActiveIndex.value >= items.value.length - PREFETCH_OFFSET) {
-      await loadPage(nextPage.value, 'append')
-    }
-  }
-
-  async function loadPage(cursor: string | null, mode: 'initial' | 'append' | 'prepend') {
-    if (!autoProps.resolve) {
-      return
-    }
-
-    const cursorKey = getCursorKey(cursor)
-
-    if (loadedCursors.has(cursorKey) || inFlightCursors.has(cursorKey)) {
-      return
-    }
-
-    inFlightCursors.add(cursorKey)
-    errorMessage.value = null
-
-    if (mode === 'initial') {
-      isLoadingInitial.value = true
-    }
-    else if (mode === 'append') {
-      isPrefetchingNext.value = true
-    }
-    else {
-      isPrefetchingPrevious.value = true
-    }
-
-    try {
-      const response = await autoProps.resolve({
-        cursor,
-        pageSize: pageSize.value,
-      })
-
-      loadedCursors.add(cursorKey)
-      const resolvedResponseItems = resolveIncomingItems(response.items)
-
-      if (mode === 'initial') {
-        autoSourceItems.value = resolvedResponseItems
-        autoActiveIndex.value = 0
-        nextPage.value = response.nextPage
-        previousPage.value = response.previousPage ?? null
-        return
-      }
-
-      if (mode === 'append') {
-        pendingAppendSourceItems.value = resolvedResponseItems
-        pendingAppendNextPage.value = response.nextPage
-        if (!filterRemovedItems(resolvedResponseItems, removedIds.value).length) {
-          autoSourceItems.value = [...autoSourceItems.value, ...resolvedResponseItems]
-          nextPage.value = response.nextPage
-          pendingAppendSourceItems.value = []
-          pendingAppendNextPage.value = null
-          isAwaitingAppendCommit.value = false
-          return
-        }
-
-        isAwaitingAppendCommit.value = true
-        return
-      }
-
-      autoSourceItems.value = [...resolvedResponseItems, ...autoSourceItems.value]
-      autoActiveIndex.value += filterRemovedItems(resolvedResponseItems, removedIds.value).length
-      previousPage.value = response.previousPage ?? null
-    }
-    catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : 'The viewer could not load items.'
-    }
-    finally {
-      inFlightCursors.delete(cursorKey)
-
-      if (mode === 'initial') {
-        isLoadingInitial.value = false
-      }
-      else if (mode === 'append') {
-        isPrefetchingNext.value = false
-      }
-      else {
-        isPrefetchingPrevious.value = false
-      }
-    }
-  }
-
-  async function retryInitialLoad() {
-    if (!canRetryInitialLoad.value) {
-      return
-    }
-
-    autoSourceItems.value = []
-    autoActiveIndex.value = 0
-    nextPage.value = null
-    previousPage.value = null
-    pendingAppendSourceItems.value = []
-    pendingAppendNextPage.value = null
-    errorMessage.value = null
-    isAwaitingAppendCommit.value = false
-    loadedCursors.clear()
-    inFlightCursors.clear()
-
-    await loadPage(autoProps.initialCursor ?? null, 'initial')
-  }
-
-  async function prefetchNextPage() {
-    if (isAutoMode.value) {
-      if (!nextPage.value || isLoadingInitial.value) {
-        return
-      }
-
-      await loadPage(nextPage.value, 'append')
-      return
-    }
-
-    if (loading.value || typeof controlledProps.requestNextPage !== 'function') {
-      return
-    }
-
-    await controlledProps.requestNextPage()
-  }
-
-  async function prefetchPreviousPage() {
-    if (isAutoMode.value) {
-      if (!previousPage.value || isLoadingInitial.value) {
-        return
-      }
-
-      await loadPage(previousPage.value, 'prepend')
-      return
-    }
-
-    if (loading.value || typeof controlledProps.requestPreviousPage !== 'function') {
-      return
-    }
-
-    await controlledProps.requestPreviousPage()
-  }
-
-  async function commitPendingAppend() {
-    if (!pendingAppendSourceItems.value.length) {
-      isAwaitingAppendCommit.value = false
-      pendingAppendNextPage.value = null
-      return
-    }
-
-    autoSourceItems.value = [...autoSourceItems.value, ...pendingAppendSourceItems.value]
-    nextPage.value = pendingAppendNextPage.value
-    pendingAppendSourceItems.value = []
-    pendingAppendNextPage.value = null
-    isAwaitingAppendCommit.value = false
   }
 
   function remove(ids: string | string[]) {
@@ -388,11 +155,13 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
       return result
     }
 
-    if (isAutoMode.value && pendingAppendSourceItems.value.length > 0 && !filterRemovedItems(pendingAppendSourceItems.value, removedIds.value).length) {
-      void commitPendingAppend()
+    if (isAutoMode.value) {
+      autoSource.maybeCommitPendingAppendWhenFilteredOut()
+      autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
+      return result
     }
-    syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
 
+    syncControlledActiveIndex(anchorOccurrenceKey)
     return result
   }
 
@@ -404,8 +173,12 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
       return result
     }
 
-    syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
+    if (isAutoMode.value) {
+      autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
+      return result
+    }
 
+    syncControlledActiveIndex(anchorOccurrenceKey)
     return result
   }
 
@@ -417,33 +190,25 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
       return result
     }
 
-    syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
+    if (isAutoMode.value) {
+      autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
+      return result
+    }
 
+    syncControlledActiveIndex(anchorOccurrenceKey)
     return result
   }
 
   function resetRemovedItems() {
     const anchorOccurrenceKey = getActiveOccurrenceKey()
     clearRemoved()
-    syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
-  }
 
-  function setAutoPrefetchEnabled(nextValue: boolean) {
-    isAutoPrefetchEnabled.value = nextValue
-  }
-
-  function filterRemovedItems(nextItems: VibeViewerItem[], nextRemovedIds: Set<string>) {
-    if (!nextRemovedIds.size) {
-      return nextItems
+    if (isAutoMode.value) {
+      autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
+      return
     }
 
-    return nextItems.filter((item) => !nextRemovedIds.has(item.id))
-  }
-
-  function resolveIncomingItems(nextItems: VibeViewerItem[]) {
-    const resolvedItems = reconcileVibeOccurrenceKeys(nextItems, [], occurrenceSequence)
-    occurrenceSequence = resolvedItems.nextSequence
-    return resolvedItems.items
+    syncControlledActiveIndex(anchorOccurrenceKey)
   }
 
   function getActiveOccurrenceKey() {
@@ -451,50 +216,66 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     return currentItem ? getVibeOccurrenceKey(currentItem) : null
   }
 
-  function syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey: string | null = null) {
+  function syncControlledActiveIndex(anchorId: string | null = null) {
     if (!items.value.length) {
-      if (isAutoMode.value) {
-        autoActiveIndex.value = 0
-      }
       return
     }
 
-    const anchoredIndex = anchorOccurrenceKey
-      ? items.value.findIndex((item) => getVibeOccurrenceKey(item) === anchorOccurrenceKey)
+    const anchoredIndex = anchorId
+      ? items.value.findIndex((item) => getVibeOccurrenceKey(item) === anchorId)
       : -1
     const clampedIndex = anchoredIndex >= 0 ? anchoredIndex : clamp(activeIndex.value, 0, items.value.length - 1)
-    if (isAutoMode.value) {
-      autoActiveIndex.value = clampedIndex
-      return
-    }
 
     if (clampedIndex !== (controlledProps.activeIndex ?? 0)) {
       emit('update:activeIndex', clampedIndex)
     }
   }
 
+  function clamp(value: number, min: number, max: number) {
+    return Math.min(Math.max(value, min), max)
+  }
+
   return {
     activeIndex,
-    canRetryInitialLoad,
+    canRetryInitialLoad: computed(() => isAutoMode.value ? autoSource.canRetryInitialLoad.value : false),
     clearRemoved: resetRemovedItems,
-    commitPendingAppend,
-    errorMessage,
+    commitPendingAppend: autoSource.commitPendingAppend,
+    currentCursor: computed(() => isAutoMode.value ? autoSource.currentCursor.value : null),
+    errorMessage: computed(() => isAutoMode.value ? autoSource.errorMessage.value : null),
+    fillCollectedCount: computed(() => isAutoMode.value ? autoSource.fillCollectedCount.value : null),
+    fillTargetCount: computed(() => isAutoMode.value ? autoSource.fillTargetCount.value : null),
     getRemovedIds,
     hasNextPage,
     hasPreviousPage,
     isAutoMode,
     items,
     loading,
+    mode: computed(() => isAutoMode.value ? autoSource.mode.value : null),
+    nextCursor: computed(() => isAutoMode.value ? autoSource.nextCursor.value : null),
     paginationDetail,
-    pendingAppendItems,
-    prefetchNextPage,
-    prefetchPreviousPage,
+    pendingAppendItems: autoSource.pendingAppendItems,
+    phase: computed(() => isAutoMode.value ? autoSource.phase.value : (loading.value ? 'loading' : 'idle')),
+    prefetchNextPage: isAutoMode.value ? autoSource.prefetchNextPage : async () => {
+      if (loading.value || typeof controlledProps.requestNextPage !== 'function') {
+        return
+      }
+
+      await controlledProps.requestNextPage()
+    },
+    prefetchPreviousPage: isAutoMode.value ? autoSource.prefetchPreviousPage : async () => {
+      if (loading.value || typeof controlledProps.requestPreviousPage !== 'function') {
+        return
+      }
+
+      await controlledProps.requestPreviousPage()
+    },
+    previousCursor: computed(() => isAutoMode.value ? autoSource.previousCursor.value : null),
     removedCount,
     remove,
     restore,
-    retryInitialLoad,
+    retryInitialLoad: autoSource.retryInitialLoad,
     setActiveIndex,
-    setAutoPrefetchEnabled,
+    setAutoPrefetchEnabled: autoSource.setAutoPrefetchEnabled,
     undo,
   }
 }

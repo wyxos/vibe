@@ -32,7 +32,9 @@ export function useEdgeBoundary(options: {
     isBoundaryActive.value = options.isAtBoundary()
 
     if (!isBoundaryActive.value) {
-      hasSeenOffBoundary.value = true
+      if (!isCycleLocked.value && !isRequestPending.value) {
+        hasSeenOffBoundary.value = true
+      }
       return
     }
 
@@ -66,6 +68,7 @@ export function useEdgeBoundary(options: {
     }
 
     consumedIntentVersion.value = intentVersion.value
+    hasSeenOffBoundary.value = false
     isCycleLocked.value = true
     isRequestPending.value = true
 

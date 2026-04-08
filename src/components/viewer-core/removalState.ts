@@ -4,14 +4,24 @@ export interface VibeRemoveResult {
   ids: string[]
 }
 
+export type VibeFeedMode = 'dynamic' | 'static'
+export type VibeLoadPhase = 'failed' | 'filling' | 'idle' | 'loading' | 'reloading'
+
 export interface VibeStatus {
   activeIndex: number
+  currentCursor: string | null
   errorMessage: string | null
+  fillCollectedCount: number | null
+  fillTargetCount: number | null
   hasNextPage: boolean
   hasPreviousPage: boolean
   isAutoMode: boolean
   itemCount: number
   loadState: 'failed' | 'loaded' | 'loading'
+  mode: VibeFeedMode | null
+  nextCursor: string | null
+  phase: VibeLoadPhase
+  previousCursor: string | null
   removedCount: number
   surfaceMode: 'fullscreen' | 'list'
 }

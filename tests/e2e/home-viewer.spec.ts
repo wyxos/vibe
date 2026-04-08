@@ -15,11 +15,12 @@ test('workspace header opens a right-side menu with navigation routes', async ({
 
   await expect(menuSheet).toHaveAttribute('data-open', 'true')
   await expect(menuSheet.getByRole('link', { name: 'Documentation' })).toBeVisible()
-  await expect(menuSheet.getByRole('link', { name: 'Advanced Integration Demo' })).toBeVisible()
+  await expect(menuSheet.getByRole('link', { name: 'Dynamic Feed Demo' })).toBeVisible()
+  await expect(menuSheet.getByRole('link', { name: 'Advanced Static Demo' })).toBeVisible()
 
-  await menuSheet.getByRole('link', { name: 'Advanced Integration Demo' }).click()
+  await menuSheet.getByRole('link', { name: 'Dynamic Feed Demo' }).click()
 
-  await expect(page).toHaveURL(/\/demo\/advanced-integration$/)
+  await expect(page).toHaveURL(/\/demo\/dynamic-feed$/)
   await expect(menuSheet).toHaveAttribute('data-open', 'false')
 })
 

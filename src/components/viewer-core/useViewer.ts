@@ -13,9 +13,12 @@ export type {
   VibeAutoProps,
   VibeControlledProps,
   VibeEmit,
+  VibeFeedMode,
   VibeHandle,
+  VibeLoadPhase,
   VibeProps,
 } from './useDataSource'
+export type { VibeStatus } from './removalState'
 
 export function useViewer(
   props: Readonly<VibeProps>,

@@ -15,12 +15,19 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
   const listRestoreToken = ref(0)
   const status = reactive<VibeStatus>({
     activeIndex: 0,
+    currentCursor: null,
     errorMessage: null,
+    fillCollectedCount: null,
+    fillTargetCount: null,
     hasNextPage: false,
     hasPreviousPage: false,
     isAutoMode: false,
     itemCount: 0,
     loadState: 'loaded',
+    mode: null,
+    nextCursor: null,
+    phase: 'idle',
+    previousCursor: null,
     removedCount: 0,
     surfaceMode: 'list',
   })
@@ -61,7 +68,10 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
 
   watchEffect(() => {
     status.activeIndex = dataSource.activeIndex.value
+    status.currentCursor = dataSource.currentCursor.value
     status.errorMessage = dataSource.errorMessage.value
+    status.fillCollectedCount = dataSource.fillCollectedCount.value
+    status.fillTargetCount = dataSource.fillTargetCount.value
     status.hasNextPage = dataSource.hasNextPage.value
     status.hasPreviousPage = dataSource.hasPreviousPage.value
     status.isAutoMode = dataSource.isAutoMode.value
@@ -69,6 +79,10 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     status.loadState = dataSource.loading.value
       ? 'loading'
       : (dataSource.errorMessage.value ? 'failed' : 'loaded')
+    status.mode = dataSource.mode.value
+    status.nextCursor = dataSource.nextCursor.value
+    status.phase = dataSource.phase.value
+    status.previousCursor = dataSource.previousCursor.value
     status.removedCount = dataSource.removedCount.value
     status.surfaceMode = surfaceMode.value
   })

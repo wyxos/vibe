@@ -12,16 +12,23 @@ vi.mock('@/components/viewer-core/useDataSource', () => ({
     activeIndex: dataSourceMock.activeIndex,
     canRetryInitialLoad: dataSourceMock.canRetryInitialLoad,
     commitPendingAppend: dataSourceMock.commitPendingAppend,
+    currentCursor: dataSourceMock.currentCursor,
     errorMessage: dataSourceMock.errorMessage,
+    fillCollectedCount: dataSourceMock.fillCollectedCount,
+    fillTargetCount: dataSourceMock.fillTargetCount,
     hasNextPage: dataSourceMock.hasNextPage,
     hasPreviousPage: dataSourceMock.hasPreviousPage,
     isAutoMode: dataSourceMock.isAutoMode,
     items: dataSourceMock.items,
     loading: dataSourceMock.loading,
+    mode: dataSourceMock.mode,
+    nextCursor: dataSourceMock.nextCursor,
     paginationDetail: dataSourceMock.paginationDetail,
     pendingAppendItems: dataSourceMock.pendingAppendItems,
+    phase: dataSourceMock.phase,
     prefetchNextPage: dataSourceMock.prefetchNextPage,
     prefetchPreviousPage: dataSourceMock.prefetchPreviousPage,
+    previousCursor: dataSourceMock.previousCursor,
     removedCount: dataSourceMock.removedCount,
     retryInitialLoad: dataSourceMock.retryInitialLoad,
     setActiveIndex: dataSourceMock.setActiveIndex,
@@ -33,16 +40,23 @@ function createDataSourceMock() {
   const activeIndex = ref(0)
   const canRetryInitialLoad = ref(false)
   const commitPendingAppend = vi.fn(async () => {})
+  const currentCursor = ref<string | null>(null)
   const errorMessage = ref<string | null>(null)
+  const fillCollectedCount = ref<number | null>(null)
+  const fillTargetCount = ref<number | null>(null)
   const hasNextPage = ref(false)
   const hasPreviousPage = ref(false)
   const isAutoMode = ref(false)
   const items = ref<VibeViewerItem[]>([])
   const loading = ref(false)
+  const mode = ref<'dynamic' | 'static' | null>(null)
+  const nextCursor = ref<string | null>(null)
   const paginationDetail = ref<string | null>(null)
   const pendingAppendItems = ref<VibeViewerItem[]>([])
+  const phase = ref<'failed' | 'filling' | 'idle' | 'loading' | 'reloading'>('idle')
   const prefetchNextPage = vi.fn(async () => {})
   const prefetchPreviousPage = vi.fn(async () => {})
+  const previousCursor = ref<string | null>(null)
   const removedCount = ref(0)
   const retryInitialLoad = vi.fn(async () => {})
   const setActiveIndex = vi.fn((nextIndex: number) => {
@@ -54,16 +68,23 @@ function createDataSourceMock() {
     activeIndex,
     canRetryInitialLoad,
     commitPendingAppend,
+    currentCursor,
     errorMessage,
+    fillCollectedCount,
+    fillTargetCount,
     hasNextPage,
     hasPreviousPage,
     isAutoMode,
     items,
     loading,
+    mode,
+    nextCursor,
     paginationDetail,
     pendingAppendItems,
+    phase,
     prefetchNextPage,
     prefetchPreviousPage,
+    previousCursor,
     removedCount,
     retryInitialLoad,
     setActiveIndex,
@@ -222,16 +243,23 @@ function resetDataSourceMock() {
   dataSourceMock.activeIndex.value = 0
   dataSourceMock.canRetryInitialLoad.value = false
   dataSourceMock.commitPendingAppend.mockClear()
+  dataSourceMock.currentCursor.value = null
   dataSourceMock.errorMessage.value = null
+  dataSourceMock.fillCollectedCount.value = null
+  dataSourceMock.fillTargetCount.value = null
   dataSourceMock.hasNextPage.value = false
   dataSourceMock.hasPreviousPage.value = false
   dataSourceMock.isAutoMode.value = false
   dataSourceMock.items.value = []
   dataSourceMock.loading.value = false
+  dataSourceMock.mode.value = null
+  dataSourceMock.nextCursor.value = null
   dataSourceMock.paginationDetail.value = null
   dataSourceMock.pendingAppendItems.value = []
+  dataSourceMock.phase.value = 'idle'
   dataSourceMock.prefetchNextPage.mockClear()
   dataSourceMock.prefetchPreviousPage.mockClear()
+  dataSourceMock.previousCursor.value = null
   dataSourceMock.removedCount.value = 0
   dataSourceMock.retryInitialLoad.mockClear()
   dataSourceMock.setActiveIndex.mockClear()
