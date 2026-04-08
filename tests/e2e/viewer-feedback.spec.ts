@@ -63,6 +63,7 @@ test('dynamic feed demo surfaces raw cursor labels in the grid footer', async ({
   await expect(statusBar.getByTestId('dynamic-demo-status-next')).toContainText('2')
   await expect(statusBar.getByTestId('dynamic-demo-status-previous')).toContainText('N/A')
   await expect(statusBar.getByTestId('dynamic-demo-status-status')).toContainText('dynamic')
+  await expect(statusBar.getByTestId('dynamic-demo-status-delay')).toContainText('N/A')
   await expect(statusBar.getByTestId('dynamic-demo-status-fill')).toContainText('25 / 25')
   await expect(statusBar.getByTestId('dynamic-demo-status-total')).toContainText('25')
 })
@@ -85,10 +86,12 @@ test('dynamic feed demo shows filling progress before committing a full appended
   await hitBottom(scrollViewport)
 
   await expect(statusBar.getByTestId('dynamic-demo-status-status')).toContainText('filling', { timeout: 15_000 })
+  await expect(statusBar.getByTestId('dynamic-demo-status-delay')).toHaveText(/0\.\ds|1\.\ds/, { timeout: 15_000 })
   await expect(statusBar.getByTestId('dynamic-demo-status-fill')).toContainText('/ 25')
 
   await expect.poll(async () => (await getPaginationState(progress)).total).toBe(50)
   await expect(statusBar.getByTestId('dynamic-demo-status-next')).toContainText('5')
+  await expect(statusBar.getByTestId('dynamic-demo-status-delay')).toContainText('N/A')
 })
 
 test('desktop append pagination grows the feed after a bottom hit', async ({ page }) => {

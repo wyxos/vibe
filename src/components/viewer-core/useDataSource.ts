@@ -243,6 +243,7 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     currentCursor: computed(() => isAutoMode.value ? autoSource.currentCursor.value : null),
     errorMessage: computed(() => isAutoMode.value ? autoSource.errorMessage.value : null),
     fillCollectedCount: computed(() => isAutoMode.value ? autoSource.fillCollectedCount.value : null),
+    fillDelayRemainingMs: computed(() => isAutoMode.value ? autoSource.fillDelayRemainingMs.value : null),
     fillTargetCount: computed(() => isAutoMode.value ? autoSource.fillTargetCount.value : null),
     getRemovedIds,
     hasNextPage,

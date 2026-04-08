@@ -1,4 +1,4 @@
-import { computed, onMounted, ref, watch, type Ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 
 import type { VibeViewerItem } from '../viewer'
 import type { VibeFeedMode, VibeLoadPhase } from './removalState'
@@ -20,6 +20,7 @@ import {
   type ResolveFn,
   type VibeAutoDirection,
 } from './autoResolveHelpers'
+import { getDynamicFillDelayMs, useFillDelayCountdown } from './fillDelay'
 import { getVibeOccurrenceKey } from './itemIdentity'
 
 type VibeAutoEmit = (event: 'update:activeIndex', value: number) => void
@@ -43,12 +44,12 @@ export function useAutoResolveSource(options: {
   const errorMessage = ref<string | null>(null)
   const operationPhase = ref<VibeLoadPhase>('idle')
   const fillCollectedCount = ref<number | null>(null)
+  const fillDelay = useFillDelayCountdown()
+  const fillDelayRemainingMs = fillDelay.remainingMs
   const fillTargetCount = ref<number | null>(null)
   const isAwaitingAppendCommit = ref(false)
   const isAutoPrefetchEnabled = ref(true)
-
   const inFlightCursors = new Set<string>()
-
   let occurrenceSequence = 0
 
   const mode = computed<VibeFeedMode>(() => options.mode ?? 'dynamic')
@@ -82,7 +83,6 @@ export function useAutoResolveSource(options: {
         autoActiveIndex.value = 0
         return
       }
-
       if (autoActiveIndex.value > length - 1) {
         autoActiveIndex.value = length - 1
       }
@@ -95,7 +95,6 @@ export function useAutoResolveSource(options: {
       if (!isAutoPrefetchEnabled.value) {
         return
       }
-
       void maybePrefetchAround()
     },
   )
@@ -104,8 +103,11 @@ export function useAutoResolveSource(options: {
     if (!options.resolve) {
       return
     }
-
     void loadInitialBuckets()
+  })
+
+  onBeforeUnmount(() => {
+    fillDelay.clear(true)
   })
 
   async function loadInitialBuckets() {
@@ -119,7 +121,6 @@ export function useAutoResolveSource(options: {
     if (!resolvedBuckets) {
       return
     }
-
     autoBuckets.value = resolvedBuckets.buckets
     autoActiveIndex.value = 0
     finishLoadPhase()
@@ -129,7 +130,6 @@ export function useAutoResolveSource(options: {
     if (!hasNextPage.value || loading.value) {
       return
     }
-
     if (mode.value === 'static' && needsStaticReload('trailing')) {
       await reloadBoundaryBucket('trailing')
       return
@@ -142,7 +142,6 @@ export function useAutoResolveSource(options: {
     if (!hasPreviousPage.value || loading.value) {
       return
     }
-
     if (mode.value === 'static' && needsStaticReload('leading')) {
       await reloadBoundaryBucket('leading')
       return
@@ -165,6 +164,7 @@ export function useAutoResolveSource(options: {
     fillTargetCount.value = null
     isAwaitingAppendCommit.value = false
     inFlightCursors.clear()
+    fillDelay.clear(true)
 
     await loadInitialBuckets()
   }
@@ -348,6 +348,7 @@ export function useAutoResolveSource(options: {
     const visitedCursorKeys = new Set<string>()
     const collectedBuckets: VibeAutoBucket[] = []
     let cursor = request.cursor
+    let fillRequestIndex = 0
 
     errorMessage.value = null
     operationPhase.value = request.phase
@@ -394,6 +395,9 @@ export function useAutoResolveSource(options: {
         operationPhase.value = 'filling'
         fillCollectedCount.value = visibleCount
         fillTargetCount.value = pageSize.value
+        fillRequestIndex += 1
+        const nextDelayMs = getDynamicFillDelayMs(fillRequestIndex)
+        await fillDelay.wait(nextDelayMs)
         cursor = nextCursor
       }
       catch (error) {
@@ -440,6 +444,7 @@ export function useAutoResolveSource(options: {
     operationPhase.value = 'idle'
     fillCollectedCount.value = null
     fillTargetCount.value = null
+    fillDelay.clear()
   }
 
   function isLoadingInitialPhase() {
@@ -465,6 +470,7 @@ export function useAutoResolveSource(options: {
     currentCursor,
     errorMessage,
     fillCollectedCount,
+    fillDelayRemainingMs,
     fillTargetCount,
     hasNextPage,
     hasPreviousPage,

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { VibeResolveParams, VibeResolveResult } from '@/components/viewer-core/useDataSource'
 
@@ -12,6 +12,10 @@ import {
 } from '../helpers/useDataSourceTestUtils'
 
 describe('useDataSource', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('loads the initial page from resolve with the default page size', async () => {
     const resolve = vi.fn(async ({ cursor, pageSize }: VibeResolveParams) => {
       expect(cursor).toBeNull()
@@ -115,6 +119,8 @@ describe('useDataSource', () => {
   })
 
   it('dynamically fills the initial batch until it reaches the page size', async () => {
+    vi.useFakeTimers()
+
     const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
       if (cursor === 'page-2') {
         return createPageResult('page-2', {
@@ -144,6 +150,22 @@ describe('useDataSource', () => {
 
     await source.flush()
 
+    expect(resolve).toHaveBeenCalledTimes(1)
+    expect(source.api.phase.value).toBe('filling')
+    expect(source.api.fillCollectedCount.value).toBe(20)
+    expect(source.api.fillDelayRemainingMs.value).toBeGreaterThan(0)
+
+    await vi.advanceTimersByTimeAsync(1_000)
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(2)
+    expect(source.api.phase.value).toBe('filling')
+    expect(source.api.fillCollectedCount.value).toBe(23)
+    expect(source.api.fillDelayRemainingMs.value).toBeGreaterThan(0)
+
+    await vi.advanceTimersByTimeAsync(1_250)
+    await source.flush()
+
     expect(resolve).toHaveBeenCalledTimes(3)
     expect(resolve).toHaveBeenNthCalledWith(1, {
       cursor: null,
@@ -163,12 +185,15 @@ describe('useDataSource', () => {
     expect(source.api.currentCursor.value).toBeNull()
     expect(source.api.phase.value).toBe('idle')
     expect(source.api.fillCollectedCount.value).toBeNull()
+    expect(source.api.fillDelayRemainingMs.value).toBeNull()
     expect(source.api.fillTargetCount.value).toBeNull()
 
     source.unmount()
   })
 
   it('fills appended batches in dynamic mode before exposing them for commit', async () => {
+    vi.useFakeTimers()
+
     const deferred = createDeferred<VibeResolveResult>()
     const resolve = vi.fn(({ cursor }: VibeResolveParams) => {
       if (cursor === 'page-2') {
@@ -208,15 +233,19 @@ describe('useDataSource', () => {
     }))
     await source.flush()
 
-    expect(resolve).toHaveBeenCalledTimes(3)
+    expect(resolve).toHaveBeenCalledTimes(2)
     expect(source.api.phase.value).toBe('filling')
     expect(source.api.fillCollectedCount.value).toBe(3)
+    expect(source.api.fillDelayRemainingMs.value).toBeGreaterThan(0)
     expect(source.api.fillTargetCount.value).toBe(25)
 
+    await vi.advanceTimersByTimeAsync(1_000)
     await source.flush()
 
+    expect(resolve).toHaveBeenCalledTimes(3)
     expect(source.api.pendingAppendItems.value).toHaveLength(25)
     expect(source.api.nextCursor.value).toBe('page-2')
+    expect(source.api.fillDelayRemainingMs.value).toBeNull()
 
     await source.api.commitPendingAppend()
     await source.flush()

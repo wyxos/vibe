@@ -12,6 +12,7 @@ export interface VibeStatus {
   currentCursor: string | null
   errorMessage: string | null
   fillCollectedCount: number | null
+  fillDelayRemainingMs: number | null
   fillTargetCount: number | null
   hasNextPage: boolean
   hasPreviousPage: boolean

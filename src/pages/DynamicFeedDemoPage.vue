@@ -38,6 +38,7 @@ const demoStatusEntries = computed(() => createDemoFeedStatusEntries(demoFeedSta
   baseCursor: INITIAL_CURSOR,
   labels: {
     current: 'Viewing',
+    delay: 'Delay',
     fill: 'Fill',
     next: 'Next',
     previous: 'Previous',

@@ -15,6 +15,7 @@ vi.mock('@/components/viewer-core/useDataSource', () => ({
     currentCursor: dataSourceMock.currentCursor,
     errorMessage: dataSourceMock.errorMessage,
     fillCollectedCount: dataSourceMock.fillCollectedCount,
+    fillDelayRemainingMs: dataSourceMock.fillDelayRemainingMs,
     fillTargetCount: dataSourceMock.fillTargetCount,
     hasNextPage: dataSourceMock.hasNextPage,
     hasPreviousPage: dataSourceMock.hasPreviousPage,
@@ -43,6 +44,7 @@ function createDataSourceMock() {
   const currentCursor = ref<string | null>(null)
   const errorMessage = ref<string | null>(null)
   const fillCollectedCount = ref<number | null>(null)
+  const fillDelayRemainingMs = ref<number | null>(null)
   const fillTargetCount = ref<number | null>(null)
   const hasNextPage = ref(false)
   const hasPreviousPage = ref(false)
@@ -71,6 +73,7 @@ function createDataSourceMock() {
     currentCursor,
     errorMessage,
     fillCollectedCount,
+    fillDelayRemainingMs,
     fillTargetCount,
     hasNextPage,
     hasPreviousPage,
@@ -246,6 +249,7 @@ function resetDataSourceMock() {
   dataSourceMock.currentCursor.value = null
   dataSourceMock.errorMessage.value = null
   dataSourceMock.fillCollectedCount.value = null
+  dataSourceMock.fillDelayRemainingMs.value = null
   dataSourceMock.fillTargetCount.value = null
   dataSourceMock.hasNextPage.value = false
   dataSourceMock.hasPreviousPage.value = false

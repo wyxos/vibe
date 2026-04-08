@@ -4,6 +4,7 @@ export interface DemoFeedStatus {
   activeIndex: number
   currentCursor?: string | null
   fillCollectedCount?: number | null
+  fillDelayRemainingMs?: number | null
   fillTargetCount?: number | null
   firstLoadedCursor?: string | null
   hasNextPage: boolean
@@ -28,6 +29,7 @@ export interface DemoFeedStatusEntryOptions {
   baseCursor: number
   labels: {
     current: string
+    delay?: string
     fill: string
     next: string
     previous: string
@@ -46,11 +48,12 @@ export function createDemoFeedStatusEntries(status: DemoFeedStatus | null | unde
     status?.hasPreviousPage ? resolvePreviousCursor(status, options) : 'N/A'
   )
   const fillCollectedCount = status?.fillCollectedCount ?? Math.min(status?.itemCount ?? options.pageSize, options.pageSize)
+  const fillDelay = formatFillDelay(status?.fillDelayRemainingMs ?? null)
   const fillTargetCount = status?.fillTargetCount ?? options.pageSize
   const phase = status?.phase ?? status?.loadState ?? 'loaded'
   const mode = status?.mode ?? options.mode
 
-  return [
+  const entries = [
     {
       key: 'current',
       label: options.labels.current,
@@ -88,6 +91,17 @@ export function createDemoFeedStatusEntries(status: DemoFeedStatus | null | unde
       value: String(status?.itemCount ?? 0),
     },
   ] satisfies DemoFeedStatusEntry[]
+
+  if (options.mode === 'dynamic' && options.labels.delay) {
+    entries.splice(4, 0, {
+      key: 'delay',
+      label: options.labels.delay,
+      testId: `${options.testIdPrefix}-delay`,
+      value: fillDelay,
+    })
+  }
+
+  return entries
 }
 
 function resolveCurrentCursor(status: DemoFeedStatus | null | undefined, options: DemoFeedStatusEntryOptions) {
@@ -132,4 +146,12 @@ function parseCursor(value: string | null | undefined) {
 
   const parsed = Number.parseInt(value, 10)
   return Number.isFinite(parsed) ? parsed : null
+}
+
+function formatFillDelay(value: number | null) {
+  if (value == null) {
+    return 'N/A'
+  }
+
+  return `${(Math.max(0, value) / 1000).toFixed(1)}s`
 }
