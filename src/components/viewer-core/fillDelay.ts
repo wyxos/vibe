@@ -1,11 +1,23 @@
 import { ref } from 'vue'
 
-const DYNAMIC_FILL_BASE_DELAY_MS = 1_000
-const DYNAMIC_FILL_STEP_DELAY_MS = 250
+export const DEFAULT_DYNAMIC_FILL_DELAY_MS = 1_000
+export const DEFAULT_DYNAMIC_FILL_DELAY_STEP_MS = 250
 const FILL_DELAY_TICK_MS = 100
 
-export function getDynamicFillDelayMs(fillRequestIndex: number) {
-  return DYNAMIC_FILL_BASE_DELAY_MS + Math.max(0, fillRequestIndex - 1) * DYNAMIC_FILL_STEP_DELAY_MS
+export function getDynamicFillDelayMs(
+  fillRequestIndex: number,
+  baseDelayMs = DEFAULT_DYNAMIC_FILL_DELAY_MS,
+  stepDelayMs = DEFAULT_DYNAMIC_FILL_DELAY_STEP_MS,
+) {
+  return baseDelayMs + Math.max(0, fillRequestIndex - 1) * stepDelayMs
+}
+
+export function normalizeDynamicFillDelayMs(value: number | undefined, fallback: number) {
+  if (!Number.isFinite(value) || value == null || value < 0) {
+    return fallback
+  }
+
+  return Math.floor(value)
 }
 
 export function useFillDelayCountdown() {

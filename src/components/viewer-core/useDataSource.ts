@@ -29,6 +29,8 @@ interface VibeSharedProps {
 export interface VibeControlledProps extends VibeSharedProps {
   items: VibeViewerItem[]
   activeIndex?: number
+  fillDelayMs?: never
+  fillDelayStepMs?: never
   loading?: boolean
   hasNextPage?: boolean
   mode?: never
@@ -39,6 +41,8 @@ export interface VibeControlledProps extends VibeSharedProps {
 
 export interface VibeAutoProps {
   resolve: (params: VibeResolveParams) => Promise<VibeResolveResult>
+  fillDelayMs?: number
+  fillDelayStepMs?: number
   initialCursor?: string | null
   mode?: import('./removalState').VibeFeedMode
   pageSize?: number
@@ -70,6 +74,8 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
   } = removalState
   const autoSource = useAutoResolveSource({
     emit,
+    fillDelayMs: autoProps.fillDelayMs,
+    fillDelayStepMs: autoProps.fillDelayStepMs,
     initialCursor: autoProps.initialCursor,
     mode: autoProps.mode,
     pageSize: autoProps.pageSize,

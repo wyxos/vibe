@@ -65,6 +65,19 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
 </template>
 ```
 
+Optional auto-mode pacing props:
+
+```vue
+<VibeLayout
+  :resolve="resolve"
+  :fill-delay-ms="1000"
+  :fill-delay-step-ms="250"
+/>
+```
+
+- `fill-delay-ms`: base delay before the first chained fill request
+- `fill-delay-step-ms`: extra delay added for each additional chained fill request in the same fill cycle
+
 ## What Vibe does
 
 - Desktop masonry list with virtualization and staged page growth
@@ -278,6 +291,7 @@ Available state:
 type VibeStatus = {
   activeIndex: number
   errorMessage: string | null
+  fillDelayRemainingMs: number | null
   hasNextPage: boolean
   hasPreviousPage: boolean
   isAutoMode: boolean

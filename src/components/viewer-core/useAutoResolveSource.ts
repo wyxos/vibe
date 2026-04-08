@@ -20,7 +20,7 @@ import {
   type ResolveFn,
   type VibeAutoDirection,
 } from './autoResolveHelpers'
-import { getDynamicFillDelayMs, useFillDelayCountdown } from './fillDelay'
+import { DEFAULT_DYNAMIC_FILL_DELAY_MS, DEFAULT_DYNAMIC_FILL_DELAY_STEP_MS, getDynamicFillDelayMs, normalizeDynamicFillDelayMs, useFillDelayCountdown } from './fillDelay'
 import { getVibeOccurrenceKey } from './itemIdentity'
 
 type VibeAutoEmit = (event: 'update:activeIndex', value: number) => void
@@ -32,6 +32,8 @@ interface VibeCollectedBuckets {
 
 export function useAutoResolveSource(options: {
   emit: VibeAutoEmit
+  fillDelayMs?: number
+  fillDelayStepMs?: number
   initialCursor?: string | null
   mode?: VibeFeedMode
   pageSize?: number
@@ -52,6 +54,8 @@ export function useAutoResolveSource(options: {
   const inFlightCursors = new Set<string>()
   let occurrenceSequence = 0
 
+  const fillDelayMs = computed(() => normalizeDynamicFillDelayMs(options.fillDelayMs, DEFAULT_DYNAMIC_FILL_DELAY_MS))
+  const fillDelayStepMs = computed(() => normalizeDynamicFillDelayMs(options.fillDelayStepMs, DEFAULT_DYNAMIC_FILL_DELAY_STEP_MS))
   const mode = computed<VibeFeedMode>(() => options.mode ?? 'dynamic')
   const pageSize = computed(() => normalizePageSize(options.pageSize))
   const sourceItems = computed(() => flattenVibeBuckets(autoBuckets.value))
@@ -396,7 +400,7 @@ export function useAutoResolveSource(options: {
         fillCollectedCount.value = visibleCount
         fillTargetCount.value = pageSize.value
         fillRequestIndex += 1
-        const nextDelayMs = getDynamicFillDelayMs(fillRequestIndex)
+        const nextDelayMs = getDynamicFillDelayMs(fillRequestIndex, fillDelayMs.value, fillDelayStepMs.value)
         await fillDelay.wait(nextDelayMs)
         cursor = nextCursor
       }
