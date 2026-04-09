@@ -20,8 +20,8 @@ jobs:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Update npm to latest
-        run: npm install -g npm@latest
+      - name: Update npm to a trusted-publishing compatible version
+        run: npm install -g npm@11.5.1
 
       - name: Check npm version
         run: npm --version
