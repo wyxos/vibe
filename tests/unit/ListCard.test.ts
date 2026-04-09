@@ -146,6 +146,33 @@ describe('VibeListCard', () => {
     wrapper.unmount()
   })
 
+  it('keeps an attached video preview while the tile is only partially visible', async () => {
+    const wrapper = mount(VibeListCard, {
+      props: {
+        item: createVideoItem('video-partial'),
+      },
+    })
+
+    await flushDom()
+
+    intersectionObservers[0].trigger(wrapper.element as Element, true, 0.01)
+    await flushDom()
+
+    expect(wrapper.get('video').attributes('src')).toBe('https://example.com/video-partial-preview.mp4')
+
+    intersectionObservers[0].trigger(wrapper.element as Element, true, 0)
+    await flushDom()
+
+    expect(wrapper.find('video').exists()).toBe(true)
+
+    intersectionObservers[0].trigger(wrapper.element as Element, false, 0)
+    await flushDom()
+
+    expect(wrapper.find('video').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
   it('shows a 404 error state when an image preview fails with a not-found response', async () => {
     resolveVibeAssetErrorKindMock.mockResolvedValueOnce('not-found')
 

@@ -28,10 +28,14 @@ export interface VibeStatus {
 }
 
 export interface VibeHandle {
+  cancel: () => void
   clearRemoved: () => void
   getRemovedIds: () => string[]
+  loadNext: () => Promise<void>
+  loadPrevious: () => Promise<void>
   remove: (ids: string | string[]) => VibeRemoveResult
   restore: (ids: string | string[]) => VibeRemoveResult
+  retry: () => Promise<void>
   status: Readonly<VibeStatus>
   undo: () => VibeRemoveResult | null
 }

@@ -1,0 +1,31 @@
+.vibe-media-slider {
+  appearance: none;
+}
+
+.vibe-media-slider::-webkit-slider-runnable-track {
+  height: 1rem;
+  background: transparent;
+}
+
+.vibe-media-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-top: 1px;
+  border: 1px solid rgba(247, 241, 234, 0.2);
+  border-radius: 9999px;
+  background: #f7f1ea;
+}
+
+.vibe-media-slider::-moz-range-track {
+  height: 1rem;
+  background: transparent;
+}
+
+.vibe-media-slider::-moz-range-thumb {
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 1px solid rgba(247, 241, 234, 0.2);
+  border-radius: 9999px;
+  background: #f7f1ea;
+}

@@ -63,10 +63,11 @@ describe('useDataSource', () => {
     await source.flush()
 
     expect(resolve).toHaveBeenCalledTimes(2)
-    expect(resolve).toHaveBeenLastCalledWith({
+    expect(resolve).toHaveBeenLastCalledWith(expect.objectContaining({
       cursor: 'page-2',
       pageSize: 25,
-    })
+      signal: expect.any(AbortSignal),
+    }))
 
     deferred.resolve(createPageResult('page-2'))
     await source.flush()
@@ -108,10 +109,11 @@ describe('useDataSource', () => {
     await source.flush()
 
     expect(resolve).toHaveBeenCalledTimes(2)
-    expect(resolve).toHaveBeenLastCalledWith({
+    expect(resolve).toHaveBeenLastCalledWith(expect.objectContaining({
       cursor: 'page-9',
       pageSize: 25,
-    })
+      signal: expect.any(AbortSignal),
+    }))
     expect(source.api.items.value).toHaveLength(50)
     expect(source.api.activeIndex.value).toBe(26)
 
@@ -173,10 +175,11 @@ describe('useDataSource', () => {
     await source.flush()
 
     expect(resolve).toHaveBeenCalledTimes(2)
-    expect(resolve).toHaveBeenLastCalledWith({
+    expect(resolve).toHaveBeenLastCalledWith(expect.objectContaining({
       cursor: null,
       pageSize: 25,
-    })
+      signal: expect.any(AbortSignal),
+    }))
     expect(source.api.phase.value).toBe('idle')
     expect(source.api.items.value).toHaveLength(25)
     expect(getVisibleIds(source.api.items.value).slice(0, 5)).toEqual([
@@ -191,10 +194,11 @@ describe('useDataSource', () => {
     await source.flush()
 
     expect(resolve).toHaveBeenCalledTimes(3)
-    expect(resolve).toHaveBeenLastCalledWith({
+    expect(resolve).toHaveBeenLastCalledWith(expect.objectContaining({
       cursor: 'page-2',
       pageSize: 25,
-    })
+      signal: expect.any(AbortSignal),
+    }))
     expect(source.api.pendingAppendItems.value).toHaveLength(25)
 
     source.unmount()
@@ -234,10 +238,11 @@ describe('useDataSource', () => {
     await source.flush()
 
     expect(resolve).toHaveBeenCalledTimes(2)
-    expect(resolve).toHaveBeenLastCalledWith({
+    expect(resolve).toHaveBeenLastCalledWith(expect.objectContaining({
       cursor: 'page-2',
       pageSize: 25,
-    })
+      signal: expect.any(AbortSignal),
+    }))
     expect(source.api.items.value).toHaveLength(25)
     expect(getVisibleIds(source.api.items.value).slice(0, 5)).toEqual([
       'page-2-refilled-item-1',
@@ -251,10 +256,11 @@ describe('useDataSource', () => {
     await source.flush()
 
     expect(resolve).toHaveBeenCalledTimes(3)
-    expect(resolve).toHaveBeenLastCalledWith({
+    expect(resolve).toHaveBeenLastCalledWith(expect.objectContaining({
       cursor: 'page-1',
       pageSize: 25,
-    })
+      signal: expect.any(AbortSignal),
+    }))
 
     source.unmount()
   })

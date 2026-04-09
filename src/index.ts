@@ -1,5 +1,6 @@
 import type { App, Plugin } from 'vue'
 
+import './style.css'
 import Layout from './components/Layout.vue'
 export type { VibeViewerAsset, VibeViewerItem, VibeViewerType } from './components/viewer'
 export type {
@@ -14,6 +15,7 @@ export type {
   VibeControlledProps,
   VibeFeedMode,
   VibeHandle,
+  VibeInitialState,
   VibeLoadPhase,
   VibeProps,
   VibeStatus,

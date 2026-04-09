@@ -70,9 +70,39 @@ function clampPageSize(pageSize: number) {
   return Math.floor(pageSize)
 }
 
-function delay(ms: number) {
-  return new Promise<void>((resolve) => {
-    setTimeout(resolve, ms)
+function createAbortError() {
+  try {
+    return new DOMException('The operation was aborted.', 'AbortError')
+  }
+  catch {
+    const error = new Error('The operation was aborted.')
+    error.name = 'AbortError'
+    return error
+  }
+}
+
+async function delay(ms: number, signal?: AbortSignal) {
+  if (signal?.aborted) {
+    throw createAbortError()
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      cleanup()
+      resolve()
+    }, ms)
+
+    const onAbort = () => {
+      cleanup()
+      reject(createAbortError())
+    }
+
+    const cleanup = () => {
+      clearTimeout(timeoutId)
+      signal?.removeEventListener('abort', onAbort)
+    }
+
+    signal?.addEventListener('abort', onAbort, { once: true })
   })
 }
 
@@ -128,12 +158,12 @@ function createDynamicResolver(options: CreateTrackedFakeFeedResolverOptions, se
         ids: normalizeIds(ids),
       }
     },
-    async resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeResolveResult> {
+    async resolve({ cursor, pageSize, signal }: VibeResolveParams): Promise<VibeResolveResult> {
       const page = normalizePage(cursor, initialCursor)
       const safePageSize = clampPageSize(pageSize)
 
       setPhase('loading')
-      await delay(TRACKED_RESOLVE_DELAY_MS)
+      await delay(TRACKED_RESOLVE_DELAY_MS, signal)
 
       if (failPage !== null && remainingFailures > 0 && page === failPage) {
         remainingFailures -= 1
@@ -206,12 +236,12 @@ function createStaticResolver(options: CreateTrackedFakeFeedResolverOptions, set
         ids: nextIds,
       }
     },
-    async resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeResolveResult> {
+    async resolve({ cursor, pageSize, signal }: VibeResolveParams): Promise<VibeResolveResult> {
       const page = normalizePage(cursor, initialCursor)
       const safePageSize = clampPageSize(pageSize)
 
       setPhase('loading')
-      await delay(TRACKED_RESOLVE_DELAY_MS)
+      await delay(TRACKED_RESOLVE_DELAY_MS, signal)
 
       if (failPage !== null && remainingFailures > 0 && page === failPage) {
         remainingFailures -= 1
@@ -272,8 +302,12 @@ export function createFakeFeedResolver(options: CreateFakeFeedResolverOptions = 
   const failPage = options.failPage == null ? null : normalizePage(options.failPage, initialCursor)
   let remainingFailures = failPage == null ? 0 : Math.max(0, Math.floor(options.failCount ?? 1))
 
-  return async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeResolveResult> {
+  return async function resolve({ cursor, pageSize, signal }: VibeResolveParams): Promise<VibeResolveResult> {
     const page = normalizePage(cursor, initialCursor)
+
+    if (signal?.aborted) {
+      throw createAbortError()
+    }
 
     if (failPage !== null && remainingFailures > 0 && page === failPage) {
       remainingFailures -= 1
@@ -316,12 +350,13 @@ export function createTrackedFakeFeedResolver(options: CreateTrackedFakeFeedReso
   return {
     clearRemoved: runtime.clearRemoved,
     remove: runtime.remove,
-    async resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeResolveResult> {
+    async resolve({ cursor, pageSize, signal }: VibeResolveParams): Promise<VibeResolveResult> {
       const page = normalizePage(cursor, initialCursor)
       const safePageSize = clampPageSize(pageSize)
       const response = await runtime.resolve({
         cursor,
         pageSize: safePageSize,
+        signal,
       })
 
       trackCursorRange(status, page)

@@ -59,18 +59,21 @@ describe('useDataSource dynamic mode', () => {
     await source.flush()
 
     expect(resolve).toHaveBeenCalledTimes(3)
-    expect(resolve).toHaveBeenNthCalledWith(1, {
+    expect(resolve).toHaveBeenNthCalledWith(1, expect.objectContaining({
       cursor: null,
       pageSize: 25,
-    })
-    expect(resolve).toHaveBeenNthCalledWith(2, {
+      signal: expect.any(AbortSignal),
+    }))
+    expect(resolve).toHaveBeenNthCalledWith(2, expect.objectContaining({
       cursor: 'page-2',
       pageSize: 25,
-    })
-    expect(resolve).toHaveBeenNthCalledWith(3, {
+      signal: expect.any(AbortSignal),
+    }))
+    expect(resolve).toHaveBeenNthCalledWith(3, expect.objectContaining({
       cursor: 'page-3',
       pageSize: 25,
-    })
+      signal: expect.any(AbortSignal),
+    }))
     expect(source.api.mode.value).toBe('dynamic')
     expect(source.api.items.value).toHaveLength(48)
     expect(source.api.nextCursor.value).toBe('page-4')

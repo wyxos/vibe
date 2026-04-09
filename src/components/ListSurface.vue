@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { toRef } from 'vue'
+import { computed, toRef } from 'vue'
 
 import type { VibeViewerItem } from './viewer'
 import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './viewer-core/assetErrors'
 import { getVibeOccurrenceKey } from './viewer-core/itemIdentity'
+import { hasRenderableSlotContent } from './viewer-core/slotContent'
+import type { VibeGridStatusSlotProps } from './viewer-core/surfaceSlots'
 import { useVibeMasonryList } from './viewer-core/useMasonryList'
 import ListCard from './ListCard.vue'
 
@@ -47,6 +49,7 @@ const slots = defineSlots<{
     item: VibeViewerItem
     openFullscreen: () => void
   }) => unknown
+  'grid-status'?: (props: VibeGridStatusSlotProps) => unknown
   'item-icon'?: (props: { icon: Component; item: VibeViewerItem }) => unknown
 }>()
 
@@ -72,6 +75,28 @@ const list = useVibeMasonryList({
     emit('update:activeIndex', index)
   },
 })
+const gridStatusProps = computed<VibeGridStatusSlotProps | null>(() => {
+  if (!list.footerStatusMessage.value) {
+    return null
+  }
+
+  return {
+    activeIndex: list.resolvedActiveIndex.value,
+    kind: props.loading ? 'loading-more' : 'end',
+    loading: props.loading,
+    message: list.footerStatusMessage.value,
+    paginationDetail: props.paginationDetail,
+    total: props.items.length,
+  }
+})
+const gridStatusNodes = computed(() => {
+  if (!gridStatusProps.value || !slots['grid-status']) {
+    return []
+  }
+
+  return slots['grid-status'](gridStatusProps.value)
+})
+const showCustomGridStatus = computed(() => hasRenderableSlotContent(gridStatusNodes.value))
 </script>
 
 <template>
@@ -153,12 +178,20 @@ const list = useVibeMasonryList({
     </div>
 
     <div
-      v-if="list.footerStatusMessage.value"
+      v-if="gridStatusProps"
       class="pointer-events-none absolute inset-x-0 bottom-0 z-[3] flex justify-center px-6"
       :class="slots['grid-footer'] ? 'pb-24' : 'pb-6'"
     >
-      <span class="inline-flex items-center border border-white/14 bg-black/55 px-4 py-3 text-[0.7rem] font-bold uppercase tracking-[0.18em] text-[#f7f1ea]/72 backdrop-blur-[18px]">
-        {{ list.footerStatusMessage.value }}
+      <slot
+        v-if="showCustomGridStatus"
+        name="grid-status"
+        v-bind="gridStatusProps"
+      />
+      <span
+        v-else
+        class="inline-flex items-center border border-white/14 bg-black/55 px-4 py-3 text-[0.7rem] font-bold uppercase tracking-[0.18em] text-[#f7f1ea]/72 backdrop-blur-[18px]"
+      >
+        {{ gridStatusProps.message }}
       </span>
     </div>
   </div>

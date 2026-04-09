@@ -112,14 +112,14 @@ onMounted(() => {
           continue
         }
 
-        isInView.value = entry.isIntersecting && (entry.intersectionRatio ?? 0) >= 0.5
+        isInView.value = entry.isIntersecting
         syncAssetQueue()
         syncVideoPlayback()
       }
     },
     {
       root: scrollRootRef.value,
-      threshold: [0, 0.5, 1],
+      threshold: [0, 1],
     },
   )
 
@@ -421,7 +421,7 @@ function onFocusOut(event: FocusEvent) {
       :alt="renderableAsset.label"
       draggable="false"
       class="block h-full w-full object-cover transition-opacity duration-300"
-      :class="isReady ? 'opacity-100' : 'opacity-0'"
+      :class="isReady ? 'pointer-events-none opacity-100' : 'pointer-events-none opacity-0'"
       @load="onImageLoad"
       @error="onImageError"
     />
@@ -435,7 +435,7 @@ function onFocusOut(event: FocusEvent) {
       playsinline
       preload="metadata"
       class="block h-full w-full object-cover transition-opacity duration-300"
-      :class="isReady ? 'opacity-100' : 'opacity-0'"
+      :class="isReady ? 'pointer-events-none opacity-100' : 'pointer-events-none opacity-0'"
       @canplay="onVideoReady"
       @error="onImageError"
       @loadstart="onVideoLoading"

@@ -16,6 +16,7 @@ export type {
   VibeEmit,
   VibeFeedMode,
   VibeHandle,
+  VibeInitialState,
   VibeLoadPhase,
   VibeProps,
 } from './useDataSource'

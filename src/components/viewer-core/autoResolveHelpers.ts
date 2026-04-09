@@ -8,6 +8,7 @@ export const INITIAL_CURSOR_KEY = '__vibe_initial_cursor__'
 export type ResolveFn = (params: {
   cursor: string | null
   pageSize: number
+  signal?: AbortSignal
 }) => Promise<{
   items: VibeViewerItem[]
   nextPage: string | null

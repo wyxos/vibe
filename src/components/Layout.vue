@@ -3,6 +3,7 @@ import { onBeforeUnmount, type Component } from 'vue'
 
 import type { VibeViewerItem } from './viewer'
 import { createAssetErrorBatchReporter, createAssetLoadBatchReporter, type VibeAssetErrorEvent, type VibeAssetLoadEvent } from './viewer-core/assetErrors'
+import type { VibeFullscreenStatusSlotProps, VibeGridStatusSlotProps, VibeSurfaceSlotProps } from './viewer-core/surfaceSlots'
 import type { VibeHandle, VibeProps } from './viewer-core/useViewer'
 import { useController } from './viewer-core/useController'
 
@@ -15,6 +16,10 @@ defineOptions({
 
 const props = defineProps<VibeProps>()
 const slots = defineSlots<{
+  'fullscreen-aside'?: (props: VibeSurfaceSlotProps) => unknown
+  'fullscreen-header-actions'?: (props: VibeSurfaceSlotProps) => unknown
+  'fullscreen-overlay'?: (props: VibeSurfaceSlotProps) => unknown
+  'fullscreen-status'?: (props: VibeFullscreenStatusSlotProps) => unknown
   'grid-footer'?: () => unknown
   'grid-item-overlay'?: (props: {
     active: boolean
@@ -24,6 +29,7 @@ const slots = defineSlots<{
     item: VibeViewerItem
     openFullscreen: () => void
   }) => unknown
+  'grid-status'?: (props: VibeGridStatusSlotProps) => unknown
   'item-icon'?: (props: { icon: Component; item: VibeViewerItem }) => unknown
 }>()
 
@@ -47,10 +53,14 @@ onBeforeUnmount(() => {
 })
 
 defineExpose<VibeHandle>({
+  cancel: viewer.cancel,
   clearRemoved: viewer.clearRemoved,
   getRemovedIds: viewer.getRemovedIds,
+  loadNext: viewer.loadNext,
+  loadPrevious: viewer.loadPrevious,
   remove: viewer.remove,
   restore: viewer.restore,
+  retry: viewer.retry,
   status: viewer.status,
   undo: viewer.undo,
 })
@@ -138,6 +148,9 @@ defineExpose<VibeHandle>({
             <template v-if="slots['grid-item-overlay']" #grid-item-overlay="slotProps">
               <slot name="grid-item-overlay" v-bind="slotProps" />
             </template>
+            <template v-if="slots['grid-status']" #grid-status="slotProps">
+              <slot name="grid-status" v-bind="slotProps" />
+            </template>
             <template v-if="slots['item-icon']" #item-icon="slotProps">
               <slot name="item-icon" v-bind="slotProps" />
             </template>
@@ -174,6 +187,18 @@ defineExpose<VibeHandle>({
             @back-to-list="viewer.returnToList"
             @update:active-index="viewer.setActiveIndex"
           >
+            <template v-if="slots['fullscreen-overlay']" #fullscreen-overlay="slotProps">
+              <slot name="fullscreen-overlay" v-bind="slotProps" />
+            </template>
+            <template v-if="slots['fullscreen-aside']" #fullscreen-aside="slotProps">
+              <slot name="fullscreen-aside" v-bind="slotProps" />
+            </template>
+            <template v-if="slots['fullscreen-header-actions']" #fullscreen-header-actions="slotProps">
+              <slot name="fullscreen-header-actions" v-bind="slotProps" />
+            </template>
+            <template v-if="slots['fullscreen-status']" #fullscreen-status="slotProps">
+              <slot name="fullscreen-status" v-bind="slotProps" />
+            </template>
             <template v-if="slots['item-icon']" #item-icon="slotProps">
               <slot name="item-icon" v-bind="slotProps" />
             </template>
@@ -196,6 +221,18 @@ defineExpose<VibeHandle>({
       @back-to-list="viewer.returnToList"
       @update:active-index="viewer.setActiveIndex"
     >
+      <template v-if="slots['fullscreen-overlay']" #fullscreen-overlay="slotProps">
+        <slot name="fullscreen-overlay" v-bind="slotProps" />
+      </template>
+      <template v-if="slots['fullscreen-aside']" #fullscreen-aside="slotProps">
+        <slot name="fullscreen-aside" v-bind="slotProps" />
+      </template>
+      <template v-if="slots['fullscreen-header-actions']" #fullscreen-header-actions="slotProps">
+        <slot name="fullscreen-header-actions" v-bind="slotProps" />
+      </template>
+      <template v-if="slots['fullscreen-status']" #fullscreen-status="slotProps">
+        <slot name="fullscreen-status" v-bind="slotProps" />
+      </template>
       <template v-if="slots['item-icon']" #item-icon="slotProps">
         <slot name="item-icon" v-bind="slotProps" />
       </template>

@@ -138,10 +138,14 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
 
   return {
     ...dataSource,
+    cancel: dataSource.cancel,
     isDesktop,
     listRestoreToken,
+    loadNext: dataSource.loadNext,
+    loadPrevious: dataSource.loadPrevious,
     openFullscreen,
     returnToList,
+    retry: dataSource.retry,
     showBackToList,
     status: readonly(status),
     surfaceMode,

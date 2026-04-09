@@ -11,12 +11,21 @@ export type { VibeFeedMode, VibeLoadPhase } from './removalState'
 export interface VibeResolveParams {
   cursor: string | null
   pageSize: number
+  signal?: AbortSignal
 }
 
 export interface VibeResolveResult {
   items: VibeViewerItem[]
   nextPage: string | null
   previousPage?: string | null
+}
+
+export interface VibeInitialState {
+  items: VibeViewerItem[]
+  cursor: string | null
+  nextCursor?: string | null
+  previousCursor?: string | null
+  activeIndex?: number
 }
 
 interface VibeSharedProps {
@@ -31,6 +40,7 @@ export interface VibeControlledProps extends VibeSharedProps {
   activeIndex?: number
   fillDelayMs?: never
   fillDelayStepMs?: never
+  initialState?: never
   loading?: boolean
   hasNextPage?: boolean
   mode?: never
@@ -44,6 +54,7 @@ export interface VibeAutoProps {
   fillDelayMs?: number
   fillDelayStepMs?: number
   initialCursor?: string | null
+  initialState?: VibeInitialState
   mode?: import('./removalState').VibeFeedMode
   pageSize?: number
   items?: never
@@ -77,6 +88,7 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     fillDelayMs: autoProps.fillDelayMs,
     fillDelayStepMs: autoProps.fillDelayStepMs,
     initialCursor: autoProps.initialCursor,
+    initialState: autoProps.initialState,
     mode: autoProps.mode,
     pageSize: autoProps.pageSize,
     removedIds,
@@ -241,9 +253,52 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     return Math.min(Math.max(value, min), max)
   }
 
+  function cancel() {
+    if (!isAutoMode.value) {
+      return
+    }
+
+    autoSource.cancel()
+  }
+
+  async function loadNext() {
+    if (isAutoMode.value) {
+      await autoSource.prefetchNextPage()
+      return
+    }
+
+    if (loading.value || typeof controlledProps.requestNextPage !== 'function') {
+      return
+    }
+
+    await controlledProps.requestNextPage()
+  }
+
+  async function loadPrevious() {
+    if (isAutoMode.value) {
+      await autoSource.prefetchPreviousPage()
+      return
+    }
+
+    if (loading.value || typeof controlledProps.requestPreviousPage !== 'function') {
+      return
+    }
+
+    await controlledProps.requestPreviousPage()
+  }
+
+  async function retry() {
+    if (!isAutoMode.value) {
+      return
+    }
+
+    await autoSource.retry()
+  }
+
   return {
     activeIndex,
     canRetryInitialLoad: computed(() => isAutoMode.value ? autoSource.canRetryInitialLoad.value : false),
+    cancel,
     clearRemoved: resetRemovedItems,
     commitPendingAppend: autoSource.commitPendingAppend,
     currentCursor: computed(() => isAutoMode.value ? autoSource.currentCursor.value : null),
@@ -257,6 +312,8 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     isAutoMode,
     items,
     loading,
+    loadNext,
+    loadPrevious,
     mode: computed(() => isAutoMode.value ? autoSource.mode.value : null),
     nextCursor: computed(() => isAutoMode.value ? autoSource.nextCursor.value : null),
     paginationDetail,
@@ -280,6 +337,7 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     removedCount,
     remove,
     restore,
+    retry,
     retryInitialLoad: autoSource.retryInitialLoad,
     setActiveIndex,
     setAutoPrefetchEnabled: autoSource.setAutoPrefetchEnabled,
