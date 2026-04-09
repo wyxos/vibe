@@ -1,11 +1,11 @@
 {
-  "name": "VIBE - Vue Infinite Block Engine",
-  "short_name": "VIBE",
-  "description": "A high-performance, responsive masonry layout engine for Vue 3",
+  "name": "Vibe",
+  "short_name": "Vibe",
+  "description": "A Vue 3 media viewer for large feeds of image, video, audio, and mixed-content items.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#3b82f6",
+  "background_color": "#05060a",
+  "theme_color": "#05060a",
   "icons": [
     {
       "src": "favicon-16x16.png",
