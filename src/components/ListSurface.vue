@@ -145,6 +145,7 @@ const showCustomGridStatus = computed(() => hasRenderableSlotContent(gridStatusN
             :item="item"
             :report-asset-error="props.reportAssetError"
             :report-asset-load="props.reportAssetLoad"
+            :surface-active="props.active"
             @open="emit('open-fullscreen', index)"
           >
             <template v-if="slots['grid-item-overlay']" #grid-item-overlay="slotProps">

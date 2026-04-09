@@ -268,18 +268,50 @@ class MockIntersectionObserver {
   }
 
   trigger(target: Element, isIntersecting: boolean, intersectionRatio: number) {
+    const rootBounds = createRect(0, 0, 400, 700)
+    const boundingClientRect = isIntersecting
+      ? intersectionRatio === 0
+        ? createRect(0, -40, 160, 120)
+        : createRect(0, 40, 160, 120)
+      : createRect(0, -220, 160, 120)
+
     this.callback([
       {
-        boundingClientRect: target.getBoundingClientRect(),
+        boundingClientRect,
         intersectionRatio,
-        intersectionRect: target.getBoundingClientRect(),
+        intersectionRect: boundingClientRect,
         isIntersecting,
-        rootBounds: null,
+        rootBounds,
         target,
         time: 0,
       },
     ] as IntersectionObserverEntry[], this as unknown as IntersectionObserver)
   }
+}
+
+function createRect(left: number, top: number, width: number, height: number) {
+  return {
+    bottom: top + height,
+    height,
+    left,
+    right: left + width,
+    toJSON() {
+      return {
+        bottom: top + height,
+        height,
+        left,
+        right: left + width,
+        top,
+        width,
+        x: left,
+        y: top,
+      }
+    },
+    top,
+    width,
+    x: left,
+    y: top,
+  } as DOMRectReadOnly
 }
 
 function createImageItem(id: string): VibeViewerItem {

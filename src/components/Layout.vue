@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, type Component } from 'vue'
+import { LoaderCircle } from 'lucide-vue-next'
 
 import type { VibeViewerItem } from './viewer'
 import { createAssetErrorBatchReporter, createAssetLoadBatchReporter, type VibeAssetErrorEvent, type VibeAssetLoadEvent } from './viewer-core/assetErrors'
@@ -90,21 +91,25 @@ defineExpose<VibeHandle>({
 
     <div
       v-if="viewer.items.value.length === 0"
-      class="relative z-[1] grid h-full w-full justify-items-center gap-6 px-[clamp(2rem,4vw,3rem)] py-[clamp(2rem,4vw,3rem)] text-center"
+      class="relative z-[1] grid h-full w-full content-center justify-items-center gap-6 px-[clamp(2rem,4vw,3rem)] py-[clamp(2rem,4vw,3rem)] text-center"
     >
-      <p class="m-0 text-[0.78rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/68">
-        {{ viewer.loading.value ? 'Syncing' : 'Viewer ready' }}
-      </p>
-      <h2 class="m-0 text-[clamp(2rem,4.4vw,3.6rem)] leading-[0.95] tracking-[-0.05em]">
-        {{ viewer.loading.value ? 'Loading the viewer' : 'No items available' }}
-      </h2>
-        <p class="m-0 text-[clamp(0.98rem,1.3vw,1.12rem)] leading-[1.8] text-[#f7f1ea]/70">
-          {{
-            viewer.loading.value
-              ? 'Pulling the first page from the fake server.'
-              : 'Attach items to VibeLayout to turn this screen into the viewer.'
-          }}
+      <template v-if="viewer.loading.value">
+        <LoaderCircle class="size-10 animate-spin text-[#f7f1ea]/82" aria-hidden="true" />
+        <p class="m-0 text-[0.9rem] font-semibold uppercase tracking-[0.22em] text-[#f7f1ea]/72">
+          Loading...
         </p>
+      </template>
+      <template v-else>
+        <p class="m-0 text-[0.78rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/68">
+          Viewer ready
+        </p>
+        <h2 class="m-0 text-[clamp(2rem,4.4vw,3.6rem)] leading-[0.95] tracking-[-0.05em]">
+          No items available
+        </h2>
+        <p class="m-0 text-[clamp(0.98rem,1.3vw,1.12rem)] leading-[1.8] text-[#f7f1ea]/70">
+          Attach items to VibeLayout to turn this screen into the viewer.
+        </p>
+      </template>
     </div>
 
     <template v-else-if="viewer.isDesktop.value">

@@ -7,6 +7,7 @@ import type { VibeViewerItem } from './viewer'
 import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './viewer-core/assetErrors'
 import { getVibeOccurrenceKey } from './viewer-core/itemIdentity'
 import { getItemIcon } from './viewer-core/media'
+import { abortListCardImageLoad, abortListCardVideoLoad, isListCardWithinViewport, normalizeListCardAssetUrl } from './viewer-core/listCardAsset'
 import { getListRenderableAsset } from './viewer-core/listPreview'
 import { getVibeAssetErrorLabel, resolveVibeAssetErrorKind, type VibeAssetErrorKind } from './viewer-core/loadError'
 import { playMediaElement } from './viewer-core/mediaPlayback'
@@ -18,11 +19,13 @@ const props = withDefaults(defineProps<{
   item: VibeViewerItem
   reportAssetError?: VibeAssetErrorReporter | null
   reportAssetLoad?: VibeAssetLoadReporter | null
+  surfaceActive?: boolean
 }>(), {
   active: false,
   index: 0,
   reportAssetError: null,
   reportAssetLoad: null,
+  surfaceActive: true,
 })
 const emit = defineEmits<{
   open: []
@@ -51,14 +54,23 @@ const scrollRootRef = ref<HTMLElement | null>(null)
 const videoRef = ref<HTMLVideoElement | null>(null)
 const canAttachAsset = ref(renderableAsset.value.kind === 'fallback')
 const attachedAssetUrl = computed(() => {
-  if (!isInView.value || !canAttachAsset.value) {
+  if (!canAttachAsset.value) {
+    return null
+  }
+
+  if (!props.surfaceActive) {
+    return renderableAsset.value.url
+  }
+
+  if (!isInView.value) {
     return null
   }
 
   return renderableAsset.value.url
 })
 const isQueueEligible = computed(() =>
-  isInView.value
+  props.surfaceActive
+  && isInView.value
   && (renderableAsset.value.kind === 'image' || renderableAsset.value.kind === 'video')
   && Boolean(renderableAsset.value.url),
 )
@@ -95,6 +107,23 @@ watch([isInView, isReady, attachedAssetUrl], () => {
   syncVideoPlayback()
 })
 
+watch(
+  () => props.surfaceActive,
+  (isActive) => {
+    if (!isActive) {
+      releaseLoadLease()
+      syncVideoPlayback()
+      return
+    }
+
+    requestAnimationFrame(() => {
+      syncVisibilityFromBounds()
+      syncAssetQueue()
+      syncVideoPlayback()
+    })
+  },
+)
+
 onMounted(() => {
   if (!rootRef.value || typeof IntersectionObserver === 'undefined') {
     scrollRootRef.value = null
@@ -112,7 +141,9 @@ onMounted(() => {
           continue
         }
 
-        isInView.value = entry.isIntersecting
+        if (props.surfaceActive) {
+          syncVisibilityFromBounds(entry)
+        }
         syncAssetQueue()
         syncVideoPlayback()
       }
@@ -190,6 +221,11 @@ function syncAssetQueue() {
     return
   }
 
+  if (!props.surfaceActive) {
+    releaseLoadLease()
+    return
+  }
+
   if (!isQueueEligible.value) {
     teardownAssetLoad()
     return
@@ -259,6 +295,19 @@ function releaseLoadLease() {
   loadLease = null
 }
 
+function syncVisibilityFromBounds(entry?: IntersectionObserverEntry) {
+  const rootElement = rootRef.value
+
+  if (!rootElement) {
+    isInView.value = true
+    return
+  }
+
+  const itemBounds = entry?.boundingClientRect ?? rootElement.getBoundingClientRect()
+  const viewportBounds = entry?.rootBounds ?? scrollRootRef.value?.getBoundingClientRect() ?? null
+  isInView.value = isListCardWithinViewport(itemBounds, viewportBounds)
+}
+
 function reportAssetLoad(url: string | null) {
   if (!url) {
     return
@@ -280,44 +329,11 @@ function reportAssetLoad(url: string | null) {
 }
 
 function abortImageLoad() {
-  const image = imageRef.value
-
-  if (!image) {
-    return
-  }
-
-  try {
-    image.removeAttribute('src')
-    image.src = ''
-  }
-  catch {
-    // Ignore abort failures if the image element is already detached.
-  }
+  abortListCardImageLoad(imageRef.value)
 }
 
 function abortVideoLoad() {
-  const video = videoRef.value
-
-  if (!video) {
-    return
-  }
-
-  try {
-    video.currentTime = 0
-  }
-  catch {
-    // Ignore reset failures for streams or not-yet-ready media elements.
-  }
-
-  video.pause()
-
-  try {
-    video.removeAttribute('src')
-    video.load()
-  }
-  catch {
-    // Ignore abort failures if the video element is already detached.
-  }
+  abortListCardVideoLoad(videoRef.value)
 }
 
 function getLoadPriority() {
@@ -342,28 +358,15 @@ function getLoadPriority() {
 }
 
 function isCurrentAssetElement(element: HTMLImageElement | HTMLVideoElement | null) {
-  const expectedUrl = normalizeAssetUrl(attachedAssetUrl.value)
+  const expectedUrl = normalizeListCardAssetUrl(attachedAssetUrl.value)
 
   if (!element || !expectedUrl) {
     return false
   }
 
-  const actualUrl = normalizeAssetUrl(('currentSrc' in element && element.currentSrc) || element.getAttribute('src'))
+  const actualUrl = normalizeListCardAssetUrl(('currentSrc' in element && element.currentSrc) || element.getAttribute('src'))
 
   return actualUrl === expectedUrl
-}
-
-function normalizeAssetUrl(url: string | null) {
-  if (!url) {
-    return null
-  }
-
-  try {
-    return new URL(url, window.location.href).href
-  }
-  catch {
-    return url
-  }
 }
 
 function openFullscreen() {
@@ -409,7 +412,7 @@ function onFocusOut(event: FocusEvent) {
       data-testid="vibe-list-card-spinner"
       class="pointer-events-none absolute inset-0 z-[4] grid place-items-center bg-black/18"
     >
-      <span class="inline-flex h-12 w-12 items-center justify-center border border-white/14 bg-black/55 backdrop-blur-[18px]">
+      <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-black/45 shadow-[0_18px_40px_-18px_rgba(0,0,0,0.85)] backdrop-blur-[18px]">
         <LoaderCircle class="h-5 w-5 animate-spin stroke-[1.9] text-[#f7f1ea]/78" aria-hidden="true" />
       </span>
     </div>

@@ -63,6 +63,9 @@ const mediaStatusOffsetClass = computed(() =>
   viewer.activeMediaItem.value && !viewer.activeAssetErrorKind.value ? 'bottom-[5.8rem] max-[720px]:bottom-[7.4rem]' : 'bottom-[1.8rem] max-[720px]:bottom-[1.3rem]',
 )
 const showMediaBar = computed(() => Boolean(viewer.activeMediaItem.value) && !viewer.activeAssetErrorKind.value)
+const mediaStageInsetClass = computed(() =>
+  showMediaBar.value ? 'pb-[5.75rem] max-[720px]:pb-[7rem]' : ''
+)
 const fullscreenSlotProps = computed<VibeSurfaceSlotProps | null>(() => {
   const item = viewer.activeItem.value
   if (!item) {
@@ -240,13 +243,17 @@ function updateViewportWidth() {
           >
             <div class="absolute inset-0 opacity-85" :class="getSlideToneClass(item.type)" />
 
-            <div v-if="viewer.isVisual(item)" class="relative z-[1] flex h-full w-full items-center justify-center overflow-hidden">
+            <div
+              v-if="viewer.isVisual(item)"
+              class="relative z-[1] flex h-full w-full items-center justify-center overflow-hidden"
+              :class="index === viewer.resolvedActiveIndex.value ? mediaStageInsetClass : ''"
+            >
               <div
                 v-if="isAssetLoading(index, item)"
                 data-testid="vibe-asset-spinner"
                 class="pointer-events-none absolute inset-0 z-[2] grid place-items-center"
               >
-                <span class="inline-flex h-12 w-12 items-center justify-center border border-white/14 bg-black/55 backdrop-blur-[18px]">
+                <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-black/45 shadow-[0_18px_40px_-18px_rgba(0,0,0,0.85)] backdrop-blur-[18px]">
                   <LoaderCircle class="h-5 w-5 animate-spin stroke-[1.9] text-[#f7f1ea]/78" aria-hidden="true" />
                 </span>
               </div>
@@ -306,6 +313,7 @@ function updateViewportWidth() {
             <div
               v-else-if="viewer.isAudio(item)"
               class="relative z-[1] grid w-full max-w-[1100px] justify-items-center gap-6 px-[clamp(2rem,4vw,3rem)] py-[clamp(2rem,4vw,3rem)] text-center"
+              :class="index === viewer.resolvedActiveIndex.value ? mediaStageInsetClass : ''"
             >
               <div class="relative grid aspect-square w-[clamp(320px,46vw,560px)] max-w-[calc(100vw-2.5rem)] place-items-center">
                 <button
@@ -338,7 +346,7 @@ function updateViewportWidth() {
                   data-testid="vibe-asset-spinner"
                   class="pointer-events-none absolute inset-0 z-[3] grid place-items-center"
                 >
-                  <span class="inline-flex h-12 w-12 items-center justify-center border border-white/14 bg-black/55 backdrop-blur-[18px]">
+                  <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-black/45 shadow-[0_18px_40px_-18px_rgba(0,0,0,0.85)] backdrop-blur-[18px]">
                     <LoaderCircle class="h-5 w-5 animate-spin stroke-[1.9] text-[#f7f1ea]/78" aria-hidden="true" />
                   </span>
                 </div>
