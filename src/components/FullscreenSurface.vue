@@ -2,7 +2,6 @@
 import type { Component } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, toRef } from 'vue'
 import { LoaderCircle, Pause, Play, TriangleAlert } from 'lucide-vue-next'
-
 import FullscreenMediaBar from './FullscreenMediaBar.vue'
 import type { VibeViewerItem } from './viewer'
 import FullscreenHeader from './FullscreenHeader.vue'
@@ -15,7 +14,6 @@ import { getItemIcon, getItemLabel } from './viewer-core/media'
 import { hasRenderableSlotContent } from './viewer-core/slotContent'
 import { getSlideToneClass, getStageToneClass } from './viewer-core/theme'
 import './viewer-core/fullscreenMediaBar.css'
-
 const props = withDefaults(defineProps<VibeControlledProps & {
   active?: boolean
   reportAssetError?: VibeAssetErrorReporter | null
@@ -71,7 +69,6 @@ const fullscreenSlotProps = computed<VibeSurfaceSlotProps | null>(() => {
   if (!item) {
     return null
   }
-
   return {
     hasNextPage: props.hasNextPage,
     index: viewer.resolvedActiveIndex.value,
@@ -85,21 +82,18 @@ const fullscreenHeaderActionNodes = computed(() => {
   if (!fullscreenSlotProps.value || !slots['fullscreen-header-actions']) {
     return []
   }
-
   return slots['fullscreen-header-actions'](fullscreenSlotProps.value)
 })
 const fullscreenAsideNodes = computed(() => {
   if (!fullscreenSlotProps.value || !slots['fullscreen-aside']) {
     return []
   }
-
   return slots['fullscreen-aside'](fullscreenSlotProps.value)
 })
 const fullscreenStatusProps = computed<VibeFullscreenStatusSlotProps | null>(() => {
   if (!fullscreenSlotProps.value || !viewer.statusMessage.value) {
     return null
   }
-
   return {
     ...fullscreenSlotProps.value,
     kind: viewer.isAtEnd.value && !viewer.hasNextPage.value && !viewer.loading.value ? 'end' : 'loading-more',
@@ -126,14 +120,12 @@ const showCustomFullscreenStatus = computed(() => hasRenderableSlotContent(fulls
 onMounted(() => {
   window.addEventListener('resize', updateViewportWidth)
 })
-
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateViewportWidth)
 })
 
 function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof viewer.activeItem.value>) {
   const label = item.title?.trim()
-
   if (label) {
     return `${action} ${label}`
   }
@@ -147,11 +139,9 @@ function isAssetLoading(index: number, item: (typeof props.items)[number]) {
   if (!shouldLoadSlideAsset(index)) {
     return false
   }
-
   if (index !== viewer.resolvedActiveIndex.value) {
     return false
   }
-
   if (viewer.getAssetErrorKind(itemKey)) {
     return false
   }
@@ -269,11 +259,15 @@ function updateViewportWidth() {
                   <p class="m-0 text-[0.82rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/70">
                     {{ getAssetErrorLabel(item) }}
                   </p>
+                  <button v-if="viewer.canRetryAsset(getItemKey(item))" type="button" class="inline-flex items-center justify-center border border-white/14 bg-black/35 px-4 py-2 text-[0.64rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/82 backdrop-blur-[18px] transition hover:border-white/28 hover:bg-black/50" @click.stop="viewer.retryAsset(getItemKey(item))">
+                    Retry
+                  </button>
                 </div>
               </div>
 
               <img
                 v-else-if="item.type === 'image'"
+                :key="viewer.getAssetRenderKey(getItemKey(item))"
                 :src="getFullscreenImageSource(index, item)"
                 :alt="item.title ?? ''"
                 draggable="false"
@@ -286,6 +280,7 @@ function updateViewportWidth() {
 
               <video
                 v-else
+                :key="viewer.getAssetRenderKey(getItemKey(item))"
                 class="block h-auto max-h-full w-auto max-w-full cursor-pointer object-contain shadow-[0_40px_120px_-60px_rgba(0,0,0,0.9)] transition-opacity duration-300"
                 :class="viewer.isMediaReady(getItemKey(item)) ? 'opacity-100' : 'opacity-0'"
                 playsinline
@@ -362,11 +357,15 @@ function updateViewportWidth() {
                     <p class="m-0 text-[0.82rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/70">
                       {{ getAssetErrorLabel(item) }}
                     </p>
+                    <button v-if="viewer.canRetryAsset(getItemKey(item))" type="button" class="pointer-events-auto inline-flex items-center justify-center border border-white/14 bg-black/35 px-4 py-2 text-[0.64rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/82 backdrop-blur-[18px] transition hover:border-white/28 hover:bg-black/50" @click.stop="viewer.retryAsset(getItemKey(item))">
+                      Retry
+                    </button>
                   </div>
                 </template>
               </div>
 
               <audio
+                :key="viewer.getAssetRenderKey(getItemKey(item))"
                 :src="getFullscreenMediaSource(index, item)"
                 :preload="shouldLoadSlideAsset(index) ? 'metadata' : 'none'"
                 class="pointer-events-none absolute h-px w-px opacity-0"

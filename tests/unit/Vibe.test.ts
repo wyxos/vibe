@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { mount } from '@vue/test-utils'
 import type { Component } from 'vue'
 import { defineComponent, h, nextTick } from 'vue'
@@ -8,6 +9,9 @@ const { resolveVibeAssetErrorKindMock } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/components/viewer-core/loadError', () => ({
+  canRetryVibeAssetError(kind: 'generic' | 'not-found' | null | undefined) {
+    return kind === 'generic'
+  },
   getVibeAssetErrorLabel(kind: 'generic' | 'not-found') {
     return kind === 'not-found' ? '404' : 'Load error'
   },
@@ -164,14 +168,12 @@ describe('VibeLayout', () => {
     await flushDom()
 
     expect(audioWrapper.get('[data-testid="vibe-asset-spinner"]').exists()).toBe(true)
-
     audioWrapper.unmount()
   })
 
   it('renders a 404 state for a fullscreen image load failure', async () => {
     setViewportWidth(390)
     resolveVibeAssetErrorKindMock.mockResolvedValueOnce('not-found')
-
     const wrapper = mount(Layout, {
       props: {
         items: [createImageItem('image-404', 'Missing image')],
@@ -180,14 +182,12 @@ describe('VibeLayout', () => {
 
     await wrapper.get('img').trigger('error')
     await flushDom()
-
     expect(wrapper.get('[data-testid="vibe-asset-error"]').attributes('data-kind')).toBe('not-found')
     expect(wrapper.text()).toContain('404')
     expect(wrapper.find('[data-testid="vibe-asset-spinner"]').exists()).toBe(false)
 
     wrapper.unmount()
   })
-
   it('renders a generic error state for a fullscreen audio load failure and hides the media bar', async () => {
     setViewportWidth(390)
     resolveVibeAssetErrorKindMock.mockResolvedValueOnce('generic')
@@ -206,6 +206,25 @@ describe('VibeLayout', () => {
     expect(wrapper.text()).toContain('Load error')
     expect(wrapper.find('[data-testid="vibe-media-bar"]').exists()).toBe(false)
 
+    wrapper.unmount()
+  })
+  it('allows retrying a generic fullscreen image load failure', async () => {
+    setViewportWidth(390)
+    resolveVibeAssetErrorKindMock.mockResolvedValueOnce('generic')
+    const wrapper = mount(Layout, {
+      props: {
+        items: [createImageItem('image-retry', 'Retry image')],
+      },
+    })
+    await wrapper.get('img').trigger('error')
+    await flushDom()
+    expect(wrapper.get('[data-testid="vibe-asset-error"]').attributes('data-kind')).toBe('generic')
+    expect(wrapper.text()).toContain('Retry')
+    await wrapper.get('[data-testid="vibe-asset-error"] button').trigger('click')
+    await flushDom()
+    expect(wrapper.find('[data-testid="vibe-asset-error"]').exists()).toBe(false)
+    expect(wrapper.get('img').attributes('src')).toBe('https://example.com/image-retry.jpg')
+    expect(wrapper.get('[data-testid="vibe-asset-spinner"]').exists()).toBe(true)
     wrapper.unmount()
   })
 

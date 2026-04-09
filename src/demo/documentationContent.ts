@@ -365,6 +365,7 @@ function onAssetErrors(errors: VibeAssetErrorEvent[]) {
           'Multiple failures inside the same short window are emitted together.',
           'Identical failures are deduped inside the same batch.',
           'If the same item fails again later, it may emit again in a later batch.',
+          'Built-in Vibe error surfaces allow retrying generic failures, but not not-found.',
         ],
       },
       {

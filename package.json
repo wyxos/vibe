@@ -1,7 +1,7 @@
 {
   "name": "@wyxos/vibe",
   "version": "0.3.0",
-  "description": "Blank foundation for rebuilding Vibe from scratch.",
+  "description": "A Vue 3 media viewer for large feeds of image, video, audio, and mixed-content items.",
   "keywords": [
     "vue",
     "vite",
@@ -14,6 +14,7 @@
     "type": "git",
     "url": "https://github.com/wyxos/vibe.git"
   },
+  "homepage": "https://vibe.wyxos.com/",
   "bugs": {
     "url": "https://github.com/wyxos/vibe/issues"
   },
@@ -36,10 +37,13 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/write-cname.mjs",
     "build:lib": "vite build --config vite.config.lib.ts && npm run build:types",
     "build:types": "vue-tsc -p tsconfig.lib.json",
+    "check:package": "node scripts/check-package-shape.mjs",
+    "prepublishOnly": "npm run check && npm run test:unit && npm run build:lib && npm run test:e2e && npm run check:package",
     "preview": "vite preview",
+    "release": "npx @wyxos/zephyr --type=node",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:install": "playwright install chromium",

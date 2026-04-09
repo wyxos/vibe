@@ -99,6 +99,7 @@ Optional auto-mode feed strategy:
 - Remove, restore, and undo by item `id`
 - Grid customization through slots for icons, overlays, and footer UI
 - Built-in loading and preload error states, including explicit `404` when known
+- Built-in retry UI for non-404 asset failures in grid and fullscreen
 
 ## Item contract
 
@@ -405,6 +406,7 @@ Notes:
 - multiple failures that happen close together are batched into one event
 - identical failures are deduped inside the same batch
 - if the same item fails again later, it can emit again in a later batch
+- built-in Vibe error surfaces allow retrying `generic` failures, but not `not-found`
 
 ## Surface behavior
 

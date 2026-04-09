@@ -4,7 +4,7 @@ import type { VibeViewerItem } from '../viewer'
 import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './assetErrors'
 import { createMediaUiState, DEFAULT_MEDIA_UI_STATE, isImageElementReady, syncMediaUiState, type MediaUiState } from './assetState'
 import { getVibeOccurrenceKey } from './itemIdentity'
-import { getVibeAssetErrorLabel, resolveVibeAssetErrorKind, type VibeAssetErrorKind } from './loadError'
+import { canRetryVibeAssetError, getVibeAssetErrorLabel, resolveVibeAssetErrorKind, type VibeAssetErrorKind } from './loadError'
 import { playMediaElement } from './mediaPlayback'
 
 export function useMedia(options: {
@@ -18,6 +18,7 @@ export function useMedia(options: {
   const imageReadyStates = ref<Record<string, boolean>>({})
   const imageErrorKinds = ref<Record<string, VibeAssetErrorKind | null>>({})
   const mediaStates = ref<Record<string, MediaUiState>>({})
+  const assetRenderVersions = ref<Record<string, number>>({})
 
   const videoElements = new Map<string, HTMLVideoElement>()
   const audioElements = new Map<string, HTMLAudioElement>()
@@ -92,6 +93,7 @@ export function useMedia(options: {
 
   function resetMediaState() {
     pauseAndResetAllMedia()
+    assetRenderVersions.value = {}
     imageErrorKinds.value = {}
     imageReadyStates.value = {}
     mediaStates.value = {}
@@ -262,6 +264,46 @@ export function useMedia(options: {
     return errorKind ? getVibeAssetErrorLabel(errorKind) : null
   }
 
+  function canRetryAsset(id: string) {
+    return canRetryVibeAssetError(getAssetErrorKind(id))
+  }
+
+  function getAssetRenderKey(id: string) {
+    return `${id}:${assetRenderVersions.value[id] ?? 0}`
+  }
+
+  async function retryAsset(id: string) {
+    if (!canRetryAsset(id)) {
+      return
+    }
+
+    imageReadyStates.value[id] = false
+    imageErrorKinds.value[id] = null
+
+    const state = ensureMediaState(id)
+    state.currentTime = 0
+    state.duration = 0
+    state.paused = true
+    state.ready = false
+    state.errorKind = null
+
+    const media = getMediaElementById(id)
+    if (media) {
+      pauseAndReset(media, id)
+    }
+
+    reportedLoadKeys.forEach((loadKey) => {
+      if (loadKey.startsWith(`${id}|`)) {
+        reportedLoadKeys.delete(loadKey)
+      }
+    })
+
+    assetRenderVersions.value[id] = (assetRenderVersions.value[id] ?? 0) + 1
+
+    await nextTick()
+    await syncMediaPlayback()
+  }
+
   function pauseAndReset(media: HTMLMediaElement, id: string) {
     media.pause()
 
@@ -362,9 +404,11 @@ export function useMedia(options: {
     activeMediaState,
     getAssetErrorKind,
     getAssetErrorLabel,
+    getAssetRenderKey,
     getImageSource,
     isImageReady,
     isMediaReady,
+    canRetryAsset,
     mediaStates,
     onAudioCoverClick,
     onImageError,
@@ -377,6 +421,7 @@ export function useMedia(options: {
     registerImageElement,
     registerVideoElement,
     resetMediaState,
+    retryAsset,
     syncMediaPlayback,
   }
 }

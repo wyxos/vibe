@@ -7,6 +7,9 @@ const { resolveVibeAssetErrorKindMock } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/components/viewer-core/loadError', () => ({
+  canRetryVibeAssetError(kind: 'generic' | 'not-found' | null | undefined) {
+    return kind === 'generic'
+  },
   getVibeAssetErrorLabel(kind: 'generic' | 'not-found') {
     return kind === 'not-found' ? '404' : 'Load error'
   },
@@ -192,6 +195,34 @@ describe('VibeListCard', () => {
 
     expect(wrapper.get('[data-testid="vibe-list-card-error"]').attributes('data-kind')).toBe('not-found')
     expect(wrapper.text()).toContain('404')
+
+    wrapper.unmount()
+  })
+
+  it('allows retrying a generic image preview failure', async () => {
+    const wrapper = mount(VibeListCard, {
+      props: {
+        item: createImageItem('image-retry'),
+      },
+    })
+
+    await flushDom()
+
+    intersectionObservers[0].trigger(wrapper.element as Element, true, 0.75)
+    await flushDom()
+
+    await wrapper.get('img').trigger('error')
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="vibe-list-card-error"]').attributes('data-kind')).toBe('generic')
+    expect(wrapper.text()).toContain('Retry')
+
+    await wrapper.get('[data-testid="vibe-list-card-error"] button').trigger('click')
+    await flushDom()
+
+    expect(wrapper.find('[data-testid="vibe-list-card-error"]').exists()).toBe(false)
+    expect(wrapper.get('img').attributes('src')).toBe('https://example.com/image-retry-preview.jpg')
+    expect(wrapper.get('[data-testid="vibe-list-card-spinner"]').exists()).toBe(true)
 
     wrapper.unmount()
   })

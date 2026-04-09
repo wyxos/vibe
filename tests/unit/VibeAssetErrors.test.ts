@@ -7,6 +7,9 @@ const { resolveVibeAssetErrorKindMock } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/components/viewer-core/loadError', () => ({
+  canRetryVibeAssetError(kind: 'generic' | 'not-found' | null | undefined) {
+    return kind === 'generic'
+  },
   getVibeAssetErrorLabel(kind: 'generic' | 'not-found') {
     return kind === 'not-found' ? '404' : 'Load error'
   },

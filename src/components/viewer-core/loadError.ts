@@ -6,6 +6,10 @@ export function getVibeAssetErrorLabel(kind: VibeAssetErrorKind) {
   return kind === 'not-found' ? '404' : 'Load error'
 }
 
+export function canRetryVibeAssetError(kind: VibeAssetErrorKind | null | undefined) {
+  return kind === 'generic'
+}
+
 export function resolveVibeAssetErrorKind(url: string) {
   const cached = errorKindCache.get(url)
 
