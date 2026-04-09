@@ -1,6 +1,6 @@
 {
   "name": "@wyxos/vibe",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "A Vue 3 media viewer for large feeds of image, video, audio, and mixed-content items.",
   "keywords": [
     "vue",
