@@ -66,12 +66,16 @@ describe('VibeLayout asset load events', () => {
     const onAssetLoads = vi.fn()
     const wrapper = mount(Layout, {
       props: {
-        items: [createImageItem('image-ready', 'Ready image')],
+        items: [
+          createImageItem('image-ready', 'Ready image'),
+          createImageItem('image-preloaded', 'Preloaded image'),
+          createImageItem('image-ahead', 'Ahead image'),
+        ],
         onAssetLoads,
       },
     })
 
-    await wrapper.get('img').trigger('load')
+    await wrapper.get('[data-index="1"] img').trigger('load')
     await flushDom()
     await vi.advanceTimersByTimeAsync(150)
     await flushDom()
@@ -79,10 +83,10 @@ describe('VibeLayout asset load events', () => {
     expect(onAssetLoads).toHaveBeenCalledTimes(1)
     expect(onAssetLoads.mock.calls[0][0]).toEqual([
       expect.objectContaining({
-        item: expect.objectContaining({ id: 'image-ready' }),
+        item: expect.objectContaining({ id: 'image-preloaded' }),
         occurrenceKey: expect.any(String),
         surface: 'fullscreen',
-        url: 'https://example.com/image-ready.jpg',
+        url: 'https://example.com/image-preloaded.jpg',
       }),
     ])
 

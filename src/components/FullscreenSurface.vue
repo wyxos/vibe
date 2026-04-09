@@ -42,6 +42,7 @@ const emit = defineEmits<{
   'update:activeIndex': [value: number]
 }>()
 const FULLSCREEN_ASIDE_COLUMN_BREAKPOINT_PX = 1_280
+const FULLSCREEN_PRELOAD_AHEAD_COUNT = 2
 
 const viewer = useViewer(
   props,
@@ -136,7 +137,7 @@ function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof 
 function isAssetLoading(index: number, item: (typeof props.items)[number]) {
   const itemKey = getItemKey(item)
 
-  if (!shouldLoadSlideAsset(index)) {
+  if (!shouldPreloadSlideAsset(index)) {
     return false
   }
   if (index !== viewer.resolvedActiveIndex.value) {
@@ -166,27 +167,20 @@ function getAssetErrorLabel(item: (typeof props.items)[number]) {
 }
 
 function isAssetErrored(index: number, item: (typeof props.items)[number]) {
-  return shouldLoadSlideAsset(index) && index === viewer.resolvedActiveIndex.value && Boolean(getAssetErrorKind(item))
+  return shouldPreloadSlideAsset(index) && index === viewer.resolvedActiveIndex.value && Boolean(getAssetErrorKind(item))
 }
 
-function shouldLoadSlideAsset(index: number) {
-  return props.active && index === viewer.resolvedActiveIndex.value
+function shouldPreloadSlideAsset(index: number) {
+  const activeIndex = viewer.resolvedActiveIndex.value
+  return props.active && index >= activeIndex && index <= activeIndex + FULLSCREEN_PRELOAD_AHEAD_COUNT
 }
 
 function getFullscreenImageSource(index: number, item: (typeof props.items)[number]) {
-  if (!shouldLoadSlideAsset(index)) {
-    return undefined
-  }
-
-  return viewer.getImageSource(item)
+  return shouldPreloadSlideAsset(index) ? viewer.getImageSource(item) : undefined
 }
 
 function getFullscreenMediaSource(index: number, item: (typeof props.items)[number]) {
-  if (!shouldLoadSlideAsset(index)) {
-    return undefined
-  }
-
-  return item.url
+  return shouldPreloadSlideAsset(index) ? item.url : undefined
 }
 
 function getItemKey(item: (typeof props.items)[number]) {
@@ -286,7 +280,7 @@ function updateViewportWidth() {
                 playsinline
                 muted
                 :src="getFullscreenMediaSource(index, item)"
-                :preload="shouldLoadSlideAsset(index) ? 'metadata' : 'none'"
+                :preload="shouldPreloadSlideAsset(index) ? 'metadata' : 'none'"
                 :ref="(element) => viewer.registerVideoElement(getItemKey(item), element)"
                 @click.stop="viewer.onVideoClick($event, getItemKey(item))"
                 @canplay="viewer.onMediaEvent(getItemKey(item), $event)"
@@ -367,7 +361,7 @@ function updateViewportWidth() {
               <audio
                 :key="viewer.getAssetRenderKey(getItemKey(item))"
                 :src="getFullscreenMediaSource(index, item)"
-                :preload="shouldLoadSlideAsset(index) ? 'metadata' : 'none'"
+                :preload="shouldPreloadSlideAsset(index) ? 'metadata' : 'none'"
                 class="pointer-events-none absolute h-px w-px opacity-0"
                 :ref="(element) => viewer.registerAudioElement(getItemKey(item), element)"
                 @canplay="viewer.onMediaEvent(getItemKey(item), $event)"

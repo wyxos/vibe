@@ -8,6 +8,7 @@ import { canRetryVibeAssetError, getVibeAssetErrorLabel, resolveVibeAssetErrorKi
 import { playMediaElement } from './mediaPlayback'
 
 export function useMedia(options: {
+  items: Ref<VibeViewerItem[]>
   activeItem: Ref<VibeViewerItem | null>
   activeMediaItem: Ref<VibeViewerItem | null>
   isEnabled: Ref<boolean>
@@ -25,6 +26,15 @@ export function useMedia(options: {
   const reportedLoadKeys = new Set<string>()
   const activeItemKey = computed(() => options.activeItem.value ? getVibeOccurrenceKey(options.activeItem.value) : null)
   const activeMediaItemKey = computed(() => options.activeMediaItem.value ? getVibeOccurrenceKey(options.activeMediaItem.value) : null)
+  const itemsByOccurrenceKey = computed(() => {
+    const nextItemsByOccurrenceKey = new Map<string, VibeViewerItem>()
+
+    for (const item of options.items.value) {
+      nextItemsByOccurrenceKey.set(getVibeOccurrenceKey(item), item)
+    }
+
+    return nextItemsByOccurrenceKey
+  })
 
   const activeMediaState = computed(() => {
     if (!activeMediaItemKey.value) {
@@ -87,7 +97,7 @@ export function useMedia(options: {
     if (element instanceof HTMLImageElement && isImageElementReady(element)) {
       imageReadyStates.value[id] = true
       imageErrorKinds.value[id] = null
-      reportAssetLoad(id, element.currentSrc || element.src || resolveActiveImageUrl())
+      reportAssetLoad(id, element.currentSrc || element.src || resolveItemUrl(id))
     }
   }
 
@@ -143,7 +153,7 @@ export function useMedia(options: {
       const nextReady = mediaStates.value[id]?.ready ?? false
 
       if (!previousReady && nextReady) {
-        reportAssetLoad(id, media.currentSrc || media.src || resolveActiveMediaUrl())
+        reportAssetLoad(id, media.currentSrc || media.src || resolveItemUrl(id))
       }
     }
   }
@@ -155,7 +165,7 @@ export function useMedia(options: {
   }
 
   async function onImageError(id: string, url: string) {
-    const failedItem = options.activeItem.value
+    const failedItem = getItemById(id) ?? options.activeItem.value
 
     imageReadyStates.value[id] = false
     imageErrorKinds.value[id] = 'generic'
@@ -176,7 +186,7 @@ export function useMedia(options: {
   async function onMediaError(id: string, url: string) {
     const media = getMediaElementById(id)
     const state = ensureMediaState(id)
-    const failedItem = options.activeMediaItem.value ?? options.activeItem.value
+    const failedItem = getItemById(id) ?? options.activeMediaItem.value ?? options.activeItem.value
 
     if (media) {
       media.pause()
@@ -369,7 +379,7 @@ export function useMedia(options: {
   }
 
   function reportAssetLoad(id: string, url: string | null) {
-    const item = options.activeMediaItem.value ?? options.activeItem.value
+    const item = getItemById(id) ?? options.activeMediaItem.value ?? options.activeItem.value
 
     if (!item || !url) {
       return
@@ -389,12 +399,12 @@ export function useMedia(options: {
     })
   }
 
-  function resolveActiveImageUrl() {
-    return options.activeItem.value?.url ?? null
+  function getItemById(id: string) {
+    return itemsByOccurrenceKey.value.get(id) ?? null
   }
 
-  function resolveActiveMediaUrl() {
-    return options.activeMediaItem.value?.url ?? options.activeItem.value?.url ?? null
+  function resolveItemUrl(id: string) {
+    return getItemById(id)?.url ?? null
   }
 
   return {

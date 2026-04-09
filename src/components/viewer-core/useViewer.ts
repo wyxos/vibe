@@ -74,6 +74,7 @@ export function useViewer(
     return null
   })
   const media = useMedia({
+    items,
     activeItem,
     activeMediaItem,
     isEnabled,

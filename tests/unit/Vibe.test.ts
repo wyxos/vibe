@@ -140,6 +140,83 @@ describe('VibeLayout', () => {
     wrapper.unmount()
   })
 
+  it('preloads the next two fullscreen image slides and drops stale sources after a jump', async () => {
+    setViewportWidth(390)
+
+    let wrapper = mount(Layout, {
+      props: {
+        activeIndex: 0,
+        items: [
+          createImageItem('image-preload-1', 'Image 1'),
+          createImageItem('image-preload-2', 'Image 2'),
+          createImageItem('image-preload-3', 'Image 3'),
+          createImageItem('image-preload-4', 'Image 4'),
+          createImageItem('image-preload-5', 'Image 5'),
+          createImageItem('image-preload-6', 'Image 6'),
+        ],
+        'onUpdate:activeIndex': async (value: number) => {
+          await wrapper.setProps({
+            activeIndex: value,
+          })
+        },
+      },
+    })
+
+    await flushDom()
+
+    expect(wrapper.get('[data-index="0"] img').attributes('src')).toBe('https://example.com/image-preload-1.jpg')
+    expect(wrapper.get('[data-index="1"] img').attributes('src')).toBe('https://example.com/image-preload-2.jpg')
+    expect(wrapper.get('[data-index="2"] img').attributes('src')).toBe('https://example.com/image-preload-3.jpg')
+
+    await wrapper.setProps({
+      activeIndex: 3,
+    })
+    await flushDom()
+
+    expect(wrapper.get('[data-index="1"] img').attributes('src')).toBeUndefined()
+    expect(wrapper.get('[data-index="2"] img').attributes('src')).toBeUndefined()
+    expect(wrapper.get('[data-index="3"] img').attributes('src')).toBe('https://example.com/image-preload-4.jpg')
+    expect(wrapper.get('[data-index="4"] img').attributes('src')).toBe('https://example.com/image-preload-5.jpg')
+    expect(wrapper.get('[data-index="5"] img').attributes('src')).toBe('https://example.com/image-preload-6.jpg')
+
+    wrapper.unmount()
+  })
+
+  it('reuses a preloaded fullscreen image when it becomes active', async () => {
+    setViewportWidth(390)
+
+    let wrapper = mount(Layout, {
+      props: {
+        activeIndex: 0,
+        items: [
+          createImageItem('image-reuse-1', 'Image 1'),
+          createImageItem('image-reuse-2', 'Image 2'),
+          createImageItem('image-reuse-3', 'Image 3'),
+        ],
+        'onUpdate:activeIndex': async (value: number) => {
+          await wrapper.setProps({
+            activeIndex: value,
+          })
+        },
+      },
+    })
+
+    await flushDom()
+    await wrapper.get('[data-index="2"] img').trigger('load')
+    await flushDom()
+
+    await wrapper.setProps({
+      activeIndex: 2,
+    })
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="vibe-pagination"]').text()).toContain('3 / 3')
+    expect(wrapper.find('[data-testid="vibe-asset-spinner"]').exists()).toBe(false)
+    expect(wrapper.get('[data-index="2"] img').classes()).toContain('opacity-100')
+
+    wrapper.unmount()
+  })
+
   it('shows media spinners before video and audio are ready', async () => {
     setViewportWidth(390)
 

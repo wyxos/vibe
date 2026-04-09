@@ -156,20 +156,19 @@ test('broken demo assets surface 404 and generic preload errors in list and full
   await expect(brokenAssetCard.getByTestId('vibe-list-card-error')).toHaveAttribute('data-kind', 'generic', { timeout: 15_000 })
   await expect(brokenAssetCard).toContainText('Load error')
 
-  await scrollViewport.evaluate((element) => {
-    const node = element as HTMLElement
-    node.scrollTop = 0
-    node.dispatchEvent(new Event('scroll', { bubbles: true }))
+  await missingCard.getByTestId('vibe-list-card-open').evaluate((button) => {
+    (button as HTMLButtonElement).click()
   })
-  await expect(firstCard).toBeVisible()
-  await firstCard.locator('button').click()
   await expect(root).toHaveAttribute('data-surface-mode', 'fullscreen')
-  for (let step = 0; step < 11; step += 1) {
-    await page.keyboard.press('ArrowDown')
-  }
   await expect(fullscreenSurface).toContainText('404', { timeout: 15_000 })
+  await page.getByTestId('vibe-back-to-list').click()
+  await expect(root).toHaveAttribute('data-surface-mode', 'list')
 
-  await page.keyboard.press('ArrowDown')
+  await expect(firstCard).toBeVisible()
+  await brokenAssetCard.getByTestId('vibe-list-card-open').evaluate((button) => {
+    (button as HTMLButtonElement).click()
+  })
+  await expect(root).toHaveAttribute('data-surface-mode', 'fullscreen')
   await expect(fullscreenSurface).toContainText('Load error', { timeout: 15_000 })
   await expect(fullscreenSurface).toContainText('Load error')
   await expect(fullscreenSurface.getByTestId('vibe-media-bar')).toHaveCount(0)
