@@ -7,7 +7,7 @@ It ships two built-in surfaces:
 - Desktop: a virtualized masonry grid that opens into fullscreen
 - Mobile and tablet: fullscreen only
 
-The current `0.3.0` rebuild focuses on a strict item contract, library-owned loading, strong demo coverage, and a small customization surface.
+The current `3.0.0` rebuild focuses on a strict item contract, library-owned loading, strong demo coverage, and a small customization surface.
 
 ## Install
 
