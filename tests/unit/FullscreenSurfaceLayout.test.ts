@@ -102,6 +102,51 @@ describe('VibeLayout fullscreen aside layout', () => {
 
     wrapper.unmount()
   })
+
+  it('suppresses fullscreen status badges and slot rendering when showStatusBadges is false', async () => {
+    setViewportWidth(1_280)
+
+    const wrapper = mount(Layout, {
+      props: {
+        items: [createImageItem('image-status-hidden', 'Status slot item')],
+        loading: true,
+        hasNextPage: true,
+        showStatusBadges: false,
+      },
+      slots: {
+        'fullscreen-status': ({ kind, message }: { kind: 'end' | 'loading-more'; message: string }) =>
+          h('div', { 'data-kind': kind, 'data-testid': 'custom-fullscreen-status' }, message),
+      },
+    })
+
+    await flushDom()
+    await wrapper.get('[data-testid="vibe-list-card"] button').trigger('click')
+    await flushDom()
+
+    expect(wrapper.find('[data-testid="custom-fullscreen-status"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Loading more items')
+
+    wrapper.unmount()
+  })
+
+  it('hides the built-in fullscreen end badge when showStatusBadges is false', async () => {
+    setViewportWidth(1_280)
+
+    const wrapper = mount(Layout, {
+      props: {
+        items: [createImageItem('image-end-hidden', 'End badge item')],
+        showStatusBadges: false,
+      },
+    })
+
+    await flushDom()
+    await wrapper.get('[data-testid="vibe-list-card"] button').trigger('click')
+    await flushDom()
+
+    expect(wrapper.text()).not.toContain('End reached')
+
+    wrapper.unmount()
+  })
 })
 
 function createImageItem(id: string, title?: string): VibeViewerItem {

@@ -7,12 +7,14 @@ import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './viewer-cor
 import { getVibeOccurrenceKey } from './viewer-core/itemIdentity'
 import { hasRenderableSlotContent } from './viewer-core/slotContent'
 import type { VibeGridStatusSlotProps } from './viewer-core/surfaceSlots'
+import type { VibeAssetLoadQueue } from './viewer-core/useAssetLoadQueue'
 import { useVibeMasonryList } from './viewer-core/useMasonryList'
 import ListCard from './ListCard.vue'
 
 const props = withDefaults(defineProps<{
   active?: boolean
   activeIndex?: number
+  assetLoadQueue?: VibeAssetLoadQueue | null
   commitPendingAppend?: (() => void | Promise<void>) | null
   hasNextPage?: boolean
   hasPreviousPage?: boolean
@@ -25,9 +27,11 @@ const props = withDefaults(defineProps<{
   requestNextPage?: (() => void | Promise<void>) | null
   requestPreviousPage?: (() => void | Promise<void>) | null
   restoreToken: number
+  showStatusBadges?: boolean
 }>(), {
   active: true,
   activeIndex: 0,
+  assetLoadQueue: null,
   commitPendingAppend: null,
   hasNextPage: false,
   hasPreviousPage: false,
@@ -38,6 +42,7 @@ const props = withDefaults(defineProps<{
   reportAssetLoad: null,
   requestNextPage: null,
   requestPreviousPage: null,
+  showStatusBadges: true,
 })
 const slots = defineSlots<{
   'grid-footer'?: () => unknown
@@ -75,8 +80,19 @@ const list = useVibeMasonryList({
     emit('update:activeIndex', index)
   },
 })
+const gridStatusMessage = computed(() => {
+  if (props.loading) {
+    return props.items.length > 0 ? 'Loading more items' : 'Loading the first page'
+  }
+
+  if (!props.hasNextPage && props.items.length > 0) {
+    return 'End of list'
+  }
+
+  return null
+})
 const gridStatusProps = computed<VibeGridStatusSlotProps | null>(() => {
-  if (!list.footerStatusMessage.value) {
+  if (!props.showStatusBadges || !gridStatusMessage.value) {
     return null
   }
 
@@ -84,7 +100,7 @@ const gridStatusProps = computed<VibeGridStatusSlotProps | null>(() => {
     activeIndex: list.resolvedActiveIndex.value,
     kind: props.loading ? 'loading-more' : 'end',
     loading: props.loading,
-    message: list.footerStatusMessage.value,
+    message: gridStatusMessage.value,
     paginationDetail: props.paginationDetail,
     total: props.items.length,
   }
@@ -141,6 +157,7 @@ const showCustomGridStatus = computed(() => hasRenderableSlotContent(gridStatusN
         >
           <ListCard
             :active="index === list.resolvedActiveIndex.value"
+            :asset-load-queue="props.assetLoadQueue"
             :index="index"
             :item="item"
             :report-asset-error="props.reportAssetError"

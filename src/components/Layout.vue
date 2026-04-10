@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onBeforeUnmount, type Component } from 'vue'
+import { onBeforeUnmount, watch, type Component } from 'vue'
 import { LoaderCircle } from 'lucide-vue-next'
 
 import type { VibeViewerItem } from './viewer'
 import { createAssetErrorBatchReporter, createAssetLoadBatchReporter, type VibeAssetErrorEvent, type VibeAssetLoadEvent } from './viewer-core/assetErrors'
 import type { VibeFullscreenStatusSlotProps, VibeGridStatusSlotProps, VibeSurfaceSlotProps } from './viewer-core/surfaceSlots'
+import { createAssetLoadQueue } from './viewer-core/useAssetLoadQueue'
 import type { VibeHandle, VibeProps } from './viewer-core/useViewer'
 import { useController } from './viewer-core/useController'
 
@@ -15,7 +16,9 @@ defineOptions({
   name: 'VibeLayout',
 })
 
-const props = defineProps<VibeProps>()
+const props = withDefaults(defineProps<VibeProps>(), {
+  showStatusBadges: true,
+})
 const slots = defineSlots<{
   'fullscreen-aside'?: (props: VibeSurfaceSlotProps) => unknown
   'fullscreen-header-actions'?: (props: VibeSurfaceSlotProps) => unknown
@@ -38,8 +41,10 @@ const emit = defineEmits<{
   'asset-errors': [errors: VibeAssetErrorEvent[]]
   'asset-loads': [loads: VibeAssetLoadEvent[]]
   'update:activeIndex': [value: number]
+  'update:surfaceMode': [value: 'list' | 'fullscreen']
 }>()
 
+const assetLoadQueue = createAssetLoadQueue(props.assetLoadLimits)
 const viewer = useController(props, emit)
 const assetErrorBatch = createAssetErrorBatchReporter((errors) => {
   emit('asset-errors', errors)
@@ -52,6 +57,16 @@ onBeforeUnmount(() => {
   assetErrorBatch.stop()
   assetLoadBatch.stop()
 })
+
+watch(
+  () => props.assetLoadLimits,
+  (nextLimits) => {
+    assetLoadQueue.setLimits(nextLimits)
+  },
+  {
+    deep: true,
+  },
+)
 
 defineExpose<VibeHandle>({
   cancel: viewer.cancel,
@@ -133,6 +148,7 @@ defineExpose<VibeHandle>({
             :active="viewer.surfaceMode.value === 'list'"
             :items="viewer.items.value"
             :active-index="viewer.activeIndex.value"
+            :asset-load-queue="assetLoadQueue"
             :loading="viewer.loading.value"
             :has-next-page="viewer.hasNextPage.value"
             :has-previous-page="viewer.hasPreviousPage.value"
@@ -144,6 +160,7 @@ defineExpose<VibeHandle>({
             :request-next-page="viewer.prefetchNextPage"
             :request-previous-page="viewer.prefetchPreviousPage"
             :restore-token="viewer.listRestoreToken.value"
+            :show-status-badges="props.showStatusBadges !== false"
             @open-fullscreen="viewer.openFullscreen"
             @update:active-index="viewer.setActiveIndex"
           >
@@ -153,7 +170,7 @@ defineExpose<VibeHandle>({
             <template v-if="slots['grid-item-overlay']" #grid-item-overlay="slotProps">
               <slot name="grid-item-overlay" v-bind="slotProps" />
             </template>
-            <template v-if="slots['grid-status']" #grid-status="slotProps">
+            <template v-if="props.showStatusBadges !== false && slots['grid-status']" #grid-status="slotProps">
               <slot name="grid-status" v-bind="slotProps" />
             </template>
             <template v-if="slots['item-icon']" #item-icon="slotProps">
@@ -189,6 +206,7 @@ defineExpose<VibeHandle>({
             :report-asset-error="assetErrorBatch.report"
             :report-asset-load="assetLoadBatch.report"
             :show-back-to-list="viewer.showBackToList.value"
+            :show-status-badges="props.showStatusBadges !== false"
             @back-to-list="viewer.returnToList"
             @update:active-index="viewer.setActiveIndex"
           >
@@ -201,7 +219,7 @@ defineExpose<VibeHandle>({
             <template v-if="slots['fullscreen-header-actions']" #fullscreen-header-actions="slotProps">
               <slot name="fullscreen-header-actions" v-bind="slotProps" />
             </template>
-            <template v-if="slots['fullscreen-status']" #fullscreen-status="slotProps">
+            <template v-if="props.showStatusBadges !== false && slots['fullscreen-status']" #fullscreen-status="slotProps">
               <slot name="fullscreen-status" v-bind="slotProps" />
             </template>
             <template v-if="slots['item-icon']" #item-icon="slotProps">
@@ -223,6 +241,7 @@ defineExpose<VibeHandle>({
       :report-asset-error="assetErrorBatch.report"
       :report-asset-load="assetLoadBatch.report"
       :show-back-to-list="false"
+      :show-status-badges="props.showStatusBadges !== false"
       @back-to-list="viewer.returnToList"
       @update:active-index="viewer.setActiveIndex"
     >
@@ -235,7 +254,7 @@ defineExpose<VibeHandle>({
       <template v-if="slots['fullscreen-header-actions']" #fullscreen-header-actions="slotProps">
         <slot name="fullscreen-header-actions" v-bind="slotProps" />
       </template>
-      <template v-if="slots['fullscreen-status']" #fullscreen-status="slotProps">
+      <template v-if="props.showStatusBadges !== false && slots['fullscreen-status']" #fullscreen-status="slotProps">
         <slot name="fullscreen-status" v-bind="slotProps" />
       </template>
       <template v-if="slots['item-icon']" #item-icon="slotProps">

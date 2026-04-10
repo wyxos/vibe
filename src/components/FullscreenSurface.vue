@@ -19,6 +19,7 @@ const props = withDefaults(defineProps<VibeControlledProps & {
   reportAssetError?: VibeAssetErrorReporter | null
   reportAssetLoad?: VibeAssetLoadReporter | null
   showBackToList?: boolean
+  showStatusBadges?: boolean
 }>(), {
   active: true,
   activeIndex: 0,
@@ -28,6 +29,7 @@ const props = withDefaults(defineProps<VibeControlledProps & {
   reportAssetError: null,
   reportAssetLoad: null,
   showBackToList: false,
+  showStatusBadges: true,
 })
 const slots = defineSlots<{
   'fullscreen-aside'?: (props: VibeSurfaceSlotProps) => unknown
@@ -43,7 +45,6 @@ const emit = defineEmits<{
 }>()
 const FULLSCREEN_ASIDE_COLUMN_BREAKPOINT_PX = 1_280
 const FULLSCREEN_PRELOAD_AHEAD_COUNT = 2
-
 const viewer = useViewer(
   props,
   (_event, value) => {
@@ -91,21 +92,31 @@ const fullscreenAsideNodes = computed(() => {
   }
   return slots['fullscreen-aside'](fullscreenSlotProps.value)
 })
+const fullscreenStatusMessage = computed(() => {
+  if (props.loading) {
+    return props.items.length > 0 ? 'Loading more items' : 'Loading the first page'
+  }
+
+  if (viewer.isAtEnd.value && !props.hasNextPage && !props.loading) {
+    return 'End of feed'
+  }
+
+  return null
+})
 const fullscreenStatusProps = computed<VibeFullscreenStatusSlotProps | null>(() => {
-  if (!fullscreenSlotProps.value || !viewer.statusMessage.value) {
+  if (!props.showStatusBadges || !fullscreenSlotProps.value || !fullscreenStatusMessage.value) {
     return null
   }
   return {
     ...fullscreenSlotProps.value,
     kind: viewer.isAtEnd.value && !viewer.hasNextPage.value && !viewer.loading.value ? 'end' : 'loading-more',
-    message: viewer.statusMessage.value,
+    message: fullscreenStatusMessage.value,
   }
 })
 const fullscreenStatusNodes = computed(() => {
   if (!fullscreenStatusProps.value || !slots['fullscreen-status']) {
     return []
   }
-
   return slots['fullscreen-status'](fullscreenStatusProps.value)
 })
 const gridLayoutStyle = computed(() => ({
@@ -130,7 +141,6 @@ function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof 
   if (label) {
     return `${action} ${label}`
   }
-
   return `${action} ${getItemLabel(item.type).toLowerCase()}`
 }
 
@@ -406,19 +416,15 @@ function updateViewportWidth() {
             :current-index="viewer.resolvedActiveIndex.value"
             :pagination-detail="viewer.paginationDetail.value"
             :show-back-to-list="props.showBackToList"
-            :show-end-badge="viewer.isAtEnd.value && !viewer.hasNextPage.value && !viewer.loading.value"
+            :show-end-badge="props.showStatusBadges && viewer.isAtEnd.value && !viewer.hasNextPage.value && !viewer.loading.value"
             :title="viewer.activeItem.value.title ?? null"
             :total="viewer.items.value.length"
             @back-to-list="emit('back-to-list')"
           >
             <template v-if="showFullscreenHeaderActions && fullscreenSlotProps" #actions>
-              <slot
-                name="fullscreen-header-actions"
-                v-bind="fullscreenSlotProps"
-              />
+              <slot name="fullscreen-header-actions" v-bind="fullscreenSlotProps" />
             </template>
           </FullscreenHeader>
-
           <FullscreenMediaBar
             v-if="showMediaBar"
             :current-time="viewer.activeMediaState.value.currentTime"

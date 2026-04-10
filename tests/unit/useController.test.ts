@@ -10,17 +10,22 @@ const dataSourceMock = createDataSourceMock()
 vi.mock('@/components/viewer-core/useDataSource', () => ({
   useDataSource: () => ({
     activeIndex: dataSourceMock.activeIndex,
+    cancel: dataSourceMock.cancel,
     canRetryInitialLoad: dataSourceMock.canRetryInitialLoad,
+    clearRemoved: dataSourceMock.clearRemoved,
     commitPendingAppend: dataSourceMock.commitPendingAppend,
     currentCursor: dataSourceMock.currentCursor,
     errorMessage: dataSourceMock.errorMessage,
     fillCollectedCount: dataSourceMock.fillCollectedCount,
     fillDelayRemainingMs: dataSourceMock.fillDelayRemainingMs,
     fillTargetCount: dataSourceMock.fillTargetCount,
+    getRemovedIds: dataSourceMock.getRemovedIds,
     hasNextPage: dataSourceMock.hasNextPage,
     hasPreviousPage: dataSourceMock.hasPreviousPage,
     isAutoMode: dataSourceMock.isAutoMode,
     items: dataSourceMock.items,
+    loadNext: dataSourceMock.loadNext,
+    loadPrevious: dataSourceMock.loadPrevious,
     loading: dataSourceMock.loading,
     mode: dataSourceMock.mode,
     nextCursor: dataSourceMock.nextCursor,
@@ -30,10 +35,14 @@ vi.mock('@/components/viewer-core/useDataSource', () => ({
     prefetchNextPage: dataSourceMock.prefetchNextPage,
     prefetchPreviousPage: dataSourceMock.prefetchPreviousPage,
     previousCursor: dataSourceMock.previousCursor,
+    remove: dataSourceMock.remove,
     removedCount: dataSourceMock.removedCount,
+    restore: dataSourceMock.restore,
+    retry: dataSourceMock.retry,
     retryInitialLoad: dataSourceMock.retryInitialLoad,
     setActiveIndex: dataSourceMock.setActiveIndex,
     setAutoPrefetchEnabled: dataSourceMock.setAutoPrefetchEnabled,
+    undo: dataSourceMock.undo,
   }),
 }))
 
@@ -61,24 +70,38 @@ function createDataSourceMock() {
   const previousCursor = ref<string | null>(null)
   const removedCount = ref(0)
   const retryInitialLoad = vi.fn(async () => {})
+  const cancel = vi.fn()
+  const clearRemoved = vi.fn()
+  const getRemovedIds = vi.fn(() => [])
+  const loadNext = vi.fn(async () => {})
+  const loadPrevious = vi.fn(async () => {})
+  const remove = vi.fn(() => ({ ids: [] }))
+  const restore = vi.fn(() => ({ ids: [] }))
+  const retry = vi.fn(async () => {})
   const setActiveIndex = vi.fn((nextIndex: number) => {
     activeIndex.value = nextIndex
   })
   const setAutoPrefetchEnabled = vi.fn()
+  const undo = vi.fn(() => null)
 
   return {
     activeIndex,
+    cancel,
     canRetryInitialLoad,
+    clearRemoved,
     commitPendingAppend,
     currentCursor,
     errorMessage,
     fillCollectedCount,
     fillDelayRemainingMs,
     fillTargetCount,
+    getRemovedIds,
     hasNextPage,
     hasPreviousPage,
     isAutoMode,
     items,
+    loadNext,
+    loadPrevious,
     loading,
     mode,
     nextCursor,
@@ -88,10 +111,14 @@ function createDataSourceMock() {
     prefetchNextPage,
     prefetchPreviousPage,
     previousCursor,
+    remove,
     removedCount,
+    restore,
+    retry,
     retryInitialLoad,
     setActiveIndex,
     setAutoPrefetchEnabled,
+    undo,
   }
 }
 
@@ -193,6 +220,39 @@ describe('useController', () => {
 
     controller.unmount()
   })
+
+  it('emits controlled desktop surface changes instead of mutating private state directly', async () => {
+    setViewportWidth(1_280)
+
+    const controller = await mountController({
+      items: [createItem('controlled-item')],
+      surfaceMode: 'list',
+    })
+
+    controller.api.openFullscreen(0)
+    await controller.flush()
+
+    expect(controller.emit).toHaveBeenCalledWith('update:surfaceMode', 'fullscreen')
+    expect(controller.api.surfaceMode.value).toBe('list')
+
+    controller.props.surfaceMode = 'fullscreen'
+    await controller.flush()
+
+    expect(controller.api.surfaceMode.value).toBe('fullscreen')
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await controller.flush()
+
+    expect(controller.emit).toHaveBeenCalledWith('update:surfaceMode', 'list')
+
+    controller.props.surfaceMode = 'list'
+    await controller.flush()
+
+    expect(controller.api.surfaceMode.value).toBe('list')
+    expect(controller.api.listRestoreToken.value).toBe(2)
+
+    controller.unmount()
+  })
 })
 
 async function mountController(initialProps: Partial<VibeProps> = { items: [] }) {
@@ -201,14 +261,16 @@ async function mountController(initialProps: Partial<VibeProps> = { items: [] })
   const props = reactive({
     items: [],
     ...initialProps,
-  }) as Readonly<VibeProps>
+  })
+  const emit = vi.fn()
+  const readonlyProps = props as Readonly<VibeProps>
 
   const container = document.createElement('div')
   document.body.appendChild(container)
 
   const app = createApp(defineComponent({
     setup() {
-      api = useController(props, vi.fn())
+      api = useController(readonlyProps, emit)
       return () => h('div')
     },
   }))
@@ -218,7 +280,9 @@ async function mountController(initialProps: Partial<VibeProps> = { items: [] })
 
   return {
     api,
+    emit,
     flush,
+    props,
     unmount() {
       app.unmount()
       container.remove()
@@ -244,17 +308,22 @@ function createItem(id: string): VibeViewerItem {
 
 function resetDataSourceMock() {
   dataSourceMock.activeIndex.value = 0
+  dataSourceMock.cancel.mockClear()
   dataSourceMock.canRetryInitialLoad.value = false
+  dataSourceMock.clearRemoved.mockClear()
   dataSourceMock.commitPendingAppend.mockClear()
   dataSourceMock.currentCursor.value = null
   dataSourceMock.errorMessage.value = null
   dataSourceMock.fillCollectedCount.value = null
   dataSourceMock.fillDelayRemainingMs.value = null
   dataSourceMock.fillTargetCount.value = null
+  dataSourceMock.getRemovedIds.mockClear()
   dataSourceMock.hasNextPage.value = false
   dataSourceMock.hasPreviousPage.value = false
   dataSourceMock.isAutoMode.value = false
   dataSourceMock.items.value = []
+  dataSourceMock.loadNext.mockClear()
+  dataSourceMock.loadPrevious.mockClear()
   dataSourceMock.loading.value = false
   dataSourceMock.mode.value = null
   dataSourceMock.nextCursor.value = null
@@ -264,10 +333,14 @@ function resetDataSourceMock() {
   dataSourceMock.prefetchNextPage.mockClear()
   dataSourceMock.prefetchPreviousPage.mockClear()
   dataSourceMock.previousCursor.value = null
+  dataSourceMock.remove.mockClear()
   dataSourceMock.removedCount.value = 0
+  dataSourceMock.restore.mockClear()
+  dataSourceMock.retry.mockClear()
   dataSourceMock.retryInitialLoad.mockClear()
   dataSourceMock.setActiveIndex.mockClear()
   dataSourceMock.setAutoPrefetchEnabled.mockClear()
+  dataSourceMock.undo.mockClear()
 }
 
 function setViewportWidth(width: number) {

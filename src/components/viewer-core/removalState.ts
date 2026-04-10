@@ -6,6 +6,7 @@ export interface VibeRemoveResult {
 
 export type VibeFeedMode = 'dynamic' | 'static'
 export type VibeLoadPhase = 'failed' | 'filling' | 'idle' | 'loading' | 'reloading'
+export type VibeSurfaceMode = 'fullscreen' | 'list'
 
 export interface VibeStatus {
   activeIndex: number
@@ -24,7 +25,7 @@ export interface VibeStatus {
   phase: VibeLoadPhase
   previousCursor: string | null
   removedCount: number
-  surfaceMode: 'fullscreen' | 'list'
+  surfaceMode: VibeSurfaceMode
 }
 
 export interface VibeHandle {

@@ -11,10 +11,12 @@ import { abortListCardImageLoad, abortListCardVideoLoad, isListCardWithinViewpor
 import { getListRenderableAsset } from './viewer-core/listPreview'
 import { canRetryVibeAssetError, getVibeAssetErrorLabel, resolveVibeAssetErrorKind, type VibeAssetErrorKind } from './viewer-core/loadError'
 import { playMediaElement } from './viewer-core/mediaPlayback'
-import { defaultAssetLoadQueue, type VibeAssetLoadLease } from './viewer-core/useAssetLoadQueue'
+import { createFrameScheduler } from './viewer-core/createFrameScheduler'
+import { createAssetLoadQueue, type VibeAssetLoadLease, type VibeAssetLoadQueue } from './viewer-core/useAssetLoadQueue'
 
 const props = withDefaults(defineProps<{
   active?: boolean
+  assetLoadQueue?: VibeAssetLoadQueue | null
   index?: number
   item: VibeViewerItem
   reportAssetError?: VibeAssetErrorReporter | null
@@ -22,14 +24,13 @@ const props = withDefaults(defineProps<{
   surfaceActive?: boolean
 }>(), {
   active: false,
+  assetLoadQueue: null,
   index: 0,
   reportAssetError: null,
   reportAssetLoad: null,
   surfaceActive: true,
 })
-const emit = defineEmits<{
-  open: []
-}>()
+const emit = defineEmits<{ open: [] }>()
 defineSlots<{
   'grid-item-overlay'?: (props: {
     active: boolean
@@ -75,14 +76,17 @@ const shouldRenderImage = computed(() => renderableAsset.value.kind === 'image' 
 const shouldRenderVideo = computed(() => renderableAsset.value.kind === 'video' && Boolean(attachedAssetUrl.value))
 const shouldRenderError = computed(() => Boolean(loadErrorKind.value))
 const canRetryAsset = computed(() => canRetryVibeAssetError(loadErrorKind.value))
-const shouldShowSpinner = computed(() =>
-  isQueueEligible.value && !loadErrorKind.value && (!canAttachAsset.value || !isReady.value),
-)
-
+const shouldShowSpinner = computed(() => isQueueEligible.value && !loadErrorKind.value && (!canAttachAsset.value || !isReady.value))
 let intersectionObserver: IntersectionObserver | null = null
 let loadLease: VibeAssetLoadLease | null = null
 const reportedLoadKeys = new Set<string>()
-
+const fallbackAssetLoadQueue = createAssetLoadQueue()
+const viewportSync = createFrameScheduler(() => {
+  if (!props.surfaceActive) return
+  syncVisibilityFromBounds()
+  syncAssetQueue()
+  syncVideoPlayback()
+})
 watch(
   [attachedAssetUrl, () => renderableAsset.value.kind],
   () => {
@@ -108,15 +112,9 @@ watch(
       syncVideoPlayback()
       return
     }
-
-    requestAnimationFrame(() => {
-      syncVisibilityFromBounds()
-      syncAssetQueue()
-      syncVideoPlayback()
-    })
+    viewportSync.schedule()
   },
 )
-
 onMounted(() => {
   if (!rootRef.value || typeof IntersectionObserver === 'undefined') {
     scrollRootRef.value = null
@@ -125,6 +123,7 @@ onMounted(() => {
     return
   }
   scrollRootRef.value = rootRef.value.closest('[data-testid="vibe-list-scroll"]')
+  scrollRootRef.value?.addEventListener('scroll', viewportSync.schedule, { passive: true })
   intersectionObserver = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
@@ -147,11 +146,12 @@ onMounted(() => {
 
   intersectionObserver.observe(rootRef.value)
 })
-
 onBeforeUnmount(() => {
   teardownAssetLoad()
+  scrollRootRef.value?.removeEventListener('scroll', viewportSync.schedule)
   intersectionObserver?.disconnect()
   intersectionObserver = null
+  viewportSync.cancel()
 })
 
 function onImageLoad() {
@@ -227,7 +227,7 @@ function syncAssetQueue() {
     return
   }
 
-  loadLease = defaultAssetLoadQueue.request({
+  loadLease = (props.assetLoadQueue ?? fallbackAssetLoadQueue).request({
     assetType: renderableAsset.value.kind,
     getPriority: getLoadPriority,
     onGrant() {

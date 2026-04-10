@@ -2,7 +2,8 @@ import { computed, ref, watch } from 'vue'
 
 import type { VibeViewerItem } from '../viewer'
 import { getVibeOccurrenceKey, reconcileVibeOccurrenceKeys } from './itemIdentity'
-import { useVibeRemovalState } from './removalState'
+import { useVibeRemovalState, type VibeSurfaceMode } from './removalState'
+import type { VibeAssetLoadQueueLimits } from './useAssetLoadQueue'
 import { useAutoResolveSource } from './useAutoResolveSource'
 
 export type { VibeHandle, VibeRemoveResult } from './removalState'
@@ -29,10 +30,13 @@ export interface VibeInitialState {
 }
 
 interface VibeSharedProps {
+  assetLoadLimits?: Partial<VibeAssetLoadQueueLimits>
   hasPreviousPage?: boolean
   paginationDetail?: string | null
   requestNextPage?: (() => void | Promise<void>) | null
   requestPreviousPage?: (() => void | Promise<void>) | null
+  showStatusBadges?: boolean
+  surfaceMode?: VibeSurfaceMode
 }
 
 export interface VibeControlledProps extends VibeSharedProps {
@@ -49,7 +53,7 @@ export interface VibeControlledProps extends VibeSharedProps {
   pageSize?: never
 }
 
-export interface VibeAutoProps {
+export interface VibeAutoProps extends VibeSharedProps {
   resolve: (params: VibeResolveParams) => Promise<VibeResolveResult>
   fillDelayMs?: number
   fillDelayStepMs?: number

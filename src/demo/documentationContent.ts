@@ -139,17 +139,19 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
         title: 'Controlled Mode',
         description: [
           'Use controlled mode when the app owns aggregation, paging policy, or feed state outside the component.',
-          'The component still manages rendering, navigation, fullscreen, removal state, and grid behavior.',
+          'The component still manages rendering, navigation, removal state, and grid behavior.',
+          'Add surfaceMode when the app wants the URL or surrounding shell to own desktop list versus fullscreen state.',
         ],
         code: `<script setup lang="ts">
 import { ref } from 'vue'
-import { VibeLayout, type VibeViewerItem } from '@wyxos/vibe'
+import { VibeLayout, type VibeSurfaceMode, type VibeViewerItem } from '@wyxos/vibe'
 
 const items = ref<VibeViewerItem[]>([])
 const activeIndex = ref(0)
 const loading = ref(false)
 const hasNextPage = ref(true)
 const hasPreviousPage = ref(false)
+const surfaceMode = ref<VibeSurfaceMode>('list')
 
 async function requestNextPage() {}
 async function requestPreviousPage() {}
@@ -164,7 +166,9 @@ async function requestPreviousPage() {}
     :has-previous-page="hasPreviousPage"
     :request-next-page="requestNextPage"
     :request-previous-page="requestPreviousPage"
+    :surface-mode="surfaceMode"
     @update:active-index="activeIndex = $event"
+    @update:surface-mode="surfaceMode = $event"
   />
 </template>`,
         language: 'vue',
@@ -225,6 +229,24 @@ async function requestPreviousPage() {}
 </VibeLayout>`,
         language: 'vue',
       },
+      {
+        id: 'status-badges',
+        label: 'Status Badges',
+        title: 'Built-In Status Badges',
+        description: [
+          'Set show-status-badges to false when the host app already renders its own feed status UI.',
+          'That suppresses both Vibe badge rendering and the matching grid-status and fullscreen-status slot surfaces.',
+        ],
+        code: `<VibeLayout
+  :resolve="resolve"
+  :show-status-badges="false"
+>
+  <template #grid-footer>
+    <MyStatusBar />
+  </template>
+</VibeLayout>`,
+        language: 'vue',
+      },
     ],
   },
   {
@@ -253,7 +275,7 @@ app.use(VibePlugin)
         title: 'Props',
         description: [
           'VibeLayout supports two prop modes: auto mode with resolve, and controlled mode with items.',
-          'resolve and items are mutually exclusive.',
+          'resolve and items are mutually exclusive, while surfaceMode, assetLoadLimits, and showStatusBadges work in either mode.',
         ],
         code: `type VibeAutoProps = {
   resolve: (params: VibeResolveParams) => Promise<VibeResolveResult>
@@ -262,19 +284,30 @@ app.use(VibePlugin)
   pageSize?: number
   fillDelayMs?: number
   fillDelayStepMs?: number
+  surfaceMode?: 'list' | 'fullscreen'
+  showStatusBadges?: boolean
+  assetLoadLimits?: Partial<VibeAssetLoadQueueLimits>
 }
 
 type VibeControlledProps = {
   items: VibeViewerItem[]
   activeIndex?: number
+  surfaceMode?: 'list' | 'fullscreen'
   loading?: boolean
   hasNextPage?: boolean
   hasPreviousPage?: boolean
   paginationDetail?: string | null
   requestNextPage?: (() => void | Promise<void>) | null
   requestPreviousPage?: (() => void | Promise<void>) | null
+  showStatusBadges?: boolean
+  assetLoadLimits?: Partial<VibeAssetLoadQueueLimits>
 }`,
         language: 'ts',
+        notes: [
+          'assetLoadLimits only applies to grid/list preview loading.',
+          'Current defaults are maxGlobal: 10, maxPerDomain: 4, and maxVideoPerDomain: 2.',
+          'Fullscreen keeps its fixed ahead preload count of 2 items.',
+        ],
       },
       {
         id: 'api-events',
@@ -282,13 +315,14 @@ type VibeControlledProps = {
         title: 'Events',
         description: [
           'The public event surface stays intentionally small, but it now includes batched preload success and failure reporting.',
-          'Use update:activeIndex to observe the visible item, asset-loads for grouped preload successes, and asset-errors for grouped preload failures.',
+          'Use update:activeIndex to observe the visible item, update:surfaceMode to control desktop list versus fullscreen state, asset-loads for grouped preload successes, and asset-errors for grouped preload failures.',
         ],
         code: `<script setup lang="ts">
 import { ref } from 'vue'
-import type { VibeAssetErrorEvent, VibeAssetLoadEvent } from '@wyxos/vibe'
+import type { VibeAssetErrorEvent, VibeAssetLoadEvent, VibeSurfaceMode } from '@wyxos/vibe'
 
 const activeIndex = ref(0)
+const surfaceMode = ref<VibeSurfaceMode>('list')
 
 function onAssetLoads(loads: VibeAssetLoadEvent[]) {
   console.log(loads)
@@ -303,9 +337,11 @@ function onAssetErrors(errors: VibeAssetErrorEvent[]) {
   <VibeLayout
     :items="items"
     :active-index="activeIndex"
+    :surface-mode="surfaceMode"
     @asset-loads="onAssetLoads"
     @asset-errors="onAssetErrors"
     @update:active-index="activeIndex = $event"
+    @update:surface-mode="surfaceMode = $event"
   />
 </template>`,
         language: 'vue',
@@ -314,6 +350,7 @@ function onAssetErrors(errors: VibeAssetErrorEvent[]) {
           'asset-errors emits an array payload, not a single error.',
           'Both batches are micro-buffered and deduped within the same short window.',
           'If the same item fails again later, it may emit again in a later batch.',
+          'update:surfaceMode only applies on desktop; mobile always renders fullscreen.',
         ],
       },
       {
@@ -427,12 +464,14 @@ console.log(vibe.value?.status.fillDelayRemainingMs)`,
   VibeAssetErrorKind,
   VibeAssetErrorSurface,
   VibeAssetLoadEvent,
+  VibeAssetLoadQueueLimits,
   VibeAssetLoadSurface,
-  VibeViewerItem,
+  VibeHandle,
+  VibeProps,
   VibeResolveParams,
   VibeResolveResult,
-  VibeProps,
-  VibeHandle,
+  VibeSurfaceMode,
+  VibeViewerItem,
 } from '@wyxos/vibe'`,
         language: 'ts',
       },

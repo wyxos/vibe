@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { h, nextTick } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { resolveVibeAssetErrorKindMock } = vi.hoisted(() => ({
@@ -27,6 +27,11 @@ describe('VibeListCard', () => {
     resolveVibeAssetErrorKindMock.mockReset()
     resolveVibeAssetErrorKindMock.mockResolvedValue('generic')
     vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      callback(0)
+      return 1
+    })
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
     MockIntersectionObserver.instances = intersectionObservers
   })
 
@@ -85,6 +90,50 @@ describe('VibeListCard', () => {
     expect(srcSetter).toHaveBeenCalledWith('')
     expect(wrapper.find('img').exists()).toBe(false)
     expect(wrapper.find('[data-testid="vibe-list-card-error"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('recomputes preview visibility when the masonry scroll root moves the tile into view', async () => {
+    let cardTop = 820
+    const item = createImageItem('image-scroll-sync')
+    const Host = defineComponent({
+      components: {
+        VibeListCard,
+      },
+      setup() {
+        return {
+          item,
+        }
+      },
+      template: `
+        <div data-testid="vibe-list-scroll">
+          <VibeListCard :item="item" />
+        </div>
+      `,
+    })
+
+    const wrapper = mount(Host, {
+      attachTo: document.body,
+    })
+
+    const card = wrapper.getComponent(VibeListCard)
+    const cardElement = card.get('[data-testid="vibe-list-card-inner"]').element as HTMLElement
+    const scrollRoot = wrapper.get('[data-testid="vibe-list-scroll"]').element as HTMLElement
+
+    vi.spyOn(cardElement, 'getBoundingClientRect').mockImplementation(() => createRect(0, cardTop, 160, 120))
+    vi.spyOn(scrollRoot, 'getBoundingClientRect').mockImplementation(() => createRect(0, 0, 400, 700))
+
+    await flushDom()
+
+    expect(card.find('img').exists()).toBe(false)
+
+    cardTop = 40
+    scrollRoot.dispatchEvent(new Event('scroll'))
+    await flushDom()
+
+    expect(card.get('img').attributes('src')).toBe('https://example.com/image-scroll-sync-preview.jpg')
+    expect(card.get('[data-testid="vibe-list-card-spinner"]').exists()).toBe(true)
 
     wrapper.unmount()
   })

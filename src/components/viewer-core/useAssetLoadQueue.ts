@@ -17,6 +17,12 @@ export interface VibeAssetLoadLease {
   release: () => void
 }
 
+export interface VibeAssetLoadQueue {
+  getLimits: () => VibeAssetLoadQueueLimits
+  request: (options: VibeAssetLoadRequest) => VibeAssetLoadLease
+  setLimits: (limits?: Partial<VibeAssetLoadQueueLimits> | null) => void
+}
+
 interface InternalRequest extends VibeAssetLoadRequest {
   domain: string
   enqueuedAt: number
@@ -29,9 +35,18 @@ const DEFAULT_LIMITS: VibeAssetLoadQueueLimits = {
   maxVideoPerDomain: 2,
 }
 
-export function createAssetLoadQueue(limits: VibeAssetLoadQueueLimits = DEFAULT_LIMITS) {
+export function resolveAssetLoadQueueLimits(limits?: Partial<VibeAssetLoadQueueLimits> | null): VibeAssetLoadQueueLimits {
+  return {
+    maxGlobal: limits?.maxGlobal ?? DEFAULT_LIMITS.maxGlobal,
+    maxPerDomain: limits?.maxPerDomain ?? DEFAULT_LIMITS.maxPerDomain,
+    maxVideoPerDomain: limits?.maxVideoPerDomain ?? DEFAULT_LIMITS.maxVideoPerDomain,
+  }
+}
+
+export function createAssetLoadQueue(initialLimits?: Partial<VibeAssetLoadQueueLimits> | null): VibeAssetLoadQueue {
   const activeRequests = new Map<string, InternalRequest>()
   const pendingRequests = new Map<string, InternalRequest>()
+  let limits = resolveAssetLoadQueueLimits(initialLimits)
   let nextId = 0
 
   function request(options: VibeAssetLoadRequest): VibeAssetLoadLease {
@@ -98,6 +113,15 @@ export function createAssetLoadQueue(limits: VibeAssetLoadQueueLimits = DEFAULT_
     }
   }
 
+  function getLimits() {
+    return { ...limits }
+  }
+
+  function setLimits(nextLimits?: Partial<VibeAssetLoadQueueLimits> | null) {
+    limits = resolveAssetLoadQueueLimits(nextLimits)
+    processQueue()
+  }
+
   function canGrant(request: InternalRequest) {
     const domainActiveRequests = [...activeRequests.values()].filter((entry) => entry.domain === request.domain)
 
@@ -117,11 +141,11 @@ export function createAssetLoadQueue(limits: VibeAssetLoadQueueLimits = DEFAULT_
   }
 
   return {
+    getLimits,
     request,
+    setLimits,
   }
 }
-
-export const defaultAssetLoadQueue = createAssetLoadQueue()
 
 function getRequestPriority(request: InternalRequest) {
   try {

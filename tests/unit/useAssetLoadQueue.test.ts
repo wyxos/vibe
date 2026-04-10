@@ -3,6 +3,18 @@ import { describe, expect, it, vi } from 'vitest'
 import { createAssetLoadQueue } from '@/components/viewer-core/useAssetLoadQueue'
 
 describe('useAssetLoadQueue', () => {
+  it('merges partial limits with the public defaults', () => {
+    const queue = createAssetLoadQueue({
+      maxGlobal: 3,
+    })
+
+    expect(queue.getLimits()).toEqual({
+      maxGlobal: 3,
+      maxPerDomain: 4,
+      maxVideoPerDomain: 2,
+    })
+  })
+
   it('limits concurrent loads globally, by domain, and by video domain cap', () => {
     const queue = createAssetLoadQueue({
       maxGlobal: 10,
@@ -79,6 +91,52 @@ describe('useAssetLoadQueue', () => {
       'far-item',
       'center-item',
     ])
+  })
+
+  it('keeps queue state isolated per instance', () => {
+    const firstQueue = createAssetLoadQueue({
+      maxGlobal: 1,
+      maxPerDomain: 1,
+      maxVideoPerDomain: 1,
+    })
+    const secondQueue = createAssetLoadQueue({
+      maxGlobal: 1,
+      maxPerDomain: 1,
+      maxVideoPerDomain: 1,
+    })
+
+    const firstGranted: string[] = []
+    const secondGranted: string[] = []
+
+    requestAsset(firstQueue, firstGranted, 'first-a', 'https://media.example.com/first-a.jpg', 'image', 0)
+    requestAsset(firstQueue, firstGranted, 'first-b', 'https://media.example.com/first-b.jpg', 'image', 1)
+    requestAsset(secondQueue, secondGranted, 'second-a', 'https://media.example.com/second-a.jpg', 'image', 0)
+
+    expect(firstGranted).toEqual(['first-a'])
+    expect(secondGranted).toEqual(['second-a'])
+  })
+
+  it('applies updated limits to pending requests', () => {
+    const queue = createAssetLoadQueue({
+      maxGlobal: 1,
+      maxPerDomain: 1,
+      maxVideoPerDomain: 1,
+    })
+
+    const granted: string[] = []
+
+    requestAsset(queue, granted, 'image-a', 'https://media.example.com/image-a.jpg', 'image', 0)
+    requestAsset(queue, granted, 'image-b', 'https://media.example.com/image-b.jpg', 'image', 1)
+
+    expect(granted).toEqual(['image-a'])
+
+    queue.setLimits({
+      maxGlobal: 2,
+      maxPerDomain: 2,
+      maxVideoPerDomain: 1,
+    })
+
+    expect(granted).toEqual(['image-a', 'image-b'])
   })
 })
 

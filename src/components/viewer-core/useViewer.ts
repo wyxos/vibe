@@ -21,7 +21,8 @@ export type {
   VibeProps,
 } from './useDataSource'
 export type { VibeAssetErrorKind } from './loadError'
-export type { VibeStatus } from './removalState'
+export type { VibeStatus, VibeSurfaceMode } from './removalState'
+export type { VibeAssetLoadQueueLimits } from './useAssetLoadQueue'
 export type { VibeAssetErrorEvent, VibeAssetErrorReporter, VibeAssetErrorSurface, VibeAssetLoadEvent, VibeAssetLoadReporter, VibeAssetLoadSurface } from './assetErrors'
 
 export function useViewer(

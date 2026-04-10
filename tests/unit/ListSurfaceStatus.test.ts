@@ -34,6 +34,30 @@ describe('VibeLayout grid status slot', () => {
 
     wrapper.unmount()
   })
+
+  it('suppresses grid status badges and slot rendering when showStatusBadges is false', async () => {
+    setViewportWidth(1_280)
+
+    const wrapper = mount(Layout, {
+      props: {
+        items: [createImageItem('image-grid-status-hidden', 'Grid status image')],
+        loading: true,
+        hasNextPage: true,
+        showStatusBadges: false,
+      },
+      slots: {
+        'grid-status': ({ kind, message }: { kind: 'end' | 'loading-more'; message: string }) =>
+          h('div', { 'data-kind': kind, 'data-testid': 'custom-grid-status' }, message),
+      },
+    })
+
+    await flushDom()
+
+    expect(wrapper.find('[data-testid="custom-grid-status"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Loading more items')
+
+    wrapper.unmount()
+  })
 })
 
 function createImageItem(id: string, title?: string): VibeViewerItem {

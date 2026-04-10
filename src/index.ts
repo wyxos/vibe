@@ -7,6 +7,7 @@ export type {
   VibeAssetErrorEvent,
   VibeAssetErrorKind,
   VibeAssetErrorSurface,
+  VibeAssetLoadQueueLimits,
   VibeAssetLoadEvent,
   VibeAssetLoadSurface,
   VibeResolveParams,
@@ -18,6 +19,7 @@ export type {
   VibeInitialState,
   VibeLoadPhase,
   VibeProps,
+  VibeSurfaceMode,
   VibeStatus,
 } from './components/viewer-core/useViewer'
 

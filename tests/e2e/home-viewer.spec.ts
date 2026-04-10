@@ -148,6 +148,7 @@ test('desktop home viewer auto-loads the next page and keeps the list virtualize
   await page.getByTestId('vibe-back-to-list').click()
   await expect(root).toHaveAttribute('data-surface-mode', 'list')
   await expect.poll(async () => cards.count()).toBeLessThan(50)
+  await expect.poll(async () => listSurface.getByTestId('vibe-list-card-spinner').count()).toBe(0)
 })
 
 test('desktop masonry list scroll loads one page per bottom hit', async ({ page }) => {
