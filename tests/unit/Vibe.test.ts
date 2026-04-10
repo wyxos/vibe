@@ -119,6 +119,29 @@ describe('VibeLayout', () => {
     wrapper.unmount()
   })
 
+  it('renders a custom empty-state slot instead of the built-in copy', async () => {
+    setViewportWidth(1_280)
+
+    const wrapper = mount(Layout, {
+      props: {
+        items: [],
+      },
+      slots: {
+        'empty-state': ({ loading }: { loading: boolean }) =>
+          h('div', { 'data-testid': 'custom-empty-state', 'data-loading': loading ? 'true' : 'false' }, 'Atlas empty state'),
+      },
+    })
+
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="custom-empty-state"]').attributes('data-loading')).toBe('false')
+    expect(wrapper.text()).toContain('Atlas empty state')
+    expect(wrapper.text()).not.toContain('Viewer ready')
+    expect(wrapper.text()).not.toContain('Attach items to VibeLayout')
+
+    wrapper.unmount()
+  })
+
   it('shows an image spinner until the active image finishes loading', async () => {
     setViewportWidth(390)
 

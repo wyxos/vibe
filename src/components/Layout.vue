@@ -4,7 +4,7 @@ import { LoaderCircle } from 'lucide-vue-next'
 
 import type { VibeViewerItem } from './viewer'
 import { createAssetErrorBatchReporter, createAssetLoadBatchReporter, type VibeAssetErrorEvent, type VibeAssetLoadEvent } from './viewer-core/assetErrors'
-import type { VibeFullscreenStatusSlotProps, VibeGridStatusSlotProps, VibeSurfaceSlotProps } from './viewer-core/surfaceSlots'
+import type { VibeEmptyStateSlotProps, VibeFullscreenStatusSlotProps, VibeGridStatusSlotProps, VibeSurfaceSlotProps } from './viewer-core/surfaceSlots'
 import { createAssetLoadQueue } from './viewer-core/useAssetLoadQueue'
 import type { VibeHandle, VibeProps } from './viewer-core/useViewer'
 import { useController } from './viewer-core/useController'
@@ -24,6 +24,7 @@ const slots = defineSlots<{
   'fullscreen-header-actions'?: (props: VibeSurfaceSlotProps) => unknown
   'fullscreen-overlay'?: (props: VibeSurfaceSlotProps) => unknown
   'fullscreen-status'?: (props: VibeFullscreenStatusSlotProps) => unknown
+  'empty-state'?: (props: VibeEmptyStateSlotProps) => unknown
   'grid-footer'?: () => unknown
   'grid-item-overlay'?: (props: {
     active: boolean
@@ -89,7 +90,7 @@ defineExpose<VibeHandle>({
     class="relative h-full min-h-0 overflow-hidden bg-[#05060a] text-[#f7f1ea]"
   >
     <button
-      v-if="viewer.canRetryInitialLoad.value"
+      v-if="viewer.canRetryInitialLoad.value && !slots['empty-state']"
       type="button"
       class="absolute left-5 top-5 z-30 inline-flex items-center border border-rose-400/55 bg-rose-500/18 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-white backdrop-blur transition hover:bg-rose-500/28"
       @click="viewer.retryInitialLoad"
@@ -108,7 +109,15 @@ defineExpose<VibeHandle>({
       v-if="viewer.items.value.length === 0"
       class="relative z-[1] grid h-full w-full content-center justify-items-center gap-6 px-[clamp(2rem,4vw,3rem)] py-[clamp(2rem,4vw,3rem)] text-center"
     >
-      <template v-if="viewer.loading.value">
+      <template v-if="slots['empty-state']">
+        <slot
+          name="empty-state"
+          :can-retry="viewer.canRetryInitialLoad.value"
+          :loading="viewer.loading.value"
+          :retry="viewer.retryInitialLoad"
+        />
+      </template>
+      <template v-else-if="viewer.loading.value">
         <LoaderCircle class="size-10 animate-spin text-[#f7f1ea]/82" aria-hidden="true" />
         <p class="m-0 text-[0.9rem] font-semibold uppercase tracking-[0.22em] text-[#f7f1ea]/72">
           Loading...

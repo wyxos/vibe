@@ -24,3 +24,9 @@ export type VibeGridStatusSlotProps = {
   paginationDetail: string | null
   total: number
 }
+
+export type VibeEmptyStateSlotProps = {
+  canRetry: boolean
+  loading: boolean
+  retry: () => void | Promise<void>
+}
