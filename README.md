@@ -70,13 +70,14 @@ Optional auto-mode pacing props:
 ```vue
 <VibeLayout
   :resolve="resolve"
-  :fill-delay-ms="1000"
-  :fill-delay-step-ms="250"
+  :fill-delay-ms="2000"
+  :fill-delay-step-ms="1000"
 />
 ```
 
 - `fill-delay-ms`: base delay before the first chained fill request
 - `fill-delay-step-ms`: extra delay added for each additional chained fill request in the same fill cycle
+- defaults: `2000` and `1000`
 
 Optional auto-mode feed strategy:
 

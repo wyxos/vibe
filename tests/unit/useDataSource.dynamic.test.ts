@@ -47,7 +47,7 @@ describe('useDataSource dynamic mode', () => {
     expect(source.api.fillCollectedCount.value).toBe(20)
     expect(source.api.fillDelayRemainingMs.value).toBeGreaterThan(0)
 
-    await vi.advanceTimersByTimeAsync(1_000)
+    await vi.advanceTimersByTimeAsync(2_000)
     await source.flush()
 
     expect(resolve).toHaveBeenCalledTimes(2)
@@ -55,7 +55,7 @@ describe('useDataSource dynamic mode', () => {
     expect(source.api.fillCollectedCount.value).toBe(23)
     expect(source.api.fillDelayRemainingMs.value).toBeGreaterThan(0)
 
-    await vi.advanceTimersByTimeAsync(1_250)
+    await vi.advanceTimersByTimeAsync(3_000)
     await source.flush()
 
     expect(resolve).toHaveBeenCalledTimes(3)
@@ -134,7 +134,7 @@ describe('useDataSource dynamic mode', () => {
     expect(source.api.fillDelayRemainingMs.value).toBeGreaterThan(0)
     expect(source.api.fillTargetCount.value).toBe(25)
 
-    await vi.advanceTimersByTimeAsync(1_000)
+    await vi.advanceTimersByTimeAsync(2_000)
     await source.flush()
 
     expect(resolve).toHaveBeenCalledTimes(3)

@@ -86,7 +86,7 @@ test('dynamic feed demo shows filling progress before committing a full appended
   await hitBottom(scrollViewport)
 
   await expect(statusBar.getByTestId('dynamic-demo-status-status')).toContainText('filling', { timeout: 15_000 })
-  await expect(statusBar.getByTestId('dynamic-demo-status-delay')).toHaveText(/0\.\ds|1\.\ds/, { timeout: 15_000 })
+  await expect(statusBar.getByTestId('dynamic-demo-status-delay')).toHaveText(/0\.\ds|1\.\ds|2\.\ds|3\.\ds/, { timeout: 15_000 })
   await expect(statusBar.getByTestId('dynamic-demo-status-fill')).toContainText('/ 25')
 
   await expect.poll(async () => (await getPaginationState(progress)).total).toBe(50)

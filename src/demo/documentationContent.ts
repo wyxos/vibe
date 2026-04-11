@@ -122,14 +122,15 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
   :resolve="resolve"
   mode="dynamic"
   :page-size="25"
-  :fill-delay-ms="1000"
-  :fill-delay-step-ms="250"
+  :fill-delay-ms="2000"
+  :fill-delay-step-ms="1000"
 />`,
         language: 'vue',
         notes: [
           'dynamic is the default mode.',
           'fill-delay-ms controls the base delay before the first chained fill request.',
           'fill-delay-step-ms adds extra delay for each additional chained request in the same fill cycle.',
+          'Defaults are 2000ms and 1000ms.',
           'Status exposes phase, raw cursors, fill counts, and the live delay countdown.',
         ],
       },

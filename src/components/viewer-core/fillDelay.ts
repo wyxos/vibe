@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 
-export const DEFAULT_DYNAMIC_FILL_DELAY_MS = 1_000
-export const DEFAULT_DYNAMIC_FILL_DELAY_STEP_MS = 250
+export const DEFAULT_DYNAMIC_FILL_DELAY_MS = 2_000
+export const DEFAULT_DYNAMIC_FILL_DELAY_STEP_MS = 1_000
 const FILL_DELAY_TICK_MS = 100
 
 export function getDynamicFillDelayMs(
