@@ -1,18 +1,16 @@
 import { computed, ref, type Ref } from 'vue'
 
+import type { VibeViewerItem } from '../viewer'
 import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './assetErrors'
 import { isEditableTarget, isInteractiveTarget } from './dom'
 import { formatPlaybackTime } from './format'
 import { useActivation } from './useActivation'
-import { useDataSource, type VibeProps } from './useDataSource'
 import { useMedia } from './useMedia'
 import { getRenderedItems, getRenderedRange, getVirtualSlideStyle } from './virtualization'
 
 export type {
   VibeResolveParams,
   VibeResolveResult,
-  VibeAutoProps,
-  VibeControlledProps,
   VibeEmit,
   VibeFeedMode,
   VibeHandle,
@@ -24,8 +22,16 @@ export type { VibeAssetErrorKind } from './loadError'
 export type { VibeStatus } from './removalState'
 export type { VibeAssetErrorEvent, VibeAssetErrorReporter, VibeAssetErrorSurface, VibeAssetLoadEvent, VibeAssetLoadReporter, VibeAssetLoadSurface } from './assetErrors'
 
+export interface VibeViewerProps {
+  activeIndex?: number
+  hasNextPage?: boolean
+  items: VibeViewerItem[]
+  loading?: boolean
+  paginationDetail?: string | null
+}
+
 export function useViewer(
-  props: Readonly<VibeProps>,
+  props: Readonly<VibeViewerProps>,
   emit: (event: 'update:activeIndex', value: number) => void,
   options: {
     enabled?: Ref<boolean>
@@ -33,18 +39,13 @@ export function useViewer(
     onAssetLoad?: VibeAssetLoadReporter
   } = {},
 ) {
-  const dataSource = useDataSource(props, emit)
-  const {
-    activeIndex,
-    canRetryInitialLoad,
-    errorMessage,
-    hasNextPage,
-    items,
-    loading,
-    paginationDetail,
-    retryInitialLoad,
-    setActiveIndex,
-  } = dataSource
+  const items = computed(() => props.items)
+  const activeIndex = computed(() => props.activeIndex ?? 0)
+  const loading = computed(() => props.loading ?? false)
+  const hasNextPage = computed(() => props.hasNextPage ?? false)
+  const paginationDetail = computed(() => props.paginationDetail ?? null)
+  const canRetryInitialLoad = computed(() => false)
+  const errorMessage = computed<string | null>(() => null)
 
   const stageRef = ref<HTMLElement | null>(null)
   const dragOffset = ref(0)
@@ -139,7 +140,7 @@ export function useViewer(
     const nextIndex = clamp(resolvedActiveIndex.value + direction, 0, items.value.length - 1)
 
     if (nextIndex !== resolvedActiveIndex.value) {
-      setActiveIndex(nextIndex)
+      emit('update:activeIndex', nextIndex)
     }
   }
 
@@ -309,7 +310,7 @@ export function useViewer(
     renderedItems,
     renderedRange,
     resolvedActiveIndex,
-    retryInitialLoad,
+    retryInitialLoad: async () => {},
     retryAsset: media.retryAsset,
     stageRef,
     statusMessage,

@@ -18,6 +18,7 @@ vi.mock('@/components/viewer-core/loadError', () => ({
 
 import Layout from '@/components/Layout.vue'
 import type { VibeViewerItem } from '@/components/viewer'
+import { createSeededVibeProps } from '../helpers/createSeededVibeProps'
 
 const DEFAULT_VIEWPORT_WIDTH = window.innerWidth
 
@@ -37,7 +38,7 @@ describe('VibeLayout asset error events', () => {
     const onAssetErrors = vi.fn()
     const wrapper = mount(Layout, {
       props: {
-        items: [createImageItem('grid-broken-1', 'Broken 1'), createImageItem('grid-broken-2', 'Broken 2')],
+        ...createSeededVibeProps([createImageItem('grid-broken-1', 'Broken 1'), createImageItem('grid-broken-2', 'Broken 2')]),
         onAssetErrors,
       },
     })
@@ -85,11 +86,12 @@ describe('VibeLayout asset error events', () => {
     const onAssetErrors = vi.fn()
     const wrapper = mount(Layout, {
       props: {
-        items: [createImageItem('image-404', 'Missing image')],
+        ...createSeededVibeProps([createImageItem('image-404', 'Missing image')]),
         onAssetErrors,
       },
     })
 
+    await flushDom()
     await wrapper.get('img').trigger('error')
     await flushDom()
     await vi.advanceTimersByTimeAsync(150)

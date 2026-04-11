@@ -21,6 +21,7 @@ vi.mock('@/components/viewer-core/loadError', () => ({
 import Layout from '@/components/Layout.vue'
 import type { VibeViewerItem } from '@/components/viewer'
 import type { VibeHandle } from '@/components/viewer-core/useViewer'
+import { createSeededVibeProps } from '../helpers/createSeededVibeProps'
 
 const DEFAULT_VIEWPORT_WIDTH = window.innerWidth
 const CustomOtherIcon = defineComponent({
@@ -43,9 +44,11 @@ describe('VibeLayout', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
 
     const wrapper = mount(Layout, {
-      props: {
-        items: [createImageItem('image-1', 'Aurora moodboard'), createVideoItem('video-1', 'Launch loop teaser'), createOtherItem('archive-1', 'Release assets')],
-      },
+      props: createSeededVibeProps([
+        createImageItem('image-1', 'Aurora moodboard'),
+        createVideoItem('video-1', 'Launch loop teaser'),
+        createOtherItem('archive-1', 'Release assets'),
+      ]),
     })
 
     await flushDom()
@@ -65,16 +68,13 @@ describe('VibeLayout', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
 
-    let wrapper = mount(Layout, {
-      props: {
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps([
+        createImageItem('image-2', 'Aurora moodboard'),
+        createVideoItem('video-2', 'Launch loop teaser'),
+      ], {
         activeIndex: 0,
-        items: [createImageItem('image-2', 'Aurora moodboard'), createVideoItem('video-2', 'Launch loop teaser')],
-        'onUpdate:activeIndex': async (value: number) => {
-          await wrapper.setProps({
-            activeIndex: value,
-          })
-        },
-      },
+      }),
     })
 
     await flushDom()
@@ -105,9 +105,7 @@ describe('VibeLayout', () => {
 
     const item = createImageItem('image-3', undefined)
     const wrapper = mount(Layout, {
-      props: {
-        items: [item],
-      },
+      props: createSeededVibeProps([item]),
     })
 
     await flushDom()
@@ -123,10 +121,10 @@ describe('VibeLayout', () => {
     setViewportWidth(390)
 
     const wrapper = mount(Layout, {
-      props: {
-        items: [createImageItem('image-4', 'Image loading')],
-      },
+      props: createSeededVibeProps([createImageItem('image-4', 'Image loading')]),
     })
+
+    await flushDom()
 
     expect(wrapper.get('[data-testid="vibe-asset-spinner"]').exists()).toBe(true)
     expect(wrapper.get('img').classes()).toContain('opacity-0')
@@ -143,23 +141,17 @@ describe('VibeLayout', () => {
   it('preloads the next two fullscreen image slides and drops stale sources after a jump', async () => {
     setViewportWidth(390)
 
-    let wrapper = mount(Layout, {
-      props: {
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps([
+        createImageItem('image-preload-1', 'Image 1'),
+        createImageItem('image-preload-2', 'Image 2'),
+        createImageItem('image-preload-3', 'Image 3'),
+        createImageItem('image-preload-4', 'Image 4'),
+        createImageItem('image-preload-5', 'Image 5'),
+        createImageItem('image-preload-6', 'Image 6'),
+      ], {
         activeIndex: 0,
-        items: [
-          createImageItem('image-preload-1', 'Image 1'),
-          createImageItem('image-preload-2', 'Image 2'),
-          createImageItem('image-preload-3', 'Image 3'),
-          createImageItem('image-preload-4', 'Image 4'),
-          createImageItem('image-preload-5', 'Image 5'),
-          createImageItem('image-preload-6', 'Image 6'),
-        ],
-        'onUpdate:activeIndex': async (value: number) => {
-          await wrapper.setProps({
-            activeIndex: value,
-          })
-        },
-      },
+      }),
     })
 
     await flushDom()
@@ -168,9 +160,11 @@ describe('VibeLayout', () => {
     expect(wrapper.get('[data-index="1"] img').attributes('src')).toBe('https://example.com/image-preload-2.jpg')
     expect(wrapper.get('[data-index="2"] img').attributes('src')).toBe('https://example.com/image-preload-3.jpg')
 
-    await wrapper.setProps({
-      activeIndex: 3,
-    })
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    await flushDom()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    await flushDom()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
     await flushDom()
 
     expect(wrapper.get('[data-index="1"] img').attributes('src')).toBeUndefined()
@@ -185,29 +179,23 @@ describe('VibeLayout', () => {
   it('reuses a preloaded fullscreen image when it becomes active', async () => {
     setViewportWidth(390)
 
-    let wrapper = mount(Layout, {
-      props: {
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps([
+        createImageItem('image-reuse-1', 'Image 1'),
+        createImageItem('image-reuse-2', 'Image 2'),
+        createImageItem('image-reuse-3', 'Image 3'),
+      ], {
         activeIndex: 0,
-        items: [
-          createImageItem('image-reuse-1', 'Image 1'),
-          createImageItem('image-reuse-2', 'Image 2'),
-          createImageItem('image-reuse-3', 'Image 3'),
-        ],
-        'onUpdate:activeIndex': async (value: number) => {
-          await wrapper.setProps({
-            activeIndex: value,
-          })
-        },
-      },
+      }),
     })
 
     await flushDom()
     await wrapper.get('[data-index="2"] img').trigger('load')
     await flushDom()
 
-    await wrapper.setProps({
-      activeIndex: 2,
-    })
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    await flushDom()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
     await flushDom()
 
     expect(wrapper.get('[data-testid="vibe-pagination"]').text()).toContain('3 / 3')
@@ -224,9 +212,7 @@ describe('VibeLayout', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
 
     const videoWrapper = mount(Layout, {
-      props: {
-        items: [createVideoItem('video-3', 'Video loading')],
-      },
+      props: createSeededVibeProps([createVideoItem('video-3', 'Video loading')]),
     })
 
     await flushDom()
@@ -237,9 +223,7 @@ describe('VibeLayout', () => {
     videoWrapper.unmount()
 
     const audioWrapper = mount(Layout, {
-      props: {
-        items: [createAudioItem('audio-1', 'Audio loading')],
-      },
+      props: createSeededVibeProps([createAudioItem('audio-1', 'Audio loading')]),
     })
 
     await flushDom()
@@ -252,11 +236,10 @@ describe('VibeLayout', () => {
     setViewportWidth(390)
     resolveVibeAssetErrorKindMock.mockResolvedValueOnce('not-found')
     const wrapper = mount(Layout, {
-      props: {
-        items: [createImageItem('image-404', 'Missing image')],
-      },
+      props: createSeededVibeProps([createImageItem('image-404', 'Missing image')]),
     })
 
+    await flushDom()
     await wrapper.get('img').trigger('error')
     await flushDom()
     expect(wrapper.get('[data-testid="vibe-asset-error"]').attributes('data-kind')).toBe('not-found')
@@ -270,9 +253,7 @@ describe('VibeLayout', () => {
     resolveVibeAssetErrorKindMock.mockResolvedValueOnce('generic')
 
     const wrapper = mount(Layout, {
-      props: {
-        items: [createAudioItem('audio-broken', 'Broken audio')],
-      },
+      props: createSeededVibeProps([createAudioItem('audio-broken', 'Broken audio')]),
     })
 
     await flushDom()
@@ -289,10 +270,9 @@ describe('VibeLayout', () => {
     setViewportWidth(390)
     resolveVibeAssetErrorKindMock.mockResolvedValueOnce('generic')
     const wrapper = mount(Layout, {
-      props: {
-        items: [createImageItem('image-retry', 'Retry image')],
-      },
+      props: createSeededVibeProps([createImageItem('image-retry', 'Retry image')]),
     })
+    await flushDom()
     await wrapper.get('img').trigger('error')
     await flushDom()
     expect(wrapper.get('[data-testid="vibe-asset-error"]').attributes('data-kind')).toBe('generic')
@@ -309,15 +289,13 @@ describe('VibeLayout', () => {
     setViewportWidth(1_280)
 
     const wrapper = mount(Layout, {
-      props: {
-        items: [createOtherItem('archive-2', 'Archive fallback', {
+      props: createSeededVibeProps([createOtherItem('archive-2', 'Archive fallback', {
           preview: {
             url: 'https://example.com/archive-2-preview.jpg',
             width: 320,
             height: 640,
           },
-        })],
-      },
+        })]),
     })
 
     await flushDom()
@@ -338,9 +316,7 @@ describe('VibeLayout', () => {
     setViewportWidth(1_280)
 
     const wrapper = mount(Layout, {
-      props: {
-        items: [createOtherItem('other-custom-icon', 'Custom icon item')],
-      },
+      props: createSeededVibeProps([createOtherItem('other-custom-icon', 'Custom icon item')]),
       slots: {
         'item-icon': ({ item, icon }: { icon: unknown; item: VibeViewerItem }) =>
           h((item.type === 'other' ? CustomOtherIcon : icon) as Component),
@@ -368,9 +344,7 @@ describe('VibeLayout', () => {
 
     const overlayClick = vi.fn()
     const wrapper = mount(Layout, {
-      props: {
-        items: [createImageItem('image-overlay-slot', 'Overlay slot image')],
-      },
+      props: createSeededVibeProps([createImageItem('image-overlay-slot', 'Overlay slot image')]),
       slots: {
         'grid-item-overlay': ({ hovered }: { hovered: boolean }) =>
           h(
@@ -411,16 +385,14 @@ describe('VibeLayout', () => {
     setViewportWidth(1_280)
 
     const wrapper = mount(Layout, {
-      props: {
-        items: [createImageItem('image-5', 'Extensionless image', {
+      props: createSeededVibeProps([createImageItem('image-5', 'Extensionless image', {
           url: 'https://picsum.photos/id/1003/1800/2700',
           preview: {
             url: 'https://picsum.photos/id/1003/600/900',
             width: 600,
             height: 900,
           },
-        })],
-      },
+        })]),
     })
 
     await flushDom()
@@ -436,15 +408,13 @@ describe('VibeLayout', () => {
     setViewportWidth(1_280)
 
     const wrapper = mount(Layout, {
-      props: {
-        items: [createImageItem('image-6', 'Square preview clamp', {
+      props: createSeededVibeProps([createImageItem('image-6', 'Square preview clamp', {
           preview: {
             url: 'https://example.com/image-6-preview.jpg',
             width: 1_200,
             height: 400,
           },
-        })],
-      },
+        })]),
     })
 
     await flushDom()
@@ -459,13 +429,11 @@ describe('VibeLayout', () => {
     setViewportWidth(1_280)
 
     const wrapper = mount(Layout, {
-      props: {
-        items: [
-          createImageItem('duplicate', 'Duplicate 1'),
-          createImageItem('stable', 'Stable'),
-          createImageItem('duplicate', 'Duplicate 2'),
-        ],
-      },
+      props: createSeededVibeProps([
+        createImageItem('duplicate', 'Duplicate 1'),
+        createImageItem('stable', 'Stable'),
+        createImageItem('duplicate', 'Duplicate 2'),
+      ]),
     })
 
     await flushDom()

@@ -8,18 +8,27 @@ import FullscreenHeader from './FullscreenHeader.vue'
 import { getVibeOccurrenceKey } from './viewer-core/itemIdentity'
 import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './viewer-core/assetErrors'
 import type { VibeFullscreenStatusSlotProps, VibeSurfaceSlotProps } from './viewer-core/surfaceSlots'
-import type { VibeControlledProps } from './viewer-core/useViewer'
 import { useViewer } from './viewer-core/useViewer'
 import { getItemIcon, getItemLabel } from './viewer-core/media'
 import { hasRenderableSlotContent } from './viewer-core/slotContent'
 import { getSlideToneClass, getStageToneClass } from './viewer-core/theme'
 import './viewer-core/fullscreenMediaBar.css'
-const props = withDefaults(defineProps<VibeControlledProps & {
+
+interface FullscreenSurfaceProps {
   active?: boolean
+  activeIndex?: number
+  hasNextPage?: boolean
+  items: VibeViewerItem[]
+  loading?: boolean
+  paginationDetail?: string | null
   reportAssetError?: VibeAssetErrorReporter | null
   reportAssetLoad?: VibeAssetLoadReporter | null
   showBackToList?: boolean
-}>(), {
+  showEndBadge?: boolean
+  showStatusBadges?: boolean
+}
+
+const props = withDefaults(defineProps<FullscreenSurfaceProps>(), {
   active: true,
   activeIndex: 0,
   hasNextPage: false,
@@ -39,10 +48,7 @@ const slots = defineSlots<{
   'item-icon'?: (props: { icon: Component; item: VibeViewerItem }) => unknown
 }>()
 
-const emit = defineEmits<{
-  'back-to-list': []
-  'update:activeIndex': [value: number]
-}>()
+const emit = defineEmits<{ 'back-to-list': []; 'update:activeIndex': [value: number] }>()
 const FULLSCREEN_ASIDE_COLUMN_BREAKPOINT_PX = 1_280
 const FULLSCREEN_PRELOAD_AHEAD_COUNT = 2
 
@@ -64,9 +70,7 @@ const mediaStatusOffsetClass = computed(() =>
   viewer.activeMediaItem.value && !viewer.activeAssetErrorKind.value ? 'bottom-[5.8rem] max-[720px]:bottom-[7.4rem]' : 'bottom-[1.8rem] max-[720px]:bottom-[1.3rem]',
 )
 const showMediaBar = computed(() => Boolean(viewer.activeMediaItem.value) && !viewer.activeAssetErrorKind.value)
-const mediaStageInsetClass = computed(() =>
-  showMediaBar.value ? 'pb-[5.75rem] max-[720px]:pb-[7rem]' : ''
-)
+const mediaStageInsetClass = computed(() => showMediaBar.value ? 'pb-[5.75rem] max-[720px]:pb-[7rem]' : '')
 const fullscreenSlotProps = computed<VibeSurfaceSlotProps | null>(() => {
   const item = viewer.activeItem.value
   if (!item) {
@@ -107,7 +111,6 @@ const fullscreenStatusNodes = computed(() => {
   if (!fullscreenStatusProps.value || !slots['fullscreen-status']) {
     return []
   }
-
   return slots['fullscreen-status'](fullscreenStatusProps.value)
 })
 const gridLayoutStyle = computed(() => ({

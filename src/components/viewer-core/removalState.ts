@@ -16,10 +16,9 @@ export interface VibeStatus {
   fillTargetCount: number | null
   hasNextPage: boolean
   hasPreviousPage: boolean
-  isAutoMode: boolean
   itemCount: number
   loadState: 'failed' | 'loaded' | 'loading'
-  mode: VibeFeedMode | null
+  mode: VibeFeedMode
   nextCursor: string | null
   phase: VibeLoadPhase
   previousCursor: string | null

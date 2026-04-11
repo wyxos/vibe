@@ -140,40 +140,28 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
         ],
       },
       {
-        id: 'controlled-mode',
-        label: 'Controlled Mode',
-        title: 'Controlled Mode',
+        id: 'seeded-state',
+        label: 'Seeded State',
+        title: 'Seeded State',
         description: [
-          'Use controlled mode when the app owns aggregation, paging policy, or feed state outside the component.',
-          'The component still manages rendering, navigation, fullscreen, removal state, and grid behavior.',
+          'Use initialState when the app already knows a restored slice of the feed and wants Vibe to hydrate from that snapshot immediately.',
+          'This keeps one library-owned data model while still letting the parent seed items, cursors, and the starting active index.',
         ],
-        code: `<script setup lang="ts">
-import { ref } from 'vue'
-import { VibeLayout, type VibeViewerItem } from '@wyxos/vibe'
-
-const items = ref<VibeViewerItem[]>([])
-const activeIndex = ref(0)
-const loading = ref(false)
-const hasNextPage = ref(true)
-const hasPreviousPage = ref(false)
-
-async function requestNextPage() {}
-async function requestPreviousPage() {}
-</script>
-
-<template>
-  <VibeLayout
-    :items="items"
-    :active-index="activeIndex"
-    :loading="loading"
-    :has-next-page="hasNextPage"
-    :has-previous-page="hasPreviousPage"
-    :request-next-page="requestNextPage"
-    :request-previous-page="requestPreviousPage"
-    @update:active-index="activeIndex = $event"
-  />
-</template>`,
+        code: `<VibeLayout
+  :resolve="resolve"
+  :initial-state="{
+    cursor: 'page-10',
+    items: restoredItems,
+    nextCursor: 'page-11',
+    previousCursor: 'page-9',
+    activeIndex: 4,
+  }"
+/>`,
         language: 'vue',
+        notes: [
+          'resolve is optional if you only need a seeded snapshot.',
+          'When resolve is present, Vibe continues paging from the seeded cursors.',
+        ],
       },
     ],
   },
@@ -258,29 +246,18 @@ app.use(VibePlugin)
         label: 'Props',
         title: 'Props',
         description: [
-          'VibeLayout supports two prop modes: auto mode with resolve, and controlled mode with items.',
-          'resolve and items are mutually exclusive.',
+          'VibeLayout has one library-owned data model.',
+          'Use resolve for live paging, and optionally initialState to hydrate a known snapshot before Vibe continues from there.',
         ],
-        code: `type VibeAutoProps = {
-  resolve: (params: VibeResolveParams) => Promise<VibeResolveResult>
+        code: `type VibeProps = {
+  resolve?: (params: VibeResolveParams) => Promise<VibeResolveResult>
+  initialState?: VibeInitialState
   initialCursor?: string | null
   mode?: 'dynamic' | 'static'
   pageSize?: number
   fillDelayMs?: number
   fillDelayStepMs?: number
-  showEndBadge?: boolean
-  showStatusBadges?: boolean
-}
-
-type VibeControlledProps = {
-  items: VibeViewerItem[]
-  activeIndex?: number
-  loading?: boolean
-  hasNextPage?: boolean
-  hasPreviousPage?: boolean
   paginationDetail?: string | null
-  requestNextPage?: (() => void | Promise<void>) | null
-  requestPreviousPage?: (() => void | Promise<void>) | null
   showEndBadge?: boolean
   showStatusBadges?: boolean
 }`,
@@ -311,8 +288,7 @@ function onAssetErrors(errors: VibeAssetErrorEvent[]) {
 
 <template>
   <VibeLayout
-    :items="items"
-    :active-index="activeIndex"
+    :resolve="resolve"
     @asset-loads="onAssetLoads"
     @asset-errors="onAssetErrors"
     @update:active-index="activeIndex = $event"

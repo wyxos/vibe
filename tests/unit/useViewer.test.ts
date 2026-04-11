@@ -1,14 +1,14 @@
+import { createApp, defineComponent, h, nextTick, reactive } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { VibeViewerItem } from '@/components/viewer'
 import { getVibeOccurrenceKey } from '@/components/viewer-core/itemIdentity'
-
-import { mountUseViewer } from '../helpers/mountUseViewer'
+import { useViewer, type VibeViewerProps } from '@/components/viewer-core/useViewer'
 
 describe('useViewer', () => {
   it('clamps the active index and exposes loading and end-of-feed states', async () => {
     const items = [createImageItem('image-1'), createImageItem('image-2')]
-    const viewer = await mountUseViewer({
+    const viewer = await mountViewer({
       items,
       activeIndex: 99,
     })
@@ -36,7 +36,7 @@ describe('useViewer', () => {
 
   it('returns a bounded rendered window around the active index', async () => {
     const items = Array.from({ length: 40 }, (_, index) => createImageItem(`image-${index + 1}`))
-    const viewer = await mountUseViewer({
+    const viewer = await mountViewer({
       items,
       activeIndex: 12,
     })
@@ -57,7 +57,7 @@ describe('useViewer', () => {
   })
 
   it('emits navigation updates for wheel and keyboard input while respecting guards', async () => {
-    const viewer = await mountUseViewer({
+    const viewer = await mountViewer({
       items: [createImageItem('image-1'), createImageItem('image-2'), createImageItem('image-3')],
       activeIndex: 1,
     })
@@ -102,7 +102,7 @@ describe('useViewer', () => {
   it('syncs media playback with the active item and clamps media seeking', async () => {
     const videoItem = createVideoItem('video-1')
     const audioItem = createAudioItem('audio-1')
-    const viewer = await mountUseViewer({
+    const viewer = await mountViewer({
       items: [videoItem, audioItem],
       activeIndex: 0,
     })
@@ -160,7 +160,7 @@ describe('useViewer', () => {
 
   it('toggles active audio playback from the cover click handler', async () => {
     const audioItem = createAudioItem('audio-toggle')
-    const viewer = await mountUseViewer({
+    const viewer = await mountViewer({
       items: [audioItem],
       activeIndex: 0,
     })
@@ -191,7 +191,7 @@ describe('useViewer', () => {
   it('tracks media readiness for video and audio loading states', async () => {
     const videoItem = createVideoItem('video-ready')
     const audioItem = createAudioItem('audio-ready')
-    const viewer = await mountUseViewer({
+    const viewer = await mountViewer({
       items: [videoItem, audioItem],
       activeIndex: 0,
     })
@@ -240,7 +240,7 @@ describe('useViewer', () => {
 
   it('keeps the custom seekbar state at the requested time until the media catches up', async () => {
     const videoItem = createVideoItem('video-laggy')
-    const viewer = await mountUseViewer({
+    const viewer = await mountViewer({
       items: [videoItem],
       activeIndex: 0,
     })
@@ -281,7 +281,7 @@ describe('useViewer', () => {
 
   it('does not mark a hidden image as ready before it has a real source', async () => {
     const imageItem = createImageItem('image-hidden')
-    const viewer = await mountUseViewer({
+    const viewer = await mountViewer({
       items: [imageItem],
       activeIndex: 0,
     })
@@ -311,6 +311,46 @@ describe('useViewer', () => {
     viewer.unmount()
   })
 })
+
+async function mountViewer(initialProps: VibeViewerProps) {
+  const emitted: number[] = []
+  const props = reactive({
+    activeIndex: 0,
+    hasNextPage: false,
+    loading: false,
+    paginationDetail: null,
+    ...initialProps,
+  }) as VibeViewerProps
+
+  let api!: ReturnType<typeof useViewer>
+
+  const container = document.createElement('div')
+  document.body.appendChild(container)
+
+  const app = createApp(defineComponent({
+    setup() {
+      api = useViewer(props, (_event, value) => {
+        emitted.push(value)
+      })
+
+      return () => h('div')
+    },
+  }))
+
+  app.mount(container)
+  await flushViewer()
+
+  return {
+    api,
+    emitted,
+    props,
+    flush: flushViewer,
+    unmount() {
+      app.unmount()
+      container.remove()
+    },
+  }
+}
 
 function createImageItem(id: string): VibeViewerItem {
   return {
@@ -415,4 +455,10 @@ function createStubMediaElement(
       pendingSeekValue = null
     },
   }
+}
+
+async function flushViewer() {
+  await nextTick()
+  await Promise.resolve()
+  await nextTick()
 }

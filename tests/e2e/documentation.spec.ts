@@ -12,7 +12,7 @@ test('documentation route renders grouped navigation and api content', async ({ 
   await expect(aside).toContainText('Customization')
   await expect(aside).toContainText('API Reference')
   await expect(page.getByTestId('docs-section-installation')).toBeVisible()
-  await expect(page.getByTestId('docs-section-api-props')).toContainText('VibeAutoProps')
+  await expect(page.getByTestId('docs-section-api-props')).toContainText('VibeProps')
   await expect(page.getByTestId('docs-copy-installation')).toBeVisible()
 
   const highlightedTokens = page.getByTestId('docs-code-quick-start').locator('span')

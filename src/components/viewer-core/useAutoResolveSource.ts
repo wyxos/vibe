@@ -65,6 +65,7 @@ export function useAutoResolveSource(options: {
   let occurrenceSequence = 0
   const fillDelayMs = computed(() => normalizeDynamicFillDelayMs(options.fillDelayMs, DEFAULT_DYNAMIC_FILL_DELAY_MS))
   const fillDelayStepMs = computed(() => normalizeDynamicFillDelayMs(options.fillDelayStepMs, DEFAULT_DYNAMIC_FILL_DELAY_STEP_MS))
+  const hasResolver = computed(() => typeof options.resolve === 'function')
   const mode = computed<VibeFeedMode>(() => options.mode ?? 'dynamic')
   const pageSize = computed(() => normalizePageSize(options.pageSize))
   const sourceItems = computed(() => flattenVibeBuckets(autoBuckets.value))
@@ -77,7 +78,7 @@ export function useAutoResolveSource(options: {
   const previousCursor = computed(() => firstBucket.value?.previousCursor ?? null)
   const hasNextPage = computed(() => Boolean(nextCursor.value))
   const hasPreviousPage = computed(() => Boolean(previousCursor.value))
-  const canRefreshTrailingBoundary = computed(() => autoBuckets.value.length > 0)
+  const canRefreshTrailingBoundary = computed(() => hasResolver.value && autoBuckets.value.length > 0)
   const pendingAppendItems = computed(() =>
     filterRemovedItems(flattenVibeBuckets(pendingAppendBuckets.value), options.removedIds.value),
   )
@@ -111,10 +112,10 @@ export function useAutoResolveSource(options: {
     },
   )
   onMounted(() => {
-    if (!options.resolve) {
+    if (hydrateInitialState()) {
       return
     }
-    if (hydrateInitialState()) {
+    if (!options.resolve) {
       return
     }
     void loadInitialBuckets()

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import Layout from '@/components/Layout.vue'
 import type { VibeViewerItem } from '@/components/viewer'
+import { createSeededVibeProps } from '../helpers/createSeededVibeProps'
 
 const DEFAULT_VIEWPORT_WIDTH = window.innerWidth
 
@@ -21,7 +22,7 @@ describe('VibeLayout asset load events', () => {
     const onAssetLoads = vi.fn()
     const wrapper = mount(Layout, {
       props: {
-        items: [createImageItem('grid-ready-1', 'Ready 1'), createImageItem('grid-ready-2', 'Ready 2')],
+        ...createSeededVibeProps([createImageItem('grid-ready-1', 'Ready 1'), createImageItem('grid-ready-2', 'Ready 2')]),
         onAssetLoads,
       },
     })
@@ -66,15 +67,16 @@ describe('VibeLayout asset load events', () => {
     const onAssetLoads = vi.fn()
     const wrapper = mount(Layout, {
       props: {
-        items: [
+        ...createSeededVibeProps([
           createImageItem('image-ready', 'Ready image'),
           createImageItem('image-preloaded', 'Preloaded image'),
           createImageItem('image-ahead', 'Ahead image'),
-        ],
+        ]),
         onAssetLoads,
       },
     })
 
+    await flushDom()
     await wrapper.get('[data-index="1"] img').trigger('load')
     await flushDom()
     await vi.advanceTimersByTimeAsync(150)

@@ -19,7 +19,6 @@ vi.mock('@/components/viewer-core/useDataSource', () => ({
     fillTargetCount: dataSourceMock.fillTargetCount,
     hasNextPage: dataSourceMock.hasNextPage,
     hasPreviousPage: dataSourceMock.hasPreviousPage,
-    isAutoMode: dataSourceMock.isAutoMode,
     items: dataSourceMock.items,
     loading: dataSourceMock.loading,
     mode: dataSourceMock.mode,
@@ -50,10 +49,9 @@ function createDataSourceMock() {
   const fillTargetCount = ref<number | null>(null)
   const hasNextPage = ref(false)
   const hasPreviousPage = ref(false)
-  const isAutoMode = ref(false)
   const items = ref<VibeViewerItem[]>([])
   const loading = ref(false)
-  const mode = ref<'dynamic' | 'static' | null>(null)
+  const mode = ref<'dynamic' | 'static'>('dynamic')
   const nextCursor = ref<string | null>(null)
   const paginationDetail = ref<string | null>(null)
   const pendingAppendItems = ref<VibeViewerItem[]>([])
@@ -81,7 +79,6 @@ function createDataSourceMock() {
     fillTargetCount,
     hasNextPage,
     hasPreviousPage,
-    isAutoMode,
     items,
     loading,
     mode,
@@ -221,11 +218,11 @@ describe('useController', () => {
   })
 })
 
-async function mountController(initialProps: Partial<VibeProps> = { items: [] }) {
+async function mountController(initialProps: Partial<VibeProps> = {}) {
   let api!: ReturnType<typeof useController>
 
   const props = reactive({
-    items: [],
+    resolve: vi.fn(async () => ({ items: [], nextPage: null })),
     ...initialProps,
   }) as Readonly<VibeProps>
 
@@ -279,10 +276,9 @@ function resetDataSourceMock() {
   dataSourceMock.fillTargetCount.value = null
   dataSourceMock.hasNextPage.value = false
   dataSourceMock.hasPreviousPage.value = false
-  dataSourceMock.isAutoMode.value = false
   dataSourceMock.items.value = []
   dataSourceMock.loading.value = false
-  dataSourceMock.mode.value = null
+  dataSourceMock.mode.value = 'dynamic'
   dataSourceMock.nextCursor.value = null
   dataSourceMock.paginationDetail.value = null
   dataSourceMock.pendingAppendItems.value = []

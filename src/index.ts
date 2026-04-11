@@ -11,8 +11,6 @@ export type {
   VibeAssetLoadSurface,
   VibeResolveParams,
   VibeResolveResult,
-  VibeAutoProps,
-  VibeControlledProps,
   VibeFeedMode,
   VibeHandle,
   VibeInitialState,

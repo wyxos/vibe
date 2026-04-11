@@ -1,9 +1,12 @@
 import { mount } from '@vue/test-utils'
 import { h, nextTick } from 'vue'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import Layout from '@/components/Layout.vue'
 import type { VibeViewerItem } from '@/components/viewer'
+import type { VibeHandle } from '@/components/viewer-core/useViewer'
+import { createSeededVibeProps } from '../helpers/createSeededVibeProps'
+import { createDeferred } from '../helpers/useDataSourceTestUtils'
 
 const DEFAULT_VIEWPORT_WIDTH = window.innerWidth
 
@@ -16,9 +19,7 @@ describe('VibeLayout fullscreen aside layout', () => {
     setViewportWidth(1_600)
 
     const wrapper = mount(Layout, {
-      props: {
-        items: [createImageItem('image-aside-column', 'Aside column item')],
-      },
+      props: createSeededVibeProps([createImageItem('image-aside-column', 'Aside column item')]),
       slots: {
         'fullscreen-aside': () => h('div', { 'data-testid': 'custom-fullscreen-aside' }, 'Details column'),
       },
@@ -38,9 +39,7 @@ describe('VibeLayout fullscreen aside layout', () => {
     setViewportWidth(1_100)
 
     const wrapper = mount(Layout, {
-      props: {
-        items: [createImageItem('image-aside-drawer', 'Aside drawer item')],
-      },
+      props: createSeededVibeProps([createImageItem('image-aside-drawer', 'Aside drawer item')]),
       slots: {
         'fullscreen-aside': () => h('div', { 'data-testid': 'custom-fullscreen-aside' }, 'Details drawer'),
       },
@@ -60,9 +59,7 @@ describe('VibeLayout fullscreen aside layout', () => {
     setViewportWidth(1_280)
 
     const wrapper = mount(Layout, {
-      props: {
-        items: [createImageItem('image-header-action', 'Header action item')],
-      },
+      props: createSeededVibeProps([createImageItem('image-header-action', 'Header action item')]),
       slots: {
         'fullscreen-header-actions': () => h('button', { 'data-testid': 'custom-header-action' }, 'Details'),
       },
@@ -80,14 +77,14 @@ describe('VibeLayout fullscreen aside layout', () => {
 
   it('renders a custom fullscreen status slot for loading-more state', async () => {
     setViewportWidth(1_280)
+    const deferred = createDeferred<{ items: VibeViewerItem[]; nextPage: string | null }>()
 
     const wrapper = mount(Layout, {
-      props: {
-        items: [createImageItem('image-status-slot', 'Status slot item')],
-        loading: true,
-        hasNextPage: true,
+      props: createSeededVibeProps([createImageItem('image-status-slot', 'Status slot item')], {
+        nextCursor: 'page-2',
+        resolve: vi.fn(() => deferred.promise),
         showStatusBadges: true,
-      },
+      }),
       slots: {
         'fullscreen-status': ({ kind, message }: { kind: 'end' | 'loading-more'; message: string }) =>
           h('div', { 'data-kind': kind, 'data-testid': 'custom-fullscreen-status' }, message),
@@ -97,9 +94,14 @@ describe('VibeLayout fullscreen aside layout', () => {
     await flushDom()
     await wrapper.get('[data-testid="vibe-list-card"] button').trigger('click')
     await flushDom()
+    void (wrapper.vm as unknown as VibeHandle).loadNext()
+    await flushDom()
 
     expect(wrapper.get('[data-testid="custom-fullscreen-status"]').attributes('data-kind')).toBe('loading-more')
     expect(wrapper.get('[data-testid="custom-fullscreen-status"]').text()).toBe('Loading more items')
+
+    deferred.resolve({ items: [], nextPage: null })
+    await flushDom()
 
     wrapper.unmount()
   })
@@ -108,11 +110,9 @@ describe('VibeLayout fullscreen aside layout', () => {
     setViewportWidth(1_280)
 
     const wrapper = mount(Layout, {
-      props: {
-        items: [createImageItem('image-hide-end-badge', 'Hide end badge item')],
-        hasNextPage: false,
+      props: createSeededVibeProps([createImageItem('image-hide-end-badge', 'Hide end badge item')], {
         showEndBadge: false,
-      },
+      }),
     })
 
     await flushDom()
@@ -127,14 +127,14 @@ describe('VibeLayout fullscreen aside layout', () => {
 
   it('suppresses fullscreen status output when showStatusBadges is false', async () => {
     setViewportWidth(1_280)
+    const deferred = createDeferred<{ items: VibeViewerItem[]; nextPage: string | null }>()
 
     const wrapper = mount(Layout, {
-      props: {
-        items: [createImageItem('image-hide-status-badge', 'Hide status badge item')],
-        loading: true,
-        hasNextPage: true,
+      props: createSeededVibeProps([createImageItem('image-hide-status-badge', 'Hide status badge item')], {
+        nextCursor: 'page-2',
+        resolve: vi.fn(() => deferred.promise),
         showStatusBadges: false,
-      },
+      }),
       slots: {
         'fullscreen-status': ({ kind, message }: { kind: 'end' | 'loading-more'; message: string }) =>
           h('div', { 'data-kind': kind, 'data-testid': 'custom-fullscreen-status' }, message),
@@ -144,9 +144,14 @@ describe('VibeLayout fullscreen aside layout', () => {
     await flushDom()
     await wrapper.get('[data-testid="vibe-list-card"] button').trigger('click')
     await flushDom()
+    void (wrapper.vm as unknown as VibeHandle).loadNext()
+    await flushDom()
 
     expect(wrapper.find('[data-testid="custom-fullscreen-status"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Loading more items')
+
+    deferred.resolve({ items: [], nextPage: null })
+    await flushDom()
 
     wrapper.unmount()
   })

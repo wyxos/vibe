@@ -65,7 +65,7 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
 </template>
 ```
 
-Optional auto-mode pacing props:
+Optional pacing props:
 
 ```vue
 <VibeLayout
@@ -83,7 +83,7 @@ Optional auto-mode pacing props:
 - `show-end-badge`: controls the fullscreen `End reached` badge when the feed is exhausted
 - `show-status-badges`: controls the built-in loading/end status overlays in list and fullscreen
 
-Optional auto-mode feed strategy:
+Optional feed strategy:
 
 ```vue
 <VibeLayout
@@ -95,12 +95,30 @@ Optional auto-mode feed strategy:
 - `dynamic` is the default
 - `static` reloads the current boundary cursor before advancing when the currently visible boundary page is underfilled
 
+Optional seeded hydration:
+
+```vue
+<VibeLayout
+  :resolve="resolve"
+  :initial-state="{
+    cursor: 'page-10',
+    items: restoredItems,
+    nextCursor: 'page-11',
+    previousCursor: 'page-9',
+    activeIndex: 4,
+  }"
+/>
+```
+
+- use `initialState` when the app already knows a restored slice of the feed
+- `resolve` is optional if you only need a seeded snapshot
+- when `resolve` is present, Vibe continues paging from the seeded cursors
+
 ## What Vibe does
 
 - Desktop masonry list with virtualization and staged page growth
 - Fullscreen viewer with swipe, wheel, keyboard, and custom media controls
-- Auto-loading mode with internal pagination ownership
-- Controlled mode for advanced/manual integrations
+- Library-owned loading and pagination, optionally seeded from `initialState`
 - Remove, restore, and undo by item `id`
 - Grid customization through slots for icons, overlays, and footer UI
 - Built-in loading and preload error states, including explicit `404` when known
@@ -134,9 +152,7 @@ Notes:
 - Grid layout prefers `preview.width/height`, then root `width/height`, then a square fallback tile
 - `other` is intentionally broad so the consuming app can layer its own subtypes and icon logic on top
 
-## Loading modes
-
-### Auto mode
+## Loading
 
 Use `resolve` when you want Vibe to own the paging loop:
 
@@ -172,7 +188,7 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
 </template>
 ```
 
-In this mode, Vibe owns:
+Vibe owns:
 
 - loaded items
 - active index
@@ -181,7 +197,7 @@ In this mode, Vibe owns:
 - duplicate cursor protection
 - initial retry state
 
-Auto mode also supports two feed strategies:
+Vibe also supports two feed strategies:
 
 - `dynamic`:
   - default behavior
@@ -195,43 +211,19 @@ Auto mode also supports two feed strategies:
   - if it is, Vibe reloads that same cursor in place first
   - only once that boundary page is full again will the next edge hit advance to the next or previous cursor
 
-### Controlled mode
-
-Use controlled mode when the app needs to own item aggregation or paging policy:
+You can also seed the viewer from a known snapshot:
 
 ```vue
-<script setup lang="ts">
-import { ref } from 'vue'
-import { VibeLayout, type VibeViewerItem } from '@wyxos/vibe'
-
-const items = ref<VibeViewerItem[]>([])
-const activeIndex = ref(0)
-const loading = ref(false)
-const hasNextPage = ref(true)
-const hasPreviousPage = ref(false)
-
-async function requestNextPage() {
-  // app-owned fetch and append
-}
-
-async function requestPreviousPage() {
-  // app-owned fetch and prepend
-}
-</script>
-
-<template>
-  <VibeLayout
-    :items="items"
-    :active-index="activeIndex"
-    :loading="loading"
-    :has-next-page="hasNextPage"
-    :has-previous-page="hasPreviousPage"
-    pagination-detail="P10-12 · V11"
-    :request-next-page="requestNextPage"
-    :request-previous-page="requestPreviousPage"
-    @update:active-index="activeIndex = $event"
-  />
-</template>
+<VibeLayout
+  :resolve="resolve"
+  :initial-state="{
+    cursor: 'page-10',
+    items: restoredItems,
+    nextCursor: 'page-11',
+    previousCursor: 'page-9',
+    activeIndex: 4,
+  }"
+/>
 ```
 
 ## Slots
@@ -329,10 +321,9 @@ type VibeStatus = {
   fillTargetCount: number | null
   hasNextPage: boolean
   hasPreviousPage: boolean
-  isAutoMode: boolean
   itemCount: number
   loadState: 'failed' | 'loaded' | 'loading'
-  mode: 'dynamic' | 'static' | null
+  mode: 'dynamic' | 'static'
   nextCursor: string | null
   phase: 'failed' | 'filling' | 'idle' | 'loading' | 'reloading'
   previousCursor: string | null

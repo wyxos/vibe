@@ -22,10 +22,9 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     fillTargetCount: null,
     hasNextPage: false,
     hasPreviousPage: false,
-    isAutoMode: false,
     itemCount: 0,
     loadState: 'loaded',
-    mode: null,
+    mode: 'dynamic',
     nextCursor: null,
     phase: 'idle',
     previousCursor: null,
@@ -77,7 +76,6 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     status.fillTargetCount = dataSource.fillTargetCount.value
     status.hasNextPage = dataSource.hasNextPage.value
     status.hasPreviousPage = dataSource.hasPreviousPage.value
-    status.isAutoMode = dataSource.isAutoMode.value
     status.itemCount = dataSource.items.value.length
     status.loadState = dataSource.loading.value
       ? 'loading'

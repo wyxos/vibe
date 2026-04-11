@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import Layout from '@/components/Layout.vue'
 import type { VibeHandle } from '@/components/viewer-core/useViewer'
 import type { VibeViewerItem } from '@/components/viewer'
+import { createSeededVibeProps } from '../helpers/createSeededVibeProps'
 
 const DEFAULT_VIEWPORT_WIDTH = window.innerWidth
 
@@ -17,15 +18,12 @@ describe('VibeLayout removal navigation', () => {
     setViewportWidth(1_280)
 
     let wrapper = mount(Layout, {
-      props: {
-        activeIndex: 0,
-        items: Array.from({ length: 7 }, (_, index) => createImageItem(`item-${index + 1}`, `Item ${index + 1}`)),
-        'onUpdate:activeIndex': async (value: number) => {
-          await wrapper.setProps({
-            activeIndex: value,
-          })
+      props: createSeededVibeProps(
+        Array.from({ length: 7 }, (_, index) => createImageItem(`item-${index + 1}`, `Item ${index + 1}`)),
+        {
+          activeIndex: 0,
         },
-      },
+      ),
     })
 
     await flushDom()

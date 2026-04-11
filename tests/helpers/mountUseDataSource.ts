@@ -1,21 +1,21 @@
 import { createApp, defineComponent, h, nextTick, reactive } from 'vue'
 
-import { useDataSource, type VibeAutoProps } from '@/components/viewer-core/useDataSource'
+import { useDataSource, type VibeProps } from '@/components/viewer-core/useDataSource'
 
 export interface MountedUseDataSource {
   api: ReturnType<typeof useDataSource>
   emitted: number[]
-  props: VibeAutoProps
+  props: VibeProps
   flush: () => Promise<void>
   unmount: () => void
 }
 
-export async function mountUseDataSource(initialProps: VibeAutoProps): Promise<MountedUseDataSource> {
+export async function mountUseDataSource(initialProps: VibeProps): Promise<MountedUseDataSource> {
   const emitted: number[] = []
   const props = reactive({
     pageSize: 25,
     ...initialProps,
-  }) as VibeAutoProps
+  }) as VibeProps
 
   let api!: ReturnType<typeof useDataSource>
 

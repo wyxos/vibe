@@ -1,9 +1,12 @@
 import { mount } from '@vue/test-utils'
 import { h, nextTick } from 'vue'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import Layout from '@/components/Layout.vue'
 import type { VibeViewerItem } from '@/components/viewer'
+import type { VibeHandle } from '@/components/viewer-core/useViewer'
+import { createSeededVibeProps } from '../helpers/createSeededVibeProps'
+import { createDeferred } from '../helpers/useDataSourceTestUtils'
 
 const DEFAULT_VIEWPORT_WIDTH = window.innerWidth
 
@@ -14,14 +17,14 @@ describe('VibeLayout grid status slot', () => {
 
   it('renders a custom grid status slot for loading-more state', async () => {
     setViewportWidth(1_280)
+    const deferred = createDeferred<{ items: VibeViewerItem[]; nextPage: string | null }>()
 
     const wrapper = mount(Layout, {
-      props: {
-        items: [createImageItem('image-grid-status', 'Grid status image')],
-        loading: true,
-        hasNextPage: true,
+      props: createSeededVibeProps([createImageItem('image-grid-status', 'Grid status image')], {
+        nextCursor: 'page-2',
+        resolve: vi.fn(() => deferred.promise),
         showStatusBadges: true,
-      },
+      }),
       slots: {
         'grid-status': ({ kind, message }: { kind: 'end' | 'loading-more'; message: string }) =>
           h('div', { 'data-kind': kind, 'data-testid': 'custom-grid-status' }, message),
@@ -29,9 +32,14 @@ describe('VibeLayout grid status slot', () => {
     })
 
     await flushDom()
+    void (wrapper.vm as unknown as VibeHandle).loadNext()
+    await flushDom()
 
     expect(wrapper.get('[data-testid="custom-grid-status"]').attributes('data-kind')).toBe('loading-more')
     expect(wrapper.get('[data-testid="custom-grid-status"]').text()).toBe('Loading more items')
+
+    deferred.resolve({ items: [], nextPage: null })
+    await flushDom()
 
     wrapper.unmount()
   })
@@ -40,11 +48,9 @@ describe('VibeLayout grid status slot', () => {
     setViewportWidth(1_280)
 
     const wrapper = mount(Layout, {
-      props: {
-        items: [createImageItem('image-grid-end', 'Grid end image')],
-        hasNextPage: false,
+      props: createSeededVibeProps([createImageItem('image-grid-end', 'Grid end image')], {
         showStatusBadges: true,
-      },
+      }),
       slots: {
         'grid-status': ({ kind, message }: { kind: 'end' | 'loading-more'; message: string }) =>
           h('div', { 'data-kind': kind, 'data-testid': 'custom-grid-status' }, message),
@@ -61,14 +67,14 @@ describe('VibeLayout grid status slot', () => {
 
   it('suppresses grid status output when showStatusBadges is false', async () => {
     setViewportWidth(1_280)
+    const deferred = createDeferred<{ items: VibeViewerItem[]; nextPage: string | null }>()
 
     const wrapper = mount(Layout, {
-      props: {
-        items: [createImageItem('image-grid-hidden-status', 'Grid hidden status image')],
-        loading: true,
-        hasNextPage: true,
+      props: createSeededVibeProps([createImageItem('image-grid-hidden-status', 'Grid hidden status image')], {
+        nextCursor: 'page-2',
+        resolve: vi.fn(() => deferred.promise),
         showStatusBadges: false,
-      },
+      }),
       slots: {
         'grid-status': ({ kind, message }: { kind: 'end' | 'loading-more'; message: string }) =>
           h('div', { 'data-kind': kind, 'data-testid': 'custom-grid-status' }, message),
@@ -76,9 +82,14 @@ describe('VibeLayout grid status slot', () => {
     })
 
     await flushDom()
+    void (wrapper.vm as unknown as VibeHandle).loadNext()
+    await flushDom()
 
     expect(wrapper.find('[data-testid="custom-grid-status"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Loading more items')
+
+    deferred.resolve({ items: [], nextPage: null })
+    await flushDom()
 
     wrapper.unmount()
   })

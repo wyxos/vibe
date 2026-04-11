@@ -62,7 +62,7 @@ describe('VibeLayout feedback states', () => {
 
     const wrapper = mount(Layout, {
       props: {
-        items: controllerState.items.value,
+        resolve: vi.fn(async () => ({ items: [], nextPage: null })),
       },
     })
 
@@ -81,7 +81,6 @@ function createControllerState() {
   const errorMessage = ref<string | null>(null)
   const hasNextPage = ref(false)
   const hasPreviousPage = ref(false)
-  const isAutoMode = ref(false)
   const isDesktop = ref(false)
   const items = ref<VibeViewerItem[]>([])
   const listRestoreToken = ref(0)
@@ -103,7 +102,6 @@ function createControllerState() {
     errorMessage,
     hasNextPage,
     hasPreviousPage,
-    isAutoMode,
     isDesktop,
     items,
     listRestoreToken,
@@ -129,7 +127,6 @@ function resetControllerState() {
   controllerState.errorMessage.value = null
   controllerState.hasNextPage.value = false
   controllerState.hasPreviousPage.value = false
-  controllerState.isAutoMode.value = false
   controllerState.isDesktop.value = false
   controllerState.items.value = []
   controllerState.listRestoreToken.value = 0

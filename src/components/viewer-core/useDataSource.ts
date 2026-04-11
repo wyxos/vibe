@@ -1,7 +1,6 @@
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 
 import type { VibeViewerItem } from '../viewer'
-import { getVibeOccurrenceKey, reconcileVibeOccurrenceKeys } from './itemIdentity'
 import { useVibeRemovalState } from './removalState'
 import { useAutoResolveSource } from './useAutoResolveSource'
 
@@ -28,54 +27,22 @@ export interface VibeInitialState {
   activeIndex?: number
 }
 
-interface VibeSharedProps {
-  hasPreviousPage?: boolean
-  paginationDetail?: string | null
-  requestNextPage?: (() => void | Promise<void>) | null
-  requestPreviousPage?: (() => void | Promise<void>) | null
-  showEndBadge?: boolean
-  showStatusBadges?: boolean
-}
-
-export interface VibeControlledProps extends VibeSharedProps {
-  items: VibeViewerItem[]
-  activeIndex?: number
-  fillDelayMs?: never
-  fillDelayStepMs?: never
-  initialState?: never
-  loading?: boolean
-  hasNextPage?: boolean
-  mode?: never
-  resolve?: never
-  initialCursor?: never
-  pageSize?: never
-}
-
-export interface VibeAutoProps extends VibeSharedProps {
-  resolve: (params: VibeResolveParams) => Promise<VibeResolveResult>
+export interface VibeProps {
   fillDelayMs?: number
   fillDelayStepMs?: number
   initialCursor?: string | null
   initialState?: VibeInitialState
   mode?: import('./removalState').VibeFeedMode
   pageSize?: number
-  items?: never
-  activeIndex?: never
-  hasPreviousPage?: never
-  loading?: never
-  hasNextPage?: never
-  paginationDetail?: never
-  requestNextPage?: never
-  requestPreviousPage?: never
+  paginationDetail?: string | null
+  resolve?: (params: VibeResolveParams) => Promise<VibeResolveResult>
+  showEndBadge?: boolean
+  showStatusBadges?: boolean
 }
-
-export type VibeProps = VibeControlledProps | VibeAutoProps
 
 export type VibeEmit = (event: 'update:activeIndex', value: number) => void
 
 export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
-  const controlledProps = props as Partial<VibeControlledProps>
-  const autoProps = props as Partial<VibeAutoProps>
   const removalState = useVibeRemovalState()
   const {
     clearRemoved,
@@ -87,71 +54,26 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
   } = removalState
   const autoSource = useAutoResolveSource({
     emit,
-    fillDelayMs: autoProps.fillDelayMs,
-    fillDelayStepMs: autoProps.fillDelayStepMs,
-    initialCursor: autoProps.initialCursor,
-    initialState: autoProps.initialState,
-    mode: autoProps.mode,
-    pageSize: autoProps.pageSize,
+    fillDelayMs: props.fillDelayMs,
+    fillDelayStepMs: props.fillDelayStepMs,
+    initialCursor: props.initialCursor,
+    initialState: props.initialState,
+    mode: props.mode,
+    pageSize: props.pageSize,
     removedIds,
-    resolve: autoProps.resolve,
+    resolve: props.resolve,
   })
 
-  let hasWarnedMixedProps = false
-  let occurrenceSequence = 0
-  const controlledSourceItems = ref<VibeViewerItem[]>([])
-  const isAutoMode = computed(() => typeof autoProps.resolve === 'function')
-  const controlledItems = computed(() => {
-    if (!removedIds.value.size) {
-      return controlledSourceItems.value
-    }
-
-    return controlledSourceItems.value.filter((item) => !removedIds.value.has(item.id))
-  })
-  const items = computed(() => isAutoMode.value ? autoSource.items.value : controlledItems.value)
-  const activeIndex = computed(() => isAutoMode.value ? autoSource.activeIndex.value : (controlledProps.activeIndex ?? 0))
-  const loading = computed(() => isAutoMode.value ? autoSource.loading.value : (controlledProps.loading ?? false))
-  const hasNextPage = computed(() => isAutoMode.value ? autoSource.hasNextPage.value : (controlledProps.hasNextPage ?? false))
-  const hasPreviousPage = computed(() => isAutoMode.value ? autoSource.hasPreviousPage.value : (controlledProps.hasPreviousPage ?? false))
+  const items = autoSource.items
+  const activeIndex = autoSource.activeIndex
+  const loading = autoSource.loading
+  const hasNextPage = autoSource.hasNextPage
+  const hasPreviousPage = autoSource.hasPreviousPage
   const removedCount = computed(() => removedIds.value.size)
-  const paginationDetail = computed(() => controlledProps.paginationDetail ?? null)
+  const paginationDetail = computed(() => props.paginationDetail ?? null)
   const canRefreshExhaustedNextPage = computed(() => (
-    isAutoMode.value
-      ? !autoSource.hasNextPage.value && autoSource.canRefreshTrailingBoundary.value
-      : false
+    !autoSource.hasNextPage.value && autoSource.canRefreshTrailingBoundary.value
   ))
-
-  watch(
-    [() => controlledProps.items, () => autoProps.resolve],
-    ([maybeItems, maybeResolve]) => {
-      if (!Array.isArray(maybeItems) || typeof maybeResolve !== 'function' || hasWarnedMixedProps) {
-        return
-      }
-
-      hasWarnedMixedProps = true
-      console.warn('[Vibe] `resolve` and `items` were both provided. `resolve` mode will be used.')
-    },
-    {
-      immediate: true,
-    },
-  )
-
-  watch(
-    () => controlledProps.items ?? [],
-    (nextItems) => {
-      if (isAutoMode.value) {
-        return
-      }
-
-      const resolvedItems = reconcileVibeOccurrenceKeys(nextItems, controlledSourceItems.value, occurrenceSequence)
-      controlledSourceItems.value = resolvedItems.items
-      occurrenceSequence = resolvedItems.nextSequence
-    },
-    {
-      deep: true,
-      immediate: true,
-    },
-  )
 
   function setActiveIndex(nextIndex: number) {
     const nextItems = items.value
@@ -160,100 +82,50 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
       return
     }
 
-    const clampedIndex = clamp(nextIndex, 0, nextItems.length - 1)
-
-    if (isAutoMode.value) {
-      autoSource.setActiveIndex(clampedIndex)
-      return
-    }
-
-    if (clampedIndex !== (controlledProps.activeIndex ?? 0)) {
-      emit('update:activeIndex', clampedIndex)
-    }
+    autoSource.setActiveIndex(clamp(nextIndex, 0, nextItems.length - 1))
   }
 
   function remove(ids: string | string[]) {
-    const anchorOccurrenceKey = getActiveOccurrenceKey()
+    const anchorOccurrenceKey = autoSource.getActiveOccurrenceKey()
     const result = removeRemovedIds(ids)
 
     if (!result.ids.length) {
       return result
     }
 
-    if (isAutoMode.value) {
-      autoSource.maybeCommitPendingAppendWhenFilteredOut()
-      autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
-      return result
-    }
-
-    syncControlledActiveIndex(anchorOccurrenceKey)
+    autoSource.maybeCommitPendingAppendWhenFilteredOut()
+    autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
     return result
   }
 
   function restore(ids: string | string[]) {
-    const anchorOccurrenceKey = getActiveOccurrenceKey()
+    const anchorOccurrenceKey = autoSource.getActiveOccurrenceKey()
     const result = restoreRemovedIds(ids)
 
     if (!result.ids.length) {
       return result
     }
 
-    if (isAutoMode.value) {
-      autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
-      return result
-    }
-
-    syncControlledActiveIndex(anchorOccurrenceKey)
+    autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
     return result
   }
 
   function undo() {
-    const anchorOccurrenceKey = getActiveOccurrenceKey()
+    const anchorOccurrenceKey = autoSource.getActiveOccurrenceKey()
     const result = undoRemovedIds()
 
     if (!result?.ids.length) {
       return result
     }
 
-    if (isAutoMode.value) {
-      autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
-      return result
-    }
-
-    syncControlledActiveIndex(anchorOccurrenceKey)
+    autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
     return result
   }
 
   function resetRemovedItems() {
-    const anchorOccurrenceKey = getActiveOccurrenceKey()
+    const anchorOccurrenceKey = autoSource.getActiveOccurrenceKey()
     clearRemoved()
-
-    if (isAutoMode.value) {
-      autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
-      return
-    }
-
-    syncControlledActiveIndex(anchorOccurrenceKey)
-  }
-
-  function getActiveOccurrenceKey() {
-    const currentItem = items.value[clamp(activeIndex.value, 0, Math.max(0, items.value.length - 1))]
-    return currentItem ? getVibeOccurrenceKey(currentItem) : null
-  }
-
-  function syncControlledActiveIndex(anchorId: string | null = null) {
-    if (!items.value.length) {
-      return
-    }
-
-    const anchoredIndex = anchorId
-      ? items.value.findIndex((item) => getVibeOccurrenceKey(item) === anchorId)
-      : -1
-    const clampedIndex = anchoredIndex >= 0 ? anchoredIndex : clamp(activeIndex.value, 0, items.value.length - 1)
-
-    if (clampedIndex !== (controlledProps.activeIndex ?? 0)) {
-      emit('update:activeIndex', clampedIndex)
-    }
+    autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
   }
 
   function clamp(value: number, min: number, max: number) {
@@ -261,87 +133,48 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
   }
 
   function cancel() {
-    if (!isAutoMode.value) {
-      return
-    }
-
     autoSource.cancel()
   }
 
   async function loadNext() {
-    if (isAutoMode.value) {
-      await autoSource.prefetchNextPage()
-      return
-    }
-
-    if (loading.value || typeof controlledProps.requestNextPage !== 'function') {
-      return
-    }
-
-    await controlledProps.requestNextPage()
+    await autoSource.prefetchNextPage()
   }
 
   async function loadPrevious() {
-    if (isAutoMode.value) {
-      await autoSource.prefetchPreviousPage()
-      return
-    }
-
-    if (loading.value || typeof controlledProps.requestPreviousPage !== 'function') {
-      return
-    }
-
-    await controlledProps.requestPreviousPage()
+    await autoSource.prefetchPreviousPage()
   }
 
   async function retry() {
-    if (!isAutoMode.value) {
-      return
-    }
-
     await autoSource.retry()
   }
 
   return {
     activeIndex,
     canRefreshExhaustedNextPage,
-    canRetryInitialLoad: computed(() => isAutoMode.value ? autoSource.canRetryInitialLoad.value : false),
+    canRetryInitialLoad: autoSource.canRetryInitialLoad,
     cancel,
     clearRemoved: resetRemovedItems,
     commitPendingAppend: autoSource.commitPendingAppend,
-    currentCursor: computed(() => isAutoMode.value ? autoSource.currentCursor.value : null),
-    errorMessage: computed(() => isAutoMode.value ? autoSource.errorMessage.value : null),
-    fillCollectedCount: computed(() => isAutoMode.value ? autoSource.fillCollectedCount.value : null),
-    fillDelayRemainingMs: computed(() => isAutoMode.value ? autoSource.fillDelayRemainingMs.value : null),
-    fillTargetCount: computed(() => isAutoMode.value ? autoSource.fillTargetCount.value : null),
+    currentCursor: autoSource.currentCursor,
+    errorMessage: autoSource.errorMessage,
+    fillCollectedCount: autoSource.fillCollectedCount,
+    fillDelayRemainingMs: autoSource.fillDelayRemainingMs,
+    fillTargetCount: autoSource.fillTargetCount,
     getRemovedIds,
     hasNextPage,
     hasPreviousPage,
-    isAutoMode,
     items,
     loading,
     loadNext,
     loadPrevious,
-    mode: computed(() => isAutoMode.value ? autoSource.mode.value : null),
-    nextCursor: computed(() => isAutoMode.value ? autoSource.nextCursor.value : null),
+    mode: autoSource.mode,
+    nextCursor: autoSource.nextCursor,
     paginationDetail,
     pendingAppendItems: autoSource.pendingAppendItems,
-    phase: computed(() => isAutoMode.value ? autoSource.phase.value : (loading.value ? 'loading' : 'idle')),
-    prefetchNextPage: isAutoMode.value ? autoSource.prefetchNextPage : async () => {
-      if (loading.value || typeof controlledProps.requestNextPage !== 'function') {
-        return
-      }
-
-      await controlledProps.requestNextPage()
-    },
-    prefetchPreviousPage: isAutoMode.value ? autoSource.prefetchPreviousPage : async () => {
-      if (loading.value || typeof controlledProps.requestPreviousPage !== 'function') {
-        return
-      }
-
-      await controlledProps.requestPreviousPage()
-    },
-    previousCursor: computed(() => isAutoMode.value ? autoSource.previousCursor.value : null),
+    phase: autoSource.phase,
+    prefetchNextPage: autoSource.prefetchNextPage,
+    prefetchPreviousPage: autoSource.prefetchPreviousPage,
+    previousCursor: autoSource.previousCursor,
     removedCount,
     remove,
     restore,
