@@ -6,8 +6,10 @@ import type { VibeViewerItem } from './viewer'
 import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './viewer-core/assetErrors'
 import { getVibeOccurrenceKey } from './viewer-core/itemIdentity'
 import { hasRenderableSlotContent } from './viewer-core/slotContent'
+import { getVibeSurfaceStatus, resolveVibeSurfacePhase } from './viewer-core/surfaceStatus'
 import type { VibeGridStatusSlotProps } from './viewer-core/surfaceSlots'
 import { useVibeMasonryList } from './viewer-core/useMasonryList'
+import type { VibeLoadPhase } from './viewer-core/useViewer'
 import ListCard from './ListCard.vue'
 
 const props = withDefaults(defineProps<{
@@ -15,12 +17,14 @@ const props = withDefaults(defineProps<{
   activeIndex?: number
   allowExhaustedNextPageRefresh?: boolean
   commitPendingAppend?: (() => void | Promise<void>) | null
+  errorMessage?: string | null
   hasNextPage?: boolean
   hasPreviousPage?: boolean
   items: VibeViewerItem[]
   loading?: boolean
   pendingAppendItems?: VibeViewerItem[]
   paginationDetail?: string | null
+  phase?: VibeLoadPhase | null
   reportAssetError?: VibeAssetErrorReporter | null
   reportAssetLoad?: VibeAssetLoadReporter | null
   requestNextPage?: (() => void | Promise<void>) | null
@@ -32,11 +36,13 @@ const props = withDefaults(defineProps<{
   activeIndex: 0,
   allowExhaustedNextPageRefresh: false,
   commitPendingAppend: null,
+  errorMessage: null,
   hasNextPage: false,
   hasPreviousPage: false,
   loading: false,
   pendingAppendItems: () => [],
   paginationDetail: null,
+  phase: null,
   reportAssetError: null,
   reportAssetLoad: null,
   requestNextPage: null,
@@ -80,16 +86,28 @@ const list = useVibeMasonryList({
     emit('update:activeIndex', index)
   },
 })
+const resolvedPhase = computed(() => resolveVibeSurfacePhase({
+  itemCount: props.items.length,
+  loading: props.loading,
+  phase: props.phase,
+}))
+const gridStatusState = computed(() => getVibeSurfaceStatus({
+  errorMessage: props.errorMessage,
+  hasItems: props.items.length > 0,
+  hasNextPage: props.hasNextPage,
+  phase: resolvedPhase.value,
+  surface: 'grid',
+}))
 const gridStatusProps = computed<VibeGridStatusSlotProps | null>(() => {
-  if (!props.showStatusBadges || !list.footerStatusMessage.value) {
+  if (!props.showStatusBadges || !gridStatusState.value) {
     return null
   }
 
   return {
     activeIndex: list.resolvedActiveIndex.value,
-    kind: props.loading ? 'loading-more' : 'end',
+    kind: gridStatusState.value.kind,
     loading: props.loading,
-    message: list.footerStatusMessage.value,
+    message: gridStatusState.value.message,
     paginationDetail: props.paginationDetail,
     total: props.items.length,
   }
@@ -195,7 +213,9 @@ const showCustomGridStatus = computed(() => hasRenderableSlotContent(gridStatusN
       />
       <span
         v-else
+        data-testid="vibe-grid-status-badge"
         class="inline-flex items-center border border-white/14 bg-black/55 px-4 py-3 text-[0.7rem] font-bold uppercase tracking-[0.18em] text-[#f7f1ea]/72 backdrop-blur-[18px]"
+        :class="gridStatusProps.kind === 'end' ? 'border-amber-300/35 text-amber-200' : (gridStatusProps.kind === 'failed' ? 'border-rose-400/45 text-rose-100' : '')"
       >
         {{ gridStatusProps.message }}
       </span>

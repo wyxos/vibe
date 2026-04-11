@@ -81,7 +81,7 @@ Optional pacing props:
 - `fill-delay-step-ms`: extra delay added for each additional chained fill request in the same fill cycle
 - defaults: `2000` and `1000`
 - `show-end-badge`: controls the fullscreen `End reached` badge when the feed is exhausted
-- `show-status-badges`: controls the built-in loading/end status overlays in list and fullscreen
+- `show-status-badges`: controls the built-in lifecycle status overlays in list and fullscreen
 
 Optional feed strategy:
 
@@ -325,7 +325,7 @@ type VibeStatus = {
   loadState: 'failed' | 'loaded' | 'loading'
   mode: 'dynamic' | 'static'
   nextCursor: string | null
-  phase: 'failed' | 'filling' | 'idle' | 'loading' | 'reloading'
+  phase: 'failed' | 'filling' | 'idle' | 'initializing' | 'loading' | 'refreshing'
   previousCursor: string | null
   removedCount: number
   removedIds: readonly string[]

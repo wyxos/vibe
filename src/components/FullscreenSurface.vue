@@ -8,6 +8,7 @@ import FullscreenHeader from './FullscreenHeader.vue'
 import { getVibeOccurrenceKey } from './viewer-core/itemIdentity'
 import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './viewer-core/assetErrors'
 import type { VibeFullscreenStatusSlotProps, VibeSurfaceSlotProps } from './viewer-core/surfaceSlots'
+import type { VibeLoadPhase } from './viewer-core/useViewer'
 import { useViewer } from './viewer-core/useViewer'
 import { getItemIcon, getItemLabel } from './viewer-core/media'
 import { hasRenderableSlotContent } from './viewer-core/slotContent'
@@ -17,10 +18,12 @@ import './viewer-core/fullscreenMediaBar.css'
 interface FullscreenSurfaceProps {
   active?: boolean
   activeIndex?: number
+  errorMessage?: string | null
   hasNextPage?: boolean
   items: VibeViewerItem[]
   loading?: boolean
   paginationDetail?: string | null
+  phase?: VibeLoadPhase | null
   reportAssetError?: VibeAssetErrorReporter | null
   reportAssetLoad?: VibeAssetLoadReporter | null
   showBackToList?: boolean
@@ -31,9 +34,11 @@ interface FullscreenSurfaceProps {
 const props = withDefaults(defineProps<FullscreenSurfaceProps>(), {
   active: true,
   activeIndex: 0,
+  errorMessage: null,
   hasNextPage: false,
   loading: false,
   paginationDetail: null,
+  phase: null,
   reportAssetError: null,
   reportAssetLoad: null,
   showBackToList: false,
@@ -98,12 +103,12 @@ const fullscreenAsideNodes = computed(() => {
   return slots['fullscreen-aside'](fullscreenSlotProps.value)
 })
 const fullscreenStatusProps = computed<VibeFullscreenStatusSlotProps | null>(() => {
-  if (!props.showStatusBadges || !fullscreenSlotProps.value || !viewer.statusMessage.value) {
+  if (!props.showStatusBadges || !fullscreenSlotProps.value || !viewer.statusKind.value || !viewer.statusMessage.value) {
     return null
   }
   return {
     ...fullscreenSlotProps.value,
-    kind: viewer.isAtEnd.value && !viewer.hasNextPage.value && !viewer.loading.value ? 'end' : 'loading-more',
+    kind: viewer.statusKind.value,
     message: viewer.statusMessage.value,
   }
 })
@@ -135,13 +140,11 @@ function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof 
   if (label) {
     return `${action} ${label}`
   }
-
   return `${action} ${getItemLabel(item.type).toLowerCase()}`
 }
 
 function isAssetLoading(index: number, item: (typeof props.items)[number]) {
   const itemKey = getItemKey(item)
-
   if (!shouldPreloadSlideAsset(index)) {
     return false
   }
@@ -151,15 +154,12 @@ function isAssetLoading(index: number, item: (typeof props.items)[number]) {
   if (viewer.getAssetErrorKind(itemKey)) {
     return false
   }
-
   if (item.type === 'image') {
     return !viewer.isImageReady(itemKey)
   }
-
   if (item.type === 'video' || item.type === 'audio') {
     return !viewer.isMediaReady(itemKey)
   }
-
   return false
 }
 
@@ -446,8 +446,9 @@ function updateViewportWidth() {
             />
             <div
               v-else
+              data-testid="vibe-fullscreen-status-badge"
               class="inline-flex w-auto items-center border border-white/14 bg-black/40 px-5 py-3 text-[0.75rem] font-bold uppercase tracking-[0.18em] text-[#f7f1ea]/74 backdrop-blur-[18px] max-[720px]:w-[calc(100%-2.5rem)] max-[720px]:justify-center"
-              :class="fullscreenStatusProps.kind === 'end' ? 'border-amber-300/35 text-amber-200' : ''"
+              :class="fullscreenStatusProps.kind === 'end' ? 'border-amber-300/35 text-amber-200' : (fullscreenStatusProps.kind === 'failed' ? 'border-rose-400/45 text-rose-100' : '')"
             >
               {{ fullscreenStatusProps.message }}
             </div>

@@ -16,6 +16,29 @@ describe('useDataSource', () => {
     vi.useRealTimers()
   })
 
+  it('marks the first unresolved request as initializing before the initial page resolves', async () => {
+    const deferred = createDeferred<VibeResolveResult>()
+    const resolve = vi.fn(() => deferred.promise)
+
+    const source = await mountUseDataSource({
+      resolve,
+    })
+
+    expect(source.api.phase.value).toBe('initializing')
+    expect(source.api.loading.value).toBe(true)
+
+    deferred.resolve(createPageResult('page-1', {
+      nextPage: 'page-2',
+    }))
+    await source.flush()
+
+    expect(source.api.phase.value).toBe('idle')
+    expect(source.api.loading.value).toBe(false)
+    expect(source.api.items.value).toHaveLength(25)
+
+    source.unmount()
+  })
+
   it('loads the initial page from resolve with the default page size', async () => {
     const resolve = vi.fn(async ({ cursor, pageSize }: VibeResolveParams) => {
       expect(cursor).toBeNull()
@@ -63,6 +86,7 @@ describe('useDataSource', () => {
     await source.flush()
 
     expect(resolve).toHaveBeenCalledTimes(2)
+    expect(source.api.phase.value).toBe('loading')
     expect(resolve).toHaveBeenLastCalledWith(expect.objectContaining({
       cursor: 'page-2',
       pageSize: 25,
@@ -80,6 +104,7 @@ describe('useDataSource', () => {
 
     expect(source.api.items.value).toHaveLength(50)
     expect(source.api.pendingAppendItems.value).toHaveLength(0)
+    expect(source.api.phase.value).toBe('idle')
 
     source.unmount()
   })
@@ -288,6 +313,48 @@ describe('useDataSource', () => {
     expect(resolve).toHaveBeenCalledTimes(2)
     expect(source.api.errorMessage.value).toBeNull()
     expect(source.api.items.value).toHaveLength(25)
+
+    source.unmount()
+  })
+
+  it('marks exhausted boundary reloads as refreshing while the request is in flight', async () => {
+    const deferred = createDeferred<VibeResolveResult>()
+    const resolve = vi.fn(({ cursor }: VibeResolveParams) => {
+      if (resolve.mock.calls.length === 1) {
+        expect(cursor).toBe('page-1')
+        return Promise.resolve(createPageResult('page-1', {
+          itemCount: 25,
+          nextPage: null,
+        }))
+      }
+
+      expect(cursor).toBe('page-1')
+      return deferred.promise
+    })
+
+    const source = await mountUseDataSource({
+      initialCursor: 'page-1',
+      resolve,
+    })
+
+    await source.flush()
+    expect(source.api.hasNextPage.value).toBe(false)
+
+    void source.api.loadNext()
+    await source.flush()
+
+    expect(source.api.phase.value).toBe('refreshing')
+    expect(source.api.loading.value).toBe(true)
+
+    deferred.resolve(createPageResult('page-1', {
+      itemCount: 25,
+      nextPage: 'page-2',
+    }))
+    await source.flush()
+
+    expect(source.api.phase.value).toBe('idle')
+    expect(source.api.hasNextPage.value).toBe(true)
+    expect(source.api.nextCursor.value).toBe('page-2')
 
     source.unmount()
   })

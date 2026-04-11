@@ -15,21 +15,47 @@ describe('useViewer', () => {
 
     expect(viewer.api.resolvedActiveIndex.value).toBe(1)
     expect(viewer.api.isAtEnd.value).toBe(true)
+    expect(viewer.api.statusKind.value).toBe('end')
     expect(viewer.api.statusMessage.value).toBe('End of feed')
 
     viewer.props.items = []
     viewer.props.loading = true
+    viewer.props.phase = 'initializing'
     await viewer.flush()
 
     expect(viewer.api.resolvedActiveIndex.value).toBe(0)
+    expect(viewer.api.statusKind.value).toBe('initializing')
     expect(viewer.api.statusMessage.value).toBe('Loading the first page')
 
     viewer.props.items = items
     viewer.props.activeIndex = 0
     viewer.props.hasNextPage = true
+    viewer.props.phase = 'loading'
     await viewer.flush()
 
+    expect(viewer.api.statusKind.value).toBe('loading-more')
     expect(viewer.api.statusMessage.value).toBe('Loading more items')
+
+    viewer.props.phase = 'filling'
+    await viewer.flush()
+
+    expect(viewer.api.statusKind.value).toBe('filling')
+    expect(viewer.api.statusMessage.value).toBe('Filling the view')
+
+    viewer.props.hasNextPage = false
+    viewer.props.phase = 'refreshing'
+    await viewer.flush()
+
+    expect(viewer.api.statusKind.value).toBe('refreshing')
+    expect(viewer.api.statusMessage.value).toBe('Refreshing the end of the feed')
+
+    viewer.props.loading = false
+    viewer.props.errorMessage = 'Temporary failure'
+    viewer.props.phase = 'failed'
+    await viewer.flush()
+
+    expect(viewer.api.statusKind.value).toBe('failed')
+    expect(viewer.api.statusMessage.value).toBe('Temporary failure')
 
     viewer.unmount()
   })
@@ -316,9 +342,11 @@ async function mountViewer(initialProps: VibeViewerProps) {
   const emitted: number[] = []
   const props = reactive({
     activeIndex: 0,
+    errorMessage: null,
     hasNextPage: false,
     loading: false,
     paginationDetail: null,
+    phase: null,
     ...initialProps,
   }) as VibeViewerProps
 

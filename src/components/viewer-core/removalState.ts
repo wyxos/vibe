@@ -5,7 +5,7 @@ export interface VibeRemoveResult {
 }
 
 export type VibeFeedMode = 'dynamic' | 'static'
-export type VibeLoadPhase = 'failed' | 'filling' | 'idle' | 'loading' | 'reloading'
+export type VibeLoadPhase = 'failed' | 'filling' | 'idle' | 'initializing' | 'loading' | 'refreshing'
 
 export interface VibeStatus {
   activeIndex: number

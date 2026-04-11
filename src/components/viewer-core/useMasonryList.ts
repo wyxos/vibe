@@ -74,11 +74,6 @@ export function useVibeMasonryList(options: {
     const nextReservedHeight = reservedContentHeight.value ?? 0
     return Math.max(contentHeight, nextReservedHeight, viewportHeight.value) + SCROLL_BUFFER_PX
   })
-  const footerStatusMessage = computed(() => {
-    if (options.loading.value) return options.items.value.length > 0 ? 'Loading more items' : 'Loading the first page'
-    if (!options.hasNextPage.value && options.items.value.length > 0) return 'End of list'
-    return null
-  })
   const canRequestNextBoundary = computed(() => options.hasNextPage.value || options.allowExhaustedNextPageRefresh.value)
   const paginationLabel = computed(() => `${resolvedActiveIndex.value + 1} / ${options.items.value.length}`)
   const scrollbarTrackHeight = computed(() => Math.max(0, viewportHeight.value - SCROLLBAR_INSET_PX * 2))
@@ -480,7 +475,6 @@ export function useVibeMasonryList(options: {
   return {
     columnWidth,
     containerHeight,
-    footerStatusMessage,
     getCardStyle,
     getScrollbarThumbStyle,
     onScroll,

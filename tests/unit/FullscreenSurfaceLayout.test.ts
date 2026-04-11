@@ -86,7 +86,7 @@ describe('VibeLayout fullscreen aside layout', () => {
         showStatusBadges: true,
       }),
       slots: {
-        'fullscreen-status': ({ kind, message }: { kind: 'end' | 'loading-more'; message: string }) =>
+        'fullscreen-status': ({ kind, message }: { kind: 'end' | 'failed' | 'filling' | 'initializing' | 'loading-more' | 'refreshing'; message: string }) =>
           h('div', { 'data-kind': kind, 'data-testid': 'custom-fullscreen-status' }, message),
       },
     })
@@ -136,7 +136,7 @@ describe('VibeLayout fullscreen aside layout', () => {
         showStatusBadges: false,
       }),
       slots: {
-        'fullscreen-status': ({ kind, message }: { kind: 'end' | 'loading-more'; message: string }) =>
+        'fullscreen-status': ({ kind, message }: { kind: 'end' | 'failed' | 'filling' | 'initializing' | 'loading-more' | 'refreshing'; message: string }) =>
           h('div', { 'data-kind': kind, 'data-testid': 'custom-fullscreen-status' }, message),
       },
     })

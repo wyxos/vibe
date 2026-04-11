@@ -47,11 +47,12 @@ export function useAutoResolveSource(options: {
   removedIds: Ref<Set<string>>
   resolve?: ResolveFn
 }) {
+  const hasSeededItems = Boolean(options.initialState?.items.length)
   const autoBuckets = ref<VibeAutoBucket[]>([])
   const autoActiveIndex = ref(0)
   const pendingAppendBuckets = ref<VibeAutoBucket[]>([])
   const errorMessage = ref<string | null>(null)
-  const operationPhase = ref<VibeLoadPhase>('idle')
+  const operationPhase = ref<VibeLoadPhase>(!hasSeededItems && typeof options.resolve === 'function' ? 'initializing' : 'idle')
   const fillCollectedCount = ref<number | null>(null)
   const fillDelay = useFillDelayCountdown()
   const fillDelayRemainingMs = fillDelay.remainingMs
@@ -131,7 +132,7 @@ export function useAutoResolveSource(options: {
       continueUntilFilled: mode.value === 'dynamic',
       cursor: options.initialCursor ?? null,
       direction: 'forward',
-      phase: 'loading',
+      phase: 'initializing',
     })
     if (!resolvedBuckets) {
       return
@@ -165,7 +166,7 @@ export function useAutoResolveSource(options: {
     autoActiveIndex.value = 0
     pendingAppendBuckets.value = []
     errorMessage.value = null
-    operationPhase.value = 'idle'
+    operationPhase.value = hasResolver.value ? 'initializing' : 'idle'
     fillCollectedCount.value = null
     fillTargetCount.value = null
     isAwaitingAppendCommit.value = false
@@ -289,7 +290,7 @@ export function useAutoResolveSource(options: {
     if (inFlightCursors.has(cursorKey)) return
     inFlightCursors.add(cursorKey)
     errorMessage.value = null
-    operationPhase.value = 'reloading'
+    operationPhase.value = 'refreshing'
     fillCollectedCount.value = null
     fillTargetCount.value = null
     const operationId = ++operationSequence
@@ -333,7 +334,7 @@ export function useAutoResolveSource(options: {
     continueUntilFilled: boolean
     cursor: string | null
     direction: VibeAutoDirection
-    phase: Extract<VibeLoadPhase, 'loading' | 'reloading'>
+    phase: Extract<VibeLoadPhase, 'initializing' | 'loading'>
   }): Promise<VibeCollectedBuckets | null> {
     if (!options.resolve) {
       return null
@@ -451,7 +452,7 @@ export function useAutoResolveSource(options: {
     return true
   }
   function isLoadingInitialPhase() {
-    return operationPhase.value === 'loading' && autoBuckets.value.length === 0 && pendingAppendBuckets.value.length === 0
+    return operationPhase.value === 'initializing'
   }
   function needsStaticReload(edge: 'leading' | 'trailing') {
     const targetBucket = edge === 'leading' ? firstBucket.value : lastBucket.value

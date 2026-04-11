@@ -9,7 +9,7 @@ export type VibeSurfaceSlotProps = {
   total: number
 }
 
-export type VibeSurfaceStatusKind = 'end' | 'loading-more'
+export type VibeSurfaceStatusKind = 'end' | 'failed' | 'filling' | 'initializing' | 'loading-more' | 'refreshing'
 
 export type VibeFullscreenStatusSlotProps = VibeSurfaceSlotProps & {
   kind: VibeSurfaceStatusKind

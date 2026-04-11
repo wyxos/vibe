@@ -55,7 +55,7 @@ function createDataSourceMock() {
   const nextCursor = ref<string | null>(null)
   const paginationDetail = ref<string | null>(null)
   const pendingAppendItems = ref<VibeViewerItem[]>([])
-  const phase = ref<'failed' | 'filling' | 'idle' | 'loading' | 'reloading'>('idle')
+  const phase = ref<'failed' | 'filling' | 'idle' | 'initializing' | 'loading' | 'refreshing'>('idle')
   const prefetchNextPage = vi.fn(async () => {})
   const prefetchPreviousPage = vi.fn(async () => {})
   const previousCursor = ref<string | null>(null)

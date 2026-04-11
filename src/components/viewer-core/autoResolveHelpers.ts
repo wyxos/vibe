@@ -18,7 +18,7 @@ export type ResolveFn = (params: {
 export type VibeAutoDirection = 'backward' | 'forward'
 
 export function isActiveLoadPhase(phase: VibeLoadPhase) {
-  return phase === 'filling' || phase === 'loading' || phase === 'reloading'
+  return phase === 'filling' || phase === 'initializing' || phase === 'loading' || phase === 'refreshing'
 }
 
 export function normalizePageSize(value: number | undefined) {

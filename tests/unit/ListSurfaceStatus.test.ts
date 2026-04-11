@@ -15,6 +15,30 @@ describe('VibeLayout grid status slot', () => {
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
   })
 
+  it('renders the built-in grid status badge when no custom status slot is supplied', async () => {
+    setViewportWidth(1_280)
+    const deferred = createDeferred<{ items: VibeViewerItem[]; nextPage: string | null }>()
+
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps([createImageItem('image-grid-built-in-status', 'Grid built-in status image')], {
+        nextCursor: 'page-2',
+        resolve: vi.fn(() => deferred.promise),
+        showStatusBadges: true,
+      }),
+    })
+
+    await flushDom()
+    void (wrapper.vm as unknown as VibeHandle).loadNext()
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="vibe-grid-status-badge"]').text()).toBe('Loading more items')
+
+    deferred.resolve({ items: [], nextPage: null })
+    await flushDom()
+
+    wrapper.unmount()
+  })
+
   it('renders a custom grid status slot for loading-more state', async () => {
     setViewportWidth(1_280)
     const deferred = createDeferred<{ items: VibeViewerItem[]; nextPage: string | null }>()
@@ -26,7 +50,7 @@ describe('VibeLayout grid status slot', () => {
         showStatusBadges: true,
       }),
       slots: {
-        'grid-status': ({ kind, message }: { kind: 'end' | 'loading-more'; message: string }) =>
+        'grid-status': ({ kind, message }: { kind: 'end' | 'failed' | 'filling' | 'initializing' | 'loading-more' | 'refreshing'; message: string }) =>
           h('div', { 'data-kind': kind, 'data-testid': 'custom-grid-status' }, message),
       },
     })
@@ -52,7 +76,7 @@ describe('VibeLayout grid status slot', () => {
         showStatusBadges: true,
       }),
       slots: {
-        'grid-status': ({ kind, message }: { kind: 'end' | 'loading-more'; message: string }) =>
+        'grid-status': ({ kind, message }: { kind: 'end' | 'failed' | 'filling' | 'initializing' | 'loading-more' | 'refreshing'; message: string }) =>
           h('div', { 'data-kind': kind, 'data-testid': 'custom-grid-status' }, message),
       },
     })
@@ -76,7 +100,7 @@ describe('VibeLayout grid status slot', () => {
         showStatusBadges: false,
       }),
       slots: {
-        'grid-status': ({ kind, message }: { kind: 'end' | 'loading-more'; message: string }) =>
+        'grid-status': ({ kind, message }: { kind: 'end' | 'failed' | 'filling' | 'initializing' | 'loading-more' | 'refreshing'; message: string }) =>
           h('div', { 'data-kind': kind, 'data-testid': 'custom-grid-status' }, message),
       },
     })

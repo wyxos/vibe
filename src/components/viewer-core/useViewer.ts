@@ -4,6 +4,8 @@ import type { VibeViewerItem } from '../viewer'
 import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './assetErrors'
 import { isEditableTarget, isInteractiveTarget } from './dom'
 import { formatPlaybackTime } from './format'
+import type { VibeLoadPhase } from './removalState'
+import { getVibeSurfaceStatus, resolveVibeSurfacePhase } from './surfaceStatus'
 import { useActivation } from './useActivation'
 import { useMedia } from './useMedia'
 import { getRenderedItems, getRenderedRange, getVirtualSlideStyle } from './virtualization'
@@ -24,10 +26,12 @@ export type { VibeAssetErrorEvent, VibeAssetErrorReporter, VibeAssetErrorSurface
 
 export interface VibeViewerProps {
   activeIndex?: number
+  errorMessage?: string | null
   hasNextPage?: boolean
   items: VibeViewerItem[]
   loading?: boolean
   paginationDetail?: string | null
+  phase?: VibeLoadPhase | null
 }
 
 export function useViewer(
@@ -41,11 +45,16 @@ export function useViewer(
 ) {
   const items = computed(() => props.items)
   const activeIndex = computed(() => props.activeIndex ?? 0)
+  const errorMessage = computed(() => props.errorMessage ?? null)
   const loading = computed(() => props.loading ?? false)
   const hasNextPage = computed(() => props.hasNextPage ?? false)
   const paginationDetail = computed(() => props.paginationDetail ?? null)
+  const phase = computed<VibeLoadPhase>(() => resolveVibeSurfacePhase({
+    itemCount: items.value.length,
+    loading: loading.value,
+    phase: props.phase,
+  }))
   const canRetryInitialLoad = computed(() => false)
-  const errorMessage = computed<string | null>(() => null)
 
   const stageRef = ref<HTMLElement | null>(null)
   const dragOffset = ref(0)
@@ -84,21 +93,15 @@ export function useViewer(
     onAssetLoad: options.onAssetLoad,
   })
   const isAtEnd = computed(() => items.value.length > 0 && resolvedActiveIndex.value === items.value.length - 1)
-  const statusMessage = computed(() => {
-    if (items.value.length === 0 && loading.value) {
-      return 'Loading the first page'
-    }
-
-    if (loading.value && hasNextPage.value) {
-      return 'Loading more items'
-    }
-
-    if (isAtEnd.value && !hasNextPage.value && !loading.value) {
-      return 'End of feed'
-    }
-
-    return null
-  })
+  const surfaceStatus = computed(() => getVibeSurfaceStatus({
+    errorMessage: errorMessage.value,
+    hasItems: items.value.length > 0,
+    hasNextPage: hasNextPage.value,
+    phase: phase.value,
+    surface: 'fullscreen',
+  }))
+  const statusKind = computed(() => surfaceStatus.value?.kind ?? null)
+  const statusMessage = computed(() => surfaceStatus.value?.message ?? null)
   const dragThreshold = computed(() => Math.min(96, viewportHeight.value * 0.15 || 96))
   const renderedRange = computed(() => getRenderedRange(resolvedActiveIndex.value, items.value.length))
   const renderedItems = computed(() => getRenderedItems(items.value, resolvedActiveIndex.value))
@@ -313,7 +316,9 @@ export function useViewer(
     retryInitialLoad: async () => {},
     retryAsset: media.retryAsset,
     stageRef,
+    statusKind,
     statusMessage,
     paginationDetail,
+    phase,
   }
 }

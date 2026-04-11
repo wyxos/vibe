@@ -135,8 +135,9 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
           'Defaults are 2000ms and 1000ms.',
           'A trailing-edge retry after exhaustion reloads the current boundary cursor so newly available pages can appear.',
           'show-end-badge controls the fullscreen End reached badge.',
-          'show-status-badges controls the built-in loading/end status overlays.',
+          'show-status-badges controls the built-in lifecycle status overlays.',
           'Status exposes phase, raw cursors, fill counts, and the live delay countdown.',
+          'Phase distinguishes initializing, loading, filling, refreshing, failed, and idle.',
         ],
       },
       {
@@ -398,6 +399,7 @@ console.log(vibe.value?.status.fillDelayRemainingMs)`,
         notes: [
           'Handle methods: remove, restore, undo, getRemovedIds, clearRemoved.',
           'Status exposes activeIndex, currentCursor, nextCursor, previousCursor, mode, phase, fill counts, loadState, itemCount, removedCount, and surfaceMode.',
+          'Phase differentiates the first load from later requests and end-of-list refreshes.',
         ],
       },
       {
