@@ -31,6 +31,8 @@ vi.mock('@/components/viewer-core/useDataSource', () => ({
     prefetchPreviousPage: dataSourceMock.prefetchPreviousPage,
     previousCursor: dataSourceMock.previousCursor,
     removedCount: dataSourceMock.removedCount,
+    removedIds: dataSourceMock.removedIds,
+    getRemovedIds: dataSourceMock.getRemovedIds,
     retryInitialLoad: dataSourceMock.retryInitialLoad,
     setActiveIndex: dataSourceMock.setActiveIndex,
     setAutoPrefetchEnabled: dataSourceMock.setAutoPrefetchEnabled,
@@ -60,6 +62,8 @@ function createDataSourceMock() {
   const prefetchPreviousPage = vi.fn(async () => {})
   const previousCursor = ref<string | null>(null)
   const removedCount = ref(0)
+  const removedIds = ref<string[]>([])
+  const getRemovedIds = vi.fn(() => removedIds.value)
   const retryInitialLoad = vi.fn(async () => {})
   const setActiveIndex = vi.fn((nextIndex: number) => {
     activeIndex.value = nextIndex
@@ -89,6 +93,8 @@ function createDataSourceMock() {
     prefetchPreviousPage,
     previousCursor,
     removedCount,
+    removedIds,
+    getRemovedIds,
     retryInitialLoad,
     setActiveIndex,
     setAutoPrefetchEnabled,
@@ -131,6 +137,26 @@ describe('useController', () => {
     expect(controller.api.surfaceMode.value).toBe('list')
     expect(controller.api.showBackToList.value).toBe(false)
     expect(controller.api.listRestoreToken.value).toBe(2)
+
+    controller.unmount()
+  })
+
+  it('mirrors removal state into status.removedIds', async () => {
+    const controller = await mountController()
+
+    expect(controller.api.status.removedIds).toEqual([])
+
+    dataSourceMock.removedIds.value = ['item-2', 'item-5']
+    dataSourceMock.removedCount.value = 2
+    await controller.flush()
+
+    expect(controller.api.status.removedIds).toEqual(['item-2', 'item-5'])
+
+    dataSourceMock.removedIds.value = []
+    dataSourceMock.removedCount.value = 0
+    await controller.flush()
+
+    expect(controller.api.status.removedIds).toEqual([])
 
     controller.unmount()
   })
@@ -265,6 +291,7 @@ function resetDataSourceMock() {
   dataSourceMock.prefetchPreviousPage.mockClear()
   dataSourceMock.previousCursor.value = null
   dataSourceMock.removedCount.value = 0
+  dataSourceMock.removedIds.value = []
   dataSourceMock.retryInitialLoad.mockClear()
   dataSourceMock.setActiveIndex.mockClear()
   dataSourceMock.setAutoPrefetchEnabled.mockClear()

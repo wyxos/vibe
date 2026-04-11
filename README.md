@@ -337,6 +337,7 @@ type VibeStatus = {
   phase: 'failed' | 'filling' | 'idle' | 'loading' | 'reloading'
   previousCursor: string | null
   removedCount: number
+  removedIds: readonly string[]
   surfaceMode: 'fullscreen' | 'list'
 }
 ```
@@ -347,6 +348,7 @@ Example:
 vibe.value?.remove(['item-2', 'item-5'])
 vibe.value?.undo()
 console.log(vibe.value?.status.itemCount)
+console.log(vibe.value?.status.removedIds)
 ```
 
 ## Events

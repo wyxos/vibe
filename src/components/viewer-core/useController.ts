@@ -30,6 +30,7 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     phase: 'idle',
     previousCursor: null,
     removedCount: 0,
+    removedIds: [],
     surfaceMode: 'list',
   })
 
@@ -86,6 +87,7 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     status.phase = dataSource.phase.value
     status.previousCursor = dataSource.previousCursor.value
     status.removedCount = dataSource.removedCount.value
+    status.removedIds = dataSource.getRemovedIds()
     status.surfaceMode = surfaceMode.value
   })
 

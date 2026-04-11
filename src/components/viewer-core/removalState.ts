@@ -24,6 +24,7 @@ export interface VibeStatus {
   phase: VibeLoadPhase
   previousCursor: string | null
   removedCount: number
+  removedIds: readonly string[]
   surfaceMode: 'fullscreen' | 'list'
 }
 

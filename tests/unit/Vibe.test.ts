@@ -478,6 +478,7 @@ describe('VibeLayout', () => {
     expect(handle.status.itemCount).toBe(3)
     expect(handle.status.loadState).toBe('loaded')
     expect(handle.status.surfaceMode).toBe('list')
+    expect(handle.status.removedIds).toEqual([])
     expect(wrapper.findAll('[data-testid="vibe-list-card"]')).toHaveLength(3)
 
     expect(handle.remove('duplicate').ids).toEqual(['duplicate'])
@@ -485,6 +486,7 @@ describe('VibeLayout', () => {
 
     expect(wrapper.findAll('[data-testid="vibe-list-card"]')).toHaveLength(1)
     expect(handle.getRemovedIds()).toEqual(['duplicate'])
+    expect(handle.status.removedIds).toEqual(['duplicate'])
     expect(handle.status.itemCount).toBe(1)
     expect(handle.status.removedCount).toBe(1)
 
@@ -493,18 +495,33 @@ describe('VibeLayout', () => {
 
     expect(wrapper.findAll('[data-testid="vibe-list-card"]')).toHaveLength(3)
     expect(handle.getRemovedIds()).toEqual([])
+    expect(handle.status.removedIds).toEqual([])
     expect(handle.status.itemCount).toBe(3)
     expect(handle.status.removedCount).toBe(0)
 
     handle.remove('duplicate')
     await flushDom()
     expect(wrapper.findAll('[data-testid="vibe-list-card"]')).toHaveLength(1)
+    expect(handle.status.removedIds).toEqual(['duplicate'])
 
     expect(handle.restore('duplicate').ids).toEqual(['duplicate'])
     await flushDom()
 
     expect(wrapper.findAll('[data-testid="vibe-list-card"]')).toHaveLength(3)
+    expect(handle.status.removedIds).toEqual([])
     expect(handle.status.itemCount).toBe(3)
+
+    handle.remove('duplicate')
+    await flushDom()
+    expect(handle.status.removedIds).toEqual(['duplicate'])
+
+    handle.clearRemoved()
+    await flushDom()
+
+    expect(wrapper.findAll('[data-testid="vibe-list-card"]')).toHaveLength(3)
+    expect(handle.getRemovedIds()).toEqual([])
+    expect(handle.status.removedIds).toEqual([])
+    expect(handle.status.removedCount).toBe(0)
 
     wrapper.unmount()
   })
