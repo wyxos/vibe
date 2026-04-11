@@ -33,6 +33,8 @@ interface VibeSharedProps {
   paginationDetail?: string | null
   requestNextPage?: (() => void | Promise<void>) | null
   requestPreviousPage?: (() => void | Promise<void>) | null
+  showEndBadge?: boolean
+  showStatusBadges?: boolean
 }
 
 export interface VibeControlledProps extends VibeSharedProps {
@@ -49,7 +51,7 @@ export interface VibeControlledProps extends VibeSharedProps {
   pageSize?: never
 }
 
-export interface VibeAutoProps {
+export interface VibeAutoProps extends VibeSharedProps {
   resolve: (params: VibeResolveParams) => Promise<VibeResolveResult>
   fillDelayMs?: number
   fillDelayStepMs?: number
@@ -113,6 +115,11 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
   const hasPreviousPage = computed(() => isAutoMode.value ? autoSource.hasPreviousPage.value : (controlledProps.hasPreviousPage ?? false))
   const removedCount = computed(() => removedIds.value.size)
   const paginationDetail = computed(() => controlledProps.paginationDetail ?? null)
+  const canRefreshExhaustedNextPage = computed(() => (
+    isAutoMode.value
+      ? !autoSource.hasNextPage.value && autoSource.canRefreshTrailingBoundary.value
+      : false
+  ))
 
   watch(
     [() => controlledProps.items, () => autoProps.resolve],
@@ -297,6 +304,7 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
 
   return {
     activeIndex,
+    canRefreshExhaustedNextPage,
     canRetryInitialLoad: computed(() => isAutoMode.value ? autoSource.canRetryInitialLoad.value : false),
     cancel,
     clearRemoved: resetRemovedItems,

@@ -62,6 +62,8 @@ function renderItemIcon(item: VibeViewerItem, icon: unknown) {
       :initial-cursor="String(INITIAL_CURSOR)"
       mode="dynamic"
       :resolve="resolve"
+      :show-end-badge="false"
+      :show-status-badges="false"
     >
       <template #item-icon="{ item, icon }">
         <component :is="renderItemIcon(item, icon)" class="h-6 w-6 stroke-[1.9]" aria-hidden="true" />

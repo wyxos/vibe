@@ -72,12 +72,16 @@ Optional auto-mode pacing props:
   :resolve="resolve"
   :fill-delay-ms="2000"
   :fill-delay-step-ms="1000"
+  :show-end-badge="false"
+  :show-status-badges="false"
 />
 ```
 
 - `fill-delay-ms`: base delay before the first chained fill request
 - `fill-delay-step-ms`: extra delay added for each additional chained fill request in the same fill cycle
 - defaults: `2000` and `1000`
+- `show-end-badge`: controls the fullscreen `End reached` badge when the feed is exhausted
+- `show-status-badges`: controls the built-in loading/end status overlays in list and fullscreen
 
 Optional auto-mode feed strategy:
 
@@ -185,6 +189,7 @@ Auto mode also supports two feed strategies:
   - it waits `fillDelayMs`, then `fillDelayMs + fillDelayStepMs`, and so on for each chained request
   - it keeps accumulating results until the collected count reaches `pageSize` or there is no further cursor
   - then it commits that batch into the layout once
+  - when the trailing edge is exhausted, another bottom-edge attempt reloads the trailing cursor so newly available pages can be discovered
 - `static`:
   - before advancing at the bottom or top, Vibe checks whether the current boundary page is underfilled after local removals
   - if it is, Vibe reloads that same cursor in place first

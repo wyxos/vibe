@@ -77,6 +77,7 @@ export function useAutoResolveSource(options: {
   const previousCursor = computed(() => firstBucket.value?.previousCursor ?? null)
   const hasNextPage = computed(() => Boolean(nextCursor.value))
   const hasPreviousPage = computed(() => Boolean(previousCursor.value))
+  const canRefreshTrailingBoundary = computed(() => autoBuckets.value.length > 0)
   const pendingAppendItems = computed(() =>
     filterRemovedItems(flattenVibeBuckets(pendingAppendBuckets.value), options.removedIds.value),
   )
@@ -139,7 +140,14 @@ export function useAutoResolveSource(options: {
     finishLoadPhase()
   }
   async function prefetchNextPage() {
-    if (!hasNextPage.value || loading.value) return
+    if (loading.value) return
+    if (!hasNextPage.value) {
+      if (!canRefreshTrailingBoundary.value) {
+        return
+      }
+
+      return reloadBoundaryBucket('trailing')
+    }
     if (mode.value === 'static' && needsStaticReload('trailing')) return reloadBoundaryBucket('trailing')
     await appendBuckets(nextCursor.value)
   }
@@ -452,6 +460,7 @@ export function useAutoResolveSource(options: {
     activeIndex,
     canRetryInitialLoad,
     cancel,
+    canRefreshTrailingBoundary,
     commitPendingAppend,
     currentCursor,
     errorMessage,

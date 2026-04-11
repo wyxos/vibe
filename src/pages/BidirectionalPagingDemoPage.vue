@@ -92,6 +92,8 @@ onBeforeUnmount(() => {
       :initial-cursor="String(INITIAL_PAGE)"
       mode="static"
       :resolve="resolve"
+      :show-end-badge="false"
+      :show-status-badges="false"
     >
       <template #grid-item-overlay="{ focused, hovered, item }">
         <div

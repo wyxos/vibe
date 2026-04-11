@@ -28,6 +28,8 @@ const props = withDefaults(defineProps<VibeControlledProps & {
   reportAssetError: null,
   reportAssetLoad: null,
   showBackToList: false,
+  showEndBadge: true,
+  showStatusBadges: true,
 })
 const slots = defineSlots<{
   'fullscreen-aside'?: (props: VibeSurfaceSlotProps) => unknown
@@ -92,7 +94,7 @@ const fullscreenAsideNodes = computed(() => {
   return slots['fullscreen-aside'](fullscreenSlotProps.value)
 })
 const fullscreenStatusProps = computed<VibeFullscreenStatusSlotProps | null>(() => {
-  if (!fullscreenSlotProps.value || !viewer.statusMessage.value) {
+  if (!props.showStatusBadges || !fullscreenSlotProps.value || !viewer.statusMessage.value) {
     return null
   }
   return {
@@ -406,7 +408,7 @@ function updateViewportWidth() {
             :current-index="viewer.resolvedActiveIndex.value"
             :pagination-detail="viewer.paginationDetail.value"
             :show-back-to-list="props.showBackToList"
-            :show-end-badge="viewer.isAtEnd.value && !viewer.hasNextPage.value && !viewer.loading.value"
+            :show-end-badge="props.showEndBadge && viewer.isAtEnd.value && !viewer.hasNextPage.value && !viewer.loading.value"
             :title="viewer.activeItem.value.title ?? null"
             :total="viewer.items.value.length"
             @back-to-list="emit('back-to-list')"

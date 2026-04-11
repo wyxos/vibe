@@ -131,6 +131,7 @@ defineExpose<VibeHandle>({
         >
           <ListSurface
             :active="viewer.surfaceMode.value === 'list'"
+            :allow-exhausted-next-page-refresh="viewer.canRefreshExhaustedNextPage.value"
             :items="viewer.items.value"
             :active-index="viewer.activeIndex.value"
             :loading="viewer.loading.value"
@@ -144,6 +145,7 @@ defineExpose<VibeHandle>({
             :request-next-page="viewer.prefetchNextPage"
             :request-previous-page="viewer.prefetchPreviousPage"
             :restore-token="viewer.listRestoreToken.value"
+            :show-status-badges="props.showStatusBadges ?? true"
             @open-fullscreen="viewer.openFullscreen"
             @update:active-index="viewer.setActiveIndex"
           >
@@ -188,6 +190,8 @@ defineExpose<VibeHandle>({
             :pagination-detail="viewer.paginationDetail.value"
             :report-asset-error="assetErrorBatch.report"
             :report-asset-load="assetLoadBatch.report"
+            :show-end-badge="props.showEndBadge ?? true"
+            :show-status-badges="props.showStatusBadges ?? true"
             :show-back-to-list="viewer.showBackToList.value"
             @back-to-list="viewer.returnToList"
             @update:active-index="viewer.setActiveIndex"
@@ -222,6 +226,8 @@ defineExpose<VibeHandle>({
       :pagination-detail="viewer.paginationDetail.value"
       :report-asset-error="assetErrorBatch.report"
       :report-asset-load="assetLoadBatch.report"
+      :show-end-badge="props.showEndBadge ?? true"
+      :show-status-badges="props.showStatusBadges ?? true"
       :show-back-to-list="false"
       @back-to-list="viewer.returnToList"
       @update:active-index="viewer.setActiveIndex"

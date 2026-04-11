@@ -20,6 +20,7 @@ describe('VibeLayout grid status slot', () => {
         items: [createImageItem('image-grid-status', 'Grid status image')],
         loading: true,
         hasNextPage: true,
+        showStatusBadges: true,
       },
       slots: {
         'grid-status': ({ kind, message }: { kind: 'end' | 'loading-more'; message: string }) =>
@@ -31,6 +32,53 @@ describe('VibeLayout grid status slot', () => {
 
     expect(wrapper.get('[data-testid="custom-grid-status"]').attributes('data-kind')).toBe('loading-more')
     expect(wrapper.get('[data-testid="custom-grid-status"]').text()).toBe('Loading more items')
+
+    wrapper.unmount()
+  })
+
+  it('renders a custom grid status slot for end-of-list state', async () => {
+    setViewportWidth(1_280)
+
+    const wrapper = mount(Layout, {
+      props: {
+        items: [createImageItem('image-grid-end', 'Grid end image')],
+        hasNextPage: false,
+        showStatusBadges: true,
+      },
+      slots: {
+        'grid-status': ({ kind, message }: { kind: 'end' | 'loading-more'; message: string }) =>
+          h('div', { 'data-kind': kind, 'data-testid': 'custom-grid-status' }, message),
+      },
+    })
+
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="custom-grid-status"]').attributes('data-kind')).toBe('end')
+    expect(wrapper.get('[data-testid="custom-grid-status"]').text()).toBe('End of list')
+
+    wrapper.unmount()
+  })
+
+  it('suppresses grid status output when showStatusBadges is false', async () => {
+    setViewportWidth(1_280)
+
+    const wrapper = mount(Layout, {
+      props: {
+        items: [createImageItem('image-grid-hidden-status', 'Grid hidden status image')],
+        loading: true,
+        hasNextPage: true,
+        showStatusBadges: false,
+      },
+      slots: {
+        'grid-status': ({ kind, message }: { kind: 'end' | 'loading-more'; message: string }) =>
+          h('div', { 'data-kind': kind, 'data-testid': 'custom-grid-status' }, message),
+      },
+    })
+
+    await flushDom()
+
+    expect(wrapper.find('[data-testid="custom-grid-status"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Loading more items')
 
     wrapper.unmount()
   })

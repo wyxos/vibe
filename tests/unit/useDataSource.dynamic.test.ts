@@ -205,4 +205,41 @@ describe('useDataSource dynamic mode', () => {
 
     source.unmount()
   })
+
+  it('reloads the trailing boundary when loadNext is requested after exhaustion', async () => {
+    const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
+      if (resolve.mock.calls.length === 1) {
+        expect(cursor).toBe('page-1')
+        return createPageResult('page-1', {
+          itemCount: 25,
+          nextPage: null,
+        })
+      }
+
+      expect(cursor).toBe('page-1')
+      return createPageResult('page-1', {
+        itemCount: 25,
+        nextPage: 'page-2',
+      })
+    })
+
+    const source = await mountUseDataSource({
+      initialCursor: 'page-1',
+      resolve,
+    })
+
+    await source.flush()
+    expect(source.api.hasNextPage.value).toBe(false)
+    expect(source.api.canRefreshExhaustedNextPage.value).toBe(true)
+
+    await source.api.loadNext()
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(2)
+    expect(source.api.phase.value).toBe('idle')
+    expect(source.api.hasNextPage.value).toBe(true)
+    expect(source.api.nextCursor.value).toBe('page-2')
+
+    source.unmount()
+  })
 })

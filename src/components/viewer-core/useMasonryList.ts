@@ -30,6 +30,7 @@ const PREPEND_MOVE_MOTION_MS = 500
 const EDGE_COOLDOWN_MS = 1000
 export function useVibeMasonryList(options: {
   active: Ref<boolean>
+  allowExhaustedNextPageRefresh: Ref<boolean>
   items: Ref<VibeViewerItem[]>
   activeIndex: Ref<number>
   loading: Ref<boolean>
@@ -78,6 +79,7 @@ export function useVibeMasonryList(options: {
     if (!options.hasNextPage.value && options.items.value.length > 0) return 'End of list'
     return null
   })
+  const canRequestNextBoundary = computed(() => options.hasNextPage.value || options.allowExhaustedNextPageRefresh.value)
   const paginationLabel = computed(() => `${resolvedActiveIndex.value + 1} / ${options.items.value.length}`)
   const scrollbarTrackHeight = computed(() => Math.max(0, viewportHeight.value - SCROLLBAR_INSET_PX * 2))
   const showScrollbar = computed(() => containerHeight.value > viewportHeight.value + 1 && scrollbarTrackHeight.value > 0)
@@ -124,7 +126,7 @@ export function useVibeMasonryList(options: {
     getAnimationLockMs(addedItemCount) {
       return getVibeMasonryEnterDuration(addedItemCount) + EDGE_COOLDOWN_MS
     },
-    hasPage: options.hasNextPage,
+    hasPage: canRequestNextBoundary,
     isAtBoundary() {
       return getDistanceFromBottom() <= PREFETCH_THRESHOLD_PX
     },

@@ -124,6 +124,8 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
   :page-size="25"
   :fill-delay-ms="2000"
   :fill-delay-step-ms="1000"
+  :show-end-badge="false"
+  :show-status-badges="false"
 />`,
         language: 'vue',
         notes: [
@@ -131,6 +133,9 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
           'fill-delay-ms controls the base delay before the first chained fill request.',
           'fill-delay-step-ms adds extra delay for each additional chained request in the same fill cycle.',
           'Defaults are 2000ms and 1000ms.',
+          'A trailing-edge retry after exhaustion reloads the current boundary cursor so newly available pages can appear.',
+          'show-end-badge controls the fullscreen End reached badge.',
+          'show-status-badges controls the built-in loading/end status overlays.',
           'Status exposes phase, raw cursors, fill counts, and the live delay countdown.',
         ],
       },
@@ -263,6 +268,8 @@ app.use(VibePlugin)
   pageSize?: number
   fillDelayMs?: number
   fillDelayStepMs?: number
+  showEndBadge?: boolean
+  showStatusBadges?: boolean
 }
 
 type VibeControlledProps = {
@@ -274,6 +281,8 @@ type VibeControlledProps = {
   paginationDetail?: string | null
   requestNextPage?: (() => void | Promise<void>) | null
   requestPreviousPage?: (() => void | Promise<void>) | null
+  showEndBadge?: boolean
+  showStatusBadges?: boolean
 }`,
         language: 'ts',
       },

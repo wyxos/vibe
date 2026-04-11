@@ -13,6 +13,7 @@ import ListCard from './ListCard.vue'
 const props = withDefaults(defineProps<{
   active?: boolean
   activeIndex?: number
+  allowExhaustedNextPageRefresh?: boolean
   commitPendingAppend?: (() => void | Promise<void>) | null
   hasNextPage?: boolean
   hasPreviousPage?: boolean
@@ -25,9 +26,11 @@ const props = withDefaults(defineProps<{
   requestNextPage?: (() => void | Promise<void>) | null
   requestPreviousPage?: (() => void | Promise<void>) | null
   restoreToken: number
+  showStatusBadges?: boolean
 }>(), {
   active: true,
   activeIndex: 0,
+  allowExhaustedNextPageRefresh: false,
   commitPendingAppend: null,
   hasNextPage: false,
   hasPreviousPage: false,
@@ -38,6 +41,7 @@ const props = withDefaults(defineProps<{
   reportAssetLoad: null,
   requestNextPage: null,
   requestPreviousPage: null,
+  showStatusBadges: true,
 })
 const slots = defineSlots<{
   'grid-footer'?: () => unknown
@@ -60,6 +64,7 @@ const emit = defineEmits<{
 
 const list = useVibeMasonryList({
   active: toRef(props, 'active'),
+  allowExhaustedNextPageRefresh: toRef(props, 'allowExhaustedNextPageRefresh'),
   items: toRef(props, 'items'),
   activeIndex: toRef(props, 'activeIndex'),
   loading: toRef(props, 'loading'),
@@ -76,7 +81,7 @@ const list = useVibeMasonryList({
   },
 })
 const gridStatusProps = computed<VibeGridStatusSlotProps | null>(() => {
-  if (!list.footerStatusMessage.value) {
+  if (!props.showStatusBadges || !list.footerStatusMessage.value) {
     return null
   }
 

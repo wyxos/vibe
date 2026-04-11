@@ -52,6 +52,7 @@ export function createDemoFeedStatusEntries(status: DemoFeedStatus | null | unde
   const fillTargetCount = status?.fillTargetCount ?? options.pageSize
   const phase = status?.phase ?? status?.loadState ?? 'loaded'
   const mode = status?.mode ?? options.mode
+  const statusValue = resolveStatusValue(status, mode, phase)
 
   const entries = [
     {
@@ -76,7 +77,7 @@ export function createDemoFeedStatusEntries(status: DemoFeedStatus | null | unde
       key: 'status',
       label: options.labels.status,
       testId: `${options.testIdPrefix}-status`,
-      value: `${mode} · ${phase}`,
+      value: statusValue,
     },
     {
       key: 'fill',
@@ -102,6 +103,14 @@ export function createDemoFeedStatusEntries(status: DemoFeedStatus | null | unde
   }
 
   return entries
+}
+
+function resolveStatusValue(status: DemoFeedStatus | null | undefined, mode: DemoFeedMode, phase: string) {
+  if ((status?.itemCount ?? 0) > 0 && !status?.hasNextPage && status?.loadState !== 'loading') {
+    return `${mode} · end of list`
+  }
+
+  return `${mode} · ${phase}`
 }
 
 function resolveCurrentCursor(status: DemoFeedStatus | null | undefined, options: DemoFeedStatusEntryOptions) {

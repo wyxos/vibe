@@ -86,6 +86,7 @@ describe('VibeLayout fullscreen aside layout', () => {
         items: [createImageItem('image-status-slot', 'Status slot item')],
         loading: true,
         hasNextPage: true,
+        showStatusBadges: true,
       },
       slots: {
         'fullscreen-status': ({ kind, message }: { kind: 'end' | 'loading-more'; message: string }) =>
@@ -99,6 +100,53 @@ describe('VibeLayout fullscreen aside layout', () => {
 
     expect(wrapper.get('[data-testid="custom-fullscreen-status"]').attributes('data-kind')).toBe('loading-more')
     expect(wrapper.get('[data-testid="custom-fullscreen-status"]').text()).toBe('Loading more items')
+
+    wrapper.unmount()
+  })
+
+  it('can suppress the fullscreen end badge', async () => {
+    setViewportWidth(1_280)
+
+    const wrapper = mount(Layout, {
+      props: {
+        items: [createImageItem('image-hide-end-badge', 'Hide end badge item')],
+        hasNextPage: false,
+        showEndBadge: false,
+      },
+    })
+
+    await flushDom()
+    await wrapper.get('[data-testid="vibe-list-card"] button').trigger('click')
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="vibe"]').attributes('data-surface-mode')).toBe('fullscreen')
+    expect(wrapper.text()).not.toContain('End reached')
+
+    wrapper.unmount()
+  })
+
+  it('suppresses fullscreen status output when showStatusBadges is false', async () => {
+    setViewportWidth(1_280)
+
+    const wrapper = mount(Layout, {
+      props: {
+        items: [createImageItem('image-hide-status-badge', 'Hide status badge item')],
+        loading: true,
+        hasNextPage: true,
+        showStatusBadges: false,
+      },
+      slots: {
+        'fullscreen-status': ({ kind, message }: { kind: 'end' | 'loading-more'; message: string }) =>
+          h('div', { 'data-kind': kind, 'data-testid': 'custom-fullscreen-status' }, message),
+      },
+    })
+
+    await flushDom()
+    await wrapper.get('[data-testid="vibe-list-card"] button').trigger('click')
+    await flushDom()
+
+    expect(wrapper.find('[data-testid="custom-fullscreen-status"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Loading more items')
 
     wrapper.unmount()
   })
