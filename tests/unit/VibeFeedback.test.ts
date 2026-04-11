@@ -83,10 +83,10 @@ function createControllerState() {
   const hasPreviousPage = ref(false)
   const isDesktop = ref(false)
   const items = ref<VibeViewerItem[]>([])
-  const listRestoreToken = ref(0)
   const loading = ref(false)
   const paginationDetail = ref<string | null>(null)
   const pendingAppendItems = ref<VibeViewerItem[]>([])
+  const phase = ref<'failed' | 'filling' | 'idle' | 'initializing' | 'loading' | 'refreshing'>('idle')
   const prefetchNextPage = vi.fn(async () => {})
   const prefetchPreviousPage = vi.fn(async () => {})
   const retryInitialLoad = vi.fn(async () => {})
@@ -104,11 +104,11 @@ function createControllerState() {
     hasPreviousPage,
     isDesktop,
     items,
-    listRestoreToken,
     loading,
     openFullscreen: vi.fn(),
     paginationDetail,
     pendingAppendItems,
+    phase,
     prefetchNextPage,
     prefetchPreviousPage,
     returnToList: vi.fn(),
@@ -129,11 +129,11 @@ function resetControllerState() {
   controllerState.hasPreviousPage.value = false
   controllerState.isDesktop.value = false
   controllerState.items.value = []
-  controllerState.listRestoreToken.value = 0
   controllerState.loading.value = false
   controllerState.openFullscreen.mockClear()
   controllerState.paginationDetail.value = null
   controllerState.pendingAppendItems.value = []
+  controllerState.phase.value = 'idle'
   controllerState.prefetchNextPage.mockClear()
   controllerState.prefetchPreviousPage.mockClear()
   controllerState.returnToList.mockClear()

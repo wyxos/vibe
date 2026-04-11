@@ -16,6 +16,7 @@ export type {
   VibeInitialState,
   VibeLoadPhase,
   VibeProps,
+  VibeSurfaceMode,
   VibeStatus,
 } from './components/viewer-core/useViewer'
 

@@ -41,7 +41,6 @@ export function useVibeMasonryList(options: {
   commitPendingAppend: Ref<(() => void | Promise<void>) | null | undefined>
   requestNextPage: Ref<(() => void | Promise<void>) | null | undefined>
   requestPreviousPage: Ref<(() => void | Promise<void>) | null | undefined>
-  restoreToken: Ref<number>
   setActiveIndex: (index: number) => void
 }) {
   const scrollViewportRef = ref<HTMLElement | null>(null)
@@ -54,6 +53,7 @@ export function useVibeMasonryList(options: {
   const layoutContentHeight = ref(0)
   const layoutIndexById = ref<Map<string, number>>(new Map())
   const reservedContentHeight = ref<number | null>(null)
+  const preservedScrollTop = ref<number | null>(null)
   const availableWidth = computed(() => Math.max(ITEM_WIDTH_PX, viewportWidth.value - CONTENT_INSET_PX * 2))
   const columnCount = computed(() => getColumnCount(availableWidth.value, ITEM_WIDTH_PX))
   const columnWidth = computed(() => getColumnWidth(availableWidth.value, columnCount.value, ITEM_WIDTH_PX, GAP_PX))
@@ -128,7 +128,6 @@ export function useVibeMasonryList(options: {
     loading: options.loading,
     requestPage: options.requestNextPage,
   })
-
   let resizeObserver: ResizeObserver | null = null
   let scrollFrame = 0
   let appendCommitTimer: ReturnType<typeof setTimeout> | null = null
@@ -154,7 +153,6 @@ export function useVibeMasonryList(options: {
           nextPageBoundary.onItemsMutated(addedItems.length)
         }
       }
-
       motion.playFlipMoveAnimation(
         oldPositionsById,
         new Set(addedItems.map((item) => getVibeOccurrenceKey(item))),
@@ -171,7 +169,6 @@ export function useVibeMasonryList(options: {
     },
     { immediate: true },
   )
-
   watch(
     [() => options.pendingAppendItems.value.map((item) => getVibeOccurrenceKey(item)), columnCount, columnWidth, viewportHeight],
     ([pendingIds]) => {
@@ -184,10 +181,26 @@ export function useVibeMasonryList(options: {
   )
 
   watch(
-    () => options.restoreToken.value,
-    async () => {
+    () => options.active.value,
+    async (nextActive, previousActive) => {
+      const viewport = scrollViewportRef.value
+      if (!viewport) {
+        return
+      }
+      if (!nextActive) {
+        preservedScrollTop.value = viewport.scrollTop
+        return
+      }
+      if (previousActive !== false || preservedScrollTop.value == null) {
+        return
+      }
       await nextTick()
-      scrollToIndex(resolvedActiveIndex.value, 'center')
+      const maxScrollTop = Math.max(0, containerHeight.value - viewportHeight.value)
+      const nextScrollTop = clamp(preservedScrollTop.value, 0, maxScrollTop)
+      viewport.scrollTop = nextScrollTop
+      scrollTop.value = nextScrollTop
+      previousPageBoundary.syncBoundary()
+      nextPageBoundary.syncBoundary()
     },
   )
 
@@ -197,10 +210,8 @@ export function useVibeMasonryList(options: {
       if (!isLoading && !options.pendingAppendItems.value.length && !appendCommitTimer && !isSettlingReservedHeight) {
         reservedContentHeight.value = null
       }
-
       previousPageBoundary.onLoadingChange(isLoading)
       nextPageBoundary.onLoadingChange(isLoading)
-
       await nextTick()
     },
   )
@@ -220,7 +231,6 @@ export function useVibeMasonryList(options: {
       resizeObserver = new ResizeObserver(() => {
         updateViewportMetrics()
       })
-
       if (scrollViewportRef.value) {
         resizeObserver.observe(scrollViewportRef.value)
       }
@@ -267,11 +277,9 @@ export function useVibeMasonryList(options: {
     previousPageBoundary.syncBoundary()
     nextPageBoundary.syncBoundary()
     maybeRequestMoreAtBoundary()
-
     if (syncBoundaryIndexFromScroll()) {
       return
     }
-
     if (scrollFrame) {
       return
     }
@@ -292,7 +300,6 @@ export function useVibeMasonryList(options: {
   function getCardStyle(index: number) {
     const item = options.items.value[index]
     const itemKey = item ? getVibeOccurrenceKey(item) : ''
-
     return {
       height: `${layoutHeights.value[index] ?? columnWidth.value}px`,
       width: `${columnWidth.value}px`,
@@ -306,14 +313,11 @@ export function useVibeMasonryList(options: {
     const viewport = scrollViewportRef.value
     const position = layoutPositions.value[index]
     const height = layoutHeights.value[index]
-
     if (!viewport || !position || !height) {
       return
     }
-
     let nextScrollTop = viewport.scrollTop
     const maxScrollTop = Math.max(0, containerHeight.value - viewportHeight.value)
-
     if (alignment === 'center') {
       nextScrollTop = position.y - (viewportHeight.value - height) / 2
     }
@@ -334,11 +338,9 @@ export function useVibeMasonryList(options: {
     const oldPosition = oldPositionsById.get(anchorId)
     const nextIndex = layoutIndexById.value.get(anchorId)
     const nextPosition = nextIndex == null ? null : layoutPositions.value[nextIndex]
-
     if (!viewport || !oldPosition || !nextPosition) {
       return
     }
-
     const deltaY = nextPosition.y - oldPosition.y
     viewport.scrollTop += deltaY
     scrollTop.value = viewport.scrollTop
@@ -348,25 +350,20 @@ export function useVibeMasonryList(options: {
     if (!renderedIndices.value.length) {
       return
     }
-
     if (syncBoundaryIndexFromScroll()) {
       return
     }
-
     const viewportCenter = scrollTop.value + viewportHeight.value / 2
     let nextIndex = resolvedActiveIndex.value
     let bestDistance = Number.POSITIVE_INFINITY
-
     for (const index of renderedIndices.value) {
       const position = layoutPositions.value[index]
       const height = layoutHeights.value[index]
       if (!position || !height) {
         continue
       }
-
       const center = position.y + height / 2
       const distance = Math.abs(center - viewportCenter)
-
       if (distance < bestDistance) {
         bestDistance = distance
         nextIndex = index
@@ -445,16 +442,13 @@ export function useVibeMasonryList(options: {
     if (typeof commitPendingAppend !== 'function') {
       return
     }
-
     appendCommitTimer = setTimeout(async () => {
       appendCommitTimer = null
       isSettlingReservedHeight = true
-
       try {
         if (!options.pendingAppendItems.value.length) {
           return
         }
-
         await commitPendingAppend()
         await nextTick()
         await nextTick()

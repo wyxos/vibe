@@ -1,18 +1,15 @@
 import { computed, onBeforeUnmount, onMounted, reactive, readonly, ref, watch, watchEffect } from 'vue'
 
 import { isEditableTarget } from './dom'
-import type { VibeStatus } from './removalState'
+import type { VibeStatus, VibeSurfaceMode } from './removalState'
 import { useDataSource, type VibeEmit, type VibeProps } from './useDataSource'
 
 export const DESKTOP_BREAKPOINT_PX = 1024
 
-type VibeDesktopSurface = 'fullscreen' | 'list'
-
 export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
   const dataSource = useDataSource(props, emit)
   const viewportWidth = ref(0)
-  const desktopSurface = ref<VibeDesktopSurface>('list')
-  const listRestoreToken = ref(0)
+  const desktopSurface = ref<VibeSurfaceMode>('list')
   const status = reactive<VibeStatus>({
     activeIndex: 0,
     currentCursor: null,
@@ -34,15 +31,22 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
   })
 
   const isDesktop = computed(() => viewportWidth.value >= DESKTOP_BREAKPOINT_PX)
-  const surfaceMode = computed<VibeDesktopSurface>(() => isDesktop.value ? desktopSurface.value : 'fullscreen')
+  const surfaceMode = computed<VibeSurfaceMode>(() => isDesktop.value ? desktopSurface.value : 'fullscreen')
   const showBackToList = computed(() => isDesktop.value && surfaceMode.value === 'fullscreen')
 
   watch(
     isDesktop,
-    (nextIsDesktop, previousIsDesktop) => {
-      if (nextIsDesktop && !previousIsDesktop && desktopSurface.value === 'list') {
-        listRestoreToken.value += 1
+    (nextIsDesktop) => {
+      if (nextIsDesktop) {
+        syncControlledSurfaceMode()
       }
+    },
+  )
+
+  watch(
+    () => props.surfaceMode,
+    () => {
+      syncControlledSurfaceMode()
     },
   )
 
@@ -91,6 +95,7 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
 
   onMounted(() => {
     updateViewportWidth()
+    syncControlledSurfaceMode()
     window.addEventListener('keydown', onWindowKeydown)
     window.addEventListener('resize', updateViewportWidth)
   })
@@ -103,18 +108,19 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
   function openFullscreen(index: number) {
     dataSource.setActiveIndex(index)
 
-    if (isDesktop.value) {
+    if (isDesktop.value && desktopSurface.value !== 'fullscreen') {
       desktopSurface.value = 'fullscreen'
+      emit('update:surfaceMode', 'fullscreen')
     }
   }
 
   function returnToList() {
-    if (!isDesktop.value) {
+    if (!isDesktop.value || desktopSurface.value === 'list') {
       return
     }
 
     desktopSurface.value = 'list'
-    listRestoreToken.value += 1
+    emit('update:surfaceMode', 'list')
   }
 
   function onWindowKeydown(event: KeyboardEvent) {
@@ -136,11 +142,18 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     viewportWidth.value = window.innerWidth || 0
   }
 
+  function syncControlledSurfaceMode() {
+    if (!isDesktop.value || !props.surfaceMode || props.surfaceMode === desktopSurface.value) {
+      return
+    }
+
+    desktopSurface.value = props.surfaceMode
+  }
+
   return {
     ...dataSource,
     cancel: dataSource.cancel,
     isDesktop,
-    listRestoreToken,
     loadNext: dataSource.loadNext,
     loadPrevious: dataSource.loadPrevious,
     openFullscreen,

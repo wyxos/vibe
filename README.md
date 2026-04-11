@@ -74,6 +74,7 @@ Optional pacing props:
   :fill-delay-step-ms="1000"
   :show-end-badge="false"
   :show-status-badges="false"
+  surface-mode="fullscreen"
 />
 ```
 
@@ -82,6 +83,7 @@ Optional pacing props:
 - defaults: `2000` and `1000`
 - `show-end-badge`: controls the fullscreen `End reached` badge when the feed is exhausted
 - `show-status-badges`: controls the built-in lifecycle status overlays in list and fullscreen
+- `surface-mode`: optionally lets the parent drive the desktop fullscreen/list surface explicitly
 
 Optional feed strategy:
 
@@ -347,6 +349,7 @@ console.log(vibe.value?.status.removedIds)
 `VibeLayout` emits:
 
 - `update:activeIndex`
+- `update:surfaceMode`
 - `asset-loads`
 - `asset-errors`
 

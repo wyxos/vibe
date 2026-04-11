@@ -5,7 +5,7 @@ import { useVibeRemovalState } from './removalState'
 import { useAutoResolveSource } from './useAutoResolveSource'
 
 export type { VibeHandle, VibeRemoveResult } from './removalState'
-export type { VibeFeedMode, VibeLoadPhase } from './removalState'
+export type { VibeFeedMode, VibeLoadPhase, VibeSurfaceMode } from './removalState'
 
 export interface VibeResolveParams {
   cursor: string | null
@@ -38,9 +38,13 @@ export interface VibeProps {
   resolve?: (params: VibeResolveParams) => Promise<VibeResolveResult>
   showEndBadge?: boolean
   showStatusBadges?: boolean
+  surfaceMode?: import('./removalState').VibeSurfaceMode
 }
 
-export type VibeEmit = (event: 'update:activeIndex', value: number) => void
+export interface VibeEmit {
+  (event: 'update:activeIndex', value: number): void
+  (event: 'update:surfaceMode', value: import('./removalState').VibeSurfaceMode): void
+}
 
 export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
   const removalState = useVibeRemovalState()

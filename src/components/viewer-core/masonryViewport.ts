@@ -1,16 +1,16 @@
 export function getVibeMasonryViewportHeight(viewport: HTMLElement | null, fallbackHeight: number) {
   return viewport?.clientHeight
     || Math.round(viewport?.getBoundingClientRect().height ?? 0)
-    || window.innerHeight
     || fallbackHeight
+    || window.innerHeight
     || 1
 }
 
 export function getVibeMasonryViewportWidth(viewport: HTMLElement | null, fallbackWidth: number, itemWidth: number) {
   return viewport?.clientWidth
     || Math.round(viewport?.getBoundingClientRect().width ?? 0)
-    || window.innerWidth
     || fallbackWidth
+    || window.innerWidth
     || itemWidth
 }
 

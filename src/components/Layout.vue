@@ -38,6 +38,7 @@ const emit = defineEmits<{
   'asset-errors': [errors: VibeAssetErrorEvent[]]
   'asset-loads': [loads: VibeAssetLoadEvent[]]
   'update:activeIndex': [value: number]
+  'update:surfaceMode': [value: 'fullscreen' | 'list']
 }>()
 
 const viewer = useController(props, emit)
@@ -146,7 +147,6 @@ defineExpose<VibeHandle>({
             :report-asset-load="assetLoadBatch.report"
             :request-next-page="viewer.prefetchNextPage"
             :request-previous-page="viewer.prefetchPreviousPage"
-            :restore-token="viewer.listRestoreToken.value"
             :show-status-badges="props.showStatusBadges ?? true"
             @open-fullscreen="viewer.openFullscreen"
             @update:active-index="viewer.setActiveIndex"

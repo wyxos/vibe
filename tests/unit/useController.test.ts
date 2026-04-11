@@ -110,14 +110,13 @@ describe('useController', () => {
     vi.restoreAllMocks()
   })
 
-  it('defaults desktop to list mode, opens fullscreen, and returns to the list with a restore token bump', async () => {
+  it('defaults desktop to list mode, opens fullscreen, and returns to the list', async () => {
     setViewportWidth(1_280)
 
     const controller = await mountController()
 
     expect(controller.api.surfaceMode.value).toBe('list')
     expect(controller.api.showBackToList.value).toBe(false)
-    expect(controller.api.listRestoreToken.value).toBe(1)
     expect(dataSourceMock.setAutoPrefetchEnabled).toHaveBeenLastCalledWith(false)
 
     controller.api.openFullscreen(3)
@@ -133,7 +132,6 @@ describe('useController', () => {
 
     expect(controller.api.surfaceMode.value).toBe('list')
     expect(controller.api.showBackToList.value).toBe(false)
-    expect(controller.api.listRestoreToken.value).toBe(2)
 
     controller.unmount()
   })
@@ -171,14 +169,12 @@ describe('useController', () => {
     await controller.flush()
 
     expect(controller.api.surfaceMode.value).toBe('fullscreen')
-    expect(controller.api.listRestoreToken.value).toBe(0)
 
     setViewportWidth(1_280)
     window.dispatchEvent(new Event('resize'))
     await controller.flush()
 
     expect(controller.api.surfaceMode.value).toBe('list')
-    expect(controller.api.listRestoreToken.value).toBe(1)
 
     controller.unmount()
   })
@@ -198,6 +194,28 @@ describe('useController', () => {
     controller.unmount()
   })
 
+  it('syncs a controlled surfaceMode prop and emits mode changes from internal transitions', async () => {
+    setViewportWidth(1_280)
+
+    const controller = await mountController({
+      surfaceMode: 'fullscreen',
+    })
+
+    expect(controller.api.surfaceMode.value).toBe('fullscreen')
+
+    controller.props.surfaceMode = 'list'
+    await controller.flush()
+
+    expect(controller.api.surfaceMode.value).toBe('list')
+
+    controller.api.openFullscreen(1)
+    await controller.flush()
+
+    expect(controller.emittedSurfaceModes).toContain('fullscreen')
+
+    controller.unmount()
+  })
+
   it('returns desktop fullscreen to list mode when Escape is pressed', async () => {
     setViewportWidth(1_280)
 
@@ -212,7 +230,6 @@ describe('useController', () => {
     await controller.flush()
 
     expect(controller.api.surfaceMode.value).toBe('list')
-    expect(controller.api.listRestoreToken.value).toBe(2)
 
     controller.unmount()
   })
@@ -220,18 +237,23 @@ describe('useController', () => {
 
 async function mountController(initialProps: Partial<VibeProps> = {}) {
   let api!: ReturnType<typeof useController>
+  const emittedSurfaceModes: Array<'fullscreen' | 'list'> = []
 
   const props = reactive({
     resolve: vi.fn(async () => ({ items: [], nextPage: null })),
     ...initialProps,
-  }) as Readonly<VibeProps>
+  }) as VibeProps
 
   const container = document.createElement('div')
   document.body.appendChild(container)
 
   const app = createApp(defineComponent({
     setup() {
-      api = useController(props, vi.fn())
+      api = useController(props as Readonly<VibeProps>, ((event: 'update:activeIndex' | 'update:surfaceMode', value: number | 'fullscreen' | 'list') => {
+        if (event === 'update:surfaceMode' && typeof value === 'string') {
+          emittedSurfaceModes.push(value)
+        }
+      }) as never)
       return () => h('div')
     },
   }))
@@ -241,6 +263,8 @@ async function mountController(initialProps: Partial<VibeProps> = {}) {
 
   return {
     api,
+    emittedSurfaceModes,
+    props,
     flush,
     unmount() {
       app.unmount()

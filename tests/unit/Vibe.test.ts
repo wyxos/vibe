@@ -24,6 +24,7 @@ import type { VibeHandle } from '@/components/viewer-core/useViewer'
 import { createSeededVibeProps } from '../helpers/createSeededVibeProps'
 
 const DEFAULT_VIEWPORT_WIDTH = window.innerWidth
+const DEFAULT_VIEWPORT_HEIGHT = window.innerHeight
 const CustomOtherIcon = defineComponent({
   name: 'CustomOtherIcon',
   template: '<svg data-testid="custom-other-icon" />',
@@ -32,6 +33,7 @@ const CustomOtherIcon = defineComponent({
 describe('VibeLayout', () => {
   afterEach(() => {
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
+    setViewportHeight(DEFAULT_VIEWPORT_HEIGHT)
     resolveVibeAssetErrorKindMock.mockReset()
     resolveVibeAssetErrorKindMock.mockResolvedValue('generic')
     vi.useRealTimers()
@@ -494,6 +496,42 @@ describe('VibeLayout', () => {
     wrapper.unmount()
   })
 
+  it('restores the prior list scroll position after exiting fullscreen on desktop', async () => {
+    setViewportWidth(1_280)
+    setViewportHeight(600)
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps(Array.from({ length: 24 }, (_, index) =>
+        createImageItem(`image-scroll-${index + 1}`, `Scroll item ${index + 1}`),
+      )),
+    })
+
+    await flushDom()
+
+    const scrollViewport = wrapper.get('[data-testid="vibe-list-scroll"]').element as HTMLElement
+    scrollViewport.scrollTop = 640
+    await wrapper.get('[data-testid="vibe-list-scroll"]').trigger('scroll')
+    await flushDom()
+    const preservedScrollTop = scrollViewport.scrollTop
+
+    await wrapper.get('[data-index="8"] button').trigger('click')
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="vibe"]').attributes('data-surface-mode')).toBe('fullscreen')
+
+    scrollViewport.scrollTop = 0
+
+    await wrapper.get('[data-testid="vibe-back-to-list"]').trigger('click')
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="vibe"]').attributes('data-surface-mode')).toBe('list')
+    expect(scrollViewport.scrollTop).toBe(preservedScrollTop)
+
+    wrapper.unmount()
+  })
+
 })
 
 function createImageItem(id: string, title?: string, overrides: Partial<VibeViewerItem> = {}): VibeViewerItem {
@@ -558,6 +596,14 @@ function setViewportWidth(width: number) {
   Object.defineProperty(window, 'innerWidth', {
     configurable: true,
     value: width,
+    writable: true,
+  })
+}
+
+function setViewportHeight(height: number) {
+  Object.defineProperty(window, 'innerHeight', {
+    configurable: true,
+    value: height,
     writable: true,
   })
 }

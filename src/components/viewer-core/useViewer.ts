@@ -19,6 +19,7 @@ export type {
   VibeInitialState,
   VibeLoadPhase,
   VibeProps,
+  VibeSurfaceMode,
 } from './useDataSource'
 export type { VibeAssetErrorKind } from './loadError'
 export type { VibeStatus } from './removalState'

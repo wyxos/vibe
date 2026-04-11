@@ -29,7 +29,6 @@ const props = withDefaults(defineProps<{
   reportAssetLoad?: VibeAssetLoadReporter | null
   requestNextPage?: (() => void | Promise<void>) | null
   requestPreviousPage?: (() => void | Promise<void>) | null
-  restoreToken: number
   showStatusBadges?: boolean
 }>(), {
   active: true,
@@ -81,7 +80,6 @@ const list = useVibeMasonryList({
   commitPendingAppend: toRef(props, 'commitPendingAppend'),
   requestNextPage: toRef(props, 'requestNextPage'),
   requestPreviousPage: toRef(props, 'requestPreviousPage'),
-  restoreToken: toRef(props, 'restoreToken'),
   setActiveIndex(index) {
     emit('update:activeIndex', index)
   },

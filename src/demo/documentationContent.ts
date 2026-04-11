@@ -261,6 +261,7 @@ app.use(VibePlugin)
   paginationDetail?: string | null
   showEndBadge?: boolean
   showStatusBadges?: boolean
+  surfaceMode?: 'fullscreen' | 'list'
 }`,
         language: 'ts',
       },
@@ -269,8 +270,8 @@ app.use(VibePlugin)
         label: 'Events',
         title: 'Events',
         description: [
-          'The public event surface stays intentionally small, but it now includes batched preload success and failure reporting.',
-          'Use update:activeIndex to observe the visible item, asset-loads for grouped preload successes, and asset-errors for grouped preload failures.',
+          'The public event surface stays intentionally small, but it now includes surface-mode sync plus batched preload success and failure reporting.',
+          'Use update:activeIndex to observe the visible item, update:surfaceMode to mirror desktop fullscreen/list changes, asset-loads for grouped preload successes, and asset-errors for grouped preload failures.',
         ],
         code: `<script setup lang="ts">
 import { ref } from 'vue'
