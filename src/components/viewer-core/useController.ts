@@ -62,6 +62,18 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
   )
 
   watch(
+    () => dataSource.items.value.length,
+    (nextItemCount) => {
+      if (!isDesktop.value || nextItemCount > 0 || desktopSurface.value === 'list') {
+        return
+      }
+
+      desktopSurface.value = 'list'
+      emit('update:surfaceMode', 'list')
+    },
+  )
+
+  watch(
     surfaceMode,
     (nextSurfaceMode) => {
       dataSource.setAutoPrefetchEnabled(nextSurfaceMode === 'fullscreen')

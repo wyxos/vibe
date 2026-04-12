@@ -75,7 +75,9 @@ export function useVibeMasonryList(options: {
     return Math.max(contentHeight, nextReservedHeight, viewportHeight.value) + SCROLL_BUFFER_PX
   })
   const canRequestNextBoundary = computed(() => options.hasNextPage.value || options.allowExhaustedNextPageRefresh.value)
-  const paginationLabel = computed(() => `${resolvedActiveIndex.value + 1} / ${options.items.value.length}`)
+  const paginationLabel = computed(() => options.items.value.length > 0
+    ? `${resolvedActiveIndex.value + 1} / ${options.items.value.length}`
+    : '0 / 0')
   const scrollbarTrackHeight = computed(() => Math.max(0, viewportHeight.value - SCROLLBAR_INSET_PX * 2))
   const showScrollbar = computed(() => containerHeight.value > viewportHeight.value + 1 && scrollbarTrackHeight.value > 0)
   const scrollbarThumbHeight = computed(() => {

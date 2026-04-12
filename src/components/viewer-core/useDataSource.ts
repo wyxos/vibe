@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 
 import type { VibeViewerItem } from '../viewer'
+import type { VibeEmptyStateMode } from './surfaceSlots'
 import { useVibeRemovalState } from './removalState'
 import { useAutoResolveSource } from './useAutoResolveSource'
 
@@ -28,6 +29,7 @@ export interface VibeInitialState {
 }
 
 export interface VibeProps {
+  emptyStateMode?: VibeEmptyStateMode
   fillDelayMs?: number
   fillDelayStepMs?: number
   initialCursor?: string | null

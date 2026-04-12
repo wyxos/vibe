@@ -7,16 +7,19 @@ import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './viewer-cor
 import { getVibeOccurrenceKey } from './viewer-core/itemIdentity'
 import { hasRenderableSlotContent } from './viewer-core/slotContent'
 import { getVibeSurfaceStatus, resolveVibeSurfacePhase } from './viewer-core/surfaceStatus'
-import type { VibeGridStatusSlotProps } from './viewer-core/surfaceSlots'
+import type { VibeEmptyStateMode, VibeEmptyStateSlotProps, VibeGridStatusSlotProps } from './viewer-core/surfaceSlots'
+import { useSurfaceEmptyState } from './viewer-core/useSurfaceEmptyState'
 import { useVibeMasonryList } from './viewer-core/useMasonryList'
 import type { VibeLoadPhase } from './viewer-core/useViewer'
 import ListCard from './ListCard.vue'
+import SurfaceEmptyState from './SurfaceEmptyState.vue'
 
 const props = withDefaults(defineProps<{
   active?: boolean
   activeIndex?: number
   allowExhaustedNextPageRefresh?: boolean
   commitPendingAppend?: (() => void | Promise<void>) | null
+  emptyStateMode?: VibeEmptyStateMode
   errorMessage?: string | null
   hasNextPage?: boolean
   hasPreviousPage?: boolean
@@ -35,6 +38,7 @@ const props = withDefaults(defineProps<{
   activeIndex: 0,
   allowExhaustedNextPageRefresh: false,
   commitPendingAppend: null,
+  emptyStateMode: 'inline',
   errorMessage: null,
   hasNextPage: false,
   hasPreviousPage: false,
@@ -49,6 +53,7 @@ const props = withDefaults(defineProps<{
   showStatusBadges: true,
 })
 const slots = defineSlots<{
+  'empty-state'?: (props: VibeEmptyStateSlotProps) => unknown
   'grid-footer'?: () => unknown
   'grid-item-overlay'?: (props: {
     active: boolean
@@ -118,6 +123,18 @@ const gridStatusNodes = computed(() => {
   return slots['grid-status'](gridStatusProps.value)
 })
 const showCustomGridStatus = computed(() => hasRenderableSlotContent(gridStatusNodes.value))
+const {
+  emptyStateProps,
+  showBadgeEmptyState,
+  showCustomEmptyState,
+  showInlineEmptyState,
+} = useSurfaceEmptyState({
+  emptyStateMode: toRef(props, 'emptyStateMode'),
+  itemCount: computed(() => props.items.length),
+  loading: toRef(props, 'loading'),
+  renderSlot: slots['empty-state'],
+  surface: 'grid',
+})
 </script>
 
 <template>
@@ -177,6 +194,19 @@ const showCustomGridStatus = computed(() => hasRenderableSlotContent(gridStatusN
             </template>
           </ListCard>
         </article>
+
+        <SurfaceEmptyState
+          v-if="showInlineEmptyState && emptyStateProps"
+          :message="emptyStateProps.message"
+          :mode="emptyStateProps.mode"
+          :surface="emptyStateProps.surface"
+        >
+          <slot
+            v-if="showCustomEmptyState"
+            name="empty-state"
+            v-bind="emptyStateProps"
+          />
+        </SurfaceEmptyState>
       </div>
     </div>
 
@@ -218,5 +248,20 @@ const showCustomGridStatus = computed(() => hasRenderableSlotContent(gridStatusN
         {{ gridStatusProps.message }}
       </span>
     </div>
+
+    <SurfaceEmptyState
+      v-if="showBadgeEmptyState && emptyStateProps"
+      class="z-[3]"
+      :class="slots['grid-footer'] ? 'pb-24' : 'pb-6'"
+      :message="emptyStateProps.message"
+      :mode="emptyStateProps.mode"
+      :surface="emptyStateProps.surface"
+    >
+      <slot
+        v-if="showCustomEmptyState"
+        name="empty-state"
+        v-bind="emptyStateProps"
+      />
+    </SurfaceEmptyState>
   </div>
 </template>

@@ -24,6 +24,7 @@ export type {
 export type { VibeAssetErrorKind } from './loadError'
 export type { VibeStatus } from './removalState'
 export type { VibeAssetErrorEvent, VibeAssetErrorReporter, VibeAssetErrorSurface, VibeAssetLoadEvent, VibeAssetLoadReporter, VibeAssetLoadSurface } from './assetErrors'
+export type { VibeEmptyStateMode, VibeEmptyStateSlotProps } from './surfaceSlots'
 
 export interface VibeViewerProps {
   activeIndex?: number

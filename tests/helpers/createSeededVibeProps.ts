@@ -6,6 +6,7 @@ export function createSeededVibeProps(
   options: {
     activeIndex?: number
     cursor?: string | null
+    emptyStateMode?: VibeProps['emptyStateMode']
     fillDelayMs?: number
     fillDelayStepMs?: number
     initialCursor?: string | null
@@ -20,6 +21,7 @@ export function createSeededVibeProps(
   } = {},
 ): VibeProps {
   const props: VibeProps = {
+    emptyStateMode: options.emptyStateMode,
     fillDelayMs: options.fillDelayMs,
     fillDelayStepMs: options.fillDelayStepMs,
     initialCursor: options.initialCursor,

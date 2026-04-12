@@ -9,6 +9,16 @@ export type VibeSurfaceSlotProps = {
   total: number
 }
 
+export type VibeEmptyStateMode = 'inline' | 'badge' | 'hidden'
+
+export type VibeEmptyStateSlotProps = {
+  loading: boolean
+  message: string
+  mode: Exclude<VibeEmptyStateMode, 'hidden'>
+  surface: 'fullscreen' | 'grid'
+  total: number
+}
+
 export type VibeSurfaceStatusKind = 'end' | 'failed' | 'filling' | 'initializing' | 'loading-more' | 'refreshing'
 
 export type VibeFullscreenStatusSlotProps = VibeSurfaceSlotProps & {

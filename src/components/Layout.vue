@@ -4,7 +4,7 @@ import { LoaderCircle } from 'lucide-vue-next'
 
 import type { VibeViewerItem } from './viewer'
 import { createAssetErrorBatchReporter, createAssetLoadBatchReporter, type VibeAssetErrorEvent, type VibeAssetLoadEvent } from './viewer-core/assetErrors'
-import type { VibeFullscreenStatusSlotProps, VibeGridStatusSlotProps, VibeSurfaceSlotProps } from './viewer-core/surfaceSlots'
+import type { VibeEmptyStateSlotProps, VibeFullscreenStatusSlotProps, VibeGridStatusSlotProps, VibeSurfaceSlotProps } from './viewer-core/surfaceSlots'
 import type { VibeHandle, VibeProps } from './viewer-core/useViewer'
 import { useController } from './viewer-core/useController'
 
@@ -17,6 +17,7 @@ defineOptions({
 
 const props = defineProps<VibeProps>()
 const slots = defineSlots<{
+  'empty-state'?: (props: VibeEmptyStateSlotProps) => unknown
   'fullscreen-aside'?: (props: VibeSurfaceSlotProps) => unknown
   'fullscreen-header-actions'?: (props: VibeSurfaceSlotProps) => unknown
   'fullscreen-overlay'?: (props: VibeSurfaceSlotProps) => unknown
@@ -90,30 +91,7 @@ defineExpose<VibeHandle>({
       {{ viewer.errorMessage.value }}
     </div>
 
-    <div
-      v-if="viewer.items.value.length === 0"
-      class="relative z-[1] grid h-full w-full content-center justify-items-center gap-6 px-[clamp(2rem,4vw,3rem)] py-[clamp(2rem,4vw,3rem)] text-center"
-    >
-      <template v-if="viewer.loading.value">
-        <LoaderCircle class="size-10 animate-spin text-[#f7f1ea]/82" aria-hidden="true" />
-        <p class="m-0 text-[0.9rem] font-semibold uppercase tracking-[0.22em] text-[#f7f1ea]/72">
-          Loading...
-        </p>
-      </template>
-      <template v-else>
-        <p class="m-0 text-[0.78rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/68">
-          Viewer ready
-        </p>
-        <h2 class="m-0 text-[clamp(2rem,4.4vw,3.6rem)] leading-[0.95] tracking-[-0.05em]">
-          No items available
-        </h2>
-        <p class="m-0 text-[clamp(0.98rem,1.3vw,1.12rem)] leading-[1.8] text-[#f7f1ea]/70">
-          Attach items to VibeLayout to turn this screen into the viewer.
-        </p>
-      </template>
-    </div>
-
-    <template v-else-if="viewer.isDesktop.value">
+    <template v-if="viewer.isDesktop.value">
       <Transition
         appear
         enter-active-class="transition-[opacity,transform] duration-300 ease-out"
@@ -147,10 +125,14 @@ defineExpose<VibeHandle>({
             :report-asset-load="assetLoadBatch.report"
             :request-next-page="viewer.prefetchNextPage"
             :request-previous-page="viewer.prefetchPreviousPage"
+            :empty-state-mode="props.emptyStateMode"
             :show-status-badges="props.showStatusBadges ?? true"
             @open-fullscreen="viewer.openFullscreen"
             @update:active-index="viewer.setActiveIndex"
           >
+            <template v-if="slots['empty-state']" #empty-state="slotProps">
+              <slot name="empty-state" v-bind="slotProps" />
+            </template>
             <template v-if="slots['grid-footer']" #grid-footer>
               <slot name="grid-footer" />
             </template>
@@ -194,12 +176,16 @@ defineExpose<VibeHandle>({
             :phase="viewer.phase.value"
             :report-asset-error="assetErrorBatch.report"
             :report-asset-load="assetLoadBatch.report"
+            :empty-state-mode="props.emptyStateMode"
             :show-end-badge="props.showEndBadge ?? true"
             :show-status-badges="props.showStatusBadges ?? true"
             :show-back-to-list="viewer.showBackToList.value"
             @back-to-list="viewer.returnToList"
             @update:active-index="viewer.setActiveIndex"
           >
+            <template v-if="slots['empty-state']" #empty-state="slotProps">
+              <slot name="empty-state" v-bind="slotProps" />
+            </template>
             <template v-if="slots['fullscreen-overlay']" #fullscreen-overlay="slotProps">
               <slot name="fullscreen-overlay" v-bind="slotProps" />
             </template>
@@ -220,6 +206,16 @@ defineExpose<VibeHandle>({
       </Transition>
     </template>
 
+    <div
+      v-else-if="viewer.items.value.length === 0 && viewer.loading.value"
+      class="relative z-[1] grid h-full w-full content-center justify-items-center gap-6 px-[clamp(2rem,4vw,3rem)] py-[clamp(2rem,4vw,3rem)] text-center"
+    >
+      <LoaderCircle class="size-10 animate-spin text-[#f7f1ea]/82" aria-hidden="true" />
+      <p class="m-0 text-[0.9rem] font-semibold uppercase tracking-[0.22em] text-[#f7f1ea]/72">
+        Loading...
+      </p>
+    </div>
+
     <FullscreenSurface
       v-else
       :items="viewer.items.value"
@@ -232,12 +228,16 @@ defineExpose<VibeHandle>({
       :phase="viewer.phase.value"
       :report-asset-error="assetErrorBatch.report"
       :report-asset-load="assetLoadBatch.report"
+      :empty-state-mode="props.emptyStateMode"
       :show-end-badge="props.showEndBadge ?? true"
       :show-status-badges="props.showStatusBadges ?? true"
       :show-back-to-list="false"
       @back-to-list="viewer.returnToList"
       @update:active-index="viewer.setActiveIndex"
     >
+      <template v-if="slots['empty-state']" #empty-state="slotProps">
+        <slot name="empty-state" v-bind="slotProps" />
+      </template>
       <template v-if="slots['fullscreen-overlay']" #fullscreen-overlay="slotProps">
         <slot name="fullscreen-overlay" v-bind="slotProps" />
       </template>

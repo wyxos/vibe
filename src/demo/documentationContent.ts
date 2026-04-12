@@ -258,6 +258,7 @@ app.use(VibePlugin)
   pageSize?: number
   fillDelayMs?: number
   fillDelayStepMs?: number
+  emptyStateMode?: 'inline' | 'badge' | 'hidden'
   paginationDetail?: string | null
   showEndBadge?: boolean
   showStatusBadges?: boolean
@@ -361,12 +362,16 @@ function onAssetErrors(errors: VibeAssetErrorEvent[]) {
         label: 'Slots',
         title: 'Slots',
         description: [
-          'The current customization surface is slot-based and intentionally focused on grid and icon composition.',
-          'The slot names are item-icon, grid-item-overlay, and grid-footer.',
+          'The current customization surface is slot-based and focused on grid composition, fullscreen composition, and fallback states.',
+          'The slot names include item-icon, empty-state, grid-item-overlay, and grid-footer.',
         ],
         code: `<VibeLayout :resolve="resolve">
   <template #item-icon="{ item, icon }">
     <component :is="icon" />
+  </template>
+
+  <template #empty-state="{ message, surface, mode }">
+    <div :data-surface="surface" :data-mode="mode">{{ message }}</div>
   </template>
 
   <template #grid-item-overlay="{ item, hovered }">

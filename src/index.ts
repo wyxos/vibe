@@ -9,6 +9,8 @@ export type {
   VibeAssetErrorSurface,
   VibeAssetLoadEvent,
   VibeAssetLoadSurface,
+  VibeEmptyStateMode,
+  VibeEmptyStateSlotProps,
   VibeResolveParams,
   VibeResolveResult,
   VibeFeedMode,

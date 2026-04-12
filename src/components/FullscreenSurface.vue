@@ -5,19 +5,22 @@ import { LoaderCircle, Pause, Play, TriangleAlert } from 'lucide-vue-next'
 import FullscreenMediaBar from './FullscreenMediaBar.vue'
 import type { VibeViewerItem } from './viewer'
 import FullscreenHeader from './FullscreenHeader.vue'
-import { getVibeOccurrenceKey } from './viewer-core/itemIdentity'
 import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './viewer-core/assetErrors'
-import type { VibeFullscreenStatusSlotProps, VibeSurfaceSlotProps } from './viewer-core/surfaceSlots'
+import type { VibeEmptyStateMode, VibeEmptyStateSlotProps, VibeFullscreenStatusSlotProps, VibeSurfaceSlotProps } from './viewer-core/surfaceSlots'
+import { useFullscreenSurfaceMedia } from './viewer-core/useFullscreenSurfaceMedia'
+import { useSurfaceEmptyState } from './viewer-core/useSurfaceEmptyState'
 import type { VibeLoadPhase } from './viewer-core/useViewer'
 import { useViewer } from './viewer-core/useViewer'
-import { getItemIcon, getItemLabel } from './viewer-core/media'
+import { getItemIcon } from './viewer-core/media'
 import { hasRenderableSlotContent } from './viewer-core/slotContent'
 import { getSlideToneClass, getStageToneClass } from './viewer-core/theme'
 import './viewer-core/fullscreenMediaBar.css'
+import SurfaceEmptyState from './SurfaceEmptyState.vue'
 
 interface FullscreenSurfaceProps {
   active?: boolean
   activeIndex?: number
+  emptyStateMode?: VibeEmptyStateMode
   errorMessage?: string | null
   hasNextPage?: boolean
   items: VibeViewerItem[]
@@ -34,6 +37,7 @@ interface FullscreenSurfaceProps {
 const props = withDefaults(defineProps<FullscreenSurfaceProps>(), {
   active: true,
   activeIndex: 0,
+  emptyStateMode: 'inline',
   errorMessage: null,
   hasNextPage: false,
   loading: false,
@@ -46,6 +50,7 @@ const props = withDefaults(defineProps<FullscreenSurfaceProps>(), {
   showStatusBadges: true,
 })
 const slots = defineSlots<{
+  'empty-state'?: (props: VibeEmptyStateSlotProps) => unknown
   'fullscreen-aside'?: (props: VibeSurfaceSlotProps) => unknown
   'fullscreen-header-actions'?: (props: VibeSurfaceSlotProps) => unknown
   'fullscreen-overlay'?: (props: VibeSurfaceSlotProps) => unknown
@@ -55,7 +60,6 @@ const slots = defineSlots<{
 
 const emit = defineEmits<{ 'back-to-list': []; 'update:activeIndex': [value: number] }>()
 const FULLSCREEN_ASIDE_COLUMN_BREAKPOINT_PX = 1_280
-const FULLSCREEN_PRELOAD_AHEAD_COUNT = 2
 
 const viewer = useViewer(
   props,
@@ -69,6 +73,11 @@ const viewer = useViewer(
   },
 )
 const viewportWidth = ref(typeof window === 'undefined' ? FULLSCREEN_ASIDE_COLUMN_BREAKPOINT_PX : window.innerWidth || FULLSCREEN_ASIDE_COLUMN_BREAKPOINT_PX)
+const fullscreenMedia = useFullscreenSurfaceMedia({
+  active: toRef(props, 'active'),
+  resolvedActiveIndex: viewer.resolvedActiveIndex,
+  viewer,
+})
 
 const activeStageToneClass = computed(() => getStageToneClass(viewer.activeItem.value?.type ?? 'image'))
 const mediaStatusOffsetClass = computed(() =>
@@ -127,6 +136,18 @@ const showFullscreenAside = computed(() => hasRenderableSlotContent(fullscreenAs
 const showFullscreenAsideAsColumn = computed(() => showFullscreenAside.value && viewportWidth.value >= FULLSCREEN_ASIDE_COLUMN_BREAKPOINT_PX)
 const showFullscreenAsideAsDrawer = computed(() => showFullscreenAside.value && !showFullscreenAsideAsColumn.value)
 const showCustomFullscreenStatus = computed(() => hasRenderableSlotContent(fullscreenStatusNodes.value))
+const {
+  emptyStateProps,
+  showBadgeEmptyState,
+  showCustomEmptyState,
+  showInlineEmptyState,
+} = useSurfaceEmptyState({
+  emptyStateMode: toRef(props, 'emptyStateMode'),
+  itemCount: computed(() => props.items.length),
+  loading: toRef(props, 'loading'),
+  renderSlot: slots['empty-state'],
+  surface: 'fullscreen',
+})
 
 onMounted(() => {
   window.addEventListener('resize', updateViewportWidth)
@@ -134,63 +155,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateViewportWidth)
 })
-
-function getMediaActionLabel(action: 'Play' | 'Pause', item: NonNullable<typeof viewer.activeItem.value>) {
-  const label = item.title?.trim()
-  if (label) {
-    return `${action} ${label}`
-  }
-  return `${action} ${getItemLabel(item.type).toLowerCase()}`
-}
-
-function isAssetLoading(index: number, item: (typeof props.items)[number]) {
-  const itemKey = getItemKey(item)
-  if (!shouldPreloadSlideAsset(index)) {
-    return false
-  }
-  if (index !== viewer.resolvedActiveIndex.value) {
-    return false
-  }
-  if (viewer.getAssetErrorKind(itemKey)) {
-    return false
-  }
-  if (item.type === 'image') {
-    return !viewer.isImageReady(itemKey)
-  }
-  if (item.type === 'video' || item.type === 'audio') {
-    return !viewer.isMediaReady(itemKey)
-  }
-  return false
-}
-
-function getAssetErrorKind(item: (typeof props.items)[number]) {
-  return viewer.getAssetErrorKind(getItemKey(item))
-}
-
-function getAssetErrorLabel(item: (typeof props.items)[number]) {
-  return viewer.getAssetErrorLabel(getItemKey(item)) ?? 'Load error'
-}
-
-function isAssetErrored(index: number, item: (typeof props.items)[number]) {
-  return shouldPreloadSlideAsset(index) && index === viewer.resolvedActiveIndex.value && Boolean(getAssetErrorKind(item))
-}
-
-function shouldPreloadSlideAsset(index: number) {
-  const activeIndex = viewer.resolvedActiveIndex.value
-  return props.active && index >= activeIndex && index <= activeIndex + FULLSCREEN_PRELOAD_AHEAD_COUNT
-}
-
-function getFullscreenImageSource(index: number, item: (typeof props.items)[number]) {
-  return shouldPreloadSlideAsset(index) ? viewer.getImageSource(item) : undefined
-}
-
-function getFullscreenMediaSource(index: number, item: (typeof props.items)[number]) {
-  return shouldPreloadSlideAsset(index) ? item.url : undefined
-}
-
-function getItemKey(item: (typeof props.items)[number]) {
-  return getVibeOccurrenceKey(item)
-}
 
 function updateViewportWidth() {
   viewportWidth.value = window.innerWidth || FULLSCREEN_ASIDE_COLUMN_BREAKPOINT_PX
@@ -219,10 +183,10 @@ function updateViewportWidth() {
         <div v-if="viewer.items.value.length > 0" class="relative h-full min-h-0">
           <article
             v-for="{ item, index } in viewer.renderedItems.value"
-            :key="getItemKey(item)"
+            :key="fullscreenMedia.getItemKey(item)"
             data-testid="vibe-slide"
             :data-item-id="item.id"
-            :data-occurrence-key="getItemKey(item)"
+            :data-occurrence-key="fullscreenMedia.getItemKey(item)"
             :data-index="index"
             :data-active="index === viewer.resolvedActiveIndex.value"
             :aria-hidden="index === viewer.resolvedActiveIndex.value ? 'false' : 'true'"
@@ -238,7 +202,7 @@ function updateViewportWidth() {
               :class="index === viewer.resolvedActiveIndex.value ? mediaStageInsetClass : ''"
             >
               <div
-                v-if="isAssetLoading(index, item)"
+                v-if="fullscreenMedia.isAssetLoading(index, item)"
                 data-testid="vibe-asset-spinner"
                 class="pointer-events-none absolute inset-0 z-[2] grid place-items-center"
               >
@@ -248,17 +212,17 @@ function updateViewportWidth() {
               </div>
 
               <div
-                v-if="isAssetErrored(index, item)"
+                v-if="fullscreenMedia.isAssetErrored(index, item)"
                 data-testid="vibe-asset-error"
-                :data-kind="getAssetErrorKind(item)"
+                :data-kind="fullscreenMedia.getAssetErrorKind(item)"
                 class="grid h-full w-full place-items-center"
               >
                 <div class="grid justify-items-center gap-4 border border-white/14 bg-black/45 px-8 py-7 text-center backdrop-blur-[18px]">
                   <TriangleAlert class="h-7 w-7 stroke-[1.9] text-[#f7f1ea]/72" aria-hidden="true" />
                   <p class="m-0 text-[0.82rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/70">
-                    {{ getAssetErrorLabel(item) }}
+                    {{ fullscreenMedia.getAssetErrorLabel(item) }}
                   </p>
-                  <button v-if="viewer.canRetryAsset(getItemKey(item))" type="button" class="inline-flex items-center justify-center border border-white/14 bg-black/35 px-4 py-2 text-[0.64rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/82 backdrop-blur-[18px] transition hover:border-white/28 hover:bg-black/50" @click.stop="viewer.retryAsset(getItemKey(item))">
+                  <button v-if="viewer.canRetryAsset(fullscreenMedia.getItemKey(item))" type="button" class="inline-flex items-center justify-center border border-white/14 bg-black/35 px-4 py-2 text-[0.64rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/82 backdrop-blur-[18px] transition hover:border-white/28 hover:bg-black/50" @click.stop="viewer.retryAsset(fullscreenMedia.getItemKey(item))">
                     Retry
                   </button>
                 </div>
@@ -266,41 +230,41 @@ function updateViewportWidth() {
 
               <img
                 v-else-if="item.type === 'image'"
-                :key="viewer.getAssetRenderKey(getItemKey(item))"
-                :src="getFullscreenImageSource(index, item)"
+                :key="viewer.getAssetRenderKey(fullscreenMedia.getItemKey(item))"
+                :src="fullscreenMedia.getFullscreenImageSource(index, item)"
                 :alt="item.title ?? ''"
                 draggable="false"
                 class="block h-auto max-h-full w-auto max-w-full object-contain shadow-[0_40px_120px_-60px_rgba(0,0,0,0.9)] transition-opacity duration-300"
-                :class="viewer.isImageReady(getItemKey(item)) ? 'opacity-100' : 'opacity-0'"
-                :ref="(element) => viewer.registerImageElement(getItemKey(item), element)"
-                @load="viewer.onImageLoad(getItemKey(item), item.url)"
-                @error="viewer.onImageError(getItemKey(item), item.url)"
+                :class="viewer.isImageReady(fullscreenMedia.getItemKey(item)) ? 'opacity-100' : 'opacity-0'"
+                :ref="(element) => viewer.registerImageElement(fullscreenMedia.getItemKey(item), element)"
+                @load="viewer.onImageLoad(fullscreenMedia.getItemKey(item), item.url)"
+                @error="viewer.onImageError(fullscreenMedia.getItemKey(item), item.url)"
               />
 
               <video
                 v-else
-                :key="viewer.getAssetRenderKey(getItemKey(item))"
+                :key="viewer.getAssetRenderKey(fullscreenMedia.getItemKey(item))"
                 class="block h-auto max-h-full w-auto max-w-full cursor-pointer object-contain shadow-[0_40px_120px_-60px_rgba(0,0,0,0.9)] transition-opacity duration-300"
-                :class="viewer.isMediaReady(getItemKey(item)) ? 'opacity-100' : 'opacity-0'"
+                :class="viewer.isMediaReady(fullscreenMedia.getItemKey(item)) ? 'opacity-100' : 'opacity-0'"
                 playsinline
                 muted
-                :src="getFullscreenMediaSource(index, item)"
-                :preload="shouldPreloadSlideAsset(index) ? 'metadata' : 'none'"
-                :ref="(element) => viewer.registerVideoElement(getItemKey(item), element)"
-                @click.stop="viewer.onVideoClick($event, getItemKey(item))"
-                @canplay="viewer.onMediaEvent(getItemKey(item), $event)"
-                @durationchange="viewer.onMediaEvent(getItemKey(item), $event)"
-                @error="viewer.onMediaError(getItemKey(item), item.url)"
-                @loadstart="viewer.onMediaEvent(getItemKey(item), $event)"
-                @loadedmetadata="viewer.onMediaEvent(getItemKey(item), $event)"
-                @pause="viewer.onMediaEvent(getItemKey(item), $event)"
-                @play="viewer.onMediaEvent(getItemKey(item), $event)"
-                @playing="viewer.onMediaEvent(getItemKey(item), $event)"
-                @seeking="viewer.onMediaEvent(getItemKey(item), $event)"
-                @seeked="viewer.onMediaEvent(getItemKey(item), $event)"
-                @stalled="viewer.onMediaEvent(getItemKey(item), $event)"
-                @timeupdate="viewer.onMediaEvent(getItemKey(item), $event)"
-                @waiting="viewer.onMediaEvent(getItemKey(item), $event)"
+                :src="fullscreenMedia.getFullscreenMediaSource(index, item)"
+                :preload="fullscreenMedia.shouldPreloadSlideAsset(index) ? 'metadata' : 'none'"
+                :ref="(element) => viewer.registerVideoElement(fullscreenMedia.getItemKey(item), element)"
+                @click.stop="viewer.onVideoClick($event, fullscreenMedia.getItemKey(item))"
+                @canplay="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @durationchange="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @error="viewer.onMediaError(fullscreenMedia.getItemKey(item), item.url)"
+                @loadstart="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @loadedmetadata="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @pause="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @play="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @playing="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @seeking="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @seeked="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @stalled="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @timeupdate="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @waiting="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
               />
             </div>
 
@@ -313,9 +277,9 @@ function updateViewportWidth() {
                 <button
                   type="button"
                   class="relative grid h-full w-full place-items-center border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02)),radial-gradient(circle_at_center,rgba(16,185,129,0.14),transparent_58%)] text-[#f7f1ea] transition-[border-color,background] duration-200 hover:border-white/30 hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.03)),radial-gradient(circle_at_center,rgba(16,185,129,0.18),transparent_58%)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f7f1ea]"
-                  :aria-label="(viewer.mediaStates.value[getItemKey(item)]?.paused ?? true) ? getMediaActionLabel('Play', item) : getMediaActionLabel('Pause', item)"
-                  :disabled="Boolean(getAssetErrorKind(item))"
-                  @click="viewer.onAudioCoverClick($event, getItemKey(item))"
+                  :aria-label="(viewer.mediaStates.value[fullscreenMedia.getItemKey(item)]?.paused ?? true) ? fullscreenMedia.getMediaActionLabel('Play', item) : fullscreenMedia.getMediaActionLabel('Pause', item)"
+                  :disabled="Boolean(fullscreenMedia.getAssetErrorKind(item))"
+                  @click="viewer.onAudioCoverClick($event, fullscreenMedia.getItemKey(item))"
                 >
                   <span class="pointer-events-none absolute inset-0 border border-white/8 bg-[radial-gradient(circle,rgba(16,185,129,0.16),transparent_66%)]" />
                   <span class="pointer-events-none absolute h-[clamp(220px,30vw,360px)] w-[clamp(220px,30vw,360px)] border border-white/8 bg-[radial-gradient(circle,rgba(255,255,255,0.08),transparent_62%)]" />
@@ -328,7 +292,7 @@ function updateViewportWidth() {
 
                   <span class="pointer-events-none absolute bottom-4 right-4 inline-flex h-10 w-10 items-center justify-center border border-white/14 bg-black/50 backdrop-blur-[18px]">
                     <component
-                      :is="(viewer.mediaStates.value[getItemKey(item)]?.paused ?? true) ? Play : Pause"
+                      :is="(viewer.mediaStates.value[fullscreenMedia.getItemKey(item)]?.paused ?? true) ? Play : Pause"
                       class="h-4 w-4 stroke-2"
                       aria-hidden="true"
                     />
@@ -336,7 +300,7 @@ function updateViewportWidth() {
                 </button>
 
                 <div
-                  v-if="isAssetLoading(index, item)"
+                v-if="fullscreenMedia.isAssetLoading(index, item)"
                   data-testid="vibe-asset-spinner"
                   class="pointer-events-none absolute inset-0 z-[3] grid place-items-center"
                 >
@@ -345,18 +309,18 @@ function updateViewportWidth() {
                   </span>
                 </div>
 
-                <template v-if="getAssetErrorKind(item)">
+                <template v-if="fullscreenMedia.getAssetErrorKind(item)">
                   <div class="pointer-events-none absolute inset-0 border border-white/8 bg-[radial-gradient(circle,rgba(239,68,68,0.12),transparent_66%)]" />
                   <div
                     data-testid="vibe-asset-error"
-                    :data-kind="getAssetErrorKind(item)"
+                    :data-kind="fullscreenMedia.getAssetErrorKind(item)"
                     class="relative z-[1] grid justify-items-center gap-4"
                   >
                     <TriangleAlert class="h-7 w-7 stroke-[1.9] text-[#f7f1ea]/72" aria-hidden="true" />
                     <p class="m-0 text-[0.82rem] font-bold uppercase tracking-[0.28em] text-[#f7f1ea]/70">
-                      {{ getAssetErrorLabel(item) }}
+                      {{ fullscreenMedia.getAssetErrorLabel(item) }}
                     </p>
-                    <button v-if="viewer.canRetryAsset(getItemKey(item))" type="button" class="pointer-events-auto inline-flex items-center justify-center border border-white/14 bg-black/35 px-4 py-2 text-[0.64rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/82 backdrop-blur-[18px] transition hover:border-white/28 hover:bg-black/50" @click.stop="viewer.retryAsset(getItemKey(item))">
+                    <button v-if="viewer.canRetryAsset(fullscreenMedia.getItemKey(item))" type="button" class="pointer-events-auto inline-flex items-center justify-center border border-white/14 bg-black/35 px-4 py-2 text-[0.64rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/82 backdrop-blur-[18px] transition hover:border-white/28 hover:bg-black/50" @click.stop="viewer.retryAsset(fullscreenMedia.getItemKey(item))">
                       Retry
                     </button>
                   </div>
@@ -364,24 +328,24 @@ function updateViewportWidth() {
               </div>
 
               <audio
-                :key="viewer.getAssetRenderKey(getItemKey(item))"
-                :src="getFullscreenMediaSource(index, item)"
-                :preload="shouldPreloadSlideAsset(index) ? 'metadata' : 'none'"
+                :key="viewer.getAssetRenderKey(fullscreenMedia.getItemKey(item))"
+                :src="fullscreenMedia.getFullscreenMediaSource(index, item)"
+                :preload="fullscreenMedia.shouldPreloadSlideAsset(index) ? 'metadata' : 'none'"
                 class="pointer-events-none absolute h-px w-px opacity-0"
-                :ref="(element) => viewer.registerAudioElement(getItemKey(item), element)"
-                @canplay="viewer.onMediaEvent(getItemKey(item), $event)"
-                @durationchange="viewer.onMediaEvent(getItemKey(item), $event)"
-                @error="viewer.onMediaError(getItemKey(item), item.url)"
-                @loadstart="viewer.onMediaEvent(getItemKey(item), $event)"
-                @loadedmetadata="viewer.onMediaEvent(getItemKey(item), $event)"
-                @pause="viewer.onMediaEvent(getItemKey(item), $event)"
-                @play="viewer.onMediaEvent(getItemKey(item), $event)"
-                @playing="viewer.onMediaEvent(getItemKey(item), $event)"
-                @seeking="viewer.onMediaEvent(getItemKey(item), $event)"
-                @seeked="viewer.onMediaEvent(getItemKey(item), $event)"
-                @stalled="viewer.onMediaEvent(getItemKey(item), $event)"
-                @timeupdate="viewer.onMediaEvent(getItemKey(item), $event)"
-                @waiting="viewer.onMediaEvent(getItemKey(item), $event)"
+                :ref="(element) => viewer.registerAudioElement(fullscreenMedia.getItemKey(item), element)"
+                @canplay="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @durationchange="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @error="viewer.onMediaError(fullscreenMedia.getItemKey(item), item.url)"
+                @loadstart="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @loadedmetadata="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @pause="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @play="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @playing="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @seeking="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @seeked="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @stalled="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @timeupdate="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @waiting="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
               />
             </div>
 
@@ -454,6 +418,32 @@ function updateViewportWidth() {
             </div>
           </div>
         </div>
+
+        <SurfaceEmptyState
+          v-else-if="showInlineEmptyState && emptyStateProps"
+          :message="emptyStateProps.message"
+          :mode="emptyStateProps.mode"
+          :surface="emptyStateProps.surface"
+        >
+          <slot
+            v-if="showCustomEmptyState"
+            name="empty-state"
+            v-bind="emptyStateProps"
+          />
+        </SurfaceEmptyState>
+
+        <SurfaceEmptyState
+          v-if="showBadgeEmptyState && emptyStateProps"
+          :message="emptyStateProps.message"
+          :mode="emptyStateProps.mode"
+          :surface="emptyStateProps.surface"
+        >
+          <slot
+            v-if="showCustomEmptyState"
+            name="empty-state"
+            v-bind="emptyStateProps"
+          />
+        </SurfaceEmptyState>
       </div>
 
       <Transition
