@@ -7,6 +7,7 @@ export type VibeMasonryEdgeDirection = 'bottom' | 'top'
 
 export function useEdgeBoundary(options: {
   direction: VibeMasonryEdgeDirection
+  interactionLocked?: Ref<boolean>
   hasPage: Ref<boolean>
   isAtBoundary: () => boolean
   loading: Ref<boolean>
@@ -114,6 +115,7 @@ export function useEdgeBoundary(options: {
 
   function canRegisterIntent() {
     return options.hasPage.value
+      && !options.interactionLocked?.value
       && !options.loading.value
       && !isCycleLocked.value
       && typeof options.requestPage.value === 'function'
@@ -123,6 +125,7 @@ export function useEdgeBoundary(options: {
     return options.hasPage.value
       && isBoundaryActive.value
       && intentVersion.value > consumedIntentVersion.value
+      && !options.interactionLocked?.value
       && !options.loading.value
       && !isCycleLocked.value
       && typeof options.requestPage.value === 'function'

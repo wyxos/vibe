@@ -106,6 +106,10 @@ export function createDemoFeedStatusEntries(status: DemoFeedStatus | null | unde
 }
 
 function resolveStatusValue(status: DemoFeedStatus | null | undefined, mode: DemoFeedMode, phase: string) {
+  if ((status?.itemCount ?? 0) === 0 && status?.loadState !== 'loading') {
+    return `${mode} · no items available`
+  }
+
   if ((status?.itemCount ?? 0) > 0 && !status?.hasNextPage && status?.loadState !== 'loading') {
     return `${mode} · end of list`
   }

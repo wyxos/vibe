@@ -1,4 +1,4 @@
-import { onBeforeUnmount, ref, watch, type ComputedRef, type Ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch, type ComputedRef, type Ref } from 'vue'
 
 import type { VibeViewerItem } from '../viewer'
 
@@ -8,8 +8,14 @@ import { getVibeOccurrenceKey } from './itemIdentity'
 const CARD_MOTION_MS = 300
 const ENTER_MOTION_MS = 600
 const ENTER_STAGGER_MS = 40
+const LEAVE_MOTION_MS = 300
 const MAX_ENTER_STAGGER_TOTAL_MS = 400
 export type VibeMasonryEnterDirection = 'bottom' | 'top'
+export interface VibeMasonryLeavingItem {
+  height: number
+  item: VibeViewerItem
+  position: LayoutPosition
+}
 
 export function getVibeMasonryEnterOrder(itemIds: string[], direction: VibeMasonryEnterDirection) {
   if (direction === 'top') {
@@ -25,6 +31,10 @@ export function getVibeMasonryEnterDuration(itemCount: number) {
   }
 
   return ENTER_MOTION_MS + Math.min((itemCount - 1) * ENTER_STAGGER_MS, MAX_ENTER_STAGGER_TOTAL_MS)
+}
+
+export function getVibeMasonryLeaveDuration() {
+  return LEAVE_MOTION_MS
 }
 
 export function getVibeMasonryEnterStartY(options: {
@@ -57,11 +67,14 @@ export function useMasonryMotion(options: {
   const enterAnimatingIds = ref<Set<string>>(new Set())
   const enterDelayById = ref<Map<string, number>>(new Map())
   const enterDirectionById = ref<Map<string, VibeMasonryEnterDirection>>(new Map())
+  const leavingItemsById = ref<Map<string, VibeMasonryLeavingItem>>(new Map())
+  const leaveAnimatingIds = ref<Set<string>>(new Set())
   const moveOffsets = ref<Map<string, { dx: number; dy: number }>>(new Map())
   const moveDurationById = ref<Map<string, number>>(new Map())
   const moveTransitionIds = ref<Set<string>>(new Set())
   const scheduledEnterIds = new Set<string>()
   const activeTimers = new Set<ReturnType<typeof setTimeout>>()
+  const leavingItems = computed(() => Array.from(leavingItemsById.value.values()))
 
   watch(
     options.visibleIndices,
@@ -128,6 +141,42 @@ export function useMasonryMotion(options: {
     { flush: 'post' },
   )
 
+  watch(
+    () => options.items.value.map((item) => getVibeOccurrenceKey(item)),
+    (itemIds) => {
+      if (!itemIds.length || !leavingItemsById.value.size) {
+        return
+      }
+
+      const currentIds = new Set(itemIds)
+      let nextLeavingItemsById: Map<string, VibeMasonryLeavingItem> | null = null
+      let nextLeaveAnimatingIds: Set<string> | null = null
+
+      for (const leavingItemId of leavingItemsById.value.keys()) {
+        if (!currentIds.has(leavingItemId)) {
+          continue
+        }
+
+        if (!nextLeavingItemsById) {
+          nextLeavingItemsById = new Map(leavingItemsById.value)
+        }
+        if (!nextLeaveAnimatingIds) {
+          nextLeaveAnimatingIds = new Set(leaveAnimatingIds.value)
+        }
+
+        nextLeavingItemsById.delete(leavingItemId)
+        nextLeaveAnimatingIds.delete(leavingItemId)
+      }
+
+      if (nextLeavingItemsById) {
+        leavingItemsById.value = nextLeavingItemsById
+      }
+      if (nextLeaveAnimatingIds) {
+        leaveAnimatingIds.value = nextLeaveAnimatingIds
+      }
+    },
+  )
+
   onBeforeUnmount(() => {
     for (const timer of activeTimers) {
       clearTimeout(timer)
@@ -149,6 +198,57 @@ export function useMasonryMotion(options: {
     }
     enterStartIds.value = nextStartIds
     enterDirectionById.value = nextEnterDirectionById
+  }
+
+  function markLeave(items: VibeMasonryLeavingItem[]) {
+    if (!items.length) {
+      return
+    }
+
+    const nextLeavingItemsById = new Map(leavingItemsById.value)
+    const nextEnterStartIds = new Set(enterStartIds.value)
+    const nextEnterAnimatingIds = new Set(enterAnimatingIds.value)
+    const nextEnterDelayById = new Map(enterDelayById.value)
+    const nextEnterDirectionById = new Map(enterDirectionById.value)
+    const leavingItemIds: string[] = []
+
+    for (const leavingItem of items) {
+      const itemId = getVibeOccurrenceKey(leavingItem.item)
+      leavingItemIds.push(itemId)
+      nextLeavingItemsById.set(itemId, leavingItem)
+      nextEnterStartIds.delete(itemId)
+      nextEnterAnimatingIds.delete(itemId)
+      nextEnterDelayById.delete(itemId)
+      nextEnterDirectionById.delete(itemId)
+      scheduledEnterIds.delete(itemId)
+    }
+
+    leavingItemsById.value = nextLeavingItemsById
+    enterStartIds.value = nextEnterStartIds
+    enterAnimatingIds.value = nextEnterAnimatingIds
+    enterDelayById.value = nextEnterDelayById
+    enterDirectionById.value = nextEnterDirectionById
+
+    raf(() => {
+      const nextLeaveAnimatingIds = new Set(leaveAnimatingIds.value)
+      for (const itemId of leavingItemIds) {
+        nextLeaveAnimatingIds.add(itemId)
+      }
+      leaveAnimatingIds.value = nextLeaveAnimatingIds
+    })
+
+    trackTimeout(() => {
+      const nextLeavingItemsById = new Map(leavingItemsById.value)
+      const nextLeaveAnimatingIds = new Set(leaveAnimatingIds.value)
+
+      for (const itemId of leavingItemIds) {
+        nextLeavingItemsById.delete(itemId)
+        nextLeaveAnimatingIds.delete(itemId)
+      }
+
+      leavingItemsById.value = nextLeavingItemsById
+      leaveAnimatingIds.value = nextLeaveAnimatingIds
+    }, LEAVE_MOTION_MS)
   }
 
   function playFlipMoveAnimation(oldPositionsById: Map<string, LayoutPosition>, skipIds?: Set<string>, durationMs = CARD_MOTION_MS) {
@@ -254,6 +354,29 @@ export function useMasonryMotion(options: {
     return `translate3d(${position.x + moveOffset.dx}px, ${enterStartY + moveOffset.dy}px, 0)`
   }
 
+  function getLeavingCardStyle(item: VibeViewerItem) {
+    const itemId = getVibeOccurrenceKey(item)
+    const leavingItem = leavingItemsById.value.get(itemId)
+
+    if (!leavingItem) {
+      return {
+        opacity: '0',
+        transform: 'translate3d(0, 0, 0) scale(0.96)',
+        transition: `opacity ${LEAVE_MOTION_MS}ms ease-out, transform ${LEAVE_MOTION_MS}ms ease-out`,
+      }
+    }
+
+    const isAnimatingLeave = leaveAnimatingIds.value.has(itemId)
+
+    return {
+      height: `${leavingItem.height}px`,
+      opacity: isAnimatingLeave ? '0' : '1',
+      transform: `translate3d(${leavingItem.position.x}px, ${leavingItem.position.y}px, 0) scale(${isAnimatingLeave ? '0.96' : '1'})`,
+      transition: `opacity ${LEAVE_MOTION_MS}ms ease-out, transform ${LEAVE_MOTION_MS}ms ease-out`,
+      width: `${options.columnWidth.value}px`,
+    }
+  }
+
   function trackTimeout(callback: () => void, delayMs: number) {
     const timer = setTimeout(() => {
       activeTimers.delete(timer)
@@ -267,7 +390,10 @@ export function useMasonryMotion(options: {
     getCardTransform,
     getCardTransition,
     getCardTransitionDelay,
+    getLeavingCardStyle,
+    leavingItems,
     markEnter,
+    markLeave,
     playFlipMoveAnimation,
   }
 }

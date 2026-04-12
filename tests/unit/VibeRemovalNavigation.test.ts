@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import Layout from '@/components/Layout.vue'
 import type { VibeHandle } from '@/components/viewer-core/useViewer'
@@ -51,6 +51,67 @@ describe('VibeLayout removal navigation', () => {
     await flushDom()
 
     expect(wrapper.get('[data-testid="vibe-title"]').text()).toBe('Item 2')
+
+    wrapper.unmount()
+  })
+
+  it('resets the masonry scroll position before animating the last items out', async () => {
+    setViewportWidth(1_280)
+
+    const items = Array.from({ length: 24 }, (_, index) => createImageItem(`remove-all-${index + 1}`, `Remove all ${index + 1}`))
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps(items),
+    })
+
+    await flushDom()
+
+    const scrollViewport = wrapper.get('[data-testid="vibe-list-scroll"]')
+    ;(scrollViewport.element as HTMLElement).scrollTop = 1_200
+    await scrollViewport.trigger('scroll')
+    await flushDom()
+
+    const handle = wrapper.vm as unknown as VibeHandle
+    expect(handle.remove(items.map((item) => item.id)).ids).toHaveLength(items.length)
+    await flushDom()
+
+    expect((scrollViewport.element as HTMLElement).scrollTop).toBe(0)
+    expect(wrapper.findAll('[data-testid="vibe-list-card-leaving"]').length).toBeGreaterThan(0)
+
+    wrapper.unmount()
+  })
+
+  it('locks boundary loading while the empty-removal reset scroll is happening', async () => {
+    setViewportWidth(1_280)
+
+    const items = Array.from({ length: 24 }, (_, index) => createImageItem(`locked-remove-${index + 1}`, `Locked remove ${index + 1}`))
+    const resolve = vi.fn().mockResolvedValue({
+      items: [createImageItem('page-previous', 'Previous page item')],
+      nextPage: null,
+      previousPage: null,
+    })
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps(items, {
+        mode: 'static',
+        previousCursor: '9',
+        resolve,
+      }),
+    })
+
+    await flushDom()
+
+    const scrollViewport = wrapper.get('[data-testid="vibe-list-scroll"]')
+    ;(scrollViewport.element as HTMLElement).scrollTop = 1_200
+    await scrollViewport.trigger('scroll')
+    await flushDom()
+
+    const handle = wrapper.vm as unknown as VibeHandle
+    expect(handle.remove(items.map((item) => item.id)).ids).toHaveLength(items.length)
+    await flushDom()
+
+    await scrollViewport.trigger('scroll')
+    await flushDom()
+
+    expect(resolve).not.toHaveBeenCalled()
 
     wrapper.unmount()
   })

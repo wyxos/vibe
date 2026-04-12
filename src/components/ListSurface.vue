@@ -123,6 +123,7 @@ const gridStatusNodes = computed(() => {
   return slots['grid-status'](gridStatusProps.value)
 })
 const showCustomGridStatus = computed(() => hasRenderableSlotContent(gridStatusNodes.value))
+const visibleEmptyStateCount = computed(() => props.items.length + list.leavingItems.value.length)
 const {
   emptyStateProps,
   showBadgeEmptyState,
@@ -130,7 +131,7 @@ const {
   showInlineEmptyState,
 } = useSurfaceEmptyState({
   emptyStateMode: toRef(props, 'emptyStateMode'),
-  itemCount: computed(() => props.items.length),
+  itemCount: visibleEmptyStateCount,
   loading: toRef(props, 'loading'),
   renderSlot: slots['empty-state'],
   surface: 'grid',
@@ -189,6 +190,28 @@ const {
             <template v-if="slots['grid-item-overlay']" #grid-item-overlay="slotProps">
               <slot name="grid-item-overlay" v-bind="slotProps" />
             </template>
+            <template v-if="slots['item-icon']" #item-icon="slotProps">
+              <slot name="item-icon" v-bind="slotProps" />
+            </template>
+          </ListCard>
+        </article>
+
+        <article
+          v-for="leavingItem in list.leavingItems.value"
+          :key="`leaving-${getVibeOccurrenceKey(leavingItem.item)}`"
+          data-testid="vibe-list-card-leaving"
+          :data-item-id="leavingItem.item.id"
+          class="pointer-events-none absolute z-[2] will-change-[opacity,transform]"
+          :style="list.getLeavingCardStyle(leavingItem.item)"
+        >
+          <ListCard
+            :active="false"
+            :index="-1"
+            :item="leavingItem.item"
+            :report-asset-error="props.reportAssetError"
+            :report-asset-load="props.reportAssetLoad"
+            :surface-active="false"
+          >
             <template v-if="slots['item-icon']" #item-icon="slotProps">
               <slot name="item-icon" v-bind="slotProps" />
             </template>

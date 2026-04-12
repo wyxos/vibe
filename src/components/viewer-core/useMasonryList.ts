@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import type { VibeViewerItem } from '../viewer'
 import {
@@ -7,7 +8,7 @@ import {
   getVisibleIndicesFromBuckets,
   snapshotPositionsById,
 } from './masonryLayout'
-import { getVibeMasonryEnterDuration, useMasonryMotion } from './useMasonryMotion'
+import { getVibeMasonryEnterDuration, getVibeMasonryLeaveDuration, useMasonryMotion } from './useMasonryMotion'
 import {
   getVibeMasonryDistanceFromBottom,
   getVibeMasonryScrollbarThumbStyle,
@@ -54,6 +55,7 @@ export function useVibeMasonryList(options: {
   const layoutIndexById = ref<Map<string, number>>(new Map())
   const reservedContentHeight = ref<number | null>(null)
   const preservedScrollTop = ref<number | null>(null)
+  const isBoundaryInteractionLocked = ref(false)
   const availableWidth = computed(() => Math.max(ITEM_WIDTH_PX, viewportWidth.value - CONTENT_INSET_PX * 2))
   const columnCount = computed(() => getColumnCount(availableWidth.value, ITEM_WIDTH_PX))
   const columnWidth = computed(() => getColumnWidth(availableWidth.value, columnCount.value, ITEM_WIDTH_PX, GAP_PX))
@@ -112,6 +114,7 @@ export function useVibeMasonryList(options: {
       return Math.max(PREPEND_MOVE_MOTION_MS, getVibeMasonryEnterDuration(addedItemCount)) + EDGE_COOLDOWN_MS
     },
     hasPage: options.hasPreviousPage,
+    interactionLocked: isBoundaryInteractionLocked,
     isAtBoundary() {
       return scrollTop.value <= CONTENT_INSET_PX + GAP_PX
     },
@@ -124,6 +127,7 @@ export function useVibeMasonryList(options: {
       return getVibeMasonryEnterDuration(addedItemCount) + EDGE_COOLDOWN_MS
     },
     hasPage: canRequestNextBoundary,
+    interactionLocked: isBoundaryInteractionLocked,
     isAtBoundary() {
       return getDistanceFromBottom() <= PREFETCH_THRESHOLD_PX
     },
@@ -133,19 +137,56 @@ export function useVibeMasonryList(options: {
   let resizeObserver: ResizeObserver | null = null
   let scrollFrame = 0
   let appendCommitTimer: ReturnType<typeof setTimeout> | null = null
+  let boundaryInteractionReleaseTimer: ReturnType<typeof setTimeout> | null = null
   let isSettlingReservedHeight = false
 
   watch(
-    [() => options.items.value.map((item) => getVibeOccurrenceKey(item)), columnCount, columnWidth],
-    async ([currentIds], [previousIds = []]) => {
-      const oldPositionsById = snapshotPositionsById(options.items.value, layoutIndexById.value, layoutPositions.value)
+    [() => options.items.value, columnCount, columnWidth],
+    async ([currentItems], [previousItems = []]) => {
+      const currentIds = currentItems.map((item) => getVibeOccurrenceKey(item))
+      const previousResolvedItems = previousItems ?? []
+      const previousIds = previousResolvedItems.map((item) => getVibeOccurrenceKey(item))
+      const oldPositionsById = snapshotPositionsById(previousResolvedItems, layoutIndexById.value, layoutPositions.value)
+      const oldHeightsById = snapshotHeightsById(previousResolvedItems)
       const previousIdSet = new Set(previousIds)
-      const addedItems = options.items.value.filter((item) => !previousIdSet.has(getVibeOccurrenceKey(item)))
+      const currentIdSet = new Set(currentIds)
+      const addedItems = currentItems.filter((item) => !previousIdSet.has(getVibeOccurrenceKey(item)))
+      const removedItems = previousResolvedItems.flatMap((item) => {
+        const itemId = getVibeOccurrenceKey(item)
+
+        if (currentIdSet.has(itemId)) {
+          return []
+        }
+
+        const position = oldPositionsById.get(itemId)
+        const height = oldHeightsById.get(itemId)
+
+        if (!position || height == null) {
+          return []
+        }
+
+        return [{
+          height,
+          item,
+          position,
+        }]
+      })
       const isPrepend = currentIds.length > previousIds.length && previousIds.length > 0 && currentIds[0] !== previousIds[0]
+      const shouldResetScrollForEmptyRemoval = currentItems.length === 0
+        && previousResolvedItems.length > 0
+        && removedItems.length > 0
+        && scrollTop.value > 0
       const shouldPreserveAnchor = isPrepend && scrollTop.value > CONTENT_INSET_PX + GAP_PX
-      const anchorItem = shouldPreserveAnchor ? options.items.value[resolvedActiveIndex.value] : null
+      const anchorItem = shouldPreserveAnchor ? currentItems[resolvedActiveIndex.value] : null
       const anchorId = anchorItem ? getVibeOccurrenceKey(anchorItem) : null
+      if (shouldResetScrollForEmptyRemoval) {
+        lockBoundaryInteraction(getVibeMasonryLeaveDuration())
+        resetScrollToTop()
+      }
       rebuildLayout()
+      if (removedItems.length > 0) {
+        motion.markLeave(removedItems)
+      }
       if (addedItems.length > 0) {
         motion.markEnter(addedItems, isPrepend ? 'top' : 'bottom')
         if (isPrepend) {
@@ -247,6 +288,7 @@ export function useVibeMasonryList(options: {
     resizeObserver = null
     window.removeEventListener('resize', updateViewportMetrics)
     clearAppendCommitTimer()
+    clearBoundaryInteractionReleaseTimer()
     if (scrollFrame) {
       cancelAnimationFrame(scrollFrame)
       scrollFrame = 0
@@ -348,6 +390,30 @@ export function useVibeMasonryList(options: {
     scrollTop.value = viewport.scrollTop
   }
 
+  function resetScrollToTop() {
+    const viewport = scrollViewportRef.value
+
+    if (!viewport) {
+      scrollTop.value = 0
+      return
+    }
+
+    viewport.scrollTop = 0
+    scrollTop.value = 0
+    previousPageBoundary.syncBoundary()
+    nextPageBoundary.syncBoundary()
+  }
+
+  function lockBoundaryInteraction(durationMs: number) {
+    clearBoundaryInteractionReleaseTimer()
+    isBoundaryInteractionLocked.value = true
+
+    boundaryInteractionReleaseTimer = setTimeout(() => {
+      boundaryInteractionReleaseTimer = null
+      isBoundaryInteractionLocked.value = false
+    }, Math.max(0, durationMs))
+  }
+
   function syncActiveIndexFromScroll() {
     if (!renderedIndices.value.length) {
       return
@@ -439,6 +505,29 @@ export function useVibeMasonryList(options: {
     return projectedLayout.contentHeight + CONTENT_INSET_PX * 2
   }
 
+  function snapshotHeightsById(items: VibeViewerItem[]) {
+    const snapshot = new Map<string, number>()
+
+    for (const item of items) {
+      const itemId = getVibeOccurrenceKey(item)
+      const index = layoutIndexById.value.get(itemId)
+
+      if (index == null) {
+        continue
+      }
+
+      const height = layoutHeights.value[index]
+
+      if (height == null) {
+        continue
+      }
+
+      snapshot.set(itemId, height)
+    }
+
+    return snapshot
+  }
+
   function schedulePendingAppendCommit() {
     const commitPendingAppend = options.commitPendingAppend.value
     if (typeof commitPendingAppend !== 'function') {
@@ -468,11 +557,23 @@ export function useVibeMasonryList(options: {
     appendCommitTimer = null
   }
 
+  function clearBoundaryInteractionReleaseTimer() {
+    if (!boundaryInteractionReleaseTimer) {
+      return
+    }
+
+    clearTimeout(boundaryInteractionReleaseTimer)
+    boundaryInteractionReleaseTimer = null
+    isBoundaryInteractionLocked.value = false
+  }
+
   return {
     columnWidth,
     containerHeight,
     getCardStyle,
+    getLeavingCardStyle: motion.getLeavingCardStyle,
     getScrollbarThumbStyle,
+    leavingItems: motion.leavingItems,
     onScroll,
     onWheel,
     paginationLabel,
@@ -483,6 +584,7 @@ export function useVibeMasonryList(options: {
     scrollViewportRef,
   }
 }
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }

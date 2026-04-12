@@ -5,7 +5,7 @@ import { Laugh, Heart, ThumbsDown, ThumbsUp } from 'lucide-vue-next'
 
 import Layout from '@/components/Layout.vue'
 import type { VibeViewerItem } from '@/components/viewer'
-import type { VibeHandle } from '@/components/viewer-core/useViewer'
+import type { VibeHandle, VibeResolveParams, VibeResolveResult } from '@/components/viewer-core/useViewer'
 import { createTrackedFakeFeedResolver } from '@/demo/fakeFeedResolver'
 import { createDemoFeedStatusEntries, type DemoFeedStatus } from '@/demo/feedStatus'
 import { getFakeMediaItemIcon } from '@/demo/fakeMediaItemIcon'
@@ -19,11 +19,22 @@ const REACTION_ACTIONS = [
   { icon: ThumbsDown, label: 'Dislike' },
 ] as const
 const vibeRef = ref<VibeHandle | null>(null)
+const loadedItemIds = ref<Set<string>>(new Set())
 const feed = createTrackedFakeFeedResolver({
   initialCursor: INITIAL_PAGE,
   mode: 'static',
 })
-const resolve = feed.resolve
+async function resolve(params: VibeResolveParams): Promise<VibeResolveResult> {
+  const response = await feed.resolve(params)
+  const nextLoadedItemIds = new Set(loadedItemIds.value)
+
+  for (const item of response.items) {
+    nextLoadedItemIds.add(item.id)
+  }
+
+  loadedItemIds.value = nextLoadedItemIds
+  return response
+}
 const demoFeedStatus = computed<DemoFeedStatus>(() => ({
   ...feed.status,
   ...vibeRef.value?.status,
@@ -42,6 +53,7 @@ const demoStatusEntries = computed(() => createDemoFeedStatusEntries(demoFeedSta
   pageSize: PAGE_SIZE,
   testIdPrefix: 'advanced-static-status',
 }))
+const canRemoveAllItems = computed(() => demoFeedStatus.value.itemCount > 0)
 
 function renderItemIcon(item: VibeViewerItem, icon: unknown) {
   return (getFakeMediaItemIcon(item) ?? icon) as Component
@@ -58,6 +70,15 @@ function undoRemoval() {
   const result = vibeRef.value?.undo()
   if (result?.ids.length) {
     feed.undo()
+  }
+}
+
+function removeAllItems() {
+  const removedIds = new Set(vibeRef.value?.status.removedIds ?? [])
+  const nextIds = Array.from(loadedItemIds.value).filter((id) => !removedIds.has(id))
+  const result = vibeRef.value?.remove(nextIds)
+  if (result?.ids.length) {
+    feed.remove(result.ids)
   }
 }
 
@@ -89,6 +110,7 @@ onBeforeUnmount(() => {
   <section class="relative h-full min-h-0 bg-[#05060a]">
     <Layout
       ref="vibeRef"
+      empty-state-mode="hidden"
       :initial-cursor="String(INITIAL_PAGE)"
       mode="static"
       :resolve="resolve"
@@ -139,6 +161,15 @@ onBeforeUnmount(() => {
               {{ entry.value }}
             </span>
           </div>
+          <button
+            type="button"
+            data-testid="advanced-static-remove-all-button"
+            class="pointer-events-auto inline-flex h-10 items-center justify-center border border-rose-400/40 bg-rose-500/12 px-4 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-rose-50 transition enabled:hover:border-rose-300/55 enabled:hover:bg-rose-500/20 disabled:cursor-default disabled:border-white/10 disabled:bg-white/[0.03] disabled:text-[#f7f1ea]/34"
+            :disabled="!canRemoveAllItems"
+            @click="removeAllItems"
+          >
+            Remove all items
+          </button>
         </div>
       </template>
     </Layout>
