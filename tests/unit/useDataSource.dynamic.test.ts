@@ -206,6 +206,54 @@ describe('useDataSource dynamic mode', () => {
     source.unmount()
   })
 
+  it('stops chained dynamic fill requests while page loading is locked', async () => {
+    vi.useFakeTimers()
+
+    const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
+      if (cursor === 'page-2') {
+        return createPageResult('page-2', {
+          itemCount: 25,
+          nextPage: 'page-3',
+          previousPage: 'page-1',
+        })
+      }
+
+      return createPageResult('page-1', {
+        itemCount: 20,
+        nextPage: 'page-2',
+      })
+    })
+
+    const source = await mountUseDataSource({
+      resolve,
+    })
+
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(1)
+    expect(source.api.phase.value).toBe('filling')
+
+    source.api.lockPageLoading()
+    await source.flush()
+
+    expect(source.api.isPageLoadingLocked.value).toBe(true)
+    expect(source.api.phase.value).toBe('idle')
+    expect(source.api.items.value).toHaveLength(20)
+
+    await vi.advanceTimersByTimeAsync(5_000)
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(1)
+
+    source.api.unlockPageLoading()
+    await source.api.loadNext()
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(2)
+
+    source.unmount()
+  })
+
   it('reloads the trailing boundary when loadNext is requested after exhaustion', async () => {
     const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
       if (resolve.mock.calls.length === 1) {

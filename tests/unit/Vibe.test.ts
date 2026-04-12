@@ -442,14 +442,26 @@ describe('VibeLayout', () => {
 
     const handle = wrapper.vm as unknown as VibeHandle
 
+    expect(typeof handle.lockPageLoading).toBe('function')
     expect(typeof handle.remove).toBe('function')
     expect(typeof handle.restore).toBe('function')
     expect(typeof handle.undo).toBe('function')
     expect(handle.status.itemCount).toBe(3)
     expect(handle.status.loadState).toBe('loaded')
+    expect(handle.status.pageLoadingLocked).toBe(false)
     expect(handle.status.surfaceMode).toBe('list')
     expect(handle.status.removedIds).toEqual([])
     expect(wrapper.findAll('[data-testid="vibe-list-card"]')).toHaveLength(3)
+
+    handle.lockPageLoading()
+    await flushDom()
+
+    expect(handle.status.pageLoadingLocked).toBe(true)
+
+    handle.unlockPageLoading()
+    await flushDom()
+
+    expect(handle.status.pageLoadingLocked).toBe(false)
 
     expect(handle.remove('duplicate').ids).toEqual(['duplicate'])
     await flushDom()

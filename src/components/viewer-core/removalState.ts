@@ -21,6 +21,7 @@ export interface VibeStatus {
   loadState: 'failed' | 'loaded' | 'loading'
   mode: VibeFeedMode
   nextCursor: string | null
+  pageLoadingLocked: boolean
   phase: VibeLoadPhase
   previousCursor: string | null
   removedCount: number
@@ -32,6 +33,7 @@ export interface VibeHandle {
   cancel: () => void
   clearRemoved: () => void
   getRemovedIds: () => string[]
+  lockPageLoading: () => void
   loadNext: () => Promise<void>
   loadPrevious: () => Promise<void>
   remove: (ids: string | string[]) => VibeRemoveResult
@@ -39,6 +41,7 @@ export interface VibeHandle {
   retry: () => Promise<void>
   status: Readonly<VibeStatus>
   undo: () => VibeRemoveResult | null
+  unlockPageLoading: () => void
 }
 
 export function useVibeRemovalState() {

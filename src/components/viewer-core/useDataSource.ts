@@ -169,7 +169,9 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     getRemovedIds,
     hasNextPage,
     hasPreviousPage,
+    isPageLoadingLocked: autoSource.isPageLoadingLocked,
     items,
+    lockPageLoading: autoSource.lockPageLoading,
     loading,
     loadNext,
     loadPrevious,
@@ -189,5 +191,6 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     setActiveIndex,
     setAutoPrefetchEnabled: autoSource.setAutoPrefetchEnabled,
     undo,
+    unlockPageLoading: autoSource.unlockPageLoading,
   }
 }

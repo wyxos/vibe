@@ -44,6 +44,35 @@ describe('BidirectionalPagingDemoPage', () => {
 
     wrapper.unmount()
   })
+
+  it('toggles the page-loading lock CTA in the advanced demo footer bar', async () => {
+    vi.useFakeTimers()
+    setViewportWidth(1_280)
+
+    const wrapper = mount(BidirectionalPagingDemoPage)
+
+    await vi.advanceTimersByTimeAsync(100)
+    await flushDom()
+
+    const lockButton = wrapper.get('[data-testid="advanced-static-page-loading-lock-button"]')
+
+    expect(lockButton.text()).toContain('Lock paging')
+    expect(lockButton.attributes('aria-pressed')).toBe('false')
+
+    await lockButton.trigger('click')
+    await flushDom()
+
+    expect(lockButton.text()).toContain('Unlock paging')
+    expect(lockButton.attributes('aria-pressed')).toBe('true')
+
+    await lockButton.trigger('click')
+    await flushDom()
+
+    expect(lockButton.text()).toContain('Lock paging')
+    expect(lockButton.attributes('aria-pressed')).toBe('false')
+
+    wrapper.unmount()
+  })
 })
 
 async function flushDom() {

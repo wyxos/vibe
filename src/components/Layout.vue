@@ -59,6 +59,7 @@ defineExpose<VibeHandle>({
   cancel: viewer.cancel,
   clearRemoved: viewer.clearRemoved,
   getRemovedIds: viewer.getRemovedIds,
+  lockPageLoading: viewer.lockPageLoading,
   loadNext: viewer.loadNext,
   loadPrevious: viewer.loadPrevious,
   remove: viewer.remove,
@@ -66,6 +67,7 @@ defineExpose<VibeHandle>({
   retry: viewer.retry,
   status: viewer.status,
   undo: viewer.undo,
+  unlockPageLoading: viewer.unlockPageLoading,
 })
 </script>
 

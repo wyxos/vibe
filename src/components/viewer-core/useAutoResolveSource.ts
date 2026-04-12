@@ -61,6 +61,7 @@ export function useAutoResolveSource(options: {
   const fillTargetCount = ref<number | null>(null)
   const isAwaitingAppendCommit = ref(false)
   const isAutoPrefetchEnabled = ref(true)
+  const isPageLoadingLocked = ref(false)
   const inFlightCursors = new Set<string>()
   let activeResolveController: AbortController | null = null
   let lastLoadAttempt: (() => Promise<void>) | null = null
@@ -148,7 +149,7 @@ export function useAutoResolveSource(options: {
     finishLoadPhase()
   }
   async function prefetchNextPage() {
-    if (loading.value) return
+    if (isPageLoadingLocked.value || loading.value) return
     if (!hasNextPage.value) {
       if (!canRefreshTrailingBoundary.value) {
         return
@@ -160,7 +161,7 @@ export function useAutoResolveSource(options: {
     await appendBuckets(nextCursor.value)
   }
   async function prefetchPreviousPage() {
-    if (!hasPreviousPage.value || loading.value) return
+    if (isPageLoadingLocked.value || !hasPreviousPage.value || loading.value) return
     if (mode.value === 'static' && needsStaticReload('leading')) return reloadBoundaryBucket('leading')
     await prependBuckets(previousCursor.value)
   }
@@ -189,7 +190,7 @@ export function useAutoResolveSource(options: {
   }
   async function retry() {
     if (canRetryInitialLoad.value) return retryInitialLoad()
-    if (operationPhase.value !== 'failed' || !lastLoadAttempt) return
+    if (isPageLoadingLocked.value || operationPhase.value !== 'failed' || !lastLoadAttempt) return
     errorMessage.value = null
     await lastLoadAttempt()
   }
@@ -213,6 +214,13 @@ export function useAutoResolveSource(options: {
   }
   function setAutoPrefetchEnabled(nextValue: boolean) {
     isAutoPrefetchEnabled.value = nextValue
+  }
+  function lockPageLoading() {
+    isPageLoadingLocked.value = true
+    fillDelay.clear(true)
+  }
+  function unlockPageLoading() {
+    isPageLoadingLocked.value = false
   }
   function cancel() {
     operationSequence += 1
@@ -366,6 +374,9 @@ export function useAutoResolveSource(options: {
     fillTargetCount.value = null
     while (true) {
       if (operationId !== operationSequence) return finalizeCollectedBuckets(collectedBuckets, request.direction, options.removedIds.value, true)
+      if (collectedBuckets.length > 0 && isPageLoadingLocked.value) {
+        return finalizeCollectedBuckets(collectedBuckets, request.direction, options.removedIds.value, false)
+      }
       const cursorKey = getCursorKey(cursor)
       if (visitedCursorKeys.has(cursorKey) || inFlightCursors.has(cursorKey)) {
         break
@@ -401,6 +412,9 @@ export function useAutoResolveSource(options: {
               : collectedBuckets,
             visibleCount,
           }
+        }
+        if (isPageLoadingLocked.value) {
+          return finalizeCollectedBuckets(collectedBuckets, request.direction, options.removedIds.value, false)
         }
         operationPhase.value = 'filling'
         fillCollectedCount.value = visibleCount
@@ -506,7 +520,9 @@ export function useAutoResolveSource(options: {
     fillTargetCount,
     hasNextPage,
     hasPreviousPage,
+    isPageLoadingLocked,
     items,
+    lockPageLoading,
     loading,
     mode,
     nextCursor,
@@ -520,6 +536,7 @@ export function useAutoResolveSource(options: {
     setActiveIndex,
     setAutoPrefetchEnabled,
     syncActiveIndexAfterVisibilityChange,
+    unlockPageLoading,
     getActiveOccurrenceKey,
     maybeCommitPendingAppendWhenFilteredOut,
   }

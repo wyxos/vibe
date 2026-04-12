@@ -50,6 +50,7 @@ test('advanced static demo exposes raw cursor footer labels', async ({ page }) =
   await expect(statusBar.getByTestId('advanced-static-status-status')).toContainText('static')
   await expect(statusBar.getByTestId('advanced-static-status-fill')).toContainText('25 / 25')
   await expect(statusBar.getByTestId('advanced-static-status-total')).toContainText('25')
+  await expect(statusBar.getByTestId('advanced-static-page-loading-lock-button')).toContainText('Lock paging')
 })
 
 test('bidirectional paging demo reactions remove an item and update the status bar', async ({ page }) => {
@@ -108,6 +109,30 @@ test('advanced integration demo footer bar is only visible in grid mode', async 
 
   await expect(root).toHaveAttribute('data-surface-mode', 'fullscreen')
   await expect(statusBar).toBeHidden()
+})
+
+test('advanced integration demo footer bar can toggle the page-loading lock CTA', async ({ page }) => {
+  await page.setViewportSize({
+    width: 1_100,
+    height: 650,
+  })
+
+  await gotoRoute(page, '/demo/advanced-integration')
+
+  const lockButton = page.getByTestId('advanced-static-page-loading-lock-button')
+
+  await expect(lockButton).toContainText('Lock paging', { timeout: 15_000 })
+  await expect(lockButton).toHaveAttribute('aria-pressed', 'false')
+
+  await lockButton.click()
+
+  await expect(lockButton).toContainText('Unlock paging')
+  await expect(lockButton).toHaveAttribute('aria-pressed', 'true')
+
+  await lockButton.click()
+
+  await expect(lockButton).toContainText('Lock paging')
+  await expect(lockButton).toHaveAttribute('aria-pressed', 'false')
 })
 
 test('advanced static demo reloads the current cursor before advancing after local removals', async ({ page }) => {

@@ -146,6 +146,71 @@ describe('useDataSource', () => {
     source.unmount()
   })
 
+  it('blocks manual next and previous page loading while page loading is locked', async () => {
+    const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
+      if (cursor === 'page-9') {
+        return createPageResult('page-9', {
+          nextPage: 'page-10',
+          previousPage: 'page-8',
+        })
+      }
+
+      if (cursor === 'page-11') {
+        return createPageResult('page-11', {
+          nextPage: 'page-12',
+          previousPage: 'page-10',
+        })
+      }
+
+      return createPageResult('page-10', {
+        nextPage: 'page-11',
+        previousPage: 'page-9',
+      })
+    })
+
+    const source = await mountUseDataSource({
+      initialCursor: 'page-10',
+      resolve,
+    })
+
+    await source.flush()
+    expect(source.api.isPageLoadingLocked.value).toBe(false)
+
+    source.api.lockPageLoading()
+    expect(source.api.isPageLoadingLocked.value).toBe(true)
+
+    await source.api.loadPrevious()
+    await source.api.loadNext()
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(1)
+
+    source.api.unlockPageLoading()
+    expect(source.api.isPageLoadingLocked.value).toBe(false)
+
+    await source.api.loadPrevious()
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(2)
+    expect(resolve).toHaveBeenLastCalledWith(expect.objectContaining({
+      cursor: 'page-9',
+      pageSize: 25,
+      signal: expect.any(AbortSignal),
+    }))
+
+    await source.api.loadNext()
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(3)
+    expect(resolve).toHaveBeenLastCalledWith(expect.objectContaining({
+      cursor: 'page-11',
+      pageSize: 25,
+      signal: expect.any(AbortSignal),
+    }))
+
+    source.unmount()
+  })
+
   it('does not fetch an unseen previous page when previousPage is missing', async () => {
     const resolve = vi.fn(async () => createPageResult('page-1', {
       nextPage: 'page-2',

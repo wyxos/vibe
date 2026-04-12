@@ -389,7 +389,7 @@ function onAssetErrors(errors: VibeAssetErrorEvent[]) {
         label: 'Handle',
         title: 'Exposed Handle',
         description: [
-          'VibeLayout exposes a handle for remove, restore, undo, and lightweight status inspection.',
+          'VibeLayout exposes a handle for removal actions, manual page loading, page-load locking, and lightweight status inspection.',
           'Removal works by item id and preserves original order when items are restored.',
         ],
         code: `import { ref } from 'vue'
@@ -397,14 +397,17 @@ import type { VibeHandle } from '@wyxos/vibe'
 
 const vibe = ref<VibeHandle | null>(null)
 
+vibe.value?.lockPageLoading()
+await vibe.value?.loadNext()
 vibe.value?.remove(['item-2', 'item-5'])
 vibe.value?.undo()
+vibe.value?.unlockPageLoading()
 console.log(vibe.value?.status.nextCursor)
-console.log(vibe.value?.status.fillDelayRemainingMs)`,
+console.log(vibe.value?.status.pageLoadingLocked)`,
         language: 'ts',
         notes: [
-          'Handle methods: remove, restore, undo, getRemovedIds, clearRemoved.',
-          'Status exposes activeIndex, currentCursor, nextCursor, previousCursor, mode, phase, fill counts, loadState, itemCount, removedCount, and surfaceMode.',
+          'Handle methods: lockPageLoading, unlockPageLoading, loadNext, loadPrevious, retry, cancel, remove, restore, undo, getRemovedIds, and clearRemoved.',
+          'Status exposes activeIndex, currentCursor, nextCursor, previousCursor, pageLoadingLocked, mode, phase, fill counts, loadState, itemCount, removedCount, and surfaceMode.',
           'Phase differentiates the first load from later requests and end-of-list refreshes.',
         ],
       },

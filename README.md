@@ -305,6 +305,12 @@ const vibe = ref<VibeHandle | null>(null)
 
 Available methods:
 
+- `lockPageLoading()`
+- `unlockPageLoading()`
+- `loadNext()`
+- `loadPrevious()`
+- `retry()`
+- `cancel()`
 - `remove(ids)`
 - `restore(ids)`
 - `undo()`
@@ -327,6 +333,7 @@ type VibeStatus = {
   loadState: 'failed' | 'loaded' | 'loading'
   mode: 'dynamic' | 'static'
   nextCursor: string | null
+  pageLoadingLocked: boolean
   phase: 'failed' | 'filling' | 'idle' | 'initializing' | 'loading' | 'refreshing'
   previousCursor: string | null
   removedCount: number
@@ -338,9 +345,12 @@ type VibeStatus = {
 Example:
 
 ```ts
+vibe.value?.lockPageLoading()
 vibe.value?.remove(['item-2', 'item-5'])
 vibe.value?.undo()
+vibe.value?.unlockPageLoading()
 console.log(vibe.value?.status.itemCount)
+console.log(vibe.value?.status.pageLoadingLocked)
 console.log(vibe.value?.status.removedIds)
 ```
 

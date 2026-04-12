@@ -19,7 +19,9 @@ vi.mock('@/components/viewer-core/useDataSource', () => ({
     fillTargetCount: dataSourceMock.fillTargetCount,
     hasNextPage: dataSourceMock.hasNextPage,
     hasPreviousPage: dataSourceMock.hasPreviousPage,
+    isPageLoadingLocked: dataSourceMock.isPageLoadingLocked,
     items: dataSourceMock.items,
+    lockPageLoading: dataSourceMock.lockPageLoading,
     loading: dataSourceMock.loading,
     mode: dataSourceMock.mode,
     nextCursor: dataSourceMock.nextCursor,
@@ -35,6 +37,7 @@ vi.mock('@/components/viewer-core/useDataSource', () => ({
     retryInitialLoad: dataSourceMock.retryInitialLoad,
     setActiveIndex: dataSourceMock.setActiveIndex,
     setAutoPrefetchEnabled: dataSourceMock.setAutoPrefetchEnabled,
+    unlockPageLoading: dataSourceMock.unlockPageLoading,
   }),
 }))
 
@@ -49,7 +52,11 @@ function createDataSourceMock() {
   const fillTargetCount = ref<number | null>(null)
   const hasNextPage = ref(false)
   const hasPreviousPage = ref(false)
+  const isPageLoadingLocked = ref(false)
   const items = ref<VibeViewerItem[]>([])
+  const lockPageLoading = vi.fn(() => {
+    isPageLoadingLocked.value = true
+  })
   const loading = ref(false)
   const mode = ref<'dynamic' | 'static'>('dynamic')
   const nextCursor = ref<string | null>(null)
@@ -67,6 +74,9 @@ function createDataSourceMock() {
     activeIndex.value = nextIndex
   })
   const setAutoPrefetchEnabled = vi.fn()
+  const unlockPageLoading = vi.fn(() => {
+    isPageLoadingLocked.value = false
+  })
 
   return {
     activeIndex,
@@ -79,7 +89,9 @@ function createDataSourceMock() {
     fillTargetCount,
     hasNextPage,
     hasPreviousPage,
+    isPageLoadingLocked,
     items,
+    lockPageLoading,
     loading,
     mode,
     nextCursor,
@@ -95,6 +107,7 @@ function createDataSourceMock() {
     retryInitialLoad,
     setActiveIndex,
     setAutoPrefetchEnabled,
+    unlockPageLoading,
   }
 }
 
@@ -152,6 +165,26 @@ describe('useController', () => {
     await controller.flush()
 
     expect(controller.api.status.removedIds).toEqual([])
+
+    controller.unmount()
+  })
+
+  it('exposes page-loading lock controls and mirrors their state into status', async () => {
+    const controller = await mountController()
+
+    expect(controller.api.status.pageLoadingLocked).toBe(false)
+
+    controller.api.lockPageLoading()
+    await controller.flush()
+
+    expect(dataSourceMock.lockPageLoading).toHaveBeenCalledTimes(1)
+    expect(controller.api.status.pageLoadingLocked).toBe(true)
+
+    controller.api.unlockPageLoading()
+    await controller.flush()
+
+    expect(dataSourceMock.unlockPageLoading).toHaveBeenCalledTimes(1)
+    expect(controller.api.status.pageLoadingLocked).toBe(false)
 
     controller.unmount()
   })
@@ -300,7 +333,9 @@ function resetDataSourceMock() {
   dataSourceMock.fillTargetCount.value = null
   dataSourceMock.hasNextPage.value = false
   dataSourceMock.hasPreviousPage.value = false
+  dataSourceMock.isPageLoadingLocked.value = false
   dataSourceMock.items.value = []
+  dataSourceMock.lockPageLoading.mockClear()
   dataSourceMock.loading.value = false
   dataSourceMock.mode.value = 'dynamic'
   dataSourceMock.nextCursor.value = null
@@ -315,6 +350,7 @@ function resetDataSourceMock() {
   dataSourceMock.retryInitialLoad.mockClear()
   dataSourceMock.setActiveIndex.mockClear()
   dataSourceMock.setAutoPrefetchEnabled.mockClear()
+  dataSourceMock.unlockPageLoading.mockClear()
 }
 
 function setViewportWidth(width: number) {

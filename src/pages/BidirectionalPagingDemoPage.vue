@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Laugh, Heart, ThumbsDown, ThumbsUp } from 'lucide-vue-next'
+import { Heart, Laugh, LockKeyhole, LockKeyholeOpen, ThumbsDown, ThumbsUp } from 'lucide-vue-next'
 
 import Layout from '@/components/Layout.vue'
 import type { VibeViewerItem } from '@/components/viewer'
@@ -54,6 +54,7 @@ const demoStatusEntries = computed(() => createDemoFeedStatusEntries(demoFeedSta
   testIdPrefix: 'advanced-static-status',
 }))
 const canRemoveAllItems = computed(() => demoFeedStatus.value.itemCount > 0)
+const isPageLoadingLocked = computed(() => Boolean(vibeRef.value?.status.pageLoadingLocked))
 
 function renderItemIcon(item: VibeViewerItem, icon: unknown) {
   return (getFakeMediaItemIcon(item) ?? icon) as Component
@@ -80,6 +81,19 @@ function removeAllItems() {
   if (result?.ids.length) {
     feed.remove(result.ids)
   }
+}
+
+function togglePageLoadingLock() {
+  if (!vibeRef.value) {
+    return
+  }
+
+  if (isPageLoadingLocked.value) {
+    vibeRef.value.unlockPageLoading()
+    return
+  }
+
+  vibeRef.value.lockPageLoading()
 }
 
 function onWindowKeydown(event: KeyboardEvent) {
@@ -161,6 +175,22 @@ onBeforeUnmount(() => {
               {{ entry.value }}
             </span>
           </div>
+          <button
+            type="button"
+            data-testid="advanced-static-page-loading-lock-button"
+            class="pointer-events-auto inline-flex h-10 items-center justify-center gap-2 border px-4 text-[0.68rem] font-semibold uppercase tracking-[0.2em] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f7f1ea]"
+            :class="isPageLoadingLocked
+              ? 'border-sky-300/45 bg-sky-500/14 text-sky-50 hover:border-sky-200/60 hover:bg-sky-500/22'
+              : 'border-white/12 bg-white/[0.03] text-[#f7f1ea]/72 hover:border-white/24 hover:bg-white/[0.08] hover:text-[#f7f1ea]'"
+            :aria-label="isPageLoadingLocked ? 'Unlock page loading' : 'Lock page loading'"
+            :aria-pressed="isPageLoadingLocked ? 'true' : 'false'"
+            @click="togglePageLoadingLock"
+          >
+            <component :is="isPageLoadingLocked ? LockKeyholeOpen : LockKeyhole" class="h-4 w-4 stroke-[2]" aria-hidden="true" />
+            <span>
+              {{ isPageLoadingLocked ? 'Unlock paging' : 'Lock paging' }}
+            </span>
+          </button>
           <button
             type="button"
             data-testid="advanced-static-remove-all-button"

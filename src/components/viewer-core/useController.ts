@@ -23,6 +23,7 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     loadState: 'loaded',
     mode: 'dynamic',
     nextCursor: null,
+    pageLoadingLocked: false,
     phase: 'idle',
     previousCursor: null,
     removedCount: 0,
@@ -98,6 +99,7 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
       : (dataSource.errorMessage.value ? 'failed' : 'loaded')
     status.mode = dataSource.mode.value
     status.nextCursor = dataSource.nextCursor.value
+    status.pageLoadingLocked = dataSource.isPageLoadingLocked.value
     status.phase = dataSource.phase.value
     status.previousCursor = dataSource.previousCursor.value
     status.removedCount = dataSource.removedCount.value
@@ -166,6 +168,7 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     ...dataSource,
     cancel: dataSource.cancel,
     isDesktop,
+    lockPageLoading: dataSource.lockPageLoading,
     loadNext: dataSource.loadNext,
     loadPrevious: dataSource.loadPrevious,
     openFullscreen,
@@ -174,5 +177,6 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     showBackToList,
     status: readonly(status),
     surfaceMode,
+    unlockPageLoading: dataSource.unlockPageLoading,
   }
 }
