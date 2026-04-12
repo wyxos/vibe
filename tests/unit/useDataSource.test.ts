@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { VibeResolveParams, VibeResolveResult } from '@/components/viewer-core/useDataSource'
@@ -286,6 +287,94 @@ describe('useDataSource', () => {
       pageSize: 25,
       signal: expect.any(AbortSignal),
     }))
+
+    source.unmount()
+  })
+
+  it('resumes previous-page loading from the refilled leading edge after a static feed is emptied by removal', async () => {
+    let pageTenLoads = 0
+    let pageElevenLoads = 0
+    const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
+      if (cursor === 'page-10') {
+        pageTenLoads += 1
+
+        return createPageResult(pageTenLoads === 1 ? 'page-10' : 'page-10-refilled', {
+          nextPage: 'page-11',
+          previousPage: 'page-9',
+        })
+      }
+
+      if (cursor === 'page-11') {
+        pageElevenLoads += 1
+
+        return createPageResult(pageElevenLoads === 1 ? 'page-11' : 'page-11-refilled', {
+          nextPage: 'page-12',
+          previousPage: 'page-10',
+        })
+      }
+
+      return createPageResult('page-10', {
+        nextPage: 'page-11',
+        previousPage: 'page-9',
+      })
+    })
+
+    const source = await mountUseDataSource({
+      initialCursor: 'page-10',
+      mode: 'static',
+      resolve,
+    })
+
+    await source.flush()
+    await source.api.prefetchNextPage()
+    await source.flush()
+    await source.api.commitPendingAppend()
+    await source.flush()
+
+    const removedIds = source.api.items.value.map((item) => item.id)
+    expect(source.api.remove(removedIds).ids).toHaveLength(50)
+    await source.flush()
+
+    expect(source.api.items.value).toHaveLength(0)
+    expect(source.api.previousCursor.value).toBeNull()
+    expect(source.api.nextCursor.value).toBe('page-12')
+    expect(source.api.hasPreviousPage.value).toBe(false)
+    expect(source.api.hasNextPage.value).toBe(true)
+
+    await source.api.prefetchPreviousPage()
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(2)
+
+    await source.api.prefetchNextPage()
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(3)
+    expect(resolve).toHaveBeenLastCalledWith(expect.objectContaining({
+      cursor: 'page-11',
+      pageSize: 25,
+      signal: expect.any(AbortSignal),
+    }))
+    expect(source.api.items.value).toHaveLength(25)
+    expect(source.api.currentCursor.value).toBe('page-11')
+
+    await source.api.prefetchPreviousPage()
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(4)
+    expect(resolve).toHaveBeenLastCalledWith(expect.objectContaining({
+      cursor: 'page-10',
+      pageSize: 25,
+      signal: expect.any(AbortSignal),
+    }))
+    expect(source.api.items.value).toHaveLength(50)
+    expect(source.api.currentCursor.value).toBe('page-11')
+    expect(source.api.previousCursor.value).toBe('page-9')
+    expect(getVisibleIds(source.api.items.value).slice(0, 3)).toEqual([
+      'page-10-refilled-item-1',
+      'page-10-refilled-item-2',
+      'page-10-refilled-item-3',
+    ])
 
     source.unmount()
   })

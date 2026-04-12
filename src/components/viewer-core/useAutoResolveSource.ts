@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { computed, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import type { VibeViewerItem } from '../viewer'
 import type { VibeFeedMode, VibeLoadPhase } from './removalState'
@@ -51,6 +52,7 @@ export function useAutoResolveSource(options: {
   const autoBuckets = ref<VibeAutoBucket[]>([])
   const autoActiveIndex = ref(0)
   const pendingAppendBuckets = ref<VibeAutoBucket[]>([])
+  const isLeadingBoundarySuppressed = ref(false)
   const errorMessage = ref<string | null>(null)
   const operationPhase = ref<VibeLoadPhase>(!hasSeededItems && typeof options.resolve === 'function' ? 'initializing' : 'idle')
   const fillCollectedCount = ref<number | null>(null)
@@ -73,10 +75,10 @@ export function useAutoResolveSource(options: {
   const items = computed(() => filterRemovedItems(sourceItems.value, options.removedIds.value))
   const activeIndex = computed(() => autoActiveIndex.value)
   const loading = computed(() => isActiveLoadPhase(operationPhase.value) || isAwaitingAppendCommit.value)
-  const firstBucket = computed(() => autoBuckets.value[0] ?? null)
-  const lastBucket = computed(() => autoBuckets.value[autoBuckets.value.length - 1] ?? null)
-  const nextCursor = computed(() => lastBucket.value?.nextCursor ?? null)
-  const previousCursor = computed(() => firstBucket.value?.previousCursor ?? null)
+  const leadingBoundaryBucket = computed(() => findLeadingBoundaryBucket(autoBuckets.value, options.removedIds.value))
+  const trailingBoundaryBucket = computed(() => findTrailingBoundaryBucket(autoBuckets.value, options.removedIds.value))
+  const nextCursor = computed(() => trailingBoundaryBucket.value?.nextCursor ?? null)
+  const previousCursor = computed(() => isLeadingBoundarySuppressed.value ? null : (leadingBoundaryBucket.value?.previousCursor ?? null))
   const hasNextPage = computed(() => Boolean(nextCursor.value))
   const hasPreviousPage = computed(() => Boolean(previousCursor.value))
   const canRefreshTrailingBoundary = computed(() => hasResolver.value && autoBuckets.value.length > 0)
@@ -97,6 +99,10 @@ export function useAutoResolveSource(options: {
       if (length === 0) {
         autoActiveIndex.value = 0
         return
+      }
+      if (isLeadingBoundarySuppressed.value) {
+        trimBucketsToVisibleWindow()
+        isLeadingBoundarySuppressed.value = false
       }
       if (autoActiveIndex.value > length - 1) {
         autoActiveIndex.value = length - 1
@@ -165,6 +171,7 @@ export function useAutoResolveSource(options: {
     autoBuckets.value = []
     autoActiveIndex.value = 0
     pendingAppendBuckets.value = []
+    isLeadingBoundarySuppressed.value = false
     errorMessage.value = null
     operationPhase.value = hasResolver.value ? 'initializing' : 'idle'
     fillCollectedCount.value = null
@@ -221,12 +228,21 @@ export function useAutoResolveSource(options: {
       pendingAppendBuckets.value = []
     }
     isAwaitingAppendCommit.value = false
+    isLeadingBoundarySuppressed.value = false
     finishLoadPhase()
   }
   function getActiveOccurrenceKey() {
     return getActiveOccurrenceKeyFromItems(items.value, activeIndex.value)
   }
   function syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey: string | null = null) {
+    if (items.value.length === 0) {
+      autoActiveIndex.value = 0
+      if (autoBuckets.value.length > 0) {
+        isLeadingBoundarySuppressed.value = true
+      }
+      return
+    }
+
     autoActiveIndex.value = getSyncedActiveIndex(items.value, activeIndex.value, anchorOccurrenceKey)
   }
   function maybeCommitPendingAppendWhenFilteredOut() {
@@ -284,7 +300,7 @@ export function useAutoResolveSource(options: {
       await reloadBoundaryBucket(edge)
     }
     if (!options.resolve) return
-    const targetBucket = edge === 'leading' ? firstBucket.value : lastBucket.value
+    const targetBucket = edge === 'leading' ? leadingBoundaryBucket.value : trailingBoundaryBucket.value
     if (!targetBucket) return
     const cursorKey = getCursorKey(targetBucket.cursor)
     if (inFlightCursors.has(cursorKey)) return
@@ -446,6 +462,7 @@ export function useAutoResolveSource(options: {
     autoBuckets.value = hydratedState.buckets
     autoActiveIndex.value = hydratedState.activeIndex
     occurrenceSequence = hydratedState.nextSequence
+    isLeadingBoundarySuppressed.value = false
     errorMessage.value = null
     pendingAppendBuckets.value = []
     isAwaitingAppendCommit.value = false
@@ -455,8 +472,26 @@ export function useAutoResolveSource(options: {
     return operationPhase.value === 'initializing'
   }
   function needsStaticReload(edge: 'leading' | 'trailing') {
-    const targetBucket = edge === 'leading' ? firstBucket.value : lastBucket.value
+    const targetBucket = edge === 'leading' ? leadingBoundaryBucket.value : trailingBoundaryBucket.value
     return isStaticBoundaryUnderfilled(targetBucket, options.removedIds.value, pageSize.value)
+  }
+  function trimBucketsToVisibleWindow() {
+    const firstVisibleIndex = autoBuckets.value.findIndex((bucket) => getVibeBucketVisibleCount(bucket, options.removedIds.value) > 0)
+
+    if (firstVisibleIndex < 0) {
+      return
+    }
+
+    let lastVisibleIndex = firstVisibleIndex
+
+    for (let index = autoBuckets.value.length - 1; index >= firstVisibleIndex; index -= 1) {
+      if (getVibeBucketVisibleCount(autoBuckets.value[index], options.removedIds.value) > 0) {
+        lastVisibleIndex = index
+        break
+      }
+    }
+
+    autoBuckets.value = autoBuckets.value.slice(firstVisibleIndex, lastVisibleIndex + 1)
   }
   return {
     activeIndex,
@@ -488,4 +523,20 @@ export function useAutoResolveSource(options: {
     getActiveOccurrenceKey,
     maybeCommitPendingAppendWhenFilteredOut,
   }
+}
+
+function findLeadingBoundaryBucket(buckets: VibeAutoBucket[], removedIds: Set<string>) {
+  return buckets.find((bucket) => getVibeBucketVisibleCount(bucket, removedIds) > 0) ?? buckets[0] ?? null
+}
+
+function findTrailingBoundaryBucket(buckets: VibeAutoBucket[], removedIds: Set<string>) {
+  for (let index = buckets.length - 1; index >= 0; index -= 1) {
+    const bucket = buckets[index]
+
+    if (getVibeBucketVisibleCount(bucket, removedIds) > 0) {
+      return bucket
+    }
+  }
+
+  return buckets[buckets.length - 1] ?? null
 }
