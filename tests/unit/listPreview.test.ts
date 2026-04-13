@@ -44,6 +44,45 @@ describe('listPreview', () => {
     })
   })
 
+  it('accepts extensionless relative image preview URLs', () => {
+    const asset = getListRenderableAsset({
+      id: 'image-relative-preview',
+      type: 'image',
+      title: 'Relative image preview',
+      url: 'https://example.com/assets/image-relative-preview.jpg',
+      width: 1_920,
+      height: 1_080,
+      preview: {
+        url: '/api/files/2859361/preview',
+        width: 320,
+        height: 180,
+      },
+    })
+
+    expect(asset).toMatchObject({
+      kind: 'image',
+      label: 'Relative image preview',
+      url: '/api/files/2859361/preview',
+    })
+  })
+
+  it('falls back for ambiguous extensionless non-URL image sources', () => {
+    const asset = getListRenderableAsset({
+      id: 'image-ambiguous',
+      type: 'image',
+      title: 'Ambiguous image source',
+      url: 'atlas-preview-token',
+      width: 1_920,
+      height: 1_080,
+    })
+
+    expect(asset).toMatchObject({
+      kind: 'fallback',
+      label: 'Ambiguous image source',
+      url: null,
+    })
+  })
+
   it('prefers a video preview when it is an actual video source', () => {
     const asset = getListRenderableAsset({
       id: 'video-preview',

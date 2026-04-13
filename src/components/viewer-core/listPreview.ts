@@ -65,13 +65,13 @@ function isImagePreview(item: VibeViewerItem, url: string | undefined) {
     return false
   }
 
-  return IMAGE_URL_PATTERN.test(url) || isLikelyHttpAsset(url)
+  return IMAGE_URL_PATTERN.test(url) || isLikelyRenderableImageAsset(url)
 }
 
 function isVideoPreview(item: VibeViewerItem, url: string | undefined) {
   return item.type === 'video' && typeof url === 'string' && VIDEO_URL_PATTERN.test(url)
 }
 
-function isLikelyHttpAsset(url: string) {
-  return /^https?:\/\//i.test(url)
+function isLikelyRenderableImageAsset(url: string) {
+  return /^(https?:\/\/|\/\/|\/(?!\/)|\.{1,2}\/|blob:|data:)/i.test(url)
 }
