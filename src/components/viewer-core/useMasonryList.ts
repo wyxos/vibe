@@ -176,11 +176,15 @@ export function useVibeMasonryList(options: {
         && previousResolvedItems.length > 0
         && removedItems.length > 0
         && scrollTop.value > 0
+      const shouldLockBoundaryInteractionForRemoval = removedItems.length > 0
+        && scrollTop.value > CONTENT_INSET_PX + GAP_PX
       const shouldPreserveAnchor = isPrepend && scrollTop.value > CONTENT_INSET_PX + GAP_PX
       const anchorItem = shouldPreserveAnchor ? currentItems[resolvedActiveIndex.value] : null
       const anchorId = anchorItem ? getVibeOccurrenceKey(anchorItem) : null
+      if (shouldLockBoundaryInteractionForRemoval) {
+        lockBoundaryInteraction(getVibeMasonryLeaveDuration() + EDGE_COOLDOWN_MS)
+      }
       if (shouldResetScrollForEmptyRemoval) {
-        lockBoundaryInteraction(getVibeMasonryLeaveDuration())
         resetScrollToTop()
       }
       rebuildLayout()

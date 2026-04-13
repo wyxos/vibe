@@ -12,6 +12,8 @@ const DEFAULT_VIEWPORT_WIDTH = window.innerWidth
 describe('VibeLayout removal navigation', () => {
   afterEach(() => {
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
+    vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   it('keeps the current fullscreen item anchored when a batched undo restores items before it', async () => {
@@ -112,6 +114,51 @@ describe('VibeLayout removal navigation', () => {
     await flushDom()
 
     expect(resolve).not.toHaveBeenCalled()
+
+    wrapper.unmount()
+  })
+
+  it('ignores a removal-driven bottom re-entry until the user scrolls again', async () => {
+    vi.useFakeTimers()
+    setViewportWidth(1_280)
+
+    const items = Array.from({ length: 24 }, (_, index) => createImageItem(`partial-remove-${index + 1}`, `Partial remove ${index + 1}`))
+    const resolve = vi.fn().mockResolvedValue({
+      items: [createImageItem('page-next', 'Next page item')],
+      nextPage: null,
+      previousPage: null,
+    })
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps(items, {
+        mode: 'static',
+        nextCursor: '9',
+        resolve,
+      }),
+    })
+
+    await flushDom()
+
+    const scrollViewport = wrapper.get('[data-testid="vibe-list-scroll"]')
+    ;(scrollViewport.element as HTMLElement).scrollTop = 1_200
+    await scrollViewport.trigger('scroll')
+    await flushDom()
+
+    const handle = wrapper.vm as unknown as VibeHandle
+    expect(handle.remove(items.slice(-12).map((item) => item.id)).ids).toHaveLength(12)
+    await flushDom()
+
+    ;(scrollViewport.element as HTMLElement).scrollTop = 100_000
+    await scrollViewport.trigger('scroll')
+    await flushDom()
+
+    expect(resolve).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(1_301)
+
+    await scrollViewport.trigger('wheel', { deltaY: 180 })
+    await flushDom()
+
+    expect(resolve).toHaveBeenCalledTimes(1)
 
     wrapper.unmount()
   })

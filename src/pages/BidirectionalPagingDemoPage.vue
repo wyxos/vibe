@@ -53,7 +53,12 @@ const demoStatusEntries = computed(() => createDemoFeedStatusEntries(demoFeedSta
   pageSize: PAGE_SIZE,
   testIdPrefix: 'advanced-static-status',
 }))
-const canRemoveAllItems = computed(() => demoFeedStatus.value.itemCount > 0)
+const removableLoadedItemIds = computed(() => {
+  const removedIds = new Set(vibeRef.value?.status.removedIds ?? [])
+  return Array.from(loadedItemIds.value).filter((id) => !removedIds.has(id))
+})
+const canRemoveAllItems = computed(() => removableLoadedItemIds.value.length > 0)
+const canRemoveRandomItems = computed(() => removableLoadedItemIds.value.length > 0)
 const isPageLoadingLocked = computed(() => Boolean(vibeRef.value?.status.pageLoadingLocked))
 
 function renderItemIcon(item: VibeViewerItem, icon: unknown) {
@@ -75,12 +80,36 @@ function undoRemoval() {
 }
 
 function removeAllItems() {
-  const removedIds = new Set(vibeRef.value?.status.removedIds ?? [])
-  const nextIds = Array.from(loadedItemIds.value).filter((id) => !removedIds.has(id))
+  const result = vibeRef.value?.remove(removableLoadedItemIds.value)
+  if (result?.ids.length) {
+    feed.remove(result.ids)
+  }
+}
+
+function removeRandomItems() {
+  const availableIds = removableLoadedItemIds.value
+  const nextIds = takeRandomIds(availableIds, 10)
+
+  if (!nextIds.length) {
+    return
+  }
+
   const result = vibeRef.value?.remove(nextIds)
   if (result?.ids.length) {
     feed.remove(result.ids)
   }
+}
+
+function takeRandomIds(ids: string[], maxCount: number) {
+  const nextIds = [...ids]
+  const targetCount = Math.min(Math.max(0, maxCount), nextIds.length)
+
+  for (let index = nextIds.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1))
+    ;[nextIds[index], nextIds[swapIndex]] = [nextIds[swapIndex], nextIds[index]]
+  }
+
+  return nextIds.slice(0, targetCount)
 }
 
 function togglePageLoadingLock() {
@@ -190,6 +219,15 @@ onBeforeUnmount(() => {
             <span>
               {{ isPageLoadingLocked ? 'Unlock paging' : 'Lock paging' }}
             </span>
+          </button>
+          <button
+            type="button"
+            data-testid="advanced-static-remove-random-button"
+            class="pointer-events-auto inline-flex h-10 items-center justify-center border border-amber-400/40 bg-amber-500/12 px-4 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-amber-50 transition enabled:hover:border-amber-300/55 enabled:hover:bg-amber-500/20 disabled:cursor-default disabled:border-white/10 disabled:bg-white/[0.03] disabled:text-[#f7f1ea]/34"
+            :disabled="!canRemoveRandomItems"
+            @click="removeRandomItems"
+          >
+            Remove 10 random
           </button>
           <button
             type="button"
