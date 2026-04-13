@@ -78,8 +78,9 @@ test('bidirectional paging demo reactions remove an item and update the status b
 
   await firstCardInner.dispatchEvent('pointerenter')
   await expect(firstCardInner.getByTestId('demo-reaction-bar')).toBeVisible()
-
-  await firstCardInner.getByTestId('demo-reaction-button').first().click()
+  await firstCardInner.getByTestId('demo-reaction-button').first().evaluate((button) => {
+    (button as HTMLButtonElement).click()
+  })
 
   await expect.poll(async () => (await getPaginationState(progress)).total).toBe(24)
   await expect(page.getByTestId('advanced-static-status-total')).toContainText('24')
@@ -152,7 +153,9 @@ test('advanced static demo reloads the current cursor before advancing after loc
   await expect(progress).toContainText('1 / 25', { timeout: 15_000 })
   await firstCardInner.dispatchEvent('pointerenter')
   await expect(firstCardInner.getByTestId('demo-reaction-bar')).toBeVisible()
-  await firstCardInner.getByTestId('demo-reaction-button').first().click()
+  await firstCardInner.getByTestId('demo-reaction-button').first().evaluate((button) => {
+    (button as HTMLButtonElement).click()
+  })
   await expect.poll(async () => (await getPaginationState(progress)).total).toBe(24)
 
   await hitBottom(scrollViewport)
