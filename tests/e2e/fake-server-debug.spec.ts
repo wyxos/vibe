@@ -151,6 +151,7 @@ test('advanced static demo reloads the current cursor before advancing after loc
 
   await expect(progress).toContainText('1 / 25', { timeout: 15_000 })
   await firstCardInner.dispatchEvent('pointerenter')
+  await expect(firstCardInner.getByTestId('demo-reaction-bar')).toBeVisible()
   await firstCardInner.getByTestId('demo-reaction-button').first().click()
   await expect.poll(async () => (await getPaginationState(progress)).total).toBe(24)
 
