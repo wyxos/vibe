@@ -4,6 +4,7 @@ import type { VibeViewerItem } from '../viewer'
 import { getVibeOccurrenceKey } from './itemIdentity'
 import { getItemLabel } from './media'
 
+const FULLSCREEN_PRELOAD_BEHIND_COUNT = 1
 const FULLSCREEN_PRELOAD_AHEAD_COUNT = 2
 
 export function useFullscreenSurfaceMedia(options: {
@@ -32,7 +33,9 @@ export function useFullscreenSurfaceMedia(options: {
 
   function shouldPreloadSlideAsset(index: number) {
     const activeIndex = options.resolvedActiveIndex.value
-    return Boolean(options.active.value) && index >= activeIndex && index <= activeIndex + FULLSCREEN_PRELOAD_AHEAD_COUNT
+    return Boolean(options.active.value)
+      && index >= activeIndex - FULLSCREEN_PRELOAD_BEHIND_COUNT
+      && index <= activeIndex + FULLSCREEN_PRELOAD_AHEAD_COUNT
   }
 
   function isAssetLoading(index: number, item: VibeViewerItem) {
