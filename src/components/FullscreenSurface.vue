@@ -1,3 +1,4 @@
+<!-- eslint-disable max-lines -->
 <script setup lang="ts">
 import type { Component } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, toRef } from 'vue'
@@ -14,6 +15,7 @@ import { useViewer } from './viewer-core/useViewer'
 import { getItemIcon } from './viewer-core/media'
 import { hasRenderableSlotContent } from './viewer-core/slotContent'
 import { getSlideToneClass, getStageToneClass } from './viewer-core/theme'
+import { useFullscreenDominantTone } from './viewer-core/useFullscreenDominantTone'
 import './viewer-core/fullscreenMediaBar.css'
 import SurfaceEmptyState from './SurfaceEmptyState.vue'
 
@@ -30,6 +32,7 @@ interface FullscreenSurfaceProps {
   phase?: VibeLoadPhase | null
   reportAssetError?: VibeAssetErrorReporter | null
   reportAssetLoad?: VibeAssetLoadReporter | null
+  showDominantImageTone?: boolean
   showBackToList?: boolean
   showEndBadge?: boolean
   showStatusBadges?: boolean
@@ -47,6 +50,7 @@ const props = withDefaults(defineProps<FullscreenSurfaceProps>(), {
   phase: null,
   reportAssetError: null,
   reportAssetLoad: null,
+  showDominantImageTone: true,
   showBackToList: false,
   showEndBadge: true,
   showStatusBadges: true,
@@ -82,6 +86,12 @@ const fullscreenMedia = useFullscreenSurfaceMedia({
 })
 
 const activeStageToneClass = computed(() => getStageToneClass(viewer.activeItem.value?.type ?? 'image'))
+const { activeSlideToneStyle, activeStageToneStyle, updateFromImageElement } = useFullscreenDominantTone({
+  activeItem: viewer.activeItem,
+  getItemKey: fullscreenMedia.getItemKey,
+  isImageReady: viewer.isImageReady,
+  showDominantImageTone: toRef(props, 'showDominantImageTone'),
+})
 const mediaStatusOffsetClass = computed(() =>
   viewer.activeMediaItem.value && !viewer.activeAssetErrorKind.value ? 'bottom-[5.8rem] max-[720px]:bottom-[7.4rem]' : 'bottom-[1.8rem] max-[720px]:bottom-[1.3rem]',
 )
@@ -163,13 +173,32 @@ onBeforeUnmount(() => {
 function updateViewportWidth() {
   viewportWidth.value = window.innerWidth || FULLSCREEN_ASIDE_COLUMN_BREAKPOINT_PX
 }
+
+function onFullscreenImageLoad(event: Event, id: string, url: string) {
+  viewer.onImageLoad(id, url)
+  const element = event.currentTarget
+  if (element instanceof HTMLImageElement) {
+    updateDominantToneFromImageElement(id, element)
+  }
+}
+
+function registerFullscreenImageElement(id: string, element: unknown) {
+  viewer.registerImageElement(id, element)
+  if (element instanceof HTMLImageElement) {
+    updateDominantToneFromImageElement(id, element)
+  }
+}
+
+function updateDominantToneFromImageElement(id: string, image: HTMLImageElement) {
+  updateFromImageElement(id, image)
+}
 </script>
 
 <template>
   <div
     class="relative h-full min-h-0 overflow-hidden bg-[#05060a] text-[#f7f1ea]"
   >
-    <div class="absolute inset-0 transition-[background] duration-200" :class="activeStageToneClass" />
+    <div class="absolute inset-0 transition-[background] duration-200" :class="activeStageToneClass" :style="activeStageToneStyle" />
     <div
       class="relative z-[1] grid h-full min-h-0"
       :style="gridLayoutStyle"
@@ -198,7 +227,11 @@ function updateViewportWidth() {
             :class="index === viewer.resolvedActiveIndex.value ? 'pointer-events-auto' : 'pointer-events-none'"
             :style="viewer.getSlideStyle(index)"
           >
-            <div class="absolute inset-0 opacity-85" :class="getSlideToneClass(item.type)" />
+            <div
+              class="absolute inset-0 opacity-85"
+              :class="getSlideToneClass(item.type)"
+              :style="(index === viewer.resolvedActiveIndex.value && item.type === 'image') ? activeSlideToneStyle : undefined"
+            />
 
             <div
               v-if="viewer.isVisual(item)"
@@ -237,11 +270,12 @@ function updateViewportWidth() {
                 :key="viewer.getAssetRenderKey(fullscreenMedia.getItemKey(item))"
                 :src="fullscreenMedia.getFullscreenImageSource(index, item)"
                 :alt="item.title ?? ''"
+                crossorigin="anonymous"
                 draggable="false"
                 class="block h-auto max-h-full w-auto max-w-full object-contain shadow-[0_40px_120px_-60px_rgba(0,0,0,0.9)] transition-opacity duration-300"
                 :class="viewer.isImageReady(fullscreenMedia.getItemKey(item)) ? 'opacity-100' : 'opacity-0'"
-                :ref="(element) => viewer.registerImageElement(fullscreenMedia.getItemKey(item), element)"
-                @load="viewer.onImageLoad(fullscreenMedia.getItemKey(item), item.url)"
+                :ref="(element) => registerFullscreenImageElement(fullscreenMedia.getItemKey(item), element)"
+                @load="onFullscreenImageLoad($event, fullscreenMedia.getItemKey(item), item.url)"
                 @error="viewer.onImageError(fullscreenMedia.getItemKey(item), item.url)"
               />
 
@@ -366,62 +400,19 @@ function updateViewportWidth() {
             </div>
           </article>
 
-          <div
-            v-if="fullscreenSlotProps && slots['fullscreen-overlay']"
-            class="pointer-events-none absolute inset-0 z-[4]"
-          >
-            <div class="h-full w-full">
-              <slot name="fullscreen-overlay" v-bind="fullscreenSlotProps" />
-            </div>
+          <div v-if="fullscreenSlotProps && slots['fullscreen-overlay']" class="pointer-events-none absolute inset-0 z-[4]">
+            <div class="h-full w-full"><slot name="fullscreen-overlay" v-bind="fullscreenSlotProps" /></div>
           </div>
 
-          <FullscreenHeader
-            v-if="viewer.activeItem.value"
-            :current-index="viewer.resolvedActiveIndex.value"
-            :loading="props.loading"
-            :pagination-detail="viewer.paginationDetail.value"
-            :show-back-to-list="props.showBackToList"
-            :show-end-badge="props.showEndBadge && viewer.isAtEnd.value && !viewer.hasNextPage.value && !viewer.loading.value"
-            :title="viewer.activeItem.value.title ?? null"
-            :total="viewer.items.value.length"
-            @back-to-list="emit('back-to-list')"
-          >
-            <template v-if="showFullscreenHeaderActions && fullscreenSlotProps" #actions>
-              <slot
-                name="fullscreen-header-actions"
-                v-bind="fullscreenSlotProps"
-              />
-            </template>
+          <FullscreenHeader v-if="viewer.activeItem.value" :current-index="viewer.resolvedActiveIndex.value" :loading="props.loading" :pagination-detail="viewer.paginationDetail.value" :show-back-to-list="props.showBackToList" :show-end-badge="props.showEndBadge && viewer.isAtEnd.value && !viewer.hasNextPage.value && !viewer.loading.value" :title="viewer.activeItem.value.title ?? null" :total="viewer.items.value.length" @back-to-list="emit('back-to-list')">
+            <template v-if="showFullscreenHeaderActions && fullscreenSlotProps" #actions><slot name="fullscreen-header-actions" v-bind="fullscreenSlotProps" /></template>
           </FullscreenHeader>
 
-          <FullscreenMediaBar
-            v-if="showMediaBar"
-            :current-time="viewer.activeMediaState.value.currentTime"
-            :current-time-label="viewer.formatPlaybackTime(viewer.activeMediaState.value.currentTime)"
-            :duration="viewer.activeMediaDuration.value"
-            :duration-label="viewer.formatPlaybackTime(viewer.activeMediaDuration.value)"
-            :progress="viewer.activeMediaProgress.value"
-            @seek-input="viewer.onMediaSeekInput"
-          />
+          <FullscreenMediaBar v-if="showMediaBar" :current-time="viewer.activeMediaState.value.currentTime" :current-time-label="viewer.formatPlaybackTime(viewer.activeMediaState.value.currentTime)" :duration="viewer.activeMediaDuration.value" :duration-label="viewer.formatPlaybackTime(viewer.activeMediaDuration.value)" :progress="viewer.activeMediaProgress.value" @seek-input="viewer.onMediaSeekInput" />
 
-          <div
-            v-if="fullscreenStatusProps"
-            class="absolute left-1/2 z-[4] -translate-x-1/2"
-            :class="mediaStatusOffsetClass"
-          >
-            <slot
-              v-if="showCustomFullscreenStatus"
-              name="fullscreen-status"
-              v-bind="fullscreenStatusProps"
-            />
-            <div
-              v-else
-              data-testid="vibe-fullscreen-status-badge"
-              class="inline-flex w-auto items-center border border-white/14 bg-black/40 px-5 py-3 text-[0.75rem] font-bold uppercase tracking-[0.18em] text-[#f7f1ea]/74 backdrop-blur-[18px] max-[720px]:w-[calc(100%-2.5rem)] max-[720px]:justify-center"
-              :class="fullscreenStatusProps.kind === 'end' ? 'border-amber-300/35 text-amber-200' : (fullscreenStatusProps.kind === 'failed' ? 'border-rose-400/45 text-rose-100' : '')"
-            >
-              {{ fullscreenStatusProps.message }}
-            </div>
+          <div v-if="fullscreenStatusProps" class="absolute left-1/2 z-[4] -translate-x-1/2" :class="mediaStatusOffsetClass">
+            <slot v-if="showCustomFullscreenStatus" name="fullscreen-status" v-bind="fullscreenStatusProps" />
+            <div v-else data-testid="vibe-fullscreen-status-badge" class="inline-flex w-auto items-center border border-white/14 bg-black/40 px-5 py-3 text-[0.75rem] font-bold uppercase tracking-[0.18em] text-[#f7f1ea]/74 backdrop-blur-[18px] max-[720px]:w-[calc(100%-2.5rem)] max-[720px]:justify-center" :class="fullscreenStatusProps.kind === 'end' ? 'border-amber-300/35 text-amber-200' : (fullscreenStatusProps.kind === 'failed' ? 'border-rose-400/45 text-rose-100' : '')">{{ fullscreenStatusProps.message }}</div>
           </div>
         </div>
 
@@ -432,68 +423,24 @@ function updateViewportWidth() {
           </div>
         </div>
 
-        <SurfaceEmptyState
-          v-else-if="showInlineEmptyState && emptyStateProps"
-          :message="emptyStateProps.message"
-          :mode="emptyStateProps.mode"
-          :surface="emptyStateProps.surface"
-        >
-          <slot
-            v-if="showCustomEmptyState"
-            name="empty-state"
-            v-bind="emptyStateProps"
-          />
+        <SurfaceEmptyState v-else-if="showInlineEmptyState && emptyStateProps" :message="emptyStateProps.message" :mode="emptyStateProps.mode" :surface="emptyStateProps.surface">
+          <slot v-if="showCustomEmptyState" name="empty-state" v-bind="emptyStateProps" />
         </SurfaceEmptyState>
 
-        <SurfaceEmptyState
-          v-if="showBadgeEmptyState && emptyStateProps"
-          :message="emptyStateProps.message"
-          :mode="emptyStateProps.mode"
-          :surface="emptyStateProps.surface"
-        >
-          <slot
-            v-if="showCustomEmptyState"
-            name="empty-state"
-            v-bind="emptyStateProps"
-          />
+        <SurfaceEmptyState v-if="showBadgeEmptyState && emptyStateProps" :message="emptyStateProps.message" :mode="emptyStateProps.mode" :surface="emptyStateProps.surface">
+          <slot v-if="showCustomEmptyState" name="empty-state" v-bind="emptyStateProps" />
         </SurfaceEmptyState>
       </div>
 
-      <Transition
-        enter-active-class="transform-gpu transition-all duration-320 ease-out"
-        enter-from-class="translate-x-full opacity-0"
-        enter-to-class="translate-x-0 opacity-100"
-        leave-active-class="transform-gpu transition-all duration-260 ease-in"
-        leave-from-class="translate-x-0 opacity-100"
-        leave-to-class="translate-x-full opacity-0"
-      >
-        <aside
-          v-if="showFullscreenAsideAsColumn && fullscreenSlotProps"
-          data-testid="vibe-fullscreen-aside"
-          class="h-full min-h-0 overflow-hidden border-l border-white/10 bg-black/45 backdrop-blur-[18px]"
-        >
-          <div class="h-full min-h-0 overflow-y-auto overscroll-y-contain">
-            <slot name="fullscreen-aside" v-bind="fullscreenSlotProps" />
-          </div>
+      <Transition enter-active-class="transform-gpu transition-all duration-320 ease-out" enter-from-class="translate-x-full opacity-0" enter-to-class="translate-x-0 opacity-100" leave-active-class="transform-gpu transition-all duration-260 ease-in" leave-from-class="translate-x-0 opacity-100" leave-to-class="translate-x-full opacity-0">
+        <aside v-if="showFullscreenAsideAsColumn && fullscreenSlotProps" data-testid="vibe-fullscreen-aside" class="h-full min-h-0 overflow-hidden border-l border-white/10 bg-black/45 backdrop-blur-[18px]">
+          <div class="h-full min-h-0 overflow-y-auto overscroll-y-contain"><slot name="fullscreen-aside" v-bind="fullscreenSlotProps" /></div>
         </aside>
       </Transition>
     </div>
-    <Transition
-      enter-active-class="transform-gpu transition-all duration-320 ease-out"
-      enter-from-class="translate-x-full opacity-0"
-      enter-to-class="translate-x-0 opacity-100"
-      leave-active-class="transform-gpu transition-all duration-260 ease-in"
-      leave-from-class="translate-x-0 opacity-100"
-      leave-to-class="translate-x-full opacity-0"
-    >
-      <aside
-        v-if="showFullscreenAsideAsDrawer && fullscreenSlotProps"
-        data-testid="vibe-fullscreen-aside"
-        class="absolute inset-y-0 right-0 z-[6] w-full max-w-[22rem] overflow-hidden border-l border-white/10 bg-black/82 backdrop-blur-[18px]"
-      >
-        <div class="h-full min-h-0 overflow-y-auto overscroll-y-contain">
-          <slot name="fullscreen-aside" v-bind="fullscreenSlotProps" />
-        </div>
+    <Transition enter-active-class="transform-gpu transition-all duration-320 ease-out" enter-from-class="translate-x-full opacity-0" enter-to-class="translate-x-0 opacity-100" leave-active-class="transform-gpu transition-all duration-260 ease-in" leave-from-class="translate-x-0 opacity-100" leave-to-class="translate-x-full opacity-0">
+      <aside v-if="showFullscreenAsideAsDrawer && fullscreenSlotProps" data-testid="vibe-fullscreen-aside" class="absolute inset-y-0 right-0 z-[6] w-full max-w-[22rem] overflow-hidden border-l border-white/10 bg-black/82 backdrop-blur-[18px]">
+        <div class="h-full min-h-0 overflow-y-auto overscroll-y-contain"><slot name="fullscreen-aside" v-bind="fullscreenSlotProps" /></div>
       </aside>
     </Transition>
   </div>

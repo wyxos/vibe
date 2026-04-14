@@ -40,6 +40,7 @@ export interface VibeProps {
   pageSize?: number
   paginationDetail?: string | null
   resolve?: (params: VibeResolveParams) => Promise<VibeResolveResult>
+  showDominantImageTone?: boolean
   showEndBadge?: boolean
   showStatusBadges?: boolean
   surfaceMode?: import('./removalState').VibeSurfaceMode

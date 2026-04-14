@@ -261,6 +261,7 @@ app.use(VibePlugin)
   emptyStateMode?: 'inline' | 'badge' | 'hidden'
   loopFullscreenVideo?: boolean
   paginationDetail?: string | null
+  showDominantImageTone?: boolean
   showEndBadge?: boolean
   showStatusBadges?: boolean
   surfaceMode?: 'fullscreen' | 'list'
