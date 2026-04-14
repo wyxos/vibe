@@ -21,6 +21,7 @@ export function useMedia(options: {
   const imageErrorKinds = ref<Record<string, VibeAssetErrorKind | null>>({})
   const mediaStates = ref<Record<string, MediaUiState>>({})
   const assetRenderVersions = ref<Record<string, number>>({})
+  const lastAudibleMediaVolumes = ref<Record<string, number>>({})
 
   const videoElements = new Map<string, HTMLVideoElement>()
   const audioElements = new Map<string, HTMLAudioElement>()
@@ -114,6 +115,7 @@ export function useMedia(options: {
     assetRenderVersions.value = {}
     imageErrorKinds.value = {}
     imageReadyStates.value = {}
+    lastAudibleMediaVolumes.value = {}
     mediaStates.value = {}
     reportedLoadKeys.clear()
   }
@@ -134,7 +136,7 @@ export function useMedia(options: {
         continue
       }
 
-      element.muted = true
+      element.muted = false
       element.loop = options.loopFullscreenVideo.value
       element.playsInline = true
       playMediaElement(element)
@@ -261,6 +263,45 @@ export function useMedia(options: {
     media.currentTime = clampedTime
   }
 
+  function onMediaVolumeInput(event: Event) {
+    const media = getActiveMediaElement()
+    const activeId = activeMediaItemKey.value
+
+    if (!media || !activeId || !(event.target instanceof HTMLInputElement)) {
+      return
+    }
+
+    const nextVolume = clamp(Number.parseFloat(event.target.value), 0, 1)
+
+    media.volume = nextVolume
+    media.muted = nextVolume <= 0
+    if (nextVolume > 0) {
+      lastAudibleMediaVolumes.value[activeId] = nextVolume
+    }
+    updateMediaState(activeId, media)
+  }
+
+  function onMediaVolumeToggle() {
+    const media = getActiveMediaElement()
+    const activeId = activeMediaItemKey.value
+
+    if (!media || !activeId) {
+      return
+    }
+
+    if (media.muted || media.volume <= 0) {
+      media.volume = getRestoredVolume(activeId)
+      media.muted = false
+      lastAudibleMediaVolumes.value[activeId] = media.volume
+    }
+    else {
+      lastAudibleMediaVolumes.value[activeId] = media.volume
+      media.muted = true
+    }
+
+    updateMediaState(activeId, media)
+  }
+
   function isImageReady(id: string) {
     return Boolean(imageReadyStates.value[id]) && !imageErrorKinds.value[id]
   }
@@ -355,6 +396,9 @@ export function useMedia(options: {
 
   function updateMediaState(id: string, media: HTMLMediaElement, eventType?: string) {
     syncMediaUiState(ensureMediaState(id), media, eventType)
+    if (!media.muted && media.volume > 0) {
+      lastAudibleMediaVolumes.value[id] = media.volume
+    }
   }
 
   function setMediaUiState(id: string, currentTime: number, media: HTMLMediaElement) {
@@ -362,7 +406,13 @@ export function useMedia(options: {
 
     state.currentTime = currentTime
     state.duration = Number.isFinite(media.duration) ? media.duration : state.duration
+    state.muted = media.muted
     state.paused = media.paused
+    state.volume = Number.isFinite(media.volume) ? media.volume : state.volume
+  }
+
+  function getRestoredVolume(id: string) {
+    return clamp(lastAudibleMediaVolumes.value[id] ?? 1, 0, 1)
   }
 
   function getMediaElementById(id: string) {
@@ -434,6 +484,8 @@ export function useMedia(options: {
     onMediaError,
     onMediaEvent,
     onMediaSeekInput,
+    onMediaVolumeInput,
+    onMediaVolumeToggle,
     onVideoClick,
     registerAudioElement,
     registerImageElement,
@@ -443,7 +495,6 @@ export function useMedia(options: {
     syncMediaPlayback,
   }
 }
-
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }

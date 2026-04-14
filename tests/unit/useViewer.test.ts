@@ -137,7 +137,7 @@ describe('useViewer', () => {
     viewer.props.activeIndex = 0
     await viewer.flush()
     expect(video.play).toHaveBeenCalledTimes(1)
-    expect(video.element.muted).toBe(true)
+    expect(video.element.muted).toBe(false)
     expect(video.element.loop).toBe(true)
     expect(video.element.playsInline).toBe(true)
     expect(audio.pause).toHaveBeenCalledTimes(1)

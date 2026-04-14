@@ -234,7 +234,7 @@ describe('VibeLayout', () => {
     audioWrapper.unmount()
   })
 
-  it('loops fullscreen video by default', async () => {
+  it('enables audio and loops fullscreen video by default', async () => {
     setViewportWidth(390)
 
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
@@ -246,6 +246,7 @@ describe('VibeLayout', () => {
 
     await flushDom()
 
+    expect((wrapper.get('video').element as HTMLVideoElement).muted).toBe(false)
     expect((wrapper.get('video').element as HTMLVideoElement).loop).toBe(true)
 
     wrapper.unmount()

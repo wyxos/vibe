@@ -264,6 +264,14 @@ export function useViewer(
     media.onMediaSeekInput(event)
   }
 
+  function onMediaVolumeInput(event: Event) {
+    media.onMediaVolumeInput(event)
+  }
+
+  function onMediaVolumeToggle() {
+    media.onMediaVolumeToggle()
+  }
+
   function isVisual(item: (typeof items.value)[number]) {
     return item.type === 'image' || item.type === 'video'
   }
@@ -306,6 +314,8 @@ export function useViewer(
     onMediaEvent: media.onMediaEvent,
     onMediaError: media.onMediaError,
     onMediaSeekInput,
+    onMediaVolumeInput,
+    onMediaVolumeToggle,
     onPointerCancel,
     onPointerDown,
     onPointerMove,

@@ -66,6 +66,7 @@ const slots = defineSlots<{
 
 const emit = defineEmits<{ 'back-to-list': []; 'update:activeIndex': [value: number] }>()
 const FULLSCREEN_ASIDE_COLUMN_BREAKPOINT_PX = 1_280
+const PHONE_MEDIA_BAR_BREAKPOINT_PX = 768
 
 const viewer = useViewer(
   props,
@@ -96,6 +97,7 @@ const mediaStatusOffsetClass = computed(() =>
   viewer.activeMediaItem.value && !viewer.activeAssetErrorKind.value ? 'bottom-[5.8rem] max-[720px]:bottom-[7.4rem]' : 'bottom-[1.8rem] max-[720px]:bottom-[1.3rem]',
 )
 const showMediaBar = computed(() => Boolean(viewer.activeMediaItem.value) && !viewer.activeAssetErrorKind.value)
+const volumeControlLayout = computed(() => viewportWidth.value < PHONE_MEDIA_BAR_BREAKPOINT_PX ? 'vertical' : 'horizontal')
 const mediaStageInsetClass = computed(() => showMediaBar.value ? 'pb-[5.75rem] max-[720px]:pb-[7rem]' : '')
 const showForwardFillPlaceholder = computed(() => props.activeIndex >= props.items.length && (props.loading || props.hasNextPage))
 const forwardFillMessage = computed(() => props.hasNextPage ? 'Loading more items' : (viewer.statusMessage.value ?? 'Loading more items'))
@@ -285,7 +287,6 @@ function updateDominantToneFromImageElement(id: string, image: HTMLImageElement)
                 class="block h-auto max-h-full w-auto max-w-full cursor-pointer object-contain shadow-[0_40px_120px_-60px_rgba(0,0,0,0.9)] transition-opacity duration-300"
                 :class="viewer.isMediaReady(fullscreenMedia.getItemKey(item)) ? 'opacity-100' : 'opacity-0'"
                 playsinline
-                muted
                 :loop="props.loopFullscreenVideo"
                 :src="fullscreenMedia.getFullscreenMediaSource(index, item)"
                 :preload="fullscreenMedia.shouldPreloadSlideAsset(index) ? 'metadata' : 'none'"
@@ -408,7 +409,7 @@ function updateDominantToneFromImageElement(id: string, image: HTMLImageElement)
             <template v-if="showFullscreenHeaderActions && fullscreenSlotProps" #actions><slot name="fullscreen-header-actions" v-bind="fullscreenSlotProps" /></template>
           </FullscreenHeader>
 
-          <FullscreenMediaBar v-if="showMediaBar" :current-time="viewer.activeMediaState.value.currentTime" :current-time-label="viewer.formatPlaybackTime(viewer.activeMediaState.value.currentTime)" :duration="viewer.activeMediaDuration.value" :duration-label="viewer.formatPlaybackTime(viewer.activeMediaDuration.value)" :progress="viewer.activeMediaProgress.value" @seek-input="viewer.onMediaSeekInput" />
+          <FullscreenMediaBar v-if="showMediaBar" :current-time="viewer.activeMediaState.value.currentTime" :current-time-label="viewer.formatPlaybackTime(viewer.activeMediaState.value.currentTime)" :duration="viewer.activeMediaDuration.value" :duration-label="viewer.formatPlaybackTime(viewer.activeMediaDuration.value)" :muted="viewer.activeMediaState.value.muted" :progress="viewer.activeMediaProgress.value" :volume="viewer.activeMediaState.value.volume" :volume-control-layout="volumeControlLayout" @seek-input="viewer.onMediaSeekInput" @volume-input="viewer.onMediaVolumeInput" @volume-toggle="viewer.onMediaVolumeToggle" />
 
           <div v-if="fullscreenStatusProps" class="absolute left-1/2 z-[4] -translate-x-1/2" :class="mediaStatusOffsetClass">
             <slot v-if="showCustomFullscreenStatus" name="fullscreen-status" v-bind="fullscreenStatusProps" />

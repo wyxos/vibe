@@ -189,7 +189,7 @@ onBeforeUnmount(() => {
       <template #grid-footer>
         <div
           data-testid="advanced-static-status-bar"
-          class="pointer-events-auto flex w-full max-w-[1120px] flex-wrap items-center justify-center gap-x-5 gap-y-2 border border-white/12 bg-black/55 px-4 py-3 backdrop-blur-[18px] sm:px-5"
+          class="pointer-events-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-x-5 gap-y-2 border border-white/12 bg-black/55 px-4 py-3 backdrop-blur-[18px] sm:px-5"
         >
           <div
             v-for="entry in demoStatusEntries"
