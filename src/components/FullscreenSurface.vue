@@ -25,6 +25,7 @@ interface FullscreenSurfaceProps {
   hasNextPage?: boolean
   items: VibeViewerItem[]
   loading?: boolean
+  loopFullscreenVideo?: boolean
   paginationDetail?: string | null
   phase?: VibeLoadPhase | null
   reportAssetError?: VibeAssetErrorReporter | null
@@ -41,6 +42,7 @@ const props = withDefaults(defineProps<FullscreenSurfaceProps>(), {
   errorMessage: null,
   hasNextPage: false,
   loading: false,
+  loopFullscreenVideo: true,
   paginationDetail: null,
   phase: null,
   reportAssetError: null,
@@ -250,6 +252,7 @@ function updateViewportWidth() {
                 :class="viewer.isMediaReady(fullscreenMedia.getItemKey(item)) ? 'opacity-100' : 'opacity-0'"
                 playsinline
                 muted
+                :loop="props.loopFullscreenVideo"
                 :src="fullscreenMedia.getFullscreenMediaSource(index, item)"
                 :preload="fullscreenMedia.shouldPreloadSlideAsset(index) ? 'metadata' : 'none'"
                 :ref="(element) => viewer.registerVideoElement(fullscreenMedia.getItemKey(item), element)"
@@ -475,7 +478,6 @@ function updateViewportWidth() {
         </aside>
       </Transition>
     </div>
-
     <Transition
       enter-active-class="transform-gpu transition-all duration-320 ease-out"
       enter-from-class="translate-x-full opacity-0"

@@ -32,6 +32,7 @@ export interface VibeViewerProps {
   hasNextPage?: boolean
   items: VibeViewerItem[]
   loading?: boolean
+  loopFullscreenVideo?: boolean
   paginationDetail?: string | null
   phase?: VibeLoadPhase | null
 }
@@ -50,6 +51,7 @@ export function useViewer(
   const errorMessage = computed(() => props.errorMessage ?? null)
   const loading = computed(() => props.loading ?? false)
   const hasNextPage = computed(() => props.hasNextPage ?? false)
+  const loopFullscreenVideo = computed(() => props.loopFullscreenVideo ?? true)
   const paginationDetail = computed(() => props.paginationDetail ?? null)
   const phase = computed<VibeLoadPhase>(() => resolveVibeSurfacePhase({
     itemCount: items.value.length,
@@ -91,6 +93,7 @@ export function useViewer(
     activeMediaItem,
     isEnabled,
     itemCount: computed(() => items.value.length),
+    loopFullscreenVideo,
     onAssetError: options.onAssetError,
     onAssetLoad: options.onAssetLoad,
   })

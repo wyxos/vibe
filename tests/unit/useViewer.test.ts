@@ -12,7 +12,6 @@ describe('useViewer', () => {
       items,
       activeIndex: 99,
     })
-
     expect(viewer.api.resolvedActiveIndex.value).toBe(1)
     expect(viewer.api.isAtEnd.value).toBe(true)
     expect(viewer.api.statusKind.value).toBe('end')
@@ -22,7 +21,6 @@ describe('useViewer', () => {
     viewer.props.loading = true
     viewer.props.phase = 'initializing'
     await viewer.flush()
-
     expect(viewer.api.resolvedActiveIndex.value).toBe(0)
     expect(viewer.api.statusKind.value).toBe('initializing')
     expect(viewer.api.statusMessage.value).toBe('Loading the first page')
@@ -32,20 +30,16 @@ describe('useViewer', () => {
     viewer.props.hasNextPage = true
     viewer.props.phase = 'loading'
     await viewer.flush()
-
     expect(viewer.api.statusKind.value).toBe('loading-more')
     expect(viewer.api.statusMessage.value).toBe('Loading more items')
-
     viewer.props.phase = 'filling'
     await viewer.flush()
-
     expect(viewer.api.statusKind.value).toBe('filling')
     expect(viewer.api.statusMessage.value).toBe('Filling the view')
 
     viewer.props.hasNextPage = false
     viewer.props.phase = 'refreshing'
     await viewer.flush()
-
     expect(viewer.api.statusKind.value).toBe('refreshing')
     expect(viewer.api.statusMessage.value).toBe('Refreshing the end of the feed')
 
@@ -53,10 +47,8 @@ describe('useViewer', () => {
     viewer.props.errorMessage = 'Temporary failure'
     viewer.props.phase = 'failed'
     await viewer.flush()
-
     expect(viewer.api.statusKind.value).toBe('failed')
     expect(viewer.api.statusMessage.value).toBe('Temporary failure')
-
     viewer.unmount()
   })
 
@@ -66,19 +58,13 @@ describe('useViewer', () => {
       items,
       activeIndex: 12,
     })
-
     expect(viewer.api.renderedItems.value.map(({ index }) => index)).toEqual([10, 11, 12, 13, 14])
-
     viewer.props.activeIndex = 0
     await viewer.flush()
-
     expect(viewer.api.renderedItems.value.map(({ index }) => index)).toEqual([0, 1, 2])
-
     viewer.props.activeIndex = 39
     await viewer.flush()
-
     expect(viewer.api.renderedItems.value.map(({ index }) => index)).toEqual([37, 38, 39])
-
     viewer.unmount()
   })
 
@@ -87,10 +73,8 @@ describe('useViewer', () => {
       items: [createImageItem('image-1'), createImageItem('image-2'), createImageItem('image-3')],
       activeIndex: 1,
     })
-
     const now = vi.spyOn(Date, 'now')
     now.mockReturnValue(1_000)
-
     viewer.api.onWheel({
       deltaX: 0,
       deltaY: 64,
@@ -103,9 +87,7 @@ describe('useViewer', () => {
       preventDefault: vi.fn(),
       target: document.createElement('div'),
     } as WheelEvent)
-
     now.mockReturnValue(1_500)
-
     const editableTarget = document.createElement('input')
     document.body.appendChild(editableTarget)
     editableTarget.dispatchEvent(new KeyboardEvent('keydown', {
@@ -119,9 +101,7 @@ describe('useViewer', () => {
       bubbles: true,
       key: 'ArrowUp',
     }))
-
     expect(viewer.emitted).toEqual([2, 0])
-
     viewer.unmount()
   })
 
@@ -132,7 +112,6 @@ describe('useViewer', () => {
       items: [videoItem, audioItem],
       activeIndex: 0,
     })
-
     const video = createStubMediaElement('video', {
       currentTime: 6,
       duration: 12,
@@ -146,13 +125,10 @@ describe('useViewer', () => {
 
     const resolvedVideoKey = getVibeOccurrenceKey(viewer.api.items.value[0])
     const resolvedAudioKey = getVibeOccurrenceKey(viewer.api.items.value[1])
-
     viewer.api.registerVideoElement(resolvedVideoKey, video.element)
     viewer.api.registerAudioElement(resolvedAudioKey, audio.element)
-
     viewer.props.activeIndex = 1
     await viewer.flush()
-
     expect(audio.play).toHaveBeenCalledTimes(1)
     expect(video.pause).toHaveBeenCalledTimes(1)
     expect(video.currentTime()).toBe(0)
@@ -160,10 +136,9 @@ describe('useViewer', () => {
 
     viewer.props.activeIndex = 0
     await viewer.flush()
-
     expect(video.play).toHaveBeenCalledTimes(1)
     expect(video.element.muted).toBe(true)
-    expect(video.element.loop).toBe(false)
+    expect(video.element.loop).toBe(true)
     expect(video.element.playsInline).toBe(true)
     expect(audio.pause).toHaveBeenCalledTimes(1)
     expect(audio.currentTime()).toBe(0)
@@ -173,13 +148,41 @@ describe('useViewer', () => {
     viewer.api.onMediaSeekInput({
       target: seekInput,
     } as Event)
-
     expect(video.currentTime()).toBe(12)
     expect(viewer.api.mediaStates.value[resolvedVideoKey]).toMatchObject({
       currentTime: 12,
       duration: 12,
       paused: false,
     })
+
+    viewer.unmount()
+  })
+
+  it('updates the active video loop mode when loopFullscreenVideo changes', async () => {
+    const videoItem = createVideoItem('video-loop-toggle')
+    const viewer = await mountViewer({
+      items: [videoItem],
+      activeIndex: 0,
+      loopFullscreenVideo: false,
+    })
+
+    const video = createStubMediaElement('video', {
+      currentTime: 2,
+      duration: 12,
+      paused: true,
+    })
+
+    const resolvedVideoKey = getVibeOccurrenceKey(viewer.api.items.value[0])
+
+    viewer.api.registerVideoElement(resolvedVideoKey, video.element)
+    await viewer.flush()
+
+    expect(video.element.loop).toBe(false)
+
+    viewer.props.loopFullscreenVideo = true
+    await viewer.flush()
+
+    expect(video.element.loop).toBe(true)
 
     viewer.unmount()
   })

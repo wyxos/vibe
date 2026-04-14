@@ -13,6 +13,7 @@ export function useMedia(options: {
   activeMediaItem: Ref<VibeViewerItem | null>
   isEnabled: Ref<boolean>
   itemCount: Ref<number>
+  loopFullscreenVideo: Ref<boolean>
   onAssetError?: VibeAssetErrorReporter
   onAssetLoad?: VibeAssetLoadReporter
 }) {
@@ -73,6 +74,13 @@ export function useMedia(options: {
     },
   )
 
+  watch(
+    () => options.loopFullscreenVideo.value,
+    async () => {
+      await syncMediaPlayback()
+    },
+  )
+
   function registerVideoElement(id: string, element: unknown) {
     if (element instanceof HTMLVideoElement) {
       videoElements.set(id, element)
@@ -127,7 +135,7 @@ export function useMedia(options: {
       }
 
       element.muted = true
-      element.loop = false
+      element.loop = options.loopFullscreenVideo.value
       element.playsInline = true
       playMediaElement(element)
       updateMediaState(id, element)

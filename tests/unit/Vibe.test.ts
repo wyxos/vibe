@@ -234,6 +234,42 @@ describe('VibeLayout', () => {
     audioWrapper.unmount()
   })
 
+  it('loops fullscreen video by default', async () => {
+    setViewportWidth(390)
+
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps([createVideoItem('video-loop-default', 'Loop default')]),
+    })
+
+    await flushDom()
+
+    expect((wrapper.get('video').element as HTMLVideoElement).loop).toBe(true)
+
+    wrapper.unmount()
+  })
+
+  it('lets consumers disable fullscreen video looping', async () => {
+    setViewportWidth(390)
+
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps([createVideoItem('video-loop-off', 'Loop disabled')], {
+        loopFullscreenVideo: false,
+      }),
+    })
+
+    await flushDom()
+
+    expect((wrapper.get('video').element as HTMLVideoElement).loop).toBe(false)
+
+    wrapper.unmount()
+  })
+
   it('renders a 404 state for a fullscreen image load failure', async () => {
     setViewportWidth(390)
     resolveVibeAssetErrorKindMock.mockResolvedValueOnce('not-found')

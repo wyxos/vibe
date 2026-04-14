@@ -259,6 +259,7 @@ app.use(VibePlugin)
   fillDelayMs?: number
   fillDelayStepMs?: number
   emptyStateMode?: 'inline' | 'badge' | 'hidden'
+  loopFullscreenVideo?: boolean
   paginationDetail?: string | null
   showEndBadge?: boolean
   showStatusBadges?: boolean

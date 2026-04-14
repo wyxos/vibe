@@ -35,6 +35,7 @@ export interface VibeProps {
   fillDelayStepMs?: number
   initialCursor?: string | null
   initialState?: VibeInitialState
+  loopFullscreenVideo?: boolean
   mode?: import('./removalState').VibeFeedMode
   pageSize?: number
   paginationDetail?: string | null
