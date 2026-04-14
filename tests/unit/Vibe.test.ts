@@ -170,7 +170,7 @@ describe('VibeLayout', () => {
     await flushDom()
 
     expect(wrapper.get('[data-index="1"] img').attributes('src')).toBeUndefined()
-    expect(wrapper.get('[data-index="2"] img').attributes('src')).toBeUndefined()
+    expect(wrapper.get('[data-index="2"] img').attributes('src')).toBe('https://example.com/image-preload-3.jpg')
     expect(wrapper.get('[data-index="3"] img').attributes('src')).toBe('https://example.com/image-preload-4.jpg')
     expect(wrapper.get('[data-index="4"] img').attributes('src')).toBe('https://example.com/image-preload-5.jpg')
     expect(wrapper.get('[data-index="5"] img').attributes('src')).toBe('https://example.com/image-preload-6.jpg')
