@@ -85,6 +85,8 @@ const mediaStatusOffsetClass = computed(() =>
 )
 const showMediaBar = computed(() => Boolean(viewer.activeMediaItem.value) && !viewer.activeAssetErrorKind.value)
 const mediaStageInsetClass = computed(() => showMediaBar.value ? 'pb-[5.75rem] max-[720px]:pb-[7rem]' : '')
+const showForwardFillPlaceholder = computed(() => props.activeIndex >= props.items.length && (props.loading || props.hasNextPage))
+const forwardFillMessage = computed(() => props.hasNextPage ? 'Loading more items' : (viewer.statusMessage.value ?? 'Loading more items'))
 const fullscreenSlotProps = computed<VibeSurfaceSlotProps | null>(() => {
   const item = viewer.activeItem.value
   if (!item) {
@@ -180,7 +182,7 @@ function updateViewportWidth() {
         @pointercancel="viewer.onPointerCancel"
         @wheel="viewer.onWheel"
       >
-        <div v-if="viewer.items.value.length > 0" class="relative h-full min-h-0">
+        <div v-if="viewer.activeItem.value" class="relative h-full min-h-0">
           <article
             v-for="{ item, index } in viewer.renderedItems.value"
             :key="fullscreenMedia.getItemKey(item)"
@@ -373,6 +375,7 @@ function updateViewportWidth() {
           <FullscreenHeader
             v-if="viewer.activeItem.value"
             :current-index="viewer.resolvedActiveIndex.value"
+            :loading="props.loading"
             :pagination-detail="viewer.paginationDetail.value"
             :show-back-to-list="props.showBackToList"
             :show-end-badge="props.showEndBadge && viewer.isAtEnd.value && !viewer.hasNextPage.value && !viewer.loading.value"
@@ -416,6 +419,13 @@ function updateViewportWidth() {
             >
               {{ fullscreenStatusProps.message }}
             </div>
+          </div>
+        </div>
+
+        <div v-else-if="showForwardFillPlaceholder" data-testid="vibe-forward-fill-placeholder" class="grid h-full min-h-0 place-items-center px-6 text-center">
+          <div class="grid justify-items-center gap-4 border border-white/14 bg-black/40 px-8 py-7 backdrop-blur-[18px]">
+            <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-black/45 shadow-[0_18px_40px_-18px_rgba(0,0,0,0.85)]"><LoaderCircle class="h-5 w-5 animate-spin stroke-[1.9] text-[#f7f1ea]/78" aria-hidden="true" /></span>
+            <p class="m-0 text-[0.78rem] font-bold uppercase tracking-[0.24em] text-[#f7f1ea]/72">{{ forwardFillMessage }}</p>
           </div>
         </div>
 
