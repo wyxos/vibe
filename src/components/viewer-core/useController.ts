@@ -63,9 +63,18 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
   )
 
   watch(
-    () => dataSource.items.value.length,
-    (nextItemCount) => {
+    [
+      () => dataSource.items.value.length,
+      () => dataSource.loading.value,
+      () => dataSource.hasNextPage.value,
+      () => dataSource.pendingAppendItems.value.length,
+    ],
+    ([nextItemCount, nextLoading, nextHasNextPage, pendingAppendCount]) => {
       if (!isDesktop.value || nextItemCount > 0 || desktopSurface.value === 'list') {
+        return
+      }
+
+      if (nextLoading || nextHasNextPage || pendingAppendCount > 0) {
         return
       }
 

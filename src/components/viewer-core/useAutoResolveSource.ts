@@ -29,6 +29,7 @@ import {
   type ResolveFn,
   type VibeAutoDirection,
 } from './autoResolveHelpers'
+import { getVibeOccurrenceKey } from './itemIdentity'
 import { DEFAULT_DYNAMIC_FILL_DELAY_MS, DEFAULT_DYNAMIC_FILL_DELAY_STEP_MS, getDynamicFillDelayMs, normalizeDynamicFillDelayMs, useFillDelayCountdown } from './fillDelay'
 type VibeAutoEmit = (event: 'update:activeIndex', value: number) => void
 export function useAutoResolveSource(options: {
@@ -242,12 +243,29 @@ export function useAutoResolveSource(options: {
   function getActiveOccurrenceKey() {
     return getActiveOccurrenceKeyFromItems(items.value, activeIndex.value)
   }
-  function syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey: string | null = null) {
+  function syncActiveIndexAfterVisibilityChange(
+    anchorOccurrenceKey: string | null = null,
+    options: { preserveTrailingPlaceholder?: boolean } = {},
+  ) {
     if (items.value.length === 0) {
       autoActiveIndex.value = 0
-      if (autoBuckets.value.length > 0) {
+      if (!options.preserveTrailingPlaceholder && autoBuckets.value.length > 0) {
         isLeadingBoundarySuppressed.value = true
       }
+      return
+    }
+
+    if (anchorOccurrenceKey) {
+      const anchoredIndex = items.value.findIndex((item) => getVibeOccurrenceKey(item) === anchorOccurrenceKey)
+
+      if (anchoredIndex >= 0) {
+        autoActiveIndex.value = anchoredIndex
+        return
+      }
+    }
+
+    if (options.preserveTrailingPlaceholder && autoActiveIndex.value >= items.value.length) {
+      autoActiveIndex.value = items.value.length
       return
     }
 
@@ -257,7 +275,11 @@ export function useAutoResolveSource(options: {
     if (pendingAppendBuckets.value.length > 0 && !pendingAppendItems.value.length) void commitPendingAppend()
   }
   async function maybePrefetchAround() {
-    if (!items.value.length || isLoadingInitialPhase()) return
+    if (!isAutoPrefetchEnabled.value || isLoadingInitialPhase()) return
+    if (!items.value.length) {
+      if (hasNextPage.value) await prefetchNextPage()
+      return
+    }
     if (hasPreviousPage.value && autoActiveIndex.value < PREFETCH_OFFSET) await prefetchPreviousPage()
     if (hasNextPage.value && autoActiveIndex.value >= items.value.length - PREFETCH_OFFSET) await prefetchNextPage()
   }
@@ -520,11 +542,13 @@ export function useAutoResolveSource(options: {
     fillTargetCount,
     hasNextPage,
     hasPreviousPage,
+    isAutoPrefetchEnabled,
     isPageLoadingLocked,
     items,
     lockPageLoading,
     loading,
     mode,
+    maybePrefetchAround,
     nextCursor,
     pendingAppendItems,
     phase: operationPhase,

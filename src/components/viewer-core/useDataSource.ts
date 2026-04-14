@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 
 import type { VibeViewerItem } from '../viewer'
+import { PREFETCH_OFFSET } from './autoResolveHelpers'
 import type { VibeEmptyStateMode } from './surfaceSlots'
 import { useVibeRemovalState } from './removalState'
 import { useAutoResolveSource } from './useAutoResolveSource'
@@ -34,10 +35,12 @@ export interface VibeProps {
   fillDelayStepMs?: number
   initialCursor?: string | null
   initialState?: VibeInitialState
+  loopFullscreenVideo?: boolean
   mode?: import('./removalState').VibeFeedMode
   pageSize?: number
   paginationDetail?: string | null
   resolve?: (params: VibeResolveParams) => Promise<VibeResolveResult>
+  showDominantImageTone?: boolean
   showEndBadge?: boolean
   showStatusBadges?: boolean
   surfaceMode?: import('./removalState').VibeSurfaceMode
@@ -93,6 +96,20 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
 
   function remove(ids: string | string[]) {
     const anchorOccurrenceKey = autoSource.getActiveOccurrenceKey()
+    const currentItem = items.value[activeIndex.value] ?? null
+    const removedIds = Array.isArray(ids) ? ids : [ids]
+    const shouldPrefetchAfterRemoval = Boolean(
+      currentItem
+      && removedIds.includes(currentItem.id)
+      && autoSource.isAutoPrefetchEnabled.value
+      && activeIndex.value >= items.value.length - PREFETCH_OFFSET,
+    )
+    const shouldPreserveTrailingPlaceholder = Boolean(
+      currentItem
+      && removedIds.includes(currentItem.id)
+      && autoSource.hasNextPage.value
+      && activeIndex.value === items.value.length - 1,
+    )
     const result = removeRemovedIds(ids)
 
     if (!result.ids.length) {
@@ -100,7 +117,12 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     }
 
     autoSource.maybeCommitPendingAppendWhenFilteredOut()
-    autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
+    autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey, {
+      preserveTrailingPlaceholder: shouldPreserveTrailingPlaceholder,
+    })
+    if (shouldPrefetchAfterRemoval) {
+      void autoSource.maybePrefetchAround()
+    }
     return result
   }
 

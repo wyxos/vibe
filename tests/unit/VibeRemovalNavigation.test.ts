@@ -6,6 +6,7 @@ import Layout from '@/components/Layout.vue'
 import type { VibeHandle } from '@/components/viewer-core/useViewer'
 import type { VibeViewerItem } from '@/components/viewer'
 import { createSeededVibeProps } from '../helpers/createSeededVibeProps'
+import { createDeferred } from '../helpers/useDataSourceTestUtils'
 
 const DEFAULT_VIEWPORT_WIDTH = window.innerWidth
 
@@ -159,6 +160,83 @@ describe('VibeLayout removal navigation', () => {
     await flushDom()
 
     expect(resolve).toHaveBeenCalledTimes(1)
+
+    wrapper.unmount()
+  })
+
+  it('prefetches the next page when fullscreen removal advances near the trailing edge without changing the numeric index', async () => {
+    setViewportWidth(1_280)
+
+    const deferred = createDeferred<{ items: VibeViewerItem[]; nextPage: string | null; previousPage: string | null }>()
+    const resolve = vi.fn(() => deferred.promise)
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps(
+        Array.from({ length: 5 }, (_, index) => createImageItem(`item-${index + 1}`, `Item ${index + 1}`)),
+        {
+          nextCursor: 'page-2',
+          resolve,
+        },
+      ),
+    })
+
+    await flushDom()
+    await wrapper.get('[data-index="3"] button').trigger('click')
+    await flushDom()
+
+    const handle = wrapper.vm as unknown as VibeHandle
+    expect(handle.remove('item-4').ids).toEqual(['item-4'])
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="vibe-title"]').text()).toBe('Item 5')
+    expect(wrapper.get('[data-testid="vibe-pagination-spinner"]').exists()).toBe(true)
+    expect(resolve).toHaveBeenCalledTimes(1)
+
+    deferred.resolve({
+      items: Array.from({ length: 5 }, (_, index) => createImageItem(`page-two-${index + 1}`, `Page two ${index + 1}`)),
+      nextPage: null,
+      previousPage: null,
+    })
+    await flushDom()
+
+    wrapper.unmount()
+  })
+
+  it('keeps fullscreen on a loading placeholder when removing the last visible item until the next page arrives', async () => {
+    setViewportWidth(1_280)
+
+    const deferred = createDeferred<{ items: VibeViewerItem[]; nextPage: string | null; previousPage: string | null }>()
+    const resolve = vi.fn(() => deferred.promise)
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps(
+        [createImageItem('last-visible', 'Last visible item')],
+        {
+          nextCursor: 'page-2',
+          resolve,
+        },
+      ),
+    })
+
+    await flushDom()
+    await wrapper.get('[data-testid="vibe-list-card"] button').trigger('click')
+    await flushDom()
+
+    const handle = wrapper.vm as unknown as VibeHandle
+    expect(handle.remove('last-visible').ids).toEqual(['last-visible'])
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="vibe"]').attributes('data-surface-mode')).toBe('fullscreen')
+    expect(wrapper.get('[data-testid="vibe-forward-fill-placeholder"]').text()).toContain('Loading more items')
+    expect(resolve).toHaveBeenCalledTimes(1)
+
+    deferred.resolve({
+      items: Array.from({ length: 5 }, (_, index) => createImageItem(`page-three-${index + 1}`, `Page three ${index + 1}`)),
+      nextPage: null,
+      previousPage: null,
+    })
+    await flushDom()
+
+    expect(wrapper.find('[data-testid="vibe-forward-fill-placeholder"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="vibe-title"]').text()).toBe('Page three 1')
 
     wrapper.unmount()
   })

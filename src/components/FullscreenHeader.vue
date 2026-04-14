@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ArrowLeft } from 'lucide-vue-next'
+import { ArrowLeft, LoaderCircle } from 'lucide-vue-next'
 
 const props = defineProps<{
   currentIndex: number
+  loading?: boolean
   paginationDetail?: string | null
   showBackToList?: boolean
   showEndBadge?: boolean
@@ -45,6 +46,12 @@ const emit = defineEmits<{
             data-testid="vibe-pagination"
             class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap border border-white/14 bg-black/40 px-3 py-2 text-[0.63rem] font-bold uppercase tracking-[0.12em] text-[#f7f1ea]/72 backdrop-blur-[18px] min-[721px]:gap-3 min-[721px]:px-4 min-[721px]:py-3 min-[721px]:text-[0.74rem] min-[721px]:tracking-[0.2em]"
           >
+            <LoaderCircle
+              v-if="props.loading"
+              data-testid="vibe-pagination-spinner"
+              class="h-3.5 w-3.5 animate-spin stroke-[1.9]"
+              aria-hidden="true"
+            />
             <span class="whitespace-nowrap">{{ props.currentIndex + 1 }} / {{ props.total }}</span>
             <span
               v-if="props.paginationDetail"
