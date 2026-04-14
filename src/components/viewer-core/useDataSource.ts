@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 
 import type { VibeViewerItem } from '../viewer'
+import { PREFETCH_OFFSET } from './autoResolveHelpers'
 import type { VibeEmptyStateMode } from './surfaceSlots'
 import { useVibeRemovalState } from './removalState'
 import { useAutoResolveSource } from './useAutoResolveSource'
@@ -95,10 +96,15 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     const anchorOccurrenceKey = autoSource.getActiveOccurrenceKey()
     const currentItem = items.value[activeIndex.value] ?? null
     const removedIds = Array.isArray(ids) ? ids : [ids]
-    const shouldPreserveTrailingPlaceholder = Boolean(
+    const shouldPrefetchAfterRemoval = Boolean(
       currentItem
       && removedIds.includes(currentItem.id)
       && autoSource.isAutoPrefetchEnabled.value
+      && activeIndex.value >= items.value.length - PREFETCH_OFFSET,
+    )
+    const shouldPreserveTrailingPlaceholder = Boolean(
+      currentItem
+      && removedIds.includes(currentItem.id)
       && autoSource.hasNextPage.value
       && activeIndex.value === items.value.length - 1,
     )
@@ -112,7 +118,9 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey, {
       preserveTrailingPlaceholder: shouldPreserveTrailingPlaceholder,
     })
-    void autoSource.maybePrefetchAround()
+    if (shouldPrefetchAfterRemoval) {
+      void autoSource.maybePrefetchAround()
+    }
     return result
   }
 
@@ -125,7 +133,6 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     }
 
     autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
-    void autoSource.maybePrefetchAround()
     return result
   }
 
@@ -138,7 +145,6 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     }
 
     autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
-    void autoSource.maybePrefetchAround()
     return result
   }
 
