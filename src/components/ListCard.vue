@@ -47,6 +47,7 @@ const isInView = ref(false)
 const isFocused = ref(false)
 const isHovered = ref(false)
 const isReady = ref(renderableAsset.value.kind === 'fallback')
+const hasReadyVideoPreview = ref(false)
 const loadErrorKind = ref<VibeAssetErrorKind | null>(null)
 const imageRef = ref<HTMLImageElement | null>(null)
 const rootRef = ref<HTMLElement | null>(null)
@@ -88,6 +89,7 @@ watch(
   () => {
     const isFallback = renderableAsset.value.kind === 'fallback'
     isReady.value = isFallback
+    hasReadyVideoPreview.value = false
     loadErrorKind.value = null
     if (isFallback) {
       canAttachAsset.value = true
@@ -191,6 +193,7 @@ function onVideoReady() {
     return
   }
 
+  hasReadyVideoPreview.value = true
   isReady.value = true
   loadErrorKind.value = null
   reportAssetLoad(attachedAssetUrl.value ?? props.item.url)
@@ -200,6 +203,10 @@ function onVideoReady() {
 
 function onVideoLoading() {
   if (!isCurrentAssetElement(videoRef.value)) {
+    return
+  }
+
+  if (hasReadyVideoPreview.value) {
     return
   }
 
@@ -417,11 +424,7 @@ function onFocusOut(event: FocusEvent) {
       @click="openFullscreen"
     />
 
-    <div
-      v-if="shouldShowSpinner"
-      data-testid="vibe-list-card-spinner"
-      class="pointer-events-none absolute inset-0 z-[4] grid place-items-center bg-black/18"
-    >
+    <div v-if="shouldShowSpinner" data-testid="vibe-list-card-spinner" class="pointer-events-none absolute inset-0 z-[4] grid place-items-center bg-black/18">
       <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-black/45 shadow-[0_18px_40px_-18px_rgba(0,0,0,0.85)] backdrop-blur-[18px]">
         <LoaderCircle class="h-5 w-5 animate-spin stroke-[1.9] text-[#f7f1ea]/78" aria-hidden="true" />
       </span>
@@ -457,12 +460,7 @@ function onFocusOut(event: FocusEvent) {
       @waiting="onVideoLoading"
     />
 
-    <div
-      v-else-if="shouldRenderError"
-      data-testid="vibe-list-card-error"
-      :data-kind="loadErrorKind"
-      class="relative z-[2] grid h-full w-full place-items-center bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.12),transparent_65%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]"
-    >
+    <div v-else-if="shouldRenderError" data-testid="vibe-list-card-error" :data-kind="loadErrorKind" class="relative z-[2] grid h-full w-full place-items-center bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.12),transparent_65%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]">
       <div class="grid justify-items-center gap-3 px-4 text-center">
         <TriangleAlert class="h-6 w-6 stroke-[1.8] text-[#f7f1ea]/78" aria-hidden="true" />
         <span class="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/72">
@@ -474,10 +472,7 @@ function onFocusOut(event: FocusEvent) {
       </div>
     </div>
 
-    <div
-      v-else
-      class="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_65%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]"
-    >
+    <div v-else class="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_65%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]">
       <div class="inline-flex h-14 w-14 items-center justify-center border border-white/16 bg-black/20">
         <slot name="item-icon" :icon="getItemIcon(props.item.type)" :item="props.item">
           <component :is="getItemIcon(props.item.type)" class="h-6 w-6 stroke-[1.8] text-[#f7f1ea]/78" aria-hidden="true" />
@@ -486,15 +481,7 @@ function onFocusOut(event: FocusEvent) {
     </div>
 
     <div class="pointer-events-none absolute inset-0 z-[3]">
-      <slot
-        name="grid-item-overlay"
-        :active="props.active"
-        :focused="isFocused"
-        :hovered="isHovered"
-        :index="props.index"
-        :item="props.item"
-        :open-fullscreen="openFullscreen"
-      />
+      <slot name="grid-item-overlay" :active="props.active" :focused="isFocused" :hovered="isHovered" :index="props.index" :item="props.item" :open-fullscreen="openFullscreen" />
     </div>
   </div>
 </template>

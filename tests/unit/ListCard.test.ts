@@ -149,6 +149,45 @@ describe('VibeListCard', () => {
     wrapper.unmount()
   })
 
+  it('keeps a video preview visible after it has become ready, even if buffering events fire later', async () => {
+    const wrapper = mount(VibeListCard, {
+      props: {
+        item: createVideoItem('video-buffering'),
+      },
+    })
+
+    await flushDom()
+
+    intersectionObservers[0].trigger(wrapper.element as Element, true, 0.75)
+    await flushDom()
+
+    await wrapper.get('video').trigger('canplay')
+    await flushDom()
+
+    expect(wrapper.find('[data-testid="vibe-list-card-spinner"]').exists()).toBe(false)
+    expect(wrapper.get('video').classes()).toContain('opacity-100')
+
+    await wrapper.get('video').trigger('waiting')
+    await flushDom()
+
+    expect(wrapper.find('[data-testid="vibe-list-card-spinner"]').exists()).toBe(false)
+    expect(wrapper.get('video').classes()).toContain('opacity-100')
+
+    await wrapper.get('video').trigger('stalled')
+    await flushDom()
+
+    expect(wrapper.find('[data-testid="vibe-list-card-spinner"]').exists()).toBe(false)
+    expect(wrapper.get('video').classes()).toContain('opacity-100')
+
+    await wrapper.get('video').trigger('loadstart')
+    await flushDom()
+
+    expect(wrapper.find('[data-testid="vibe-list-card-spinner"]').exists()).toBe(false)
+    expect(wrapper.get('video').classes()).toContain('opacity-100')
+
+    wrapper.unmount()
+  })
+
   it('keeps an attached video preview while the tile is only partially visible', async () => {
     const wrapper = mount(VibeListCard, {
       props: {
