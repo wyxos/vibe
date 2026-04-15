@@ -56,6 +56,7 @@ describe('listPreview', () => {
         url: '/api/files/2859361/preview',
         width: 320,
         height: 180,
+        mediaType: 'image',
       },
     })
 
@@ -63,6 +64,29 @@ describe('listPreview', () => {
       kind: 'image',
       label: 'Relative image preview',
       url: '/api/files/2859361/preview',
+    })
+  })
+
+  it('accepts extensionless relative icon URLs used for audio and file tiles', () => {
+    const asset = getListRenderableAsset({
+      id: 'audio-relative-icon',
+      type: 'audio',
+      title: 'Relative icon preview',
+      url: '/api/files/103/downloaded',
+      width: 320,
+      height: 180,
+      preview: {
+        url: '/api/files/103/icon',
+        width: 320,
+        height: 180,
+        mediaType: 'image',
+      },
+    })
+
+    expect(asset).toMatchObject({
+      kind: 'image',
+      label: 'Relative icon preview',
+      url: '/api/files/103/icon',
     })
   })
 
@@ -105,6 +129,29 @@ describe('listPreview', () => {
     })
   })
 
+  it('accepts extensionless relative video preview URLs from Atlas file routes', () => {
+    const asset = getListRenderableAsset({
+      id: 'video-relative-preview',
+      type: 'video',
+      title: 'Relative video preview',
+      url: 'https://example.com/assets/video-relative-preview.mp4',
+      width: 1_920,
+      height: 1_080,
+      preview: {
+        url: '/api/files/400275/preview',
+        width: 320,
+        height: 180,
+        mediaType: 'video',
+      },
+    })
+
+    expect(asset).toMatchObject({
+      kind: 'video',
+      label: 'Relative video preview',
+      url: '/api/files/400275/preview',
+    })
+  })
+
   it('falls back when the selected video source is not a video', () => {
     const asset = getListRenderableAsset({
       id: 'video-fallback',
@@ -127,6 +174,23 @@ describe('listPreview', () => {
     })
   })
 
+  it('falls back for ambiguous extensionless non-route video sources', () => {
+    const asset = getListRenderableAsset({
+      id: 'video-ambiguous',
+      type: 'video',
+      title: 'Ambiguous video source',
+      url: 'atlas-video-token',
+      width: 1_920,
+      height: 1_080,
+    })
+
+    expect(asset).toMatchObject({
+      kind: 'fallback',
+      label: 'Ambiguous video source',
+      url: null,
+    })
+  })
+
   it('renders non-visual items as fallbacks even when preview URLs exist', () => {
     const asset = getListRenderableAsset({
       id: 'document-1',
@@ -142,6 +206,25 @@ describe('listPreview', () => {
       kind: 'fallback',
       label: 'Document tile',
       url: null,
+    })
+  })
+
+  it('renders non-visual items as images when the preview asset is explicitly image-backed', () => {
+    const asset = getListRenderableAsset({
+      id: 'document-preview',
+      type: 'other',
+      title: 'Document preview tile',
+      url: 'https://example.com/document-preview.pdf',
+      preview: {
+        url: '/api/files/104/icon',
+        mediaType: 'image',
+      },
+    } satisfies VibeViewerItem)
+
+    expect(asset).toMatchObject({
+      kind: 'image',
+      label: 'Document preview tile',
+      url: '/api/files/104/icon',
     })
   })
 })

@@ -1,9 +1,11 @@
 export type VibeViewerType = 'image' | 'video' | 'audio' | 'other'
+export type VibeRenderableMediaType = 'image' | 'video'
 
 export interface VibeViewerAsset {
   url: string
   width?: number
   height?: number
+  mediaType?: VibeRenderableMediaType
 }
 
 export interface VibeViewerItem {
