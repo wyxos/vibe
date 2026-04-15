@@ -189,6 +189,33 @@ describe('useController', () => {
     controller.unmount()
   })
 
+  it('mirrors list boundary load progress into status', async () => {
+    const controller = await mountController()
+
+    expect(controller.api.status.nextBoundaryLoadProgress).toBe(0)
+    expect(controller.api.status.previousBoundaryLoadProgress).toBe(0)
+
+    controller.api.setBoundaryLoadProgress({
+      nextBoundaryLoadProgress: 0.4,
+      previousBoundaryLoadProgress: 0.7,
+    })
+    await controller.flush()
+
+    expect(controller.api.status.nextBoundaryLoadProgress).toBe(0.4)
+    expect(controller.api.status.previousBoundaryLoadProgress).toBe(0.7)
+
+    controller.api.setBoundaryLoadProgress({
+      nextBoundaryLoadProgress: 4,
+      previousBoundaryLoadProgress: -2,
+    })
+    await controller.flush()
+
+    expect(controller.api.status.nextBoundaryLoadProgress).toBe(1)
+    expect(controller.api.status.previousBoundaryLoadProgress).toBe(0)
+
+    controller.unmount()
+  })
+
   it('forces fullscreen on mobile and restores list state when the viewport grows back to desktop', async () => {
     setViewportWidth(768)
 

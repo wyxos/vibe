@@ -75,6 +75,49 @@ describe('BidirectionalPagingDemoPage', () => {
     wrapper.unmount()
   })
 
+  it('updates the advanced demo footer load progress bars from the Vibe scroll budget', async () => {
+    vi.useFakeTimers()
+    setViewportWidth(1_280)
+
+    const wrapper = mount(BidirectionalPagingDemoPage)
+
+    await vi.advanceTimersByTimeAsync(100)
+    await flushDom()
+
+    const scrollViewport = wrapper.get('[data-testid="vibe-list-scroll"]').element as HTMLElement
+    const previousProgress = wrapper.get('[data-testid="advanced-static-previous-boundary-progress"]')
+    const nextProgress = wrapper.get('[data-testid="advanced-static-next-boundary-progress"]')
+
+    setScrollMetrics(scrollViewport, 20, 700, 2_000)
+    await wrapper.get('[data-testid="vibe-list-scroll"]').trigger('scroll')
+    await flushDom()
+
+    expect(Number(previousProgress.attributes('aria-valuenow'))).toBe(100)
+    expect(Number(nextProgress.attributes('aria-valuenow'))).toBeLessThan(10)
+
+    setScrollMetrics(scrollViewport, 1_180, 700, 2_000)
+    await wrapper.get('[data-testid="vibe-list-scroll"]').trigger('scroll')
+    await flushDom()
+
+    const previousNearBottom = Number(previousProgress.attributes('aria-valuenow'))
+    const nextNearBottom = Number(nextProgress.attributes('aria-valuenow'))
+
+    expect(previousNearBottom).toBeGreaterThan(0)
+    expect(previousNearBottom).toBeLessThan(50)
+    expect(nextNearBottom).toBeGreaterThan(90)
+
+    setScrollMetrics(scrollViewport, 1_181, 700, 2_600)
+    await wrapper.get('[data-testid="vibe-list-scroll"]').trigger('scroll')
+    await flushDom()
+
+    const nextAfterBudgetIncrease = Number(nextProgress.attributes('aria-valuenow'))
+
+    expect(nextAfterBudgetIncrease).toBeGreaterThan(0)
+    expect(nextAfterBudgetIncrease).toBeLessThan(nextNearBottom)
+
+    wrapper.unmount()
+  })
+
   it('removes 10 random loaded items from the advanced demo footer CTA', async () => {
     vi.useFakeTimers()
     vi.spyOn(Math, 'random').mockReturnValue(0.5)
@@ -111,5 +154,21 @@ function setViewportWidth(width: number) {
     configurable: true,
     value: width,
     writable: true,
+  })
+}
+
+function setScrollMetrics(element: HTMLElement, scrollTop: number, clientHeight: number, scrollHeight: number) {
+  Object.defineProperty(element, 'scrollTop', {
+    configurable: true,
+    value: scrollTop,
+    writable: true,
+  })
+  Object.defineProperty(element, 'clientHeight', {
+    configurable: true,
+    value: clientHeight,
+  })
+  Object.defineProperty(element, 'scrollHeight', {
+    configurable: true,
+    value: scrollHeight,
   })
 }

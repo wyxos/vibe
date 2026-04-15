@@ -23,6 +23,7 @@ const GAP_PX = 16
 const ITEM_WIDTH_PX = 300
 const OVERSCAN_PX = 200
 const PREFETCH_THRESHOLD_PX = 200
+const PREVIOUS_PAGE_BOUNDARY_THRESHOLD_PX = CONTENT_INSET_PX + GAP_PX
 const SCROLL_BUFFER_PX = 200
 const HEIGHT_RESERVE_MS = 300
 const SCROLLBAR_INSET_PX = 24
@@ -77,9 +78,23 @@ export function useVibeMasonryList(options: {
     return Math.max(contentHeight, nextReservedHeight, viewportHeight.value) + SCROLL_BUFFER_PX
   })
   const canRequestNextBoundary = computed(() => options.hasNextPage.value || options.allowExhaustedNextPageRefresh.value)
+  const nextBoundaryLoadProgress = computed(() => getTrailingBoundaryLoadProgress({
+    active: options.active.value,
+    maxScrollTop: getMaxScrollTop(),
+    progressDistancePx: scrollTop.value,
+    thresholdPx: PREFETCH_THRESHOLD_PX,
+    triggerEnabled: canRequestNextBoundary.value,
+  }))
   const paginationLabel = computed(() => options.items.value.length > 0
     ? `${resolvedActiveIndex.value + 1} / ${options.items.value.length}`
     : '0 / 0')
+  const previousBoundaryLoadProgress = computed(() => getLeadingBoundaryLoadProgress({
+    active: options.active.value,
+    maxScrollTop: getMaxScrollTop(),
+    progressDistancePx: scrollTop.value,
+    thresholdPx: PREVIOUS_PAGE_BOUNDARY_THRESHOLD_PX,
+    triggerEnabled: options.hasPreviousPage.value,
+  }))
   const scrollbarTrackHeight = computed(() => Math.max(0, viewportHeight.value - SCROLLBAR_INSET_PX * 2))
   const showScrollbar = computed(() => containerHeight.value > viewportHeight.value + 1 && scrollbarTrackHeight.value > 0)
   const scrollbarThumbHeight = computed(() => {
@@ -116,7 +131,7 @@ export function useVibeMasonryList(options: {
     hasPage: options.hasPreviousPage,
     interactionLocked: isBoundaryInteractionLocked,
     isAtBoundary() {
-      return scrollTop.value <= CONTENT_INSET_PX + GAP_PX
+      return scrollTop.value <= PREVIOUS_PAGE_BOUNDARY_THRESHOLD_PX
     },
     loading: options.loading,
     requestPage: options.requestPreviousPage,
@@ -446,7 +461,7 @@ export function useVibeMasonryList(options: {
   }
 
   function syncBoundaryIndexFromScroll() {
-    const nearTop = scrollTop.value <= CONTENT_INSET_PX + GAP_PX
+    const nearTop = scrollTop.value <= PREVIOUS_PAGE_BOUNDARY_THRESHOLD_PX
     const nearBottom = getDistanceFromBottom() <= PREFETCH_THRESHOLD_PX
 
     if (nearTop) {
@@ -487,6 +502,11 @@ export function useVibeMasonryList(options: {
       viewportHeight.value,
       containerHeight.value,
     )
+  }
+
+  function getMaxScrollTop() {
+    const scrollHeight = Math.max(scrollViewportRef.value?.scrollHeight ?? 0, containerHeight.value)
+    return Math.max(0, scrollHeight - viewportHeight.value)
   }
 
   function getScrollbarThumbStyle() {
@@ -578,9 +598,11 @@ export function useVibeMasonryList(options: {
     getLeavingCardStyle: motion.getLeavingCardStyle,
     getScrollbarThumbStyle,
     leavingItems: motion.leavingItems,
+    nextBoundaryLoadProgress,
     onScroll,
     onWheel,
     paginationLabel,
+    previousBoundaryLoadProgress,
     renderedItems,
     resolvedActiveIndex,
     scrollToIndex,
@@ -591,4 +613,42 @@ export function useVibeMasonryList(options: {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
+}
+
+function getLeadingBoundaryLoadProgress(options: {
+  active: boolean
+  maxScrollTop: number
+  progressDistancePx: number
+  thresholdPx: number
+  triggerEnabled: boolean
+}) {
+  if (!options.active || !options.triggerEnabled) {
+    return 0
+  }
+
+  const progressRangePx = Math.max(0, options.maxScrollTop - options.thresholdPx)
+  if (progressRangePx <= 0) {
+    return 1
+  }
+
+  return clamp(1 - ((options.progressDistancePx - options.thresholdPx) / progressRangePx), 0, 1)
+}
+
+function getTrailingBoundaryLoadProgress(options: {
+  active: boolean
+  maxScrollTop: number
+  progressDistancePx: number
+  thresholdPx: number
+  triggerEnabled: boolean
+}) {
+  if (!options.active || !options.triggerEnabled) {
+    return 0
+  }
+
+  const progressRangePx = Math.max(0, options.maxScrollTop - options.thresholdPx)
+  if (progressRangePx <= 0) {
+    return 1
+  }
+
+  return clamp(options.progressDistancePx / progressRangePx, 0, 1)
 }

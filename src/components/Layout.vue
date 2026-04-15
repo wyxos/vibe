@@ -129,6 +129,7 @@ defineExpose<VibeHandle>({
             :request-previous-page="viewer.prefetchPreviousPage"
             :empty-state-mode="props.emptyStateMode"
             :show-status-badges="props.showStatusBadges ?? true"
+            @boundary-load-progress="viewer.setBoundaryLoadProgress"
             @open-fullscreen="viewer.openFullscreen"
             @update:active-index="viewer.setActiveIndex"
           >

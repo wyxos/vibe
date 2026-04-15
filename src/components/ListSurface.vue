@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { computed, toRef } from 'vue'
+import { computed, toRef, watch } from 'vue'
 
 import type { VibeViewerItem } from './viewer'
 import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './viewer-core/assetErrors'
@@ -68,6 +68,10 @@ const slots = defineSlots<{
 }>()
 
 const emit = defineEmits<{
+  'boundary-load-progress': [value: {
+    nextBoundaryLoadProgress: number
+    previousBoundaryLoadProgress: number
+  }]
   'open-fullscreen': [index: number]
   'update:activeIndex': [value: number]
 }>()
@@ -136,6 +140,19 @@ const {
   renderSlot: slots['empty-state'],
   surface: 'grid',
 })
+
+watch(
+  [list.nextBoundaryLoadProgress, list.previousBoundaryLoadProgress],
+  ([nextBoundaryLoadProgress, previousBoundaryLoadProgress]) => {
+    emit('boundary-load-progress', {
+      nextBoundaryLoadProgress,
+      previousBoundaryLoadProgress,
+    })
+  },
+  {
+    immediate: true,
+  },
+)
 </script>
 
 <template>

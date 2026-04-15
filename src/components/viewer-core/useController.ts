@@ -8,6 +8,10 @@ export const DESKTOP_BREAKPOINT_PX = 1024
 
 export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
   const dataSource = useDataSource(props, emit)
+  const listBoundaryLoadProgress = reactive({
+    nextBoundaryLoadProgress: 0,
+    previousBoundaryLoadProgress: 0,
+  })
   const viewportWidth = ref(0)
   const desktopSurface = ref<VibeSurfaceMode>('list')
   const status = reactive<VibeStatus>({
@@ -22,9 +26,11 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     itemCount: 0,
     loadState: 'loaded',
     mode: 'dynamic',
+    nextBoundaryLoadProgress: 0,
     nextCursor: null,
     pageLoadingLocked: false,
     phase: 'idle',
+    previousBoundaryLoadProgress: 0,
     previousCursor: null,
     removedCount: 0,
     removedIds: [],
@@ -107,9 +113,11 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
       ? 'loading'
       : (dataSource.errorMessage.value ? 'failed' : 'loaded')
     status.mode = dataSource.mode.value
+    status.nextBoundaryLoadProgress = listBoundaryLoadProgress.nextBoundaryLoadProgress
     status.nextCursor = dataSource.nextCursor.value
     status.pageLoadingLocked = dataSource.isPageLoadingLocked.value
     status.phase = dataSource.phase.value
+    status.previousBoundaryLoadProgress = listBoundaryLoadProgress.previousBoundaryLoadProgress
     status.previousCursor = dataSource.previousCursor.value
     status.removedCount = dataSource.removedCount.value
     status.removedIds = dataSource.getRemovedIds()
@@ -173,6 +181,14 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     desktopSurface.value = props.surfaceMode
   }
 
+  function setBoundaryLoadProgress(value: {
+    nextBoundaryLoadProgress: number
+    previousBoundaryLoadProgress: number
+  }) {
+    listBoundaryLoadProgress.nextBoundaryLoadProgress = clamp(value.nextBoundaryLoadProgress)
+    listBoundaryLoadProgress.previousBoundaryLoadProgress = clamp(value.previousBoundaryLoadProgress)
+  }
+
   return {
     ...dataSource,
     cancel: dataSource.cancel,
@@ -183,9 +199,14 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     openFullscreen,
     returnToList,
     retry: dataSource.retry,
+    setBoundaryLoadProgress,
     showBackToList,
     status: readonly(status),
     surfaceMode,
     unlockPageLoading: dataSource.unlockPageLoading,
   }
+}
+
+function clamp(value: number) {
+  return Math.min(Math.max(value, 0), 1)
 }

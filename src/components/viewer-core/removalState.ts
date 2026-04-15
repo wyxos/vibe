@@ -20,9 +20,11 @@ export interface VibeStatus {
   itemCount: number
   loadState: 'failed' | 'loaded' | 'loading'
   mode: VibeFeedMode
+  nextBoundaryLoadProgress: number
   nextCursor: string | null
   pageLoadingLocked: boolean
   phase: VibeLoadPhase
+  previousBoundaryLoadProgress: number
   previousCursor: string | null
   removedCount: number
   removedIds: readonly string[]

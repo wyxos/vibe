@@ -60,6 +60,8 @@ const removableLoadedItemIds = computed(() => {
 const canRemoveAllItems = computed(() => removableLoadedItemIds.value.length > 0)
 const canRemoveRandomItems = computed(() => removableLoadedItemIds.value.length > 0)
 const isPageLoadingLocked = computed(() => Boolean(vibeRef.value?.status.pageLoadingLocked))
+const nextBoundaryProgressPercent = computed(() => Math.round((vibeRef.value?.status.nextBoundaryLoadProgress ?? 0) * 100))
+const previousBoundaryProgressPercent = computed(() => Math.round((vibeRef.value?.status.previousBoundaryLoadProgress ?? 0) * 100))
 
 function renderItemIcon(item: VibeViewerItem, icon: unknown) {
   return (getFakeMediaItemIcon(item) ?? icon) as Component
@@ -203,6 +205,42 @@ onBeforeUnmount(() => {
             <span class="text-[0.72rem] font-medium uppercase tracking-[0.18em] text-[#f7f1ea]/82">
               {{ entry.value }}
             </span>
+          </div>
+          <div class="grid min-w-[7.5rem] gap-1">
+            <span class="text-[0.58rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/46">Prev load</span>
+            <div
+              data-testid="advanced-static-previous-boundary-progress"
+              role="progressbar"
+              aria-label="Previous page load proximity"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              :aria-valuenow="previousBoundaryProgressPercent"
+              class="relative h-2 w-28 overflow-hidden border border-white/10 bg-white/[0.04]"
+            >
+              <div
+                class="absolute inset-y-0 left-0 bg-sky-300/80 transition-[width] duration-150"
+                :class="isPageLoadingLocked ? 'opacity-45' : ''"
+                :style="{ width: `${previousBoundaryProgressPercent}%` }"
+              />
+            </div>
+          </div>
+          <div class="grid min-w-[7.5rem] gap-1">
+            <span class="text-[0.58rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/46">Next load</span>
+            <div
+              data-testid="advanced-static-next-boundary-progress"
+              role="progressbar"
+              aria-label="Next page load proximity"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              :aria-valuenow="nextBoundaryProgressPercent"
+              class="relative h-2 w-28 overflow-hidden border border-white/10 bg-white/[0.04]"
+            >
+              <div
+                class="absolute inset-y-0 left-0 bg-amber-300/80 transition-[width] duration-150"
+                :class="isPageLoadingLocked ? 'opacity-45' : ''"
+                :style="{ width: `${nextBoundaryProgressPercent}%` }"
+              />
+            </div>
           </div>
           <button
             type="button"
