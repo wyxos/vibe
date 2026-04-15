@@ -1,6 +1,6 @@
 export type VibeAssetErrorKind = 'generic' | 'not-found'
 
-const errorKindCache = new Map<string, Promise<VibeAssetErrorKind>>()
+const assetProbeCache = new Map<string, Promise<VibeAssetErrorKind | null>>()
 
 export function getVibeAssetErrorLabel(kind: VibeAssetErrorKind) {
   return kind === 'not-found' ? '404' : 'Load error'
@@ -11,20 +11,24 @@ export function canRetryVibeAssetError(kind: VibeAssetErrorKind | null | undefin
 }
 
 export function resolveVibeAssetErrorKind(url: string) {
-  const cached = errorKindCache.get(url)
+  return probeVibeAssetUrl(url).then((result) => result ?? 'generic')
+}
+
+export function probeVibeAssetUrl(url: string) {
+  const cached = assetProbeCache.get(url)
 
   if (cached) {
     return cached
   }
 
-  const nextResult = classifyVibeAssetError(url)
-  errorKindCache.set(url, nextResult)
+  const nextResult = classifyVibeAssetUrl(url)
+  assetProbeCache.set(url, nextResult)
   return nextResult
 }
 
-async function classifyVibeAssetError(url: string): Promise<VibeAssetErrorKind> {
+async function classifyVibeAssetUrl(url: string): Promise<VibeAssetErrorKind | null> {
   if (!isInspectableAssetUrl(url)) {
-    return 'generic'
+    return null
   }
 
   try {
@@ -32,15 +36,19 @@ async function classifyVibeAssetError(url: string): Promise<VibeAssetErrorKind> 
       method: 'HEAD',
     })
 
-    if (!response.ok && response.status === 404) {
+    if (response.ok) {
+      return null
+    }
+
+    if (response.status === 404) {
       return 'not-found'
     }
+
+    return 'generic'
   }
   catch {
     return 'generic'
   }
-
-  return 'generic'
 }
 
 function isInspectableAssetUrl(url: string) {

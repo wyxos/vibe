@@ -2,7 +2,8 @@ import { mount } from '@vue/test-utils'
 import { h, nextTick } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { resolveVibeAssetErrorKindMock } = vi.hoisted(() => ({
+const { probeVibeAssetUrlMock, resolveVibeAssetErrorKindMock } = vi.hoisted(() => ({
+  probeVibeAssetUrlMock: vi.fn(async () => null as const),
   resolveVibeAssetErrorKindMock: vi.fn(async () => 'generic' as const),
 }))
 
@@ -13,6 +14,7 @@ vi.mock('@/components/viewer-core/loadError', () => ({
   getVibeAssetErrorLabel(kind: 'generic' | 'not-found') {
     return kind === 'not-found' ? '404' : 'Load error'
   },
+  probeVibeAssetUrl: probeVibeAssetUrlMock,
   resolveVibeAssetErrorKind: resolveVibeAssetErrorKindMock,
 }))
 
@@ -24,6 +26,8 @@ describe('VibeListCard', () => {
 
   beforeEach(() => {
     intersectionObservers = []
+    probeVibeAssetUrlMock.mockReset()
+    probeVibeAssetUrlMock.mockResolvedValue(null)
     resolveVibeAssetErrorKindMock.mockReset()
     resolveVibeAssetErrorKindMock.mockResolvedValue('generic')
     vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
@@ -238,6 +242,39 @@ describe('VibeListCard', () => {
     wrapper.unmount()
   })
 
+  it('probes an audio playback health check after the icon preview loads', async () => {
+    probeVibeAssetUrlMock.mockResolvedValueOnce('not-found')
+    const reportAssetError = vi.fn()
+
+    const wrapper = mount(VibeListCard, {
+      props: {
+        item: createAudioItem('audio-missing'),
+        reportAssetError,
+      },
+    })
+
+    await flushDom()
+
+    intersectionObservers[0].trigger(wrapper.element as Element, true, 0.75)
+    await flushDom()
+
+    expect(probeVibeAssetUrlMock).not.toHaveBeenCalled()
+
+    await wrapper.get('img').trigger('load')
+    await flushDom()
+
+    expect(probeVibeAssetUrlMock).toHaveBeenCalledWith('https://example.com/audio-missing.mp3')
+    expect(reportAssetError).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'not-found',
+      surface: 'grid',
+      url: 'https://example.com/audio-missing.mp3',
+    }))
+    expect(wrapper.get('[data-testid="vibe-list-card-error"]').attributes('data-kind')).toBe('not-found')
+    expect(wrapper.text()).toContain('404')
+
+    wrapper.unmount()
+  })
+
   it('allows retrying a generic image preview failure', async () => {
     const wrapper = mount(VibeListCard, {
       props: {
@@ -412,6 +449,27 @@ function createVideoItem(id: string): VibeViewerItem {
       url: `https://example.com/${id}-preview.mp4`,
       width: 320,
       height: 180,
+    },
+  }
+}
+
+function createAudioItem(id: string): VibeViewerItem {
+  return {
+    id,
+    type: 'audio',
+    title: 'Audio tile',
+    url: `https://example.com/${id}.mp3`,
+    width: 1_920,
+    height: 1_080,
+    preview: {
+      url: `https://example.com/${id}-icon.svg`,
+      width: 320,
+      height: 180,
+      mediaType: 'image',
+    },
+    healthCheck: {
+      kind: 'playback',
+      url: `https://example.com/${id}.mp3`,
     },
   }
 }

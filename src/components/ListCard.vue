@@ -12,6 +12,7 @@ import { getListRenderableAsset } from './viewer-core/listPreview'
 import { canRetryVibeAssetError, getVibeAssetErrorLabel, resolveVibeAssetErrorKind, type VibeAssetErrorKind } from './viewer-core/loadError'
 import { playMediaElement } from './viewer-core/mediaPlayback'
 import { defaultAssetLoadQueue, type VibeAssetLoadLease } from './viewer-core/useAssetLoadQueue'
+import { useListCardHealthCheck } from './viewer-core/useListCardHealthCheck'
 
 const props = withDefaults(defineProps<{
   active?: boolean
@@ -74,8 +75,19 @@ const isQueueEligible = computed(() =>
 )
 const shouldRenderImage = computed(() => renderableAsset.value.kind === 'image' && Boolean(attachedAssetUrl.value))
 const shouldRenderVideo = computed(() => renderableAsset.value.kind === 'video' && Boolean(attachedAssetUrl.value))
-const shouldRenderError = computed(() => Boolean(loadErrorKind.value))
-const canRetryAsset = computed(() => canRetryVibeAssetError(loadErrorKind.value))
+const healthCheck = useListCardHealthCheck({
+  attachedAssetUrl,
+  getPriority: getLoadPriority,
+  isInView,
+  isReady,
+  item: computed(() => props.item),
+  loadErrorKind,
+  reportAssetError: props.reportAssetError,
+  surfaceActive: computed(() => props.surfaceActive),
+})
+const activeErrorKind = computed(() => healthCheck.errorKind.value ?? loadErrorKind.value)
+const shouldRenderError = computed(() => Boolean(activeErrorKind.value))
+const canRetryAsset = computed(() => canRetryVibeAssetError(activeErrorKind.value))
 const shouldShowSpinner = computed(() =>
   isQueueEligible.value && !loadErrorKind.value && (!canAttachAsset.value || !isReady.value),
 )
@@ -118,7 +130,6 @@ watch(
     })
   },
 )
-
 onMounted(() => {
   if (!rootRef.value || typeof IntersectionObserver === 'undefined') {
     scrollRootRef.value = null
@@ -149,13 +160,12 @@ onMounted(() => {
 
   intersectionObserver.observe(rootRef.value)
 })
-
 onBeforeUnmount(() => {
   teardownAssetLoad()
+  healthCheck.release()
   intersectionObserver?.disconnect()
   intersectionObserver = null
 })
-
 function onImageLoad() {
   if (!isCurrentAssetElement(imageRef.value)) {
     return
@@ -166,7 +176,6 @@ function onImageLoad() {
   reportAssetLoad(attachedAssetUrl.value ?? props.item.url)
   releaseLoadLease()
 }
-
 async function onImageError() {
   if (!isCurrentAssetElement(imageRef.value)) {
     return
@@ -187,7 +196,6 @@ async function onImageError() {
   })
   releaseLoadLease()
 }
-
 function onVideoReady() {
   if (!isCurrentAssetElement(videoRef.value)) {
     return
@@ -252,7 +260,7 @@ function syncVideoPlayback() {
     return
   }
 
-  if (loadErrorKind.value) {
+  if (activeErrorKind.value) {
     video.pause()
     return
   }
@@ -328,6 +336,10 @@ function reportAssetLoad(url: string | null) {
 
 function retryAssetLoad() {
   if (!canRetryAsset.value) {
+    return
+  }
+
+  if (healthCheck.retry()) {
     return
   }
 
@@ -460,11 +472,11 @@ function onFocusOut(event: FocusEvent) {
       @waiting="onVideoLoading"
     />
 
-    <div v-else-if="shouldRenderError" data-testid="vibe-list-card-error" :data-kind="loadErrorKind" class="relative z-[2] grid h-full w-full place-items-center bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.12),transparent_65%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]">
+    <div v-else-if="shouldRenderError" data-testid="vibe-list-card-error" :data-kind="activeErrorKind" class="relative z-[2] grid h-full w-full place-items-center bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.12),transparent_65%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]">
       <div class="grid justify-items-center gap-3 px-4 text-center">
         <TriangleAlert class="h-6 w-6 stroke-[1.8] text-[#f7f1ea]/78" aria-hidden="true" />
         <span class="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/72">
-          {{ getVibeAssetErrorLabel(loadErrorKind!) }}
+          {{ getVibeAssetErrorLabel(activeErrorKind!) }}
         </span>
         <button v-if="canRetryAsset" type="button" class="pointer-events-auto inline-flex items-center justify-center border border-white/14 bg-black/35 px-3 py-2 text-[0.62rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/82 backdrop-blur-[18px] transition hover:border-white/28 hover:bg-black/50" @click.stop="retryAssetLoad">
           Retry

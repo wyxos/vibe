@@ -8,12 +8,18 @@ export interface VibeViewerAsset {
   mediaType?: VibeRenderableMediaType
 }
 
+export interface VibeViewerHealthCheck {
+  kind?: 'playback'
+  url: string
+}
+
 export interface VibeViewerItem {
   id: string
   type: VibeViewerType
   title?: string
   url: string
   preview?: VibeViewerAsset
+  healthCheck?: VibeViewerHealthCheck | null
   width?: number
   height?: number
   [key: string]: unknown

@@ -5,7 +5,7 @@ export interface VibeAssetLoadQueueLimits {
 }
 
 export interface VibeAssetLoadRequest {
-  assetType: 'image' | 'video'
+  assetType: 'image' | 'video' | 'probe'
   getPriority: () => number
   onGrant: () => void
   url: string

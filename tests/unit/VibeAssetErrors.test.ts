@@ -2,7 +2,8 @@ import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-const { resolveVibeAssetErrorKindMock } = vi.hoisted(() => ({
+const { probeVibeAssetUrlMock, resolveVibeAssetErrorKindMock } = vi.hoisted(() => ({
+  probeVibeAssetUrlMock: vi.fn(async () => null as const),
   resolveVibeAssetErrorKindMock: vi.fn(async () => 'generic' as const),
 }))
 
@@ -13,6 +14,7 @@ vi.mock('@/components/viewer-core/loadError', () => ({
   getVibeAssetErrorLabel(kind: 'generic' | 'not-found') {
     return kind === 'not-found' ? '404' : 'Load error'
   },
+  probeVibeAssetUrl: probeVibeAssetUrlMock,
   resolveVibeAssetErrorKind: resolveVibeAssetErrorKindMock,
 }))
 
@@ -25,6 +27,8 @@ const DEFAULT_VIEWPORT_WIDTH = window.innerWidth
 describe('VibeLayout asset error events', () => {
   afterEach(() => {
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
+    probeVibeAssetUrlMock.mockReset()
+    probeVibeAssetUrlMock.mockResolvedValue(null)
     resolveVibeAssetErrorKindMock.mockReset()
     resolveVibeAssetErrorKindMock.mockResolvedValue('generic')
     vi.useRealTimers()
