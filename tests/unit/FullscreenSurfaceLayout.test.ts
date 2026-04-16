@@ -129,6 +129,37 @@ describe('VibeLayout fullscreen aside layout', () => {
     wrapper.unmount()
   })
 
+  it('restarts fullscreen video playback when the active video ends', async () => {
+    setViewportWidth(1_280)
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps([createVideoItem('video-loop-fallback', 'Loop fallback item')]),
+    })
+
+    await flushDom()
+    await wrapper.get('[data-testid="vibe-list-card"] button').trigger('click')
+    await flushDom()
+
+    const video = wrapper.get('[data-testid="vibe-slide"][data-active="true"] video')
+    const videoElement = video.element as HTMLVideoElement
+    const initialPlayCalls = playSpy.mock.calls.length
+
+    Object.defineProperty(videoElement, 'currentTime', {
+      configurable: true,
+      value: 9,
+      writable: true,
+    })
+    await video.trigger('ended')
+    await flushDom()
+
+    expect(videoElement.currentTime).toBe(0)
+    expect(playSpy.mock.calls.length).toBe(initialPlayCalls + 1)
+
+    wrapper.unmount()
+  })
+
   it('can suppress the fullscreen end badge', async () => {
     setViewportWidth(1_280)
 

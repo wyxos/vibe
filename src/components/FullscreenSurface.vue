@@ -194,6 +194,31 @@ function registerFullscreenImageElement(id: string, element: unknown) {
 function updateDominantToneFromImageElement(id: string, image: HTMLImageElement) {
   updateFromImageElement(id, image)
 }
+
+function handleFullscreenVideoEnded(event: Event, id: string) {
+  viewer.onMediaEvent(id, event)
+
+  if (!props.loopFullscreenVideo) {
+    return
+  }
+
+  const element = event.currentTarget
+  if (!(element instanceof HTMLVideoElement)) {
+    return
+  }
+
+  try {
+    element.currentTime = 0
+  }
+  catch {
+    // Ignore reset failures for streams that cannot seek immediately.
+  }
+
+  const playback = element.play()
+  if (playback && typeof playback.catch === 'function') {
+    void playback.catch(() => {})
+  }
+}
 </script>
 
 <template>
@@ -294,6 +319,7 @@ function updateDominantToneFromImageElement(id: string, image: HTMLImageElement)
                 @click.stop="viewer.onVideoClick($event, fullscreenMedia.getItemKey(item))"
                 @canplay="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
                 @durationchange="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @ended="handleFullscreenVideoEnded($event, fullscreenMedia.getItemKey(item))"
                 @error="viewer.onMediaError(fullscreenMedia.getItemKey(item), item.url)"
                 @loadstart="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
                 @loadedmetadata="viewer.onMediaEvent(fullscreenMedia.getItemKey(item), $event)"
