@@ -106,6 +106,29 @@ describe('VibeLayout fullscreen aside layout', () => {
     wrapper.unmount()
   })
 
+  it('keeps fullscreen overlay content above the media bar for media items', async () => {
+    setViewportWidth(1_280)
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps([createVideoItem('video-overlay-layer', 'Overlay layer item')]),
+      slots: {
+        'fullscreen-overlay': () => h('div', { 'data-testid': 'custom-fullscreen-overlay' }, 'Reactions'),
+      },
+    })
+
+    await flushDom()
+    await wrapper.get('[data-testid="vibe-list-card"] button').trigger('click')
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="vibe-media-bar"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="vibe-fullscreen-overlay"]').classes()).toContain('z-[6]')
+    expect(wrapper.get('[data-testid="custom-fullscreen-overlay"]').exists()).toBe(true)
+
+    wrapper.unmount()
+  })
+
   it('can suppress the fullscreen end badge', async () => {
     setViewportWidth(1_280)
 
@@ -169,6 +192,23 @@ function createImageItem(id: string, title?: string): VibeViewerItem {
       url: `https://example.com/${id}-preview.jpg`,
       width: 320,
       height: 180,
+    },
+  }
+}
+
+function createVideoItem(id: string, title?: string): VibeViewerItem {
+  return {
+    id,
+    type: 'video',
+    title,
+    url: `https://example.com/${id}.mp4`,
+    width: 1_920,
+    height: 1_080,
+    preview: {
+      url: `https://example.com/${id}-preview.mp4`,
+      width: 320,
+      height: 180,
+      mediaType: 'video',
     },
   }
 }

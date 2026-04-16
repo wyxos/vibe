@@ -401,7 +401,7 @@ function updateDominantToneFromImageElement(id: string, image: HTMLImageElement)
             </div>
           </article>
 
-          <div v-if="fullscreenSlotProps && slots['fullscreen-overlay']" class="pointer-events-none absolute inset-0 z-[4]">
+          <div v-if="fullscreenSlotProps && slots['fullscreen-overlay']" data-testid="vibe-fullscreen-overlay" class="pointer-events-none absolute inset-0 z-[6]">
             <div class="h-full w-full"><slot name="fullscreen-overlay" v-bind="fullscreenSlotProps" /></div>
           </div>
 
