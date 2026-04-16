@@ -472,7 +472,7 @@ function onFocusOut(event: FocusEvent) {
       @waiting="onVideoLoading"
     />
 
-    <div v-else-if="shouldRenderError" data-testid="vibe-list-card-error" :data-kind="activeErrorKind" class="relative z-[2] grid h-full w-full place-items-center bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.12),transparent_65%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]">
+    <div v-else-if="shouldRenderError" data-testid="vibe-list-card-error" :data-kind="activeErrorKind" class="pointer-events-none relative z-[2] grid h-full w-full place-items-center bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.12),transparent_65%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]">
       <div class="grid justify-items-center gap-3 px-4 text-center">
         <TriangleAlert class="h-6 w-6 stroke-[1.8] text-[#f7f1ea]/78" aria-hidden="true" />
         <span class="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/72">

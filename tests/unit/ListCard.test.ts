@@ -237,6 +237,7 @@ describe('VibeListCard', () => {
     await flushDom()
 
     expect(wrapper.get('[data-testid="vibe-list-card-error"]').attributes('data-kind')).toBe('not-found')
+    expect(wrapper.get('[data-testid="vibe-list-card-error"]').classes()).toContain('pointer-events-none')
     expect(wrapper.text()).toContain('404')
 
     wrapper.unmount()
