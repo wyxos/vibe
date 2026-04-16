@@ -1,21 +1,39 @@
 # Vibe
 
-Vibe is a Vue 3 media viewer for large feeds of mixed image, video, audio, and other items.
+Vibe is an opinionated Vue 3 mixed-media feed and viewer engine for large datasets.
 
-It ships two built-in surfaces:
+It is built for apps that need a virtualized desktop feed, fullscreen browsing, library-owned paging, removals, retries, and asset-failure handling without stitching together a masonry grid, lightbox, and feed state by hand.
 
-- Desktop: a virtualized masonry grid that opens into fullscreen
-- Mobile and tablet: fullscreen only
+![Vibe desktop feed surface](./docs/readme-hero.jpg)
 
-The current `3.0.0` rebuild focuses on a strict item contract, library-owned loading, strong demo coverage, and a small customization surface.
+[Live demo](https://vibe.wyxos.com/) · [In-app docs](https://vibe.wyxos.com/documentation)
 
-## Install
+## Built for
+
+Vibe is built for applications that browse large mixed-media collections and need feed state to stay coherent as items load, fail, disappear, and move between desktop and fullscreen surfaces.
+
+It owns paging, fullscreen browsing, removals, retries, and asset-failure handling as part of one viewer model so those behaviors stay consistent under real feed pressure.
+
+Vibe is hardened in production through [Atlas](https://github.com/wyxos/atlas) as a downstream consumer.
+
+## When Vibe fits
+
+Use Vibe when your app needs:
+
+- a large mixed-media feed of images, video, audio, and document-like items
+- library-owned paging driven by opaque cursors
+- a desktop masonry surface that opens into fullscreen
+- fullscreen-first behavior on mobile and tablet
+- built-in remove, restore, undo, retry, and asset-failure handling
+- a small customization surface through slots instead of a headless rendering API
+
+## Quick start
+
+Install the package and import the bundled stylesheet once:
 
 ```bash
 npm i @wyxos/vibe
 ```
-
-Import the bundled stylesheet once:
 
 ```ts
 import '@wyxos/vibe/style.css'
@@ -23,7 +41,7 @@ import '@wyxos/vibe/style.css'
 
 Tailwind scanning is not required for the package UI.
 
-## Plugin install
+### Plugin install
 
 The default export is the plugin:
 
@@ -41,7 +59,7 @@ createApp(App)
 
 That registers the global component as `VibeLayout`.
 
-## Direct import
+### Direct import
 
 If you prefer local registration, import `VibeLayout` directly:
 
@@ -65,70 +83,11 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
 </template>
 ```
 
-Optional pacing props:
+## Core concepts
 
-```vue
-<VibeLayout
-  :resolve="resolve"
-  :fill-delay-ms="2000"
-  :fill-delay-step-ms="1000"
-  :show-end-badge="false"
-  :show-status-badges="false"
-  surface-mode="fullscreen"
-/>
-```
+### Item contract
 
-- `fill-delay-ms`: base delay before the first chained fill request
-- `fill-delay-step-ms`: extra delay added for each additional chained fill request in the same fill cycle
-- defaults: `2000` and `1000`
-- `show-end-badge`: controls the fullscreen `End reached` badge when the feed is exhausted
-- `show-status-badges`: controls the built-in lifecycle status overlays in list and fullscreen
-- `surface-mode`: optionally lets the parent drive the desktop fullscreen/list surface explicitly
-
-Optional feed strategy:
-
-```vue
-<VibeLayout
-  :resolve="resolve"
-  mode="dynamic"
-/>
-```
-
-- `dynamic` is the default
-- `static` reloads the current boundary cursor before advancing when the currently visible boundary page is underfilled
-
-Optional seeded hydration:
-
-```vue
-<VibeLayout
-  :resolve="resolve"
-  :initial-state="{
-    cursor: 'page-10',
-    items: restoredItems,
-    nextCursor: 'page-11',
-    previousCursor: 'page-9',
-    activeIndex: 4,
-  }"
-/>
-```
-
-- use `initialState` when the app already knows a restored slice of the feed
-- `resolve` is optional if you only need a seeded snapshot
-- when `resolve` is present, Vibe continues paging from the seeded cursors
-
-## What Vibe does
-
-- Desktop masonry list with virtualization and staged page growth
-- Fullscreen viewer with swipe, wheel, keyboard, and custom media controls
-- Library-owned loading and pagination, optionally seeded from `initialState`
-- Remove, restore, and undo by item `id`
-- Grid customization through slots for icons, overlays, and footer UI
-- Built-in loading and preload error states, including explicit `404` when known
-- Built-in retry UI for non-404 asset failures in grid and fullscreen
-
-## Item contract
-
-Vibe only requires a minimal item shape:
+Vibe keeps the item contract deliberately small:
 
 ```ts
 type VibeViewerItem = {
@@ -136,25 +95,31 @@ type VibeViewerItem = {
   type: 'image' | 'video' | 'audio' | 'other'
   title?: string
   url: string
-  width?: number
-  height?: number
   preview?: {
     url: string
     width?: number
     height?: number
+    mediaType?: 'image' | 'video'
   }
+  healthCheck?: {
+    url: string
+    kind?: 'playback'
+  } | null
+  width?: number
+  height?: number
   [key: string]: unknown
 }
 ```
 
 Notes:
 
-- Grid mode prefers `preview.url`, then falls back to `url`
-- Fullscreen mode uses `url`
-- Grid layout prefers `preview.width/height`, then root `width/height`, then a square fallback tile
-- `other` is intentionally broad so the consuming app can layer its own subtypes and icon logic on top
+- grid mode prefers `preview.url`, then falls back to `url`
+- fullscreen mode uses `url`
+- grid layout prefers preview dimensions, then root dimensions, then a square fallback tile
+- `other` stays intentionally broad so the consuming app can layer its own file subtypes and icon logic on top
+- `healthCheck` is optional and lets the app provide an explicit asset probe, for example when preview URLs are not enough to classify playback health reliably
 
-## Loading
+### Resolve and feed state
 
 Use `resolve` when you want Vibe to own the paging loop:
 
@@ -162,6 +127,7 @@ Use `resolve` when you want Vibe to own the paging loop:
 type VibeResolveParams = {
   cursor: string | null
   pageSize: number
+  signal?: AbortSignal
 }
 
 type VibeResolveResult = {
@@ -169,25 +135,6 @@ type VibeResolveResult = {
   nextPage: string | null
   previousPage?: string | null
 }
-```
-
-```vue
-<script setup lang="ts">
-import {
-  VibeLayout,
-  type VibeResolveParams,
-  type VibeResolveResult,
-} from '@wyxos/vibe'
-
-async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeResolveResult> {
-  const response = await fetch(`/api/feed?cursor=${cursor ?? ''}&pageSize=${pageSize}`)
-  return await response.json()
-}
-</script>
-
-<template>
-  <VibeLayout :resolve="resolve" />
-</template>
 ```
 
 Vibe owns:
@@ -198,8 +145,11 @@ Vibe owns:
 - optional previous-page loading
 - duplicate cursor protection
 - initial retry state
+- removal-aware feed navigation
 
-Vibe also supports two feed strategies:
+### Feed strategies
+
+Vibe supports two feed strategies:
 
 - `dynamic`:
   - default behavior
@@ -213,7 +163,23 @@ Vibe also supports two feed strategies:
   - if it is, Vibe reloads that same cursor in place first
   - only once that boundary page is full again will the next edge hit advance to the next or previous cursor
 
-You can also seed the viewer from a known snapshot:
+Example:
+
+```vue
+<VibeLayout
+  :resolve="resolve"
+  mode="dynamic"
+  :page-size="25"
+  :fill-delay-ms="2000"
+  :fill-delay-step-ms="1000"
+  :show-end-badge="false"
+  :show-status-badges="false"
+/>
+```
+
+### Seeded hydration
+
+Use `initialState` when the app already knows a restored slice of the feed and wants Vibe to hydrate from that snapshot immediately:
 
 ```vue
 <VibeLayout
@@ -228,58 +194,59 @@ You can also seed the viewer from a known snapshot:
 />
 ```
 
-## Slots
+Notes:
 
-`VibeLayout` exposes three customization slots:
+- `resolve` is optional if you only need a seeded snapshot
+- when `resolve` is present, Vibe continues paging from the seeded cursors
 
-### `#item-icon`
+### Surface behavior
 
-Lets the app replace the fallback icon, especially useful for `other` items.
+- desktop starts in the masonry list surface
+- clicking a grid tile opens fullscreen
+- `Escape` returns from fullscreen to the list on desktop
+- mobile and tablet always force fullscreen
+- grid uses preview assets and in-view loading
+- fullscreen uses the original asset and shows a spinner until ready
 
-Slot props:
+Common behavior props:
 
-- `item`
-- `icon`
+- `surfaceMode`: lets the parent drive the desktop list/fullscreen surface explicitly
+- `emptyStateMode`: controls whether empty states render inline, as a badge, or stay hidden
+- `paginationDetail`: lets the parent attach app-owned cursor or page context to the built-in status UI
+- `showDominantImageTone`, `loopFullscreenVideo`, `showEndBadge`, and `showStatusBadges`: tune the built-in fullscreen and status behavior without taking over the surfaces
+
+## Customization
+
+### Surface slots
+
+`VibeLayout` exposes a small set of app-owned surfaces instead of a headless render API:
+
+- `empty-state`
+- `fullscreen-aside`
+- `fullscreen-header-actions`
+- `fullscreen-overlay`
+- `fullscreen-status`
+- `grid-footer`
+- `grid-item-overlay`
+- `grid-status`
+- `item-icon`
+
+Example:
 
 ```vue
 <VibeLayout :resolve="resolve">
   <template #item-icon="{ item, icon }">
     <component :is="item.type === 'other' ? MyCustomIcon : icon" />
   </template>
-</VibeLayout>
-```
 
-### `#grid-item-overlay`
-
-Desktop grid-only overlay content for reactions, menus, badges, and similar controls.
-
-Slot props:
-
-- `item`
-- `index`
-- `active`
-- `hovered`
-- `focused`
-- `openFullscreen`
-
-```vue
-<VibeLayout :resolve="resolve">
   <template #grid-item-overlay="{ item, hovered }">
     <div v-if="hovered" class="absolute inset-x-0 bottom-0 p-3">
       <div class="pointer-events-auto bg-black/45 px-3 py-2 backdrop-blur">
-        {{ item.title }}
+        Like {{ item.title }}
       </div>
     </div>
   </template>
-</VibeLayout>
-```
 
-### `#grid-footer`
-
-Desktop grid-only footer surface for app-owned status bars or controls.
-
-```vue
-<VibeLayout :resolve="resolve">
   <template #grid-footer>
     <div class="bg-black/55 px-4 py-3 backdrop-blur">
       Custom footer UI
@@ -288,7 +255,7 @@ Desktop grid-only footer surface for app-owned status bars or controls.
 </VibeLayout>
 ```
 
-## Exposed handle
+### Exposed handle
 
 Get a component ref and use `VibeHandle`:
 
@@ -332,9 +299,11 @@ type VibeStatus = {
   itemCount: number
   loadState: 'failed' | 'loaded' | 'loading'
   mode: 'dynamic' | 'static'
+  nextBoundaryLoadProgress: number
   nextCursor: string | null
   pageLoadingLocked: boolean
   phase: 'failed' | 'filling' | 'idle' | 'initializing' | 'loading' | 'refreshing'
+  previousBoundaryLoadProgress: number
   previousCursor: string | null
   removedCount: number
   removedIds: readonly string[]
@@ -351,10 +320,11 @@ vibe.value?.undo()
 vibe.value?.unlockPageLoading()
 console.log(vibe.value?.status.itemCount)
 console.log(vibe.value?.status.pageLoadingLocked)
+console.log(vibe.value?.status.nextBoundaryLoadProgress)
 console.log(vibe.value?.status.removedIds)
 ```
 
-## Events
+### Events
 
 `VibeLayout` emits:
 
@@ -420,15 +390,6 @@ Notes:
 - if the same item fails again later, it can emit again in a later batch
 - built-in Vibe error surfaces allow retrying `generic` failures, but not `not-found`
 
-## Surface behavior
-
-- Desktop starts in the masonry grid
-- Clicking a grid tile opens fullscreen
-- `Escape` returns from fullscreen to grid on desktop
-- Mobile and tablet always force fullscreen
-- Grid uses preview assets and in-view loading
-- Fullscreen uses the original asset and shows a spinner until ready
-
 ## Local demo routes
 
 Run:
@@ -439,11 +400,11 @@ npm run dev
 
 Routes:
 
-- `/` – clean default demo
-- `/documentation` – in-app documentation
-- `/demo/dynamic-feed` – dynamic feed fill-loop demo
-- `/demo/advanced-integration` – advanced static integration demo
-- `/debug/fake-server` – fake-server inspection route
+- `/` - default feed surface
+- `/documentation` - in-app documentation
+- `/demo/dynamic-feed` - dynamic feed fill-loop demo
+- `/demo/advanced-integration` - static feed, removals, and paging-lock demo
+- `/debug/fake-server` - fake-server inspection route
 
 ## Local development
 
@@ -459,5 +420,5 @@ npm run test:e2e
 ## Notes
 
 - `lib/` is generated output
-- Source of truth is under `src/`
-- The package ships compiled CSS at `@wyxos/vibe/style.css`
+- source of truth is under `src/`
+- the package ships compiled CSS at `@wyxos/vibe/style.css`
