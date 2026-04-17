@@ -114,6 +114,35 @@ describe('VibeLayout asset error events', () => {
 
     wrapper.unmount()
   })
+
+  it('does not emit asset-errors when exiting fullscreen cancels attached assets', async () => {
+    setViewportWidth(1_280)
+    vi.useFakeTimers()
+
+    const onAssetErrors = vi.fn()
+    const wrapper = mount(Layout, {
+      props: {
+        ...createSeededVibeProps([
+          createImageItem('image-exit-1', 'Exit 1'),
+          createImageItem('image-exit-2', 'Exit 2'),
+          createImageItem('image-exit-3', 'Exit 3'),
+        ]),
+        onAssetErrors,
+      },
+    })
+
+    await flushDom()
+    await wrapper.get('[data-index="0"] button').trigger('click')
+    await flushDom()
+    await wrapper.get('[data-testid="vibe-back-to-list"]').trigger('click')
+    await flushDom()
+    await vi.advanceTimersByTimeAsync(150)
+    await flushDom()
+
+    expect(onAssetErrors).not.toHaveBeenCalled()
+
+    wrapper.unmount()
+  })
 })
 
 function createImageItem(id: string, title?: string): VibeViewerItem {

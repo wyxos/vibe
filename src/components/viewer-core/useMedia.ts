@@ -6,7 +6,6 @@ import { createMediaUiState, DEFAULT_MEDIA_UI_STATE, isImageElementReady, syncMe
 import { getVibeOccurrenceKey } from './itemIdentity'
 import { canRetryVibeAssetError, getVibeAssetErrorLabel, resolveVibeAssetErrorKind, type VibeAssetErrorKind } from './loadError'
 import { playMediaElement } from './mediaPlayback'
-
 export function useMedia(options: {
   items: Ref<VibeViewerItem[]>
   activeItem: Ref<VibeViewerItem | null>
@@ -22,7 +21,6 @@ export function useMedia(options: {
   const mediaStates = ref<Record<string, MediaUiState>>({})
   const assetRenderVersions = ref<Record<string, number>>({})
   const lastAudibleMediaVolumes = ref<Record<string, number>>({})
-
   const videoElements = new Map<string, HTMLVideoElement>()
   const audioElements = new Map<string, HTMLAudioElement>()
   const reportedLoadKeys = new Set<string>()
@@ -42,14 +40,12 @@ export function useMedia(options: {
     if (!activeMediaItemKey.value) {
       return DEFAULT_MEDIA_UI_STATE
     }
-
     return mediaStates.value[activeMediaItemKey.value] ?? DEFAULT_MEDIA_UI_STATE
   })
   const activeMediaDuration = computed(() => {
     if (!activeMediaItemKey.value) {
       return 0
     }
-
     return activeMediaState.value.duration
   })
   const activeMediaProgress = computed(() => {
@@ -67,21 +63,18 @@ export function useMedia(options: {
       await syncMediaPlayback()
     },
   )
-
   watch(
     () => options.itemCount.value,
     async () => {
       await syncMediaPlayback()
     },
   )
-
   watch(
     () => options.loopFullscreenVideo.value,
     async () => {
       await syncMediaPlayback()
     },
   )
-
   function registerVideoElement(id: string, element: unknown) {
     if (element instanceof HTMLVideoElement) {
       videoElements.set(id, element)
@@ -91,7 +84,6 @@ export function useMedia(options: {
 
     videoElements.delete(id)
   }
-
   function registerAudioElement(id: string, element: unknown) {
     if (element instanceof HTMLAudioElement) {
       audioElements.set(id, element)
@@ -101,7 +93,6 @@ export function useMedia(options: {
 
     audioElements.delete(id)
   }
-
   function registerImageElement(id: string, element: unknown) {
     if (element instanceof HTMLImageElement && isImageElementReady(element)) {
       imageReadyStates.value[id] = true
@@ -109,7 +100,6 @@ export function useMedia(options: {
       reportAssetLoad(id, element.currentSrc || element.src || resolveItemUrl(id))
     }
   }
-
   function resetMediaState() {
     pauseAndResetAllMedia()
     assetRenderVersions.value = {}
@@ -119,36 +109,41 @@ export function useMedia(options: {
     mediaStates.value = {}
     reportedLoadKeys.clear()
   }
+  function resetAssetState(id: string) {
+    delete imageReadyStates.value[id]
+    delete imageErrorKinds.value[id]
+    delete lastAudibleMediaVolumes.value[id]
+    delete mediaStates.value[id]
 
+    reportedLoadKeys.forEach((loadKey) => {
+      if (loadKey.startsWith(`${id}|`)) {
+        reportedLoadKeys.delete(loadKey)
+      }
+    })
+  }
   async function syncMediaPlayback() {
     if (!options.isEnabled.value) {
       pauseAndResetAllMedia()
       return
     }
-
     await nextTick()
-
     const activeId = activeItemKey.value
-
     for (const [id, element] of videoElements.entries()) {
       if (id !== activeId || mediaStates.value[id]?.errorKind) {
         pauseAndReset(element, id)
         continue
       }
-
       element.muted = false
       element.loop = options.loopFullscreenVideo.value
       element.playsInline = true
       playMediaElement(element)
       updateMediaState(id, element)
     }
-
     for (const [id, element] of audioElements.entries()) {
       if (id !== activeId || mediaStates.value[id]?.errorKind) {
         pauseAndReset(element, id)
         continue
       }
-
       playMediaElement(element)
       updateMediaState(id, element)
     }
@@ -490,6 +485,7 @@ export function useMedia(options: {
     registerAudioElement,
     registerImageElement,
     registerVideoElement,
+    resetAssetState,
     resetMediaState,
     retryAsset,
     syncMediaPlayback,

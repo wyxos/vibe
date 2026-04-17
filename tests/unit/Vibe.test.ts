@@ -144,7 +144,7 @@ describe('VibeLayout', () => {
     wrapper.unmount()
   })
 
-  it('preloads the next two fullscreen image slides and drops stale sources after a jump', async () => {
+  it('queues fullscreen neighbor image preloads and drops stale sources after a jump', async () => {
     setViewportWidth(390)
 
     const wrapper = mount(Layout, {
@@ -164,6 +164,11 @@ describe('VibeLayout', () => {
 
     expect(wrapper.get('[data-index="0"] img').attributes('src')).toBe('https://example.com/image-preload-1.jpg')
     expect(wrapper.get('[data-index="1"] img').attributes('src')).toBe('https://example.com/image-preload-2.jpg')
+    expect(wrapper.get('[data-index="2"] img').attributes('src')).toBeUndefined()
+
+    await wrapper.get('[data-index="1"] img').trigger('load')
+    await flushDom()
+
     expect(wrapper.get('[data-index="2"] img').attributes('src')).toBe('https://example.com/image-preload-3.jpg')
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
@@ -177,6 +182,11 @@ describe('VibeLayout', () => {
     expect(wrapper.get('[data-index="2"] img').attributes('src')).toBe('https://example.com/image-preload-3.jpg')
     expect(wrapper.get('[data-index="3"] img').attributes('src')).toBe('https://example.com/image-preload-4.jpg')
     expect(wrapper.get('[data-index="4"] img').attributes('src')).toBe('https://example.com/image-preload-5.jpg')
+    expect(wrapper.get('[data-index="5"] img').attributes('src')).toBeUndefined()
+
+    await wrapper.get('[data-index="4"] img').trigger('load')
+    await flushDom()
+
     expect(wrapper.get('[data-index="5"] img').attributes('src')).toBe('https://example.com/image-preload-6.jpg')
 
     wrapper.unmount()
@@ -196,6 +206,8 @@ describe('VibeLayout', () => {
     })
 
     await flushDom()
+    await wrapper.get('[data-index="1"] img').trigger('load')
+    await flushDom()
     await wrapper.get('[data-index="2"] img').trigger('load')
     await flushDom()
 
@@ -207,6 +219,35 @@ describe('VibeLayout', () => {
     expect(wrapper.get('[data-testid="vibe-pagination"]').text()).toContain('3 / 3')
     expect(wrapper.find('[data-testid="vibe-asset-spinner"]').exists()).toBe(false)
     expect(wrapper.get('[data-index="2"] img').classes()).toContain('opacity-100')
+
+    wrapper.unmount()
+  })
+
+  it('clears fullscreen image sources when exiting back to the list', async () => {
+    setViewportWidth(1_280)
+
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps([
+        createImageItem('image-exit-1', 'Image 1'),
+        createImageItem('image-exit-2', 'Image 2'),
+        createImageItem('image-exit-3', 'Image 3'),
+      ]),
+    })
+
+    await flushDom()
+    await wrapper.get('[data-index="0"] button').trigger('click')
+    await flushDom()
+
+    const fullscreenSurface = wrapper.get('[data-testid="vibe-fullscreen-surface"]')
+
+    expect(fullscreenSurface.get('[data-index="0"] img').attributes('src')).toBe('https://example.com/image-exit-1.jpg')
+    expect(fullscreenSurface.get('[data-index="1"] img').attributes('src')).toBe('https://example.com/image-exit-2.jpg')
+
+    await wrapper.get('[data-testid="vibe-back-to-list"]').trigger('click')
+    await flushDom()
+
+    expect(fullscreenSurface.get('[data-index="0"] img').attributes('src')).toBeUndefined()
+    expect(fullscreenSurface.get('[data-index="1"] img').attributes('src')).toBeUndefined()
 
     wrapper.unmount()
   })

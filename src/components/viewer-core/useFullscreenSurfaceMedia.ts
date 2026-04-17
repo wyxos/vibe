@@ -3,12 +3,11 @@ import type { Ref } from 'vue'
 import type { VibeViewerItem } from '../viewer'
 import { getVibeOccurrenceKey } from './itemIdentity'
 import { getItemLabel } from './media'
-
-const FULLSCREEN_PRELOAD_BEHIND_COUNT = 1
-const FULLSCREEN_PRELOAD_AHEAD_COUNT = 2
+import { useFullscreenPreloadController } from './useFullscreenPreloadController'
 
 export function useFullscreenSurfaceMedia(options: {
   active: Ref<boolean | undefined>
+  items: Ref<VibeViewerItem[]>
   resolvedActiveIndex: Ref<number>
   viewer: {
     getAssetErrorKind: (id: string) => unknown
@@ -16,8 +15,17 @@ export function useFullscreenSurfaceMedia(options: {
     getImageSource: (item: VibeViewerItem) => string | undefined
     isImageReady: (id: string) => boolean
     isMediaReady: (id: string) => boolean
+    resetAssetState: (id: string) => void
   }
 }) {
+  const preloadController = useFullscreenPreloadController({
+    active: options.active,
+    getItemKey,
+    items: options.items,
+    onResetAssetState: options.viewer.resetAssetState,
+    resolvedActiveIndex: options.resolvedActiveIndex,
+  })
+
   function getMediaActionLabel(action: 'Play' | 'Pause', item: VibeViewerItem) {
     const label = item.title?.trim()
     if (label) {
@@ -32,10 +40,7 @@ export function useFullscreenSurfaceMedia(options: {
   }
 
   function shouldPreloadSlideAsset(index: number) {
-    const activeIndex = options.resolvedActiveIndex.value
-    return Boolean(options.active.value)
-      && index >= activeIndex - FULLSCREEN_PRELOAD_BEHIND_COUNT
-      && index <= activeIndex + FULLSCREEN_PRELOAD_AHEAD_COUNT
+    return preloadController.shouldAttachSlideAsset(index)
   }
 
   function isAssetLoading(index: number, item: VibeViewerItem) {
@@ -72,6 +77,10 @@ export function useFullscreenSurfaceMedia(options: {
     return shouldPreloadSlideAsset(index) ? options.viewer.getImageSource(item) : undefined
   }
 
+  function getFullscreenMediaPreload(index: number) {
+    return shouldPreloadSlideAsset(index) ? 'metadata' : 'none'
+  }
+
   function getFullscreenMediaSource(index: number, item: VibeViewerItem) {
     return shouldPreloadSlideAsset(index) ? item.url : undefined
   }
@@ -80,11 +89,15 @@ export function useFullscreenSurfaceMedia(options: {
     getAssetErrorKind,
     getAssetErrorLabel,
     getFullscreenImageSource,
+    getFullscreenMediaPreload,
     getFullscreenMediaSource,
     getItemKey,
     getMediaActionLabel,
     isAssetErrored,
     isAssetLoading,
+    registerImageElement: preloadController.registerImageElement,
+    registerMediaElement: preloadController.registerMediaElement,
+    settleBackgroundPreload: preloadController.settleBackgroundPreload,
     shouldPreloadSlideAsset,
   }
 }

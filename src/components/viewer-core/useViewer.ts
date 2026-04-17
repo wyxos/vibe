@@ -328,6 +328,7 @@ export function useViewer(
     renderedItems,
     renderedRange,
     resolvedActiveIndex,
+    resetAssetState: media.resetAssetState,
     retryInitialLoad: async () => {},
     retryAsset: media.retryAsset,
     stageRef,
