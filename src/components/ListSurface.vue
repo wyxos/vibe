@@ -264,7 +264,7 @@ watch(
       v-if="slots['grid-footer']"
       class="pointer-events-none absolute inset-x-0 bottom-0 z-[2] px-5 pb-5 sm:px-6"
     >
-      <div class="mx-auto flex w-full max-w-[1600px] justify-center">
+      <div class="mx-auto flex w-full justify-center">
         <slot name="grid-footer" />
       </div>
     </div>
