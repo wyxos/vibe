@@ -5,12 +5,12 @@ import type { VibeResolveParams, VibeResolveResult } from '@/components/viewer-c
 import { mountUseDataSource } from '../helpers/mountUseDataSource'
 import { createDeferred, createPageResult } from '../helpers/useDataSourceTestUtils'
 
-describe('useDataSource dynamic mode', () => {
+describe('useDataSource fill behavior', () => {
   afterEach(() => {
     vi.useRealTimers()
   })
 
-  it('dynamically fills the initial batch until it reaches the page size', async () => {
+  it('fills the initial batch until it reaches the page size', async () => {
     vi.useFakeTimers()
 
     const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
@@ -74,7 +74,6 @@ describe('useDataSource dynamic mode', () => {
       pageSize: 25,
       signal: expect.any(AbortSignal),
     }))
-    expect(source.api.mode.value).toBe('dynamic')
     expect(source.api.items.value).toHaveLength(48)
     expect(source.api.nextCursor.value).toBe('page-4')
     expect(source.api.currentCursor.value).toBeNull()
@@ -86,7 +85,7 @@ describe('useDataSource dynamic mode', () => {
     source.unmount()
   })
 
-  it('fills appended batches in dynamic mode before exposing them for commit', async () => {
+  it('fills appended batches before exposing them for commit', async () => {
     vi.useFakeTimers()
 
     const deferred = createDeferred<VibeResolveResult>()
@@ -110,7 +109,6 @@ describe('useDataSource dynamic mode', () => {
 
     const source = await mountUseDataSource({
       resolve,
-      mode: 'dynamic',
     })
 
     await source.flush()
@@ -152,7 +150,7 @@ describe('useDataSource dynamic mode', () => {
     source.unmount()
   })
 
-  it('uses custom dynamic fill delay props when chaining additional resolve calls', async () => {
+  it('uses custom fill delay props when chaining additional resolve calls', async () => {
     vi.useFakeTimers()
 
     const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
@@ -206,7 +204,7 @@ describe('useDataSource dynamic mode', () => {
     source.unmount()
   })
 
-  it('stops chained dynamic fill requests while page loading is locked', async () => {
+  it('stops chained fill requests while page loading is locked', async () => {
     vi.useFakeTimers()
 
     const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {

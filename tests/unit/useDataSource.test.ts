@@ -146,6 +146,94 @@ describe('useDataSource', () => {
     source.unmount()
   })
 
+  it('fills backward across multiple previous cursors and can continue prepending earlier pages', async () => {
+    const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
+      if (cursor === 'page-9') {
+        return createPageResult('page-9', {
+          itemCount: 10,
+          nextPage: 'page-10',
+          previousPage: 'page-8',
+        })
+      }
+
+      if (cursor === 'page-8') {
+        return createPageResult('page-8', {
+          itemCount: 7,
+          nextPage: 'page-9',
+          previousPage: 'page-7',
+        })
+      }
+
+      if (cursor === 'page-7') {
+        return createPageResult('page-7', {
+          itemCount: 25,
+          nextPage: 'page-8',
+          previousPage: 'page-6',
+        })
+      }
+
+      if (cursor === 'page-6') {
+        return createPageResult('page-6', {
+          nextPage: 'page-7',
+          previousPage: 'page-5',
+        })
+      }
+
+      return createPageResult('page-10', {
+        nextPage: 'page-11',
+        previousPage: 'page-9',
+      })
+    })
+
+    const source = await mountUseDataSource({
+      fillDelayMs: 0,
+      fillDelayStepMs: 0,
+      initialCursor: 'page-10',
+      resolve,
+    })
+
+    await source.flush()
+
+    await source.api.prefetchPreviousPage()
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(4)
+    expect(resolve.mock.calls.slice(1).map(([params]) => params.cursor)).toEqual([
+      'page-9',
+      'page-8',
+      'page-7',
+    ])
+    expect(source.api.items.value).toHaveLength(67)
+    expect(source.api.activeIndex.value).toBe(42)
+    expect(source.api.previousCursor.value).toBe('page-6')
+    expect(getVisibleIds(source.api.items.value).slice(0, 4)).toEqual([
+      'page-7-item-1',
+      'page-7-item-2',
+      'page-7-item-3',
+      'page-7-item-4',
+    ])
+
+    await source.api.prefetchPreviousPage()
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(5)
+    expect(resolve).toHaveBeenLastCalledWith(expect.objectContaining({
+      cursor: 'page-6',
+      pageSize: 25,
+      signal: expect.any(AbortSignal),
+    }))
+    expect(source.api.items.value).toHaveLength(92)
+    expect(source.api.activeIndex.value).toBe(67)
+    expect(source.api.previousCursor.value).toBe('page-5')
+    expect(getVisibleIds(source.api.items.value).slice(0, 3)).toEqual([
+      'page-6-item-1',
+      'page-6-item-2',
+      'page-6-item-3',
+    ])
+
+    source.unmount()
+  })
+
   it('blocks manual next and previous page loading while page loading is locked', async () => {
     const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
       if (cursor === 'page-9') {
@@ -231,7 +319,7 @@ describe('useDataSource', () => {
     source.unmount()
   })
 
-  it('reloads the current trailing cursor in static mode before advancing to the next cursor', async () => {
+  it('reloads the current trailing cursor before advancing to the next cursor', async () => {
     let rootPageLoads = 0
     const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
       if (cursor === 'page-2') {
@@ -250,7 +338,6 @@ describe('useDataSource', () => {
 
     const source = await mountUseDataSource({
       resolve,
-      mode: 'static',
     })
 
     await source.flush()
@@ -295,7 +382,73 @@ describe('useDataSource', () => {
     source.unmount()
   })
 
-  it('reloads the current leading cursor in static mode before prepending a previous cursor', async () => {
+  it('reconciles only the trailing boundary page when refreshing an underfilled page', async () => {
+    let pageThreeLoads = 0
+    const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
+      if (cursor === 'page-2') {
+        return createPageResult('page-2', {
+          nextPage: 'page-3',
+          previousPage: 'page-1',
+        })
+      }
+
+      if (cursor === 'page-3') {
+        pageThreeLoads += 1
+
+        return createPageResult(pageThreeLoads === 1 ? 'page-3' : 'page-3-refilled', {
+          nextPage: 'page-4',
+          previousPage: 'page-2',
+        })
+      }
+
+      return createPageResult('page-1', {
+        nextPage: 'page-2',
+      })
+    })
+
+    const source = await mountUseDataSource({
+      resolve,
+    })
+
+    await source.flush()
+    await source.api.prefetchNextPage()
+    await source.flush()
+    await source.api.commitPendingAppend()
+    await source.flush()
+    await source.api.prefetchNextPage()
+    await source.flush()
+    await source.api.commitPendingAppend()
+    await source.flush()
+
+    const idsBeforeRemoval = getVisibleIds(source.api.items.value)
+    expect(idsBeforeRemoval).toHaveLength(75)
+
+    const removedTrailingIds = idsBeforeRemoval.slice(50, 55)
+    expect(source.api.remove(removedTrailingIds).ids).toEqual(removedTrailingIds)
+    await source.flush()
+
+    await source.api.prefetchNextPage()
+    await source.flush()
+
+    const idsAfterRefresh = getVisibleIds(source.api.items.value)
+
+    expect(resolve).toHaveBeenLastCalledWith(expect.objectContaining({
+      cursor: 'page-3',
+      pageSize: 25,
+      signal: expect.any(AbortSignal),
+    }))
+    expect(idsAfterRefresh.slice(0, 50)).toEqual(idsBeforeRemoval.slice(0, 50))
+    expect(idsAfterRefresh.slice(50, 53)).toEqual([
+      'page-3-refilled-item-1',
+      'page-3-refilled-item-2',
+      'page-3-refilled-item-3',
+    ])
+    expect(idsAfterRefresh).toHaveLength(75)
+
+    source.unmount()
+  })
+
+  it('reloads the current leading cursor before prepending a previous cursor', async () => {
     let pageTwoLoads = 0
     const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
       if (cursor === 'page-1') {
@@ -314,7 +467,6 @@ describe('useDataSource', () => {
 
     const source = await mountUseDataSource({
       initialCursor: 'page-2',
-      mode: 'static',
       resolve,
     })
 
@@ -356,7 +508,7 @@ describe('useDataSource', () => {
     source.unmount()
   })
 
-  it('resumes previous-page loading from the refilled leading edge after a static feed is emptied by removal', async () => {
+  it('resumes previous-page loading from the refilled leading edge after a feed is emptied by removal', async () => {
     let pageTenLoads = 0
     let pageElevenLoads = 0
     const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
@@ -386,7 +538,6 @@ describe('useDataSource', () => {
 
     const source = await mountUseDataSource({
       initialCursor: 'page-10',
-      mode: 'static',
       resolve,
     })
 

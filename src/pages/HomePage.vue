@@ -19,7 +19,6 @@ function renderItemIcon(item: VibeViewerItem, icon: unknown) {
   <section class="relative h-full min-h-0 bg-[#05060a]">
     <Layout
       initial-cursor="1"
-      mode="dynamic"
       :resolve="resolve"
     >
       <template #item-icon="{ item, icon }">

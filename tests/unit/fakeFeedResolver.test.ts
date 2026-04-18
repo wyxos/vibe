@@ -3,10 +3,9 @@ import { describe, expect, it } from 'vitest'
 import { createTrackedFakeFeedResolver } from '@/demo/fakeFeedResolver'
 
 describe('fakeFeedResolver', () => {
-  it('returns underfilled dynamic pages that require Vibe to fill across cursors', async () => {
+  it('returns underfilled pages that require Vibe to fill across cursors', async () => {
     const resolver = createTrackedFakeFeedResolver({
       initialCursor: 1,
-      mode: 'dynamic',
     })
 
     const pageOne = await resolver.resolve({
@@ -36,14 +35,13 @@ describe('fakeFeedResolver', () => {
     expect(resolver.status.lastLoadedCursor).toBe('4')
   })
 
-  it('reloads a static page from the same cursor after demo-side removals and restores order on undo', async () => {
+  it('reloads the same page after demo-side removals and restores order on undo', async () => {
     const resolver = createTrackedFakeFeedResolver({
-      initialCursor: 10,
-      mode: 'static',
+      initialCursor: 9,
     })
 
     const beforeRemoval = await resolver.resolve({
-      cursor: '10',
+      cursor: '9',
       pageSize: 25,
     })
     const removedId = beforeRemoval.items[0]?.id
@@ -57,7 +55,7 @@ describe('fakeFeedResolver', () => {
     resolver.remove([removedId!])
 
     const afterRemoval = await resolver.resolve({
-      cursor: '10',
+      cursor: '9',
       pageSize: 25,
     })
 
@@ -70,7 +68,7 @@ describe('fakeFeedResolver', () => {
     expect(undoResult?.ids).toEqual([removedId])
 
     const afterUndo = await resolver.resolve({
-      cursor: '10',
+      cursor: '9',
       pageSize: 25,
     })
 

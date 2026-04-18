@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { Heart, Laugh, LockKeyhole, LockKeyholeOpen, ThumbsDown, ThumbsUp } from 'lucide-vue-next'
 
 import Layout from '@/components/Layout.vue'
@@ -10,7 +11,7 @@ import { createTrackedFakeFeedResolver } from '@/demo/fakeFeedResolver'
 import { createDemoFeedStatusEntries, type DemoFeedStatus } from '@/demo/feedStatus'
 import { getFakeMediaItemIcon } from '@/demo/fakeMediaItemIcon'
 
-const INITIAL_PAGE = 10
+const INITIAL_PAGE = 9
 const PAGE_SIZE = 25
 const REACTION_ACTIONS = [
   { icon: Heart, label: 'Favorite' },
@@ -18,45 +19,73 @@ const REACTION_ACTIONS = [
   { icon: Laugh, label: 'Funny' },
   { icon: ThumbsDown, label: 'Dislike' },
 ] as const
+
+const route = useRoute()
 const vibeRef = ref<VibeHandle | null>(null)
 const loadedItemIds = ref<Set<string>>(new Set())
-const feed = createTrackedFakeFeedResolver({
-  initialCursor: INITIAL_PAGE,
-  mode: 'static',
-})
-async function resolve(params: VibeResolveParams): Promise<VibeResolveResult> {
-  const response = await feed.resolve(params)
-  const nextLoadedItemIds = new Set(loadedItemIds.value)
 
-  for (const item of response.items) {
-    nextLoadedItemIds.add(item.id)
+const failureConfig = computed(() => {
+  const failCount = Number.parseInt(String(route.query.failCount ?? '1'), 10)
+  const failPage = Number.parseInt(String(route.query.failPage ?? ''), 10)
+
+  return {
+    failCount: Number.isFinite(failCount) && failCount > 0 ? failCount : 0,
+    failPage: Number.isFinite(failPage) && failPage > 0 ? failPage : null,
   }
+})
 
-  loadedItemIds.value = nextLoadedItemIds
-  return response
-}
+const feed = computed(() => createTrackedFakeFeedResolver({
+  failCount: failureConfig.value.failCount,
+  failPage: failureConfig.value.failPage,
+  initialCursor: INITIAL_PAGE,
+}))
+
+watch(feed, () => {
+  loadedItemIds.value = new Set()
+}, { immediate: true })
+
+const resolve = computed(() => {
+  const currentFeed = feed.value
+
+  return async function trackedResolve(params: VibeResolveParams): Promise<VibeResolveResult> {
+    const response = await currentFeed.resolve(params)
+    const nextLoadedItemIds = new Set(loadedItemIds.value)
+
+    for (const item of response.items) {
+      nextLoadedItemIds.add(item.id)
+    }
+
+    loadedItemIds.value = nextLoadedItemIds
+    return response
+  }
+})
+
 const demoFeedStatus = computed<DemoFeedStatus>(() => ({
-  ...feed.status,
+  ...feed.value.status,
   ...vibeRef.value?.status,
 } as DemoFeedStatus))
+
 const demoStatusEntries = computed(() => createDemoFeedStatusEntries(demoFeedStatus.value, {
   baseCursor: INITIAL_PAGE,
   labels: {
     current: 'Viewing',
+    delay: 'Delay',
     fill: 'Fill',
     next: 'Next',
     previous: 'Previous',
     status: 'Status',
     total: 'Total',
   },
-  mode: 'static',
   pageSize: PAGE_SIZE,
-  testIdPrefix: 'advanced-static-status',
+  showDelay: true,
+  testIdPrefix: 'feed-behavior-status',
 }))
+
 const removableLoadedItemIds = computed(() => {
   const removedIds = new Set(vibeRef.value?.status.removedIds ?? [])
   return Array.from(loadedItemIds.value).filter((id) => !removedIds.has(id))
 })
+
 const canRemoveAllItems = computed(() => removableLoadedItemIds.value.length > 0)
 const canRemoveRandomItems = computed(() => removableLoadedItemIds.value.length > 0)
 const isPageLoadingLocked = computed(() => Boolean(vibeRef.value?.status.pageLoadingLocked))
@@ -70,21 +99,21 @@ function renderItemIcon(item: VibeViewerItem, icon: unknown) {
 function removeItemById(id: string) {
   const result = vibeRef.value?.remove(id)
   if (result?.ids.length) {
-    feed.remove(result.ids)
+    feed.value.remove(result.ids)
   }
 }
 
 function undoRemoval() {
   const result = vibeRef.value?.undo()
   if (result?.ids.length) {
-    feed.undo()
+    feed.value.undo()
   }
 }
 
 function removeAllItems() {
   const result = vibeRef.value?.remove(removableLoadedItemIds.value)
   if (result?.ids.length) {
-    feed.remove(result.ids)
+    feed.value.remove(result.ids)
   }
 }
 
@@ -98,7 +127,7 @@ function removeRandomItems() {
 
   const result = vibeRef.value?.remove(nextIds)
   if (result?.ids.length) {
-    feed.remove(result.ids)
+    feed.value.remove(result.ids)
   }
 }
 
@@ -157,7 +186,6 @@ onBeforeUnmount(() => {
       ref="vibeRef"
       empty-state-mode="hidden"
       :initial-cursor="String(INITIAL_PAGE)"
-      mode="static"
       :resolve="resolve"
       :show-end-badge="false"
       :show-status-badges="false"
@@ -190,8 +218,8 @@ onBeforeUnmount(() => {
       </template>
       <template #grid-footer>
         <div
-          data-testid="advanced-static-status-bar"
-          class="pointer-events-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-x-5 gap-y-2 border border-white/12 bg-black/55 px-4 py-3 backdrop-blur-[18px] sm:px-5"
+          data-testid="feed-behavior-status-bar"
+          class="pointer-events-auto flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border border-white/12 bg-black/55 px-4 py-3 backdrop-blur-[18px] sm:px-5"
         >
           <div
             v-for="entry in demoStatusEntries"
@@ -209,7 +237,7 @@ onBeforeUnmount(() => {
           <div class="grid min-w-[7.5rem] gap-1">
             <span class="text-[0.58rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/46">Prev load</span>
             <div
-              data-testid="advanced-static-previous-boundary-progress"
+              data-testid="feed-behavior-previous-boundary-progress"
               role="progressbar"
               aria-label="Previous page load proximity"
               aria-valuemin="0"
@@ -227,7 +255,7 @@ onBeforeUnmount(() => {
           <div class="grid min-w-[7.5rem] gap-1">
             <span class="text-[0.58rem] font-bold uppercase tracking-[0.22em] text-[#f7f1ea]/46">Next load</span>
             <div
-              data-testid="advanced-static-next-boundary-progress"
+              data-testid="feed-behavior-next-boundary-progress"
               role="progressbar"
               aria-label="Next page load proximity"
               aria-valuemin="0"
@@ -244,7 +272,7 @@ onBeforeUnmount(() => {
           </div>
           <button
             type="button"
-            data-testid="advanced-static-page-loading-lock-button"
+            data-testid="feed-behavior-page-loading-lock-button"
             class="pointer-events-auto inline-flex h-10 items-center justify-center gap-2 border px-4 text-[0.68rem] font-semibold uppercase tracking-[0.2em] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f7f1ea]"
             :class="isPageLoadingLocked
               ? 'border-sky-300/45 bg-sky-500/14 text-sky-50 hover:border-sky-200/60 hover:bg-sky-500/22'
@@ -260,7 +288,7 @@ onBeforeUnmount(() => {
           </button>
           <button
             type="button"
-            data-testid="advanced-static-remove-random-button"
+            data-testid="feed-behavior-remove-random-button"
             class="pointer-events-auto inline-flex h-10 items-center justify-center border border-amber-400/40 bg-amber-500/12 px-4 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-amber-50 transition enabled:hover:border-amber-300/55 enabled:hover:bg-amber-500/20 disabled:cursor-default disabled:border-white/10 disabled:bg-white/[0.03] disabled:text-[#f7f1ea]/34"
             :disabled="!canRemoveRandomItems"
             @click="removeRandomItems"
@@ -269,7 +297,7 @@ onBeforeUnmount(() => {
           </button>
           <button
             type="button"
-            data-testid="advanced-static-remove-all-button"
+            data-testid="feed-behavior-remove-all-button"
             class="pointer-events-auto inline-flex h-10 items-center justify-center border border-rose-400/40 bg-rose-500/12 px-4 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-rose-50 transition enabled:hover:border-rose-300/55 enabled:hover:bg-rose-500/20 disabled:cursor-default disabled:border-white/10 disabled:bg-white/[0.03] disabled:text-[#f7f1ea]/34"
             :disabled="!canRemoveAllItems"
             @click="removeAllItems"

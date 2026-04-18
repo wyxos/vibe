@@ -1,9 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import BidirectionalPagingDemoPage from '@/pages/BidirectionalPagingDemoPage.vue'
 import DocumentationPage from '@/pages/DocumentationPage.vue'
+import FeedBehaviorDemoPage from '@/pages/FeedBehaviorDemoPage.vue'
 import FakeServerDebugPage from '@/pages/FakeServerDebugPage.vue'
-import DynamicFeedDemoPage from '@/pages/DynamicFeedDemoPage.vue'
 import HomePage from '@/pages/HomePage.vue'
 import WorkspaceLayout from '@/pages/WorkspaceLayout.vue'
 
@@ -23,19 +22,14 @@ export const router = createRouter({
           component: HomePage,
         },
         {
-          path: 'demo/dynamic-feed',
-          name: 'demo-dynamic-feed',
-          component: DynamicFeedDemoPage,
+          path: 'demo/feed-behavior',
+          name: 'demo-feed-behavior',
+          component: FeedBehaviorDemoPage,
         },
         {
           path: 'documentation',
           name: 'documentation',
           component: DocumentationPage,
-        },
-        {
-          path: 'demo/advanced-integration',
-          name: 'demo-advanced-static',
-          component: BidirectionalPagingDemoPage,
         },
         {
           path: 'debug/fake-server',

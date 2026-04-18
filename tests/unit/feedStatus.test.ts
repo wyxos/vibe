@@ -11,7 +11,6 @@ describe('createDemoFeedStatusEntries', () => {
       hasPreviousPage: true,
       itemCount: 25,
       loadState: 'loaded',
-      mode: 'dynamic',
       nextCursor: null,
       phase: 'idle',
       previousCursor: '3',
@@ -26,12 +25,12 @@ describe('createDemoFeedStatusEntries', () => {
         status: 'Status',
         total: 'Total',
       },
-      mode: 'dynamic',
       pageSize: 25,
-      testIdPrefix: 'dynamic-demo-status',
+      showDelay: true,
+      testIdPrefix: 'feed-behavior-status',
     })
 
-    expect(entries.find((entry) => entry.key === 'status')?.value).toBe('dynamic · end of list')
+    expect(entries.find((entry) => entry.key === 'status')?.value).toBe('end of list')
     expect(entries.find((entry) => entry.key === 'next')?.value).toBe('N/A')
   })
 })

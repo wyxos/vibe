@@ -7,7 +7,7 @@ import { useVibeRemovalState } from './removalState'
 import { useAutoResolveSource } from './useAutoResolveSource'
 
 export type { VibeHandle, VibeRemoveResult } from './removalState'
-export type { VibeFeedMode, VibeLoadPhase, VibeSurfaceMode } from './removalState'
+export type { VibeLoadPhase, VibeSurfaceMode } from './removalState'
 
 export interface VibeResolveParams {
   cursor: string | null
@@ -36,7 +36,6 @@ export interface VibeProps {
   initialCursor?: string | null
   initialState?: VibeInitialState
   loopFullscreenVideo?: boolean
-  mode?: import('./removalState').VibeFeedMode
   pageSize?: number
   paginationDetail?: string | null
   resolve?: (params: VibeResolveParams) => Promise<VibeResolveResult>
@@ -67,7 +66,6 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     fillDelayStepMs: props.fillDelayStepMs,
     initialCursor: props.initialCursor,
     initialState: props.initialState,
-    mode: props.mode,
     pageSize: props.pageSize,
     removedIds,
     resolve: props.resolve,
@@ -197,7 +195,6 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     loading,
     loadNext,
     loadPrevious,
-    mode: autoSource.mode,
     nextCursor: autoSource.nextCursor,
     paginationDetail,
     pendingAppendItems: autoSource.pendingAppendItems,

@@ -107,20 +107,19 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
         notes: [
           'Resolve must return items and nextPage.',
           'previousPage is optional and enables previous-page loading.',
-          'Auto mode defaults to dynamic feed behavior.',
+          'Underfilled resolve results automatically continue filling until Vibe has a full visible batch or runs out of cursor.',
         ],
       },
       {
-        id: 'feed-strategies',
-        label: 'Feed Strategies',
-        title: 'Dynamic And Static Feed Strategies',
+        id: 'default-paging-behavior',
+        label: 'Paging Behavior',
+        title: 'Default Fill And Boundary Refresh',
         description: [
-          'Dynamic mode keeps resolving forward or backward until it has enough items to satisfy the current page size, then commits that batch once.',
-          'Static mode reloads the current edge cursor in place before advancing when local removals have underfilled the current boundary page.',
+          'Vibe always keeps resolving forward or backward until it has enough visible items to satisfy the current page size, then commits that batch once.',
+          'When local removals underfill the current boundary page, Vibe refreshes that same cursor in place before advancing to the next or previous cursor.',
         ],
         code: `<VibeLayout
   :resolve="resolve"
-  mode="dynamic"
   :page-size="25"
   :fill-delay-ms="2000"
   :fill-delay-step-ms="1000"
@@ -129,11 +128,12 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
 />`,
         language: 'vue',
         notes: [
-          'dynamic is the default mode.',
           'fill-delay-ms controls the base delay before the first chained fill request.',
           'fill-delay-step-ms adds extra delay for each additional chained request in the same fill cycle.',
           'Defaults are 2000ms and 1000ms.',
-          'A trailing-edge retry after exhaustion reloads the current boundary cursor so newly available pages can appear.',
+          'Boundary refresh reconciles only the active edge page; earlier loaded pages stay untouched.',
+          'If that boundary refresh comes back empty, the same boundary attempt can continue to the next or previous cursor.',
+          'A trailing-edge retry after exhaustion still reloads the current boundary cursor so newly available pages can appear.',
           'show-end-badge controls the fullscreen End reached badge.',
           'show-status-badges controls the built-in lifecycle status overlays.',
           'Status exposes phase, raw cursors, fill counts, and the live delay countdown.',
@@ -254,7 +254,6 @@ app.use(VibePlugin)
   resolve?: (params: VibeResolveParams) => Promise<VibeResolveResult>
   initialState?: VibeInitialState
   initialCursor?: string | null
-  mode?: 'dynamic' | 'static'
   pageSize?: number
   fillDelayMs?: number
   fillDelayStepMs?: number
@@ -409,7 +408,7 @@ console.log(vibe.value?.status.pageLoadingLocked)`,
         language: 'ts',
         notes: [
           'Handle methods: lockPageLoading, unlockPageLoading, loadNext, loadPrevious, retry, cancel, remove, restore, undo, getRemovedIds, and clearRemoved.',
-          'Status exposes activeIndex, currentCursor, nextCursor, previousCursor, pageLoadingLocked, mode, phase, fill counts, loadState, itemCount, removedCount, and surfaceMode.',
+          'Status exposes activeIndex, currentCursor, nextCursor, previousCursor, pageLoadingLocked, phase, fill counts, loadState, itemCount, removedCount, and surfaceMode.',
           'Phase differentiates the first load from later requests and end-of-list refreshes.',
         ],
       },

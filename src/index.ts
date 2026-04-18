@@ -13,7 +13,6 @@ export type {
   VibeEmptyStateSlotProps,
   VibeResolveParams,
   VibeResolveResult,
-  VibeFeedMode,
   VibeHandle,
   VibeInitialState,
   VibeLoadPhase,

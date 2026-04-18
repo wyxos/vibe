@@ -25,7 +25,6 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     hasPreviousPage: false,
     itemCount: 0,
     loadState: 'loaded',
-    mode: 'dynamic',
     nextBoundaryLoadProgress: 0,
     nextCursor: null,
     pageLoadingLocked: false,
@@ -112,7 +111,6 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     status.loadState = dataSource.loading.value
       ? 'loading'
       : (dataSource.errorMessage.value ? 'failed' : 'loaded')
-    status.mode = dataSource.mode.value
     status.nextBoundaryLoadProgress = listBoundaryLoadProgress.nextBoundaryLoadProgress
     status.nextCursor = dataSource.nextCursor.value
     status.pageLoadingLocked = dataSource.isPageLoadingLocked.value

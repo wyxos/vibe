@@ -97,8 +97,8 @@ describe('VibeLayout fullscreen aside layout', () => {
     void (wrapper.vm as unknown as VibeHandle).loadNext()
     await flushDom()
 
-    expect(wrapper.get('[data-testid="custom-fullscreen-status"]').attributes('data-kind')).toBe('loading-more')
-    expect(wrapper.get('[data-testid="custom-fullscreen-status"]').text()).toBe('Loading more items')
+    expect(wrapper.get('[data-testid="custom-fullscreen-status"]').attributes('data-kind')).toBe('refreshing')
+    expect(wrapper.get('[data-testid="custom-fullscreen-status"]').text()).toBe('Refreshing visible items')
 
     deferred.resolve({ items: [], nextPage: null })
     await flushDom()

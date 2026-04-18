@@ -11,7 +11,6 @@ export function createSeededVibeProps(
     fillDelayStepMs?: number
     initialCursor?: string | null
     loopFullscreenVideo?: VibeProps['loopFullscreenVideo']
-    mode?: 'dynamic' | 'static'
     nextCursor?: string | null
     pageSize?: number
     paginationDetail?: string | null
@@ -34,7 +33,6 @@ export function createSeededVibeProps(
       previousCursor: options.previousCursor,
     },
     loopFullscreenVideo: options.loopFullscreenVideo,
-    mode: options.mode,
     pageSize: options.pageSize,
     paginationDetail: options.paginationDetail,
     resolve: options.resolve,

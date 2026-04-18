@@ -1,5 +1,3 @@
-export type DemoFeedMode = 'dynamic' | 'static'
-
 export interface DemoFeedStatus {
   activeIndex: number
   currentCursor?: string | null
@@ -11,7 +9,6 @@ export interface DemoFeedStatus {
   hasPreviousPage: boolean
   itemCount: number
   loadState: 'failed' | 'loaded' | 'loading'
-  mode?: DemoFeedMode | null
   nextCursor?: string | null
   lastLoadedCursor?: string | null
   phase?: string | null
@@ -36,8 +33,8 @@ export interface DemoFeedStatusEntryOptions {
     status: string
     total: string
   }
-  mode: DemoFeedMode
   pageSize: number
+  showDelay?: boolean
   testIdPrefix: string
 }
 
@@ -51,8 +48,7 @@ export function createDemoFeedStatusEntries(status: DemoFeedStatus | null | unde
   const fillDelay = formatFillDelay(status?.fillDelayRemainingMs ?? null)
   const fillTargetCount = status?.fillTargetCount ?? options.pageSize
   const phase = status?.phase ?? status?.loadState ?? 'loaded'
-  const mode = status?.mode ?? options.mode
-  const statusValue = resolveStatusValue(status, mode, phase)
+  const statusValue = resolveStatusValue(status, phase)
 
   const entries = [
     {
@@ -93,7 +89,7 @@ export function createDemoFeedStatusEntries(status: DemoFeedStatus | null | unde
     },
   ] satisfies DemoFeedStatusEntry[]
 
-  if (options.mode === 'dynamic' && options.labels.delay) {
+  if (options.showDelay && options.labels.delay) {
     entries.splice(4, 0, {
       key: 'delay',
       label: options.labels.delay,
@@ -105,16 +101,16 @@ export function createDemoFeedStatusEntries(status: DemoFeedStatus | null | unde
   return entries
 }
 
-function resolveStatusValue(status: DemoFeedStatus | null | undefined, mode: DemoFeedMode, phase: string) {
+function resolveStatusValue(status: DemoFeedStatus | null | undefined, phase: string) {
   if ((status?.itemCount ?? 0) === 0 && status?.loadState !== 'loading') {
-    return `${mode} · no items available`
+    return 'no items available'
   }
 
   if ((status?.itemCount ?? 0) > 0 && !status?.hasNextPage && status?.loadState !== 'loading') {
-    return `${mode} · end of list`
+    return 'end of list'
   }
 
-  return `${mode} · ${phase}`
+  return phase
 }
 
 function resolveCurrentCursor(status: DemoFeedStatus | null | undefined, options: DemoFeedStatusEntryOptions) {

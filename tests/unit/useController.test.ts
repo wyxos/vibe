@@ -23,7 +23,6 @@ vi.mock('@/components/viewer-core/useDataSource', () => ({
     items: dataSourceMock.items,
     lockPageLoading: dataSourceMock.lockPageLoading,
     loading: dataSourceMock.loading,
-    mode: dataSourceMock.mode,
     nextCursor: dataSourceMock.nextCursor,
     paginationDetail: dataSourceMock.paginationDetail,
     pendingAppendItems: dataSourceMock.pendingAppendItems,
@@ -58,7 +57,6 @@ function createDataSourceMock() {
     isPageLoadingLocked.value = true
   })
   const loading = ref(false)
-  const mode = ref<'dynamic' | 'static'>('dynamic')
   const nextCursor = ref<string | null>(null)
   const paginationDetail = ref<string | null>(null)
   const pendingAppendItems = ref<VibeViewerItem[]>([])
@@ -93,7 +91,6 @@ function createDataSourceMock() {
     items,
     lockPageLoading,
     loading,
-    mode,
     nextCursor,
     paginationDetail,
     pendingAppendItems,
@@ -364,7 +361,6 @@ function resetDataSourceMock() {
   dataSourceMock.items.value = []
   dataSourceMock.lockPageLoading.mockClear()
   dataSourceMock.loading.value = false
-  dataSourceMock.mode.value = 'dynamic'
   dataSourceMock.nextCursor.value = null
   dataSourceMock.paginationDetail.value = null
   dataSourceMock.pendingAppendItems.value = []

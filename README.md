@@ -147,28 +147,24 @@ Vibe owns:
 - initial retry state
 - removal-aware feed navigation
 
-### Feed strategies
+### Default paging behavior
 
-Vibe supports two feed strategies:
+Vibe has one built-in paging model:
 
-- `dynamic`:
-  - default behavior
-  - if a resolve returns fewer items than `pageSize`, Vibe enters a fill loop
-  - it waits `fillDelayMs`, then `fillDelayMs + fillDelayStepMs`, and so on for each chained request
-  - it keeps accumulating results until the collected count reaches `pageSize` or there is no further cursor
-  - then it commits that batch into the layout once
-  - when the trailing edge is exhausted, another bottom-edge attempt reloads the trailing cursor so newly available pages can be discovered
-- `static`:
-  - before advancing at the bottom or top, Vibe checks whether the current boundary page is underfilled after local removals
-  - if it is, Vibe reloads that same cursor in place first
-  - only once that boundary page is full again will the next edge hit advance to the next or previous cursor
+- if a resolve returns fewer visible items than `pageSize`, Vibe enters a fill loop
+- it waits `fillDelayMs`, then `fillDelayMs + fillDelayStepMs`, and so on for each chained request
+- it keeps accumulating results until the collected count reaches `pageSize` or there is no further cursor
+- then it commits that batch into the layout once
+- before advancing at the bottom or top, Vibe checks whether the current boundary page is underfilled after local removals
+- if it is, Vibe reloads that same cursor in place first and reconciles only that page's content in the grid
+- if that boundary refresh comes back empty, the same boundary attempt can continue to the next or previous cursor
+- when the trailing edge is exhausted, another bottom-edge attempt reloads the trailing cursor so newly available pages can be discovered
 
 Example:
 
 ```vue
 <VibeLayout
   :resolve="resolve"
-  mode="dynamic"
   :page-size="25"
   :fill-delay-ms="2000"
   :fill-delay-step-ms="1000"
@@ -298,7 +294,6 @@ type VibeStatus = {
   hasPreviousPage: boolean
   itemCount: number
   loadState: 'failed' | 'loaded' | 'loading'
-  mode: 'dynamic' | 'static'
   nextBoundaryLoadProgress: number
   nextCursor: string | null
   pageLoadingLocked: boolean
@@ -402,8 +397,7 @@ Routes:
 
 - `/` - default feed surface
 - `/documentation` - in-app documentation
-- `/demo/dynamic-feed` - dynamic feed fill-loop demo
-- `/demo/advanced-integration` - static feed, removals, and paging-lock demo
+- `/demo/feed-behavior` - unified fill, retry, boundary refresh, removals, and paging-lock demo
 - `/debug/fake-server` - fake-server inspection route
 
 ## Local development

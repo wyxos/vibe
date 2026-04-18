@@ -94,7 +94,6 @@ describe('VibeLayout removal navigation', () => {
     })
     const wrapper = mount(Layout, {
       props: createSeededVibeProps(items, {
-        mode: 'static',
         previousCursor: '9',
         resolve,
       }),
@@ -131,7 +130,6 @@ describe('VibeLayout removal navigation', () => {
     })
     const wrapper = mount(Layout, {
       props: createSeededVibeProps(items, {
-        mode: 'static',
         nextCursor: '9',
         resolve,
       }),

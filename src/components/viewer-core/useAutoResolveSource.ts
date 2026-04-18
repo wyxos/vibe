@@ -1,7 +1,7 @@
 /* eslint-disable max-lines */
 import { computed, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import type { VibeViewerItem } from '../viewer'
-import type { VibeFeedMode, VibeLoadPhase } from './removalState'
+import type { VibeLoadPhase } from './removalState'
 import {
   type VibeAutoBucket,
   filterRemovedItems,
@@ -16,8 +16,8 @@ import {
   getActiveOccurrenceKey as getActiveOccurrenceKeyFromItems,
   getSyncedActiveIndex,
   hydrateAutoResolveState,
+  isBoundaryPageUnderfilled,
   isAbortError,
-  isStaticBoundaryUnderfilled,
   type VibeCollectedBuckets,
 } from './autoResolveState'
 import {
@@ -30,7 +30,7 @@ import {
   type VibeAutoDirection,
 } from './autoResolveHelpers'
 import { getVibeOccurrenceKey } from './itemIdentity'
-import { DEFAULT_DYNAMIC_FILL_DELAY_MS, DEFAULT_DYNAMIC_FILL_DELAY_STEP_MS, getDynamicFillDelayMs, normalizeDynamicFillDelayMs, useFillDelayCountdown } from './fillDelay'
+import { DEFAULT_FILL_DELAY_MS, DEFAULT_FILL_DELAY_STEP_MS, getFillDelayMs, normalizeFillDelayMs, useFillDelayCountdown } from './fillDelay'
 type VibeAutoEmit = (event: 'update:activeIndex', value: number) => void
 export function useAutoResolveSource(options: {
   emit: VibeAutoEmit
@@ -44,7 +44,6 @@ export function useAutoResolveSource(options: {
     nextCursor?: string | null
     previousCursor?: string | null
   }
-  mode?: VibeFeedMode
   pageSize?: number
   removedIds: Ref<Set<string>>
   resolve?: ResolveFn
@@ -68,10 +67,9 @@ export function useAutoResolveSource(options: {
   let lastLoadAttempt: (() => Promise<void>) | null = null
   let operationSequence = 0
   let occurrenceSequence = 0
-  const fillDelayMs = computed(() => normalizeDynamicFillDelayMs(options.fillDelayMs, DEFAULT_DYNAMIC_FILL_DELAY_MS))
-  const fillDelayStepMs = computed(() => normalizeDynamicFillDelayMs(options.fillDelayStepMs, DEFAULT_DYNAMIC_FILL_DELAY_STEP_MS))
+  const fillDelayMs = computed(() => normalizeFillDelayMs(options.fillDelayMs, DEFAULT_FILL_DELAY_MS))
+  const fillDelayStepMs = computed(() => normalizeFillDelayMs(options.fillDelayStepMs, DEFAULT_FILL_DELAY_STEP_MS))
   const hasResolver = computed(() => typeof options.resolve === 'function')
-  const mode = computed<VibeFeedMode>(() => options.mode ?? 'dynamic')
   const pageSize = computed(() => normalizePageSize(options.pageSize))
   const sourceItems = computed(() => flattenVibeBuckets(autoBuckets.value))
   const items = computed(() => filterRemovedItems(sourceItems.value, options.removedIds.value))
@@ -137,7 +135,7 @@ export function useAutoResolveSource(options: {
   async function loadInitialBuckets() {
     lastLoadAttempt = loadInitialBuckets
     const resolvedBuckets = await collectBuckets({
-      continueUntilFilled: mode.value === 'dynamic',
+      continueUntilFilled: true,
       cursor: options.initialCursor ?? null,
       direction: 'forward',
       phase: 'initializing',
@@ -151,19 +149,35 @@ export function useAutoResolveSource(options: {
   }
   async function prefetchNextPage() {
     if (isPageLoadingLocked.value || loading.value) return
-    if (!hasNextPage.value) {
+    if (needsBoundaryReload('trailing') || !hasNextPage.value) {
       if (!canRefreshTrailingBoundary.value) {
         return
       }
 
-      return reloadBoundaryBucket('trailing')
+      const reloadResult = await reloadBoundaryBucket('trailing')
+
+      if (reloadResult?.itemsLoaded === 0 && reloadResult.followCursor) {
+        await appendBuckets(reloadResult.followCursor)
+      }
+
+      return
     }
-    if (mode.value === 'static' && needsStaticReload('trailing')) return reloadBoundaryBucket('trailing')
+
     await appendBuckets(nextCursor.value)
   }
   async function prefetchPreviousPage() {
     if (isPageLoadingLocked.value || !hasPreviousPage.value || loading.value) return
-    if (mode.value === 'static' && needsStaticReload('leading')) return reloadBoundaryBucket('leading')
+
+    if (needsBoundaryReload('leading')) {
+      const reloadResult = await reloadBoundaryBucket('leading')
+
+      if (reloadResult?.itemsLoaded === 0 && reloadResult.followCursor) {
+        await prependBuckets(reloadResult.followCursor)
+      }
+
+      return
+    }
+
     await prependBuckets(previousCursor.value)
   }
   async function retryInitialLoad() {
@@ -288,7 +302,7 @@ export function useAutoResolveSource(options: {
       await appendBuckets(cursor)
     }
     const resolvedBuckets = await collectBuckets({
-      continueUntilFilled: mode.value === 'dynamic',
+      continueUntilFilled: true,
       cursor,
       direction: 'forward',
       phase: 'loading',
@@ -314,7 +328,7 @@ export function useAutoResolveSource(options: {
       await prependBuckets(cursor)
     }
     const resolvedBuckets = await collectBuckets({
-      continueUntilFilled: mode.value === 'dynamic',
+      continueUntilFilled: true,
       cursor,
       direction: 'backward',
       phase: 'loading',
@@ -325,15 +339,18 @@ export function useAutoResolveSource(options: {
     syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
     finishLoadPhase()
   }
-  async function reloadBoundaryBucket(edge: 'leading' | 'trailing') {
+  async function reloadBoundaryBucket(edge: 'leading' | 'trailing'): Promise<{
+    followCursor: string | null
+    itemsLoaded: number
+  } | null> {
     lastLoadAttempt = async () => {
       await reloadBoundaryBucket(edge)
     }
-    if (!options.resolve) return
+    if (!options.resolve) return null
     const targetBucket = edge === 'leading' ? leadingBoundaryBucket.value : trailingBoundaryBucket.value
-    if (!targetBucket) return
+    if (!targetBucket) return null
     const cursorKey = getCursorKey(targetBucket.cursor)
-    if (inFlightCursors.has(cursorKey)) return
+    if (inFlightCursors.has(cursorKey)) return null
     inFlightCursors.add(cursorKey)
     errorMessage.value = null
     operationPhase.value = 'refreshing'
@@ -348,7 +365,10 @@ export function useAutoResolveSource(options: {
         pageSize: pageSize.value,
         signal: resolveController?.signal,
       })
-      if (operationId !== operationSequence) return finishLoadPhase()
+      if (operationId !== operationSequence) {
+        finishLoadPhase()
+        return null
+      }
       const nextBucket = createBucket({
         cursor: targetBucket.cursor,
         nextCursor: response.nextPage,
@@ -360,16 +380,21 @@ export function useAutoResolveSource(options: {
       autoBuckets.value = replaceVibeBucketAtCursor(autoBuckets.value, targetBucket.cursor, nextBucket)
       syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
       finishLoadPhase()
+      return {
+        followCursor: edge === 'leading' ? (response.previousPage ?? null) : response.nextPage,
+        itemsLoaded: response.items.length,
+      }
     }
     catch (error) {
       if (isAbortError(error) || operationId !== operationSequence) {
         finishLoadPhase()
-        return
+        return null
       }
       errorMessage.value = error instanceof Error ? error.message : 'The viewer could not load items.'
       operationPhase.value = 'failed'
       fillCollectedCount.value = null
       fillTargetCount.value = null
+      return null
     }
     finally {
       if (activeResolveController === resolveController) activeResolveController = null
@@ -442,7 +467,7 @@ export function useAutoResolveSource(options: {
         fillCollectedCount.value = visibleCount
         fillTargetCount.value = pageSize.value
         fillRequestIndex += 1
-        const nextDelayMs = getDynamicFillDelayMs(fillRequestIndex, fillDelayMs.value, fillDelayStepMs.value)
+        const nextDelayMs = getFillDelayMs(fillRequestIndex, fillDelayMs.value, fillDelayStepMs.value)
         await fillDelay.wait(nextDelayMs)
         if (operationId !== operationSequence) return finalizeCollectedBuckets(collectedBuckets, request.direction, options.removedIds.value, true)
         cursor = nextCursor
@@ -507,9 +532,9 @@ export function useAutoResolveSource(options: {
   function isLoadingInitialPhase() {
     return operationPhase.value === 'initializing'
   }
-  function needsStaticReload(edge: 'leading' | 'trailing') {
+  function needsBoundaryReload(edge: 'leading' | 'trailing') {
     const targetBucket = edge === 'leading' ? leadingBoundaryBucket.value : trailingBoundaryBucket.value
-    return isStaticBoundaryUnderfilled(targetBucket, options.removedIds.value, pageSize.value)
+    return isBoundaryPageUnderfilled(targetBucket, options.removedIds.value, pageSize.value)
   }
   function trimBucketsToVisibleWindow() {
     const firstVisibleIndex = autoBuckets.value.findIndex((bucket) => getVibeBucketVisibleCount(bucket, options.removedIds.value) > 0)
@@ -547,7 +572,6 @@ export function useAutoResolveSource(options: {
     items,
     lockPageLoading,
     loading,
-    mode,
     maybePrefetchAround,
     nextCursor,
     pendingAppendItems,

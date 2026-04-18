@@ -19,12 +19,8 @@ const workspaceLinks = [
     label: 'Documentation',
   },
   {
-    to: '/demo/dynamic-feed',
-    label: 'Dynamic Feed Demo',
-  },
-  {
-    to: '/demo/advanced-integration',
-    label: 'Advanced Static Demo',
+    to: '/demo/feed-behavior',
+    label: 'Feed Behavior Demo',
   },
   {
     to: '/debug/fake-server',

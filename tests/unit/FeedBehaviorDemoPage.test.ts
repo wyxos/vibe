@@ -3,27 +3,33 @@ import { nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { getVibeMasonryLeaveDuration } from '@/components/viewer-core/useMasonryMotion'
-import BidirectionalPagingDemoPage from '@/pages/BidirectionalPagingDemoPage.vue'
+import FeedBehaviorDemoPage from '@/pages/FeedBehaviorDemoPage.vue'
+
+vi.mock('vue-router', () => ({
+  useRoute: () => ({
+    query: {},
+  }),
+}))
 
 const DEFAULT_VIEWPORT_WIDTH = window.innerWidth
 
-describe('BidirectionalPagingDemoPage', () => {
+describe('FeedBehaviorDemoPage', () => {
   afterEach(() => {
     vi.useRealTimers()
     vi.restoreAllMocks()
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
   })
 
-  it('animates the advanced demo list out before showing the empty status in the footer bar', async () => {
+  it('animates the demo list out before showing the empty status in the footer bar', async () => {
     vi.useFakeTimers()
     setViewportWidth(1_280)
 
-    const wrapper = mount(BidirectionalPagingDemoPage)
+    const wrapper = mount(FeedBehaviorDemoPage)
 
     await vi.advanceTimersByTimeAsync(100)
     await flushDom()
 
-    const removeAllButton = wrapper.get('[data-testid="advanced-static-remove-all-button"]')
+    const removeAllButton = wrapper.get('[data-testid="feed-behavior-remove-all-button"]')
 
     expect(removeAllButton.attributes('disabled')).toBeUndefined()
 
@@ -33,29 +39,29 @@ describe('BidirectionalPagingDemoPage', () => {
     expect(wrapper.find('[data-testid="vibe-empty-state-inline"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="vibe-empty-state-badge"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="vibe-list-card-leaving"]').exists()).toBe(true)
-    expect(wrapper.get('[data-testid="advanced-static-status-bar"]').text()).toContain('static')
+    expect(wrapper.get('[data-testid="feed-behavior-status-bar"]').text()).toContain('no items available')
 
     await vi.advanceTimersByTimeAsync(getVibeMasonryLeaveDuration())
     await flushDom()
 
     expect(wrapper.find('[data-testid="vibe-empty-state-inline"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="vibe-empty-state-badge"]').exists()).toBe(false)
-    expect(wrapper.get('[data-testid="advanced-static-status-bar"]').text()).toContain('no items available')
-    expect(wrapper.get('[data-testid="advanced-static-remove-all-button"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="feed-behavior-status-bar"]').text()).toContain('no items available')
+    expect(wrapper.get('[data-testid="feed-behavior-remove-all-button"]').attributes('disabled')).toBeDefined()
 
     wrapper.unmount()
   })
 
-  it('toggles the page-loading lock CTA in the advanced demo footer bar', async () => {
+  it('toggles the page-loading lock CTA in the footer bar', async () => {
     vi.useFakeTimers()
     setViewportWidth(1_280)
 
-    const wrapper = mount(BidirectionalPagingDemoPage)
+    const wrapper = mount(FeedBehaviorDemoPage)
 
     await vi.advanceTimersByTimeAsync(100)
     await flushDom()
 
-    const lockButton = wrapper.get('[data-testid="advanced-static-page-loading-lock-button"]')
+    const lockButton = wrapper.get('[data-testid="feed-behavior-page-loading-lock-button"]')
 
     expect(lockButton.text()).toContain('Lock paging')
     expect(lockButton.attributes('aria-pressed')).toBe('false')
@@ -75,18 +81,18 @@ describe('BidirectionalPagingDemoPage', () => {
     wrapper.unmount()
   })
 
-  it('updates the advanced demo footer load progress bars from the Vibe scroll budget', async () => {
+  it('updates the footer load progress bars from the Vibe scroll budget', async () => {
     vi.useFakeTimers()
     setViewportWidth(1_280)
 
-    const wrapper = mount(BidirectionalPagingDemoPage)
+    const wrapper = mount(FeedBehaviorDemoPage)
 
     await vi.advanceTimersByTimeAsync(100)
     await flushDom()
 
     const scrollViewport = wrapper.get('[data-testid="vibe-list-scroll"]').element as HTMLElement
-    const previousProgress = wrapper.get('[data-testid="advanced-static-previous-boundary-progress"]')
-    const nextProgress = wrapper.get('[data-testid="advanced-static-next-boundary-progress"]')
+    const previousProgress = wrapper.get('[data-testid="feed-behavior-previous-boundary-progress"]')
+    const nextProgress = wrapper.get('[data-testid="feed-behavior-next-boundary-progress"]')
 
     setScrollMetrics(scrollViewport, 20, 700, 2_000)
     await wrapper.get('[data-testid="vibe-list-scroll"]').trigger('scroll')
@@ -118,17 +124,17 @@ describe('BidirectionalPagingDemoPage', () => {
     wrapper.unmount()
   })
 
-  it('removes 10 random loaded items from the advanced demo footer CTA', async () => {
+  it('removes 10 random loaded items from the footer CTA', async () => {
     vi.useFakeTimers()
     vi.spyOn(Math, 'random').mockReturnValue(0.5)
     setViewportWidth(1_280)
 
-    const wrapper = mount(BidirectionalPagingDemoPage)
+    const wrapper = mount(FeedBehaviorDemoPage)
 
     await vi.advanceTimersByTimeAsync(100)
     await flushDom()
 
-    const removeRandomButton = wrapper.get('[data-testid="advanced-static-remove-random-button"]')
+    const removeRandomButton = wrapper.get('[data-testid="feed-behavior-remove-random-button"]')
 
     expect(removeRandomButton.attributes('disabled')).toBeUndefined()
 
@@ -136,8 +142,8 @@ describe('BidirectionalPagingDemoPage', () => {
     await flushDom()
 
     expect(wrapper.findAll('[data-testid="vibe-list-card-leaving"]')).toHaveLength(10)
-    expect(wrapper.get('[data-testid="advanced-static-status-total"]').text()).toContain('15')
-    expect(wrapper.get('[data-testid="advanced-static-remove-random-button"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('[data-testid="feed-behavior-status-total"]').text()).toContain('15')
+    expect(wrapper.get('[data-testid="feed-behavior-remove-random-button"]').attributes('disabled')).toBeUndefined()
 
     wrapper.unmount()
   })

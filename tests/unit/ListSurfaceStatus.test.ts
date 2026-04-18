@@ -31,7 +31,7 @@ describe('VibeLayout grid status slot', () => {
     void (wrapper.vm as unknown as VibeHandle).loadNext()
     await flushDom()
 
-    expect(wrapper.get('[data-testid="vibe-grid-status-badge"]').text()).toBe('Loading more items')
+    expect(wrapper.get('[data-testid="vibe-grid-status-badge"]').text()).toBe('Refreshing visible items')
 
     deferred.resolve({ items: [], nextPage: null })
     await flushDom()
@@ -59,8 +59,8 @@ describe('VibeLayout grid status slot', () => {
     void (wrapper.vm as unknown as VibeHandle).loadNext()
     await flushDom()
 
-    expect(wrapper.get('[data-testid="custom-grid-status"]').attributes('data-kind')).toBe('loading-more')
-    expect(wrapper.get('[data-testid="custom-grid-status"]').text()).toBe('Loading more items')
+    expect(wrapper.get('[data-testid="custom-grid-status"]').attributes('data-kind')).toBe('refreshing')
+    expect(wrapper.get('[data-testid="custom-grid-status"]').text()).toBe('Refreshing visible items')
 
     deferred.resolve({ items: [], nextPage: null })
     await flushDom()

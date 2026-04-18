@@ -121,7 +121,7 @@ export function getSyncedActiveIndex(items: VibeViewerItem[], activeIndex: numbe
     : clamp(activeIndex, 0, items.length - 1)
 }
 
-export function isStaticBoundaryUnderfilled(bucket: VibeAutoBucket | null, removedIds: Set<string>, pageSize: number) {
+export function isBoundaryPageUnderfilled(bucket: VibeAutoBucket | null, removedIds: Set<string>, pageSize: number) {
   if (!bucket) {
     return false
   }

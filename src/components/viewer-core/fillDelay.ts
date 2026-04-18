@@ -1,18 +1,18 @@
 import { ref } from 'vue'
 
-export const DEFAULT_DYNAMIC_FILL_DELAY_MS = 2_000
-export const DEFAULT_DYNAMIC_FILL_DELAY_STEP_MS = 1_000
+export const DEFAULT_FILL_DELAY_MS = 2_000
+export const DEFAULT_FILL_DELAY_STEP_MS = 1_000
 const FILL_DELAY_TICK_MS = 100
 
-export function getDynamicFillDelayMs(
+export function getFillDelayMs(
   fillRequestIndex: number,
-  baseDelayMs = DEFAULT_DYNAMIC_FILL_DELAY_MS,
-  stepDelayMs = DEFAULT_DYNAMIC_FILL_DELAY_STEP_MS,
+  baseDelayMs = DEFAULT_FILL_DELAY_MS,
+  stepDelayMs = DEFAULT_FILL_DELAY_STEP_MS,
 ) {
   return baseDelayMs + Math.max(0, fillRequestIndex - 1) * stepDelayMs
 }
 
-export function normalizeDynamicFillDelayMs(value: number | undefined, fallback: number) {
+export function normalizeFillDelayMs(value: number | undefined, fallback: number) {
   if (!Number.isFinite(value) || value == null || value < 0) {
     return fallback
   }
