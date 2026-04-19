@@ -448,6 +448,67 @@ describe('useDataSource', () => {
     source.unmount()
   })
 
+  it('starts filling from the next cursor immediately when the refreshed trailing page stays underfilled', async () => {
+    let rootPageLoads = 0
+    const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
+      if (cursor === 'page-2') {
+        return createPageResult('page-2', {
+          itemCount: 20,
+          nextPage: 'page-3',
+          previousPage: 'page-1',
+        })
+      }
+
+      rootPageLoads += 1
+
+      return createPageResult(rootPageLoads === 1 ? 'page-1' : 'page-1-refilled', {
+        itemCount: rootPageLoads === 1 ? 20 : 18,
+        nextPage: 'page-2',
+      })
+    })
+
+    const source = await mountUseDataSource({
+      fillDelayMs: 0,
+      fillDelayStepMs: 0,
+      pageSize: 20,
+      resolve,
+    })
+
+    await source.flush()
+
+    const removedTrailingIds = createItems('page-1', 20).slice(0, 6).map((item) => item.id)
+    expect(source.api.remove(removedTrailingIds).ids).toEqual(removedTrailingIds)
+    await source.flush()
+
+    expect(source.api.items.value).toHaveLength(14)
+
+    await source.api.prefetchNextPage()
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(3)
+    expect(resolve.mock.calls.map(([params]) => params.cursor)).toEqual([
+      null,
+      null,
+      'page-2',
+    ])
+    expect(source.api.items.value).toHaveLength(18)
+    expect(getVisibleIds(source.api.items.value).slice(0, 4)).toEqual([
+      'page-1-refilled-item-1',
+      'page-1-refilled-item-2',
+      'page-1-refilled-item-3',
+      'page-1-refilled-item-4',
+    ])
+    expect(source.api.pendingAppendItems.value).toHaveLength(20)
+    expect(getVisibleIds(source.api.pendingAppendItems.value).slice(0, 4)).toEqual([
+      'page-2-item-1',
+      'page-2-item-2',
+      'page-2-item-3',
+      'page-2-item-4',
+    ])
+
+    source.unmount()
+  })
+
   it('reloads the current leading cursor before prepending a previous cursor', async () => {
     let pageTwoLoads = 0
     const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {

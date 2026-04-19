@@ -157,7 +157,7 @@ export function useAutoResolveSource(options: {
 
       const reloadResult = await reloadBoundaryBucket('trailing')
 
-      if (reloadResult?.itemsLoaded === 0 && reloadResult.followCursor) {
+      if (reloadResult?.followCursor && needsBoundaryReload('trailing')) {
         await appendBuckets(reloadResult.followCursor)
       }
 

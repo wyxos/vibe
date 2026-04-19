@@ -252,7 +252,13 @@ describe('useDataSource fill behavior', () => {
     await source.api.loadNext()
     await source.flush()
 
-    expect(resolve).toHaveBeenCalledTimes(2)
+    expect(resolve).toHaveBeenCalledTimes(3)
+    expect(resolve.mock.calls.map(([params]) => params.cursor)).toEqual([
+      null,
+      null,
+      'page-2',
+    ])
+    expect(source.api.pendingAppendItems.value).toHaveLength(25)
 
     source.unmount()
   })
