@@ -184,6 +184,7 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     currentCursor: autoSource.currentCursor,
     errorMessage: autoSource.errorMessage,
     fillCollectedCount: autoSource.fillCollectedCount,
+    fillCursor: autoSource.fillCursor,
     fillDelayRemainingMs: autoSource.fillDelayRemainingMs,
     fillTargetCount: autoSource.fillTargetCount,
     getRemovedIds,

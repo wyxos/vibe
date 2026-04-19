@@ -288,6 +288,7 @@ type VibeStatus = {
   currentCursor: string | null
   errorMessage: string | null
   fillCollectedCount: number | null
+  fillCursor: string | null
   fillDelayRemainingMs: number | null
   fillTargetCount: number | null
   hasNextPage: boolean

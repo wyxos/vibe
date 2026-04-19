@@ -45,6 +45,7 @@ describe('useDataSource fill behavior', () => {
     expect(resolve).toHaveBeenCalledTimes(1)
     expect(source.api.phase.value).toBe('filling')
     expect(source.api.fillCollectedCount.value).toBe(20)
+    expect(source.api.fillCursor.value).toBe('page-2')
     expect(source.api.fillDelayRemainingMs.value).toBeGreaterThan(0)
 
     await vi.advanceTimersByTimeAsync(2_000)
@@ -53,6 +54,7 @@ describe('useDataSource fill behavior', () => {
     expect(resolve).toHaveBeenCalledTimes(2)
     expect(source.api.phase.value).toBe('filling')
     expect(source.api.fillCollectedCount.value).toBe(23)
+    expect(source.api.fillCursor.value).toBe('page-3')
     expect(source.api.fillDelayRemainingMs.value).toBeGreaterThan(0)
 
     await vi.advanceTimersByTimeAsync(3_000)
@@ -79,6 +81,7 @@ describe('useDataSource fill behavior', () => {
     expect(source.api.currentCursor.value).toBeNull()
     expect(source.api.phase.value).toBe('idle')
     expect(source.api.fillCollectedCount.value).toBeNull()
+    expect(source.api.fillCursor.value).toBeNull()
     expect(source.api.fillDelayRemainingMs.value).toBeNull()
     expect(source.api.fillTargetCount.value).toBeNull()
 
@@ -129,6 +132,7 @@ describe('useDataSource fill behavior', () => {
     expect(resolve).toHaveBeenCalledTimes(2)
     expect(source.api.phase.value).toBe('filling')
     expect(source.api.fillCollectedCount.value).toBe(3)
+    expect(source.api.fillCursor.value).toBe('page-3')
     expect(source.api.fillDelayRemainingMs.value).toBeGreaterThan(0)
     expect(source.api.fillTargetCount.value).toBe(25)
 
@@ -137,6 +141,7 @@ describe('useDataSource fill behavior', () => {
 
     expect(resolve).toHaveBeenCalledTimes(3)
     expect(source.api.pendingAppendItems.value).toHaveLength(25)
+    expect(source.api.fillCursor.value).toBeNull()
     expect(source.api.nextCursor.value).toBe('page-2')
     expect(source.api.fillDelayRemainingMs.value).toBeNull()
 

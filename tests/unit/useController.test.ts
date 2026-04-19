@@ -15,6 +15,7 @@ vi.mock('@/components/viewer-core/useDataSource', () => ({
     currentCursor: dataSourceMock.currentCursor,
     errorMessage: dataSourceMock.errorMessage,
     fillCollectedCount: dataSourceMock.fillCollectedCount,
+    fillCursor: dataSourceMock.fillCursor,
     fillDelayRemainingMs: dataSourceMock.fillDelayRemainingMs,
     fillTargetCount: dataSourceMock.fillTargetCount,
     hasNextPage: dataSourceMock.hasNextPage,
@@ -47,6 +48,7 @@ function createDataSourceMock() {
   const currentCursor = ref<string | null>(null)
   const errorMessage = ref<string | null>(null)
   const fillCollectedCount = ref<number | null>(null)
+  const fillCursor = ref<string | null>(null)
   const fillDelayRemainingMs = ref<number | null>(null)
   const fillTargetCount = ref<number | null>(null)
   const hasNextPage = ref(false)
@@ -83,6 +85,7 @@ function createDataSourceMock() {
     currentCursor,
     errorMessage,
     fillCollectedCount,
+    fillCursor,
     fillDelayRemainingMs,
     fillTargetCount,
     hasNextPage,
@@ -162,6 +165,30 @@ describe('useController', () => {
     await controller.flush()
 
     expect(controller.api.status.removedIds).toEqual([])
+
+    controller.unmount()
+  })
+
+  it('mirrors the active fill cursor into status while refilling', async () => {
+    const controller = await mountController()
+
+    expect(controller.api.status.fillCursor).toBeNull()
+
+    dataSourceMock.phase.value = 'filling'
+    dataSourceMock.fillCursor.value = 'page-2'
+    dataSourceMock.fillCollectedCount.value = 20
+    dataSourceMock.fillTargetCount.value = 25
+    await controller.flush()
+
+    expect(controller.api.status.fillCursor).toBe('page-2')
+
+    dataSourceMock.phase.value = 'idle'
+    dataSourceMock.fillCursor.value = null
+    dataSourceMock.fillCollectedCount.value = null
+    dataSourceMock.fillTargetCount.value = null
+    await controller.flush()
+
+    expect(controller.api.status.fillCursor).toBeNull()
 
     controller.unmount()
   })
@@ -353,6 +380,7 @@ function resetDataSourceMock() {
   dataSourceMock.currentCursor.value = null
   dataSourceMock.errorMessage.value = null
   dataSourceMock.fillCollectedCount.value = null
+  dataSourceMock.fillCursor.value = null
   dataSourceMock.fillDelayRemainingMs.value = null
   dataSourceMock.fillTargetCount.value = null
   dataSourceMock.hasNextPage.value = false

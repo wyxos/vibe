@@ -56,6 +56,7 @@ export function useAutoResolveSource(options: {
   const errorMessage = ref<string | null>(null)
   const operationPhase = ref<VibeLoadPhase>(!hasSeededItems && typeof options.resolve === 'function' ? 'initializing' : 'idle')
   const fillCollectedCount = ref<number | null>(null)
+  const fillCursor = ref<string | null>(null)
   const fillDelay = useFillDelayCountdown()
   const fillDelayRemainingMs = fillDelay.remainingMs
   const fillTargetCount = ref<number | null>(null)
@@ -191,6 +192,7 @@ export function useAutoResolveSource(options: {
     errorMessage.value = null
     operationPhase.value = hasResolver.value ? 'initializing' : 'idle'
     fillCollectedCount.value = null
+    fillCursor.value = null
     fillTargetCount.value = null
     isAwaitingAppendCommit.value = false
     inFlightCursors.clear()
@@ -245,6 +247,7 @@ export function useAutoResolveSource(options: {
     inFlightCursors.clear()
     errorMessage.value = null
     fillCollectedCount.value = null
+    fillCursor.value = null
     fillTargetCount.value = null
     if (pendingAppendBuckets.value.length > 0) {
       autoBuckets.value = [...autoBuckets.value, ...pendingAppendBuckets.value]
@@ -355,6 +358,7 @@ export function useAutoResolveSource(options: {
     errorMessage.value = null
     operationPhase.value = 'refreshing'
     fillCollectedCount.value = null
+    fillCursor.value = null
     fillTargetCount.value = null
     const operationId = ++operationSequence
     const resolveController = typeof AbortController === 'undefined' ? null : new AbortController()
@@ -393,6 +397,7 @@ export function useAutoResolveSource(options: {
       errorMessage.value = error instanceof Error ? error.message : 'The viewer could not load items.'
       operationPhase.value = 'failed'
       fillCollectedCount.value = null
+      fillCursor.value = null
       fillTargetCount.value = null
       return null
     }
@@ -418,6 +423,7 @@ export function useAutoResolveSource(options: {
     errorMessage.value = null
     operationPhase.value = request.phase
     fillCollectedCount.value = null
+    fillCursor.value = null
     fillTargetCount.value = null
     while (true) {
       if (operationId !== operationSequence) return finalizeCollectedBuckets(collectedBuckets, request.direction, options.removedIds.value, true)
@@ -452,6 +458,7 @@ export function useAutoResolveSource(options: {
         }, 0)
         const nextCursor = request.direction === 'forward' ? nextBucket.nextCursor : nextBucket.previousCursor
         if (!request.continueUntilFilled || visibleCount >= pageSize.value || !nextCursor) {
+          fillCursor.value = null
           return {
             canceled: false,
             buckets: request.direction === 'backward'
@@ -465,6 +472,7 @@ export function useAutoResolveSource(options: {
         }
         operationPhase.value = 'filling'
         fillCollectedCount.value = visibleCount
+        fillCursor.value = nextCursor
         fillTargetCount.value = pageSize.value
         fillRequestIndex += 1
         const nextDelayMs = getFillDelayMs(fillRequestIndex, fillDelayMs.value, fillDelayStepMs.value)
@@ -479,6 +487,7 @@ export function useAutoResolveSource(options: {
         errorMessage.value = error instanceof Error ? error.message : 'The viewer could not load items.'
         operationPhase.value = 'failed'
         fillCollectedCount.value = null
+        fillCursor.value = null
         fillTargetCount.value = null
         return null
       }
@@ -510,6 +519,7 @@ export function useAutoResolveSource(options: {
   function finishLoadPhase() {
     operationPhase.value = 'idle'
     fillCollectedCount.value = null
+    fillCursor.value = null
     fillTargetCount.value = null
     fillDelay.clear()
   }
@@ -563,6 +573,7 @@ export function useAutoResolveSource(options: {
     currentCursor,
     errorMessage,
     fillCollectedCount,
+    fillCursor,
     fillDelayRemainingMs,
     fillTargetCount,
     hasNextPage,
