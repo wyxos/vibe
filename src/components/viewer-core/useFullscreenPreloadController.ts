@@ -9,10 +9,13 @@ interface FullscreenBackgroundJob {
   lease: VibeAssetLoadLease
 }
 
+const FULLSCREEN_FORWARD_PRELOAD_COUNT = 2
+
 const FULLSCREEN_QUEUE_PRIORITY_BY_OFFSET: Record<number, number> = {
   1: 0,
   2: 1,
-  [-1]: 2,
+  3: 2,
+  [-1]: 3,
 }
 
 export function useFullscreenPreloadController(options: {
@@ -179,14 +182,9 @@ export function useFullscreenPreloadController(options: {
 
   function getDesiredNeighbors() {
     const activeIndex = options.resolvedActiveIndex.value
-    const desiredOffsets = [1, 2, -1]
-
-    return desiredOffsets
-      .map((offset) => {
-        const index = activeIndex + offset
-        const item = options.items.value[index]
-
-        if (!item || !isPreloadableItem(item)) {
+    const preloadableEntries = options.items.value
+      .map((item, index) => {
+        if (!isPreloadableItem(item)) {
           return null
         }
 
@@ -197,6 +195,67 @@ export function useFullscreenPreloadController(options: {
         }
       })
       .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+    const preloadableEntriesByKey = new Map(preloadableEntries.map((entry) => [entry.key, entry]))
+    const desiredNeighborKeys = new Set<string>()
+    const desiredNeighbors: typeof preloadableEntries = []
+
+    const addDesiredNeighbor = (entry: (typeof preloadableEntries)[number] | undefined) => {
+      if (!entry || desiredNeighborKeys.has(entry.key)) {
+        return
+      }
+
+      desiredNeighborKeys.add(entry.key)
+      desiredNeighbors.push(entry)
+    }
+
+    const retainedForwardEntries = new Map<string, (typeof preloadableEntries)[number]>()
+
+    for (const key of Object.keys(attachedNeighborKeys.value)) {
+      const entry = preloadableEntriesByKey.get(key)
+      if (entry && entry.index > activeIndex) {
+        retainedForwardEntries.set(key, entry)
+      }
+    }
+
+    for (const job of backgroundJobs.values()) {
+      if (job.index <= activeIndex) {
+        continue
+      }
+
+      const entry = preloadableEntriesByKey.get(job.key)
+      if (entry) {
+        retainedForwardEntries.set(job.key, entry)
+      }
+    }
+
+    const sortedRetainedForwardEntries = [...retainedForwardEntries.values()].sort((left, right) => left.index - right.index)
+    for (const entry of sortedRetainedForwardEntries) {
+      addDesiredNeighbor(entry)
+    }
+
+    const forwardFrontierIndex = sortedRetainedForwardEntries.reduce(
+      (maxIndex, entry) => Math.max(maxIndex, entry.index),
+      activeIndex,
+    )
+    let forwardEntriesAdded = 0
+
+    for (const entry of preloadableEntries) {
+      if (entry.index <= forwardFrontierIndex || desiredNeighborKeys.has(entry.key)) {
+        continue
+      }
+
+      addDesiredNeighbor(entry)
+      forwardEntriesAdded += 1
+
+      if (forwardEntriesAdded >= FULLSCREEN_FORWARD_PRELOAD_COUNT) {
+        break
+      }
+    }
+
+    const previousEntry = preloadableEntries.find((entry) => entry.index === activeIndex - 1)
+    addDesiredNeighbor(previousEntry)
+
+    return desiredNeighbors
   }
 
   function getActivePreloadableKey() {

@@ -36,14 +36,16 @@ describe('useFullscreenSurfaceMedia', () => {
     expect(media.shouldPreloadSlideAsset(2)).toBe(true)
   })
 
-  it('keeps still-relevant attachments on swipe and reprioritizes later neighbors', async () => {
-    const activeIndex = ref(0)
+  it('keeps unfinished next preloads alive on swipe and extends the queue forward', async () => {
+    const activeIndex = ref(2)
     const items = ref([
       createImageItem('image-1'),
       createImageItem('image-2'),
       createImageItem('image-3'),
       createImageItem('image-4'),
       createImageItem('image-5'),
+      createImageItem('image-6'),
+      createImageItem('image-7'),
     ])
     const media = useFullscreenSurfaceMedia({
       active: ref(true),
@@ -52,21 +54,29 @@ describe('useFullscreenSurfaceMedia', () => {
       viewer: createViewerStub(),
     })
 
-    expect(media.shouldPreloadSlideAsset(0)).toBe(true)
-    expect(media.shouldPreloadSlideAsset(1)).toBe(true)
-    expect(media.shouldPreloadSlideAsset(2)).toBe(false)
+    expect(media.shouldPreloadSlideAsset(2)).toBe(true)
+    expect(media.shouldPreloadSlideAsset(3)).toBe(true)
+    expect(media.shouldPreloadSlideAsset(4)).toBe(false)
+    expect(media.shouldPreloadSlideAsset(5)).toBe(false)
 
-    activeIndex.value = 1
+    activeIndex.value = 3
     await flushDom()
 
-    expect(media.shouldPreloadSlideAsset(0)).toBe(true)
-    expect(media.shouldPreloadSlideAsset(1)).toBe(true)
     expect(media.shouldPreloadSlideAsset(2)).toBe(true)
-    expect(media.shouldPreloadSlideAsset(3)).toBe(false)
-
-    media.settleBackgroundPreload('image-3')
-
     expect(media.shouldPreloadSlideAsset(3)).toBe(true)
+    expect(media.shouldPreloadSlideAsset(4)).toBe(true)
+    expect(media.shouldPreloadSlideAsset(5)).toBe(false)
+    expect(media.shouldPreloadSlideAsset(6)).toBe(false)
+
+    media.settleBackgroundPreload('image-5')
+
+    expect(media.shouldPreloadSlideAsset(5)).toBe(true)
+    expect(media.shouldPreloadSlideAsset(6)).toBe(false)
+
+    media.settleBackgroundPreload('image-6')
+
+    expect(media.shouldPreloadSlideAsset(6)).toBe(true)
+    expect(media.shouldPreloadSlideAsset(2)).toBe(true)
   })
 
   it('clears active and neighbor asset state when fullscreen deactivates', async () => {
