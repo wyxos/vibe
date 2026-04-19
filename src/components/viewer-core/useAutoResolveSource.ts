@@ -14,6 +14,7 @@ import {
   createAutoResolveBucket,
   finalizeCollectedBuckets,
   getActiveOccurrenceKey as getActiveOccurrenceKeyFromItems,
+  refreshAutoResolveBucket,
   getSyncedActiveIndex,
   hydrateAutoResolveState,
   isBoundaryPageUnderfilled,
@@ -373,15 +374,18 @@ export function useAutoResolveSource(options: {
         finishLoadPhase()
         return null
       }
-      const nextBucket = createBucket({
+      const refreshed = refreshAutoResolveBucket({
         cursor: targetBucket.cursor,
+        edge,
         nextCursor: response.nextPage,
         nextItems: response.items,
         previousCursor: response.previousPage ?? null,
         previousItems: targetBucket.items,
+        sequence: occurrenceSequence,
       })
+      occurrenceSequence = refreshed.nextSequence
       const anchorOccurrenceKey = getActiveOccurrenceKey()
-      autoBuckets.value = replaceVibeBucketAtCursor(autoBuckets.value, targetBucket.cursor, nextBucket)
+      autoBuckets.value = replaceVibeBucketAtCursor(autoBuckets.value, targetBucket.cursor, refreshed.bucket)
       syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
       finishLoadPhase()
       return {

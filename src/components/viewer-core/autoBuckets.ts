@@ -1,6 +1,6 @@
 import type { VibeViewerItem } from '../viewer'
 
-import { reconcileVibeOccurrenceKeys } from './itemIdentity'
+import { getVibeOccurrenceKey, reconcileVibeOccurrenceKeys } from './itemIdentity'
 
 export interface VibeAutoBucket {
   cursor: string | null
@@ -84,5 +84,116 @@ export function resolveVibeBucketItems(
   return {
     items: resolvedItems.items,
     nextSequence: resolvedItems.nextSequence,
+  }
+}
+
+export function mergeRefreshedVibeBucketItems(
+  nextItems: VibeViewerItem[],
+  previousItems: VibeViewerItem[],
+  sequence: number,
+  edge: 'leading' | 'trailing',
+) {
+  const availablePreviousMatches = new Map<string, Array<{ index: number, occurrenceKey: string }>>()
+  const matchedEntries = nextItems.map((item) => ({
+    item,
+    matchIndex: null as number | null,
+    occurrenceKey: null as string | null,
+  }))
+  const replacementByPreviousIndex = new Map<number, VibeViewerItem>()
+  const insertionsBeforeIndex = new Map<number, VibeViewerItem[]>()
+  let nextSequence = sequence
+
+  for (const [index, item] of previousItems.entries()) {
+    const nextMatches = availablePreviousMatches.get(item.id)
+    const match = {
+      index,
+      occurrenceKey: getVibeOccurrenceKey(item),
+    }
+
+    if (nextMatches) {
+      nextMatches.push(match)
+    }
+    else {
+      availablePreviousMatches.set(item.id, [match])
+    }
+  }
+
+  for (const entry of matchedEntries) {
+    const match = availablePreviousMatches.get(entry.item.id)?.shift()
+
+    if (!match) {
+      continue
+    }
+
+    entry.matchIndex = match.index
+    entry.occurrenceKey = match.occurrenceKey
+  }
+
+  const previousMatchedIndices: Array<number | null> = []
+  let lastMatchedIndex: number | null = null
+  for (const entry of matchedEntries) {
+    previousMatchedIndices.push(lastMatchedIndex)
+    if (entry.matchIndex !== null) {
+      lastMatchedIndex = entry.matchIndex
+    }
+  }
+
+  const nextMatchedIndices = new Array<number | null>(matchedEntries.length).fill(null)
+  let nextMatchedIndex: number | null = null
+  for (let index = matchedEntries.length - 1; index >= 0; index -= 1) {
+    nextMatchedIndices[index] = nextMatchedIndex
+    if (matchedEntries[index].matchIndex !== null) {
+      nextMatchedIndex = matchedEntries[index].matchIndex
+    }
+  }
+
+  for (const [index, entry] of matchedEntries.entries()) {
+    if (entry.matchIndex !== null && entry.occurrenceKey) {
+      replacementByPreviousIndex.set(entry.matchIndex, withOccurrenceKey(entry.item, entry.occurrenceKey))
+      continue
+    }
+
+    const insertionIndex = nextMatchedIndices[index]
+      ?? (previousMatchedIndices[index] !== null ? previousMatchedIndices[index] + 1 : null)
+      ?? (edge === 'leading' ? 0 : previousItems.length)
+    const nextItem = withOccurrenceKey(entry.item, `vibe-occurrence-${nextSequence += 1}`)
+    const nextInsertions = insertionsBeforeIndex.get(insertionIndex)
+
+    if (nextInsertions) {
+      nextInsertions.push(nextItem)
+    }
+    else {
+      insertionsBeforeIndex.set(insertionIndex, [nextItem])
+    }
+  }
+
+  const mergedItems: VibeViewerItem[] = []
+  for (let index = 0; index <= previousItems.length; index += 1) {
+    const nextInsertions = insertionsBeforeIndex.get(index)
+    if (nextInsertions?.length) {
+      mergedItems.push(...nextInsertions)
+    }
+
+    if (index >= previousItems.length) {
+      continue
+    }
+
+    mergedItems.push(replacementByPreviousIndex.get(index) ?? previousItems[index])
+  }
+
+  return {
+    items: mergedItems,
+    nextSequence,
+  }
+}
+
+function withOccurrenceKey(item: VibeViewerItem, occurrenceKey: string) {
+  if (getVibeOccurrenceKey(item) === occurrenceKey) {
+    return item
+  }
+
+  return {
+    ...item,
+    __vibeOccurrenceKey: occurrenceKey,
   }
 }

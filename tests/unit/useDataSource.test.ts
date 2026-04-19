@@ -359,8 +359,15 @@ describe('useDataSource', () => {
       signal: expect.any(AbortSignal),
     }))
     expect(source.api.phase.value).toBe('idle')
-    expect(source.api.items.value).toHaveLength(25)
+    expect(source.api.items.value).toHaveLength(45)
     expect(getVisibleIds(source.api.items.value).slice(0, 5)).toEqual([
+      'page-1-item-6',
+      'page-1-item-7',
+      'page-1-item-8',
+      'page-1-item-9',
+      'page-1-item-10',
+    ])
+    expect(getVisibleIds(source.api.items.value).slice(20, 25)).toEqual([
       'page-1-refilled-item-1',
       'page-1-refilled-item-2',
       'page-1-refilled-item-3',
@@ -382,7 +389,70 @@ describe('useDataSource', () => {
     source.unmount()
   })
 
-  it('reconciles only the trailing boundary page when refreshing an underfilled page', async () => {
+  it('preserves existing non-removed items when a refreshed page omits them', async () => {
+    const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
+      if (cursor === 'page-5') {
+        return {
+          items: [
+            createSimpleItem('a'),
+            createSimpleItem('d'),
+            createSimpleItem('e'),
+            createSimpleItem('f'),
+          ],
+          nextPage: 'page-6',
+          previousPage: null,
+        }
+      }
+
+      return {
+        items: [
+          createSimpleItem('a'),
+          createSimpleItem('b'),
+          createSimpleItem('c'),
+          createSimpleItem('d'),
+        ],
+        nextPage: 'page-6',
+        previousPage: null,
+      }
+    })
+
+    const source = await mountUseDataSource({
+      initialCursor: 'page-5',
+      initialState: {
+        activeIndex: 0,
+        cursor: 'page-5',
+        items: [
+          createSimpleItem('a'),
+          createSimpleItem('b'),
+          createSimpleItem('c'),
+          createSimpleItem('d'),
+        ],
+        nextCursor: 'page-6',
+      },
+      pageSize: 4,
+      resolve,
+    })
+
+    await source.flush()
+
+    expect(source.api.remove('c').ids).toEqual(['c'])
+    await source.flush()
+
+    await source.api.prefetchNextPage()
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(1)
+    expect(resolve).toHaveBeenLastCalledWith(expect.objectContaining({
+      cursor: 'page-5',
+      pageSize: 4,
+      signal: expect.any(AbortSignal),
+    }))
+    expect(getVisibleIds(source.api.items.value)).toEqual(['a', 'b', 'd', 'e', 'f'])
+
+    source.unmount()
+  })
+
+  it('inserts refreshed trailing items without dropping the existing page contents', async () => {
     let pageThreeLoads = 0
     const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
       if (cursor === 'page-2') {
@@ -439,16 +509,21 @@ describe('useDataSource', () => {
     }))
     expect(idsAfterRefresh.slice(0, 50)).toEqual(idsBeforeRemoval.slice(0, 50))
     expect(idsAfterRefresh.slice(50, 53)).toEqual([
+      'page-3-item-6',
+      'page-3-item-7',
+      'page-3-item-8',
+    ])
+    expect(idsAfterRefresh.slice(70, 73)).toEqual([
       'page-3-refilled-item-1',
       'page-3-refilled-item-2',
       'page-3-refilled-item-3',
     ])
-    expect(idsAfterRefresh).toHaveLength(75)
+    expect(idsAfterRefresh).toHaveLength(95)
 
     source.unmount()
   })
 
-  it('starts filling from the next cursor immediately when the refreshed trailing page stays underfilled', async () => {
+  it('starts filling from the next cursor only when refresh insertion still leaves the trailing page underfilled', async () => {
     let rootPageLoads = 0
     const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
       if (cursor === 'page-2') {
@@ -462,7 +537,7 @@ describe('useDataSource', () => {
       rootPageLoads += 1
 
       return createPageResult(rootPageLoads === 1 ? 'page-1' : 'page-1-refilled', {
-        itemCount: rootPageLoads === 1 ? 20 : 18,
+        itemCount: rootPageLoads === 1 ? 20 : 4,
         nextPage: 'page-2',
       })
     })
@@ -493,6 +568,12 @@ describe('useDataSource', () => {
     ])
     expect(source.api.items.value).toHaveLength(18)
     expect(getVisibleIds(source.api.items.value).slice(0, 4)).toEqual([
+      'page-1-item-7',
+      'page-1-item-8',
+      'page-1-item-9',
+      'page-1-item-10',
+    ])
+    expect(getVisibleIds(source.api.items.value).slice(-4)).toEqual([
       'page-1-refilled-item-1',
       'page-1-refilled-item-2',
       'page-1-refilled-item-3',
@@ -547,7 +628,7 @@ describe('useDataSource', () => {
       pageSize: 25,
       signal: expect.any(AbortSignal),
     }))
-    expect(source.api.items.value).toHaveLength(25)
+    expect(source.api.items.value).toHaveLength(45)
     expect(getVisibleIds(source.api.items.value).slice(0, 5)).toEqual([
       'page-2-refilled-item-1',
       'page-2-refilled-item-2',

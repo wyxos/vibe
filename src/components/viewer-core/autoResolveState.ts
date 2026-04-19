@@ -1,5 +1,11 @@
 import type { VibeViewerItem } from '../viewer'
-import { filterRemovedItems, getVibeBucketVisibleCount, resolveVibeBucketItems, type VibeAutoBucket } from './autoBuckets'
+import {
+  filterRemovedItems,
+  getVibeBucketVisibleCount,
+  mergeRefreshedVibeBucketItems,
+  resolveVibeBucketItems,
+  type VibeAutoBucket,
+} from './autoBuckets'
 import { clamp, type VibeAutoDirection } from './autoResolveHelpers'
 import { getVibeOccurrenceKey } from './itemIdentity'
 
@@ -41,6 +47,33 @@ export function createAutoResolveBucket(options: {
   sequence: number
 }) {
   const resolvedItems = resolveVibeBucketItems(options.nextItems, options.previousItems, options.sequence)
+
+  return {
+    bucket: {
+      cursor: options.cursor,
+      items: resolvedItems.items,
+      nextCursor: options.nextCursor,
+      previousCursor: options.previousCursor,
+    } satisfies VibeAutoBucket,
+    nextSequence: resolvedItems.nextSequence,
+  }
+}
+
+export function refreshAutoResolveBucket(options: {
+  cursor: string | null
+  edge: 'leading' | 'trailing'
+  nextCursor: string | null
+  nextItems: VibeViewerItem[]
+  previousCursor: string | null
+  previousItems: VibeViewerItem[]
+  sequence: number
+}) {
+  const resolvedItems = mergeRefreshedVibeBucketItems(
+    options.nextItems,
+    options.previousItems,
+    options.sequence,
+    options.edge,
+  )
 
   return {
     bucket: {
