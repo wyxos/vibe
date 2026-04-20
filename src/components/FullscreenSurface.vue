@@ -170,7 +170,7 @@ function updateViewportWidth() {
   viewportWidth.value = window.innerWidth || FULLSCREEN_ASIDE_COLUMN_BREAKPOINT_PX
 }
 function onFullscreenImageLoad(event: Event, id: string, url: string) {
-  fullscreenMedia.settleBackgroundPreload(id)
+  fullscreenMedia.settleAssetPreload(id)
   viewer.onImageLoad(id, url)
   const element = event.currentTarget
   if (element instanceof HTMLImageElement) {
@@ -178,7 +178,7 @@ function onFullscreenImageLoad(event: Event, id: string, url: string) {
   }
 }
 async function onFullscreenImageError(id: string, url: string) {
-  fullscreenMedia.settleBackgroundPreload(id)
+  fullscreenMedia.settleAssetPreload(id)
   await viewer.onImageError(id, url)
 }
 
@@ -199,7 +199,7 @@ function registerFullscreenAudioElement(id: string, element: unknown) {
   viewer.registerAudioElement(id, element)
 }
 async function onFullscreenMediaError(id: string, url: string) {
-  fullscreenMedia.settleBackgroundPreload(id)
+  fullscreenMedia.settleAssetPreload(id)
   await viewer.onMediaError(id, url)
 }
 
@@ -209,7 +209,7 @@ function onFullscreenMediaEvent(id: string, event: Event) {
   const element = event.currentTarget
   const metadataReadyState = typeof HTMLMediaElement === 'undefined' ? 1 : HTMLMediaElement.HAVE_METADATA
   if (element instanceof HTMLMediaElement && element.readyState >= metadataReadyState) {
-    fullscreenMedia.settleBackgroundPreload(id)
+    fullscreenMedia.settleAssetPreload(id)
   }
 }
 function updateDominantToneFromImageElement(id: string, image: HTMLImageElement) {

@@ -187,6 +187,46 @@ describe('VibeLayout', () => {
     wrapper.unmount()
   })
 
+  it('keeps the spinner on a promoted pending fullscreen image while the forward queue advances', async () => {
+    setViewportWidth(390)
+
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps([
+        createImageItem('image-pending-1', 'Image 1'),
+        createImageItem('image-pending-2', 'Image 2'),
+        createImageItem('image-pending-3', 'Image 3'),
+        createImageItem('image-pending-4', 'Image 4'),
+        createImageItem('image-pending-5', 'Image 5'),
+        createImageItem('image-pending-6', 'Image 6'),
+      ], {
+        activeIndex: 0,
+      }),
+    })
+
+    await flushDom()
+
+    expect(wrapper.get('[data-index="1"] img').attributes('src')).toBe('https://example.com/image-pending-2.jpg')
+    expect(wrapper.get('[data-index="2"] img').attributes('src')).toBe('https://example.com/image-pending-3.jpg')
+    expect(wrapper.get('[data-index="3"] img').attributes('src')).toBeUndefined()
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="vibe-pagination"]').text()).toContain('2 / 6')
+    expect(wrapper.get('[data-testid="vibe-asset-spinner"]').exists()).toBe(true)
+    expect(wrapper.get('[data-index="1"] img').attributes('src')).toBe('https://example.com/image-pending-2.jpg')
+    expect(wrapper.get('[data-index="2"] img').attributes('src')).toBe('https://example.com/image-pending-3.jpg')
+    expect(wrapper.get('[data-index="3"] img').attributes('src')).toBe('https://example.com/image-pending-4.jpg')
+    expect(wrapper.get('[data-index="4"] img').attributes('src')).toBeUndefined()
+
+    await wrapper.get('[data-index="1"] img').trigger('load')
+    await flushDom()
+
+    expect(wrapper.find('[data-testid="vibe-asset-spinner"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
   it('reuses a preloaded fullscreen image when it becomes active', async () => {
     setViewportWidth(390)
 

@@ -21,6 +21,7 @@ export function useFullscreenSurfaceMedia(options: {
   const preloadController = useFullscreenPreloadController({
     active: options.active,
     getItemKey,
+    isAssetReady,
     items: options.items,
     onResetAssetState: options.viewer.resetAssetState,
     resolvedActiveIndex: options.resolvedActiveIndex,
@@ -43,22 +44,21 @@ export function useFullscreenSurfaceMedia(options: {
     return preloadController.shouldAttachSlideAsset(index)
   }
 
+  function getSlidePreloadState(index: number) {
+    return preloadController.getSlidePreloadState(index)
+  }
+
   function isAssetLoading(index: number, item: VibeViewerItem) {
     const itemKey = getItemKey(item)
+    const preloadState = getSlidePreloadState(index)
 
-    if (!shouldPreloadSlideAsset(index) || index !== options.resolvedActiveIndex.value || options.viewer.getAssetErrorKind(itemKey)) {
+    if ((preloadState === 'idle')
+      || index !== options.resolvedActiveIndex.value
+      || options.viewer.getAssetErrorKind(itemKey)) {
       return false
     }
 
-    if (item.type === 'image') {
-      return !options.viewer.isImageReady(itemKey)
-    }
-
-    if (item.type === 'video' || item.type === 'audio') {
-      return !options.viewer.isMediaReady(itemKey)
-    }
-
-    return false
+    return preloadState !== 'ready'
   }
 
   function getAssetErrorKind(item: VibeViewerItem) {
@@ -70,7 +70,7 @@ export function useFullscreenSurfaceMedia(options: {
   }
 
   function isAssetErrored(index: number, item: VibeViewerItem) {
-    return shouldPreloadSlideAsset(index) && index === options.resolvedActiveIndex.value && Boolean(getAssetErrorKind(item))
+    return getSlidePreloadState(index) !== 'idle' && index === options.resolvedActiveIndex.value && Boolean(getAssetErrorKind(item))
   }
 
   function getFullscreenImageSource(index: number, item: VibeViewerItem) {
@@ -85,6 +85,18 @@ export function useFullscreenSurfaceMedia(options: {
     return shouldPreloadSlideAsset(index) ? item.url : undefined
   }
 
+  function isAssetReady(id: string, item: VibeViewerItem) {
+    if (item.type === 'image') {
+      return options.viewer.isImageReady(id)
+    }
+
+    if (item.type === 'video' || item.type === 'audio') {
+      return options.viewer.isMediaReady(id)
+    }
+
+    return false
+  }
+
   return {
     getAssetErrorKind,
     getAssetErrorLabel,
@@ -93,11 +105,12 @@ export function useFullscreenSurfaceMedia(options: {
     getFullscreenMediaSource,
     getItemKey,
     getMediaActionLabel,
+    getSlidePreloadState,
     isAssetErrored,
     isAssetLoading,
     registerImageElement: preloadController.registerImageElement,
     registerMediaElement: preloadController.registerMediaElement,
-    settleBackgroundPreload: preloadController.settleBackgroundPreload,
+    settleAssetPreload: preloadController.settleAssetPreload,
     shouldPreloadSlideAsset,
   }
 }
