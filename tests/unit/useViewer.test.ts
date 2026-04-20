@@ -52,19 +52,19 @@ describe('useViewer', () => {
     viewer.unmount()
   })
 
-  it('returns a bounded rendered window around the active index', async () => {
+  it('returns a bounded forward-biased rendered window around the active index', async () => {
     const items = Array.from({ length: 40 }, (_, index) => createImageItem(`image-${index + 1}`))
     const viewer = await mountViewer({
       items,
       activeIndex: 12,
     })
-    expect(viewer.api.renderedItems.value.map(({ index }) => index)).toEqual([10, 11, 12, 13, 14])
+    expect(viewer.api.renderedItems.value.map(({ index }) => index)).toEqual([11, 12, 13, 14, 15])
     viewer.props.activeIndex = 0
     await viewer.flush()
-    expect(viewer.api.renderedItems.value.map(({ index }) => index)).toEqual([0, 1, 2])
+    expect(viewer.api.renderedItems.value.map(({ index }) => index)).toEqual([0, 1, 2, 3])
     viewer.props.activeIndex = 39
     await viewer.flush()
-    expect(viewer.api.renderedItems.value.map(({ index }) => index)).toEqual([37, 38, 39])
+    expect(viewer.api.renderedItems.value.map(({ index }) => index)).toEqual([38, 39])
     viewer.unmount()
   })
 

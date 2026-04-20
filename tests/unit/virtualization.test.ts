@@ -19,15 +19,15 @@ const createItems = (count: number) =>
 
 describe('virtualization helpers', () => {
   it('bounds the rendered range at the start, middle, and end of the list', () => {
-    expect(getRenderedRange(0, 40)).toEqual({ start: 0, end: 2 })
-    expect(getRenderedRange(12, 40)).toEqual({ start: 10, end: 14 })
-    expect(getRenderedRange(39, 40)).toEqual({ start: 37, end: 39 })
+    expect(getRenderedRange(0, 40)).toEqual({ start: 0, end: 3 })
+    expect(getRenderedRange(12, 40)).toEqual({ start: 11, end: 15 })
+    expect(getRenderedRange(39, 40)).toEqual({ start: 38, end: 39 })
   })
 
-  it('returns only the visible window items around the active index', () => {
+  it('returns the forward-biased rendered window around the active index', () => {
     const items = createItems(40)
 
-    expect(getRenderedItems(items, 12).map(({ index }) => index)).toEqual([10, 11, 12, 13, 14])
+    expect(getRenderedItems(items, 12).map(({ index }) => index)).toEqual([11, 12, 13, 14, 15])
   })
 
   it('computes per-slide transforms from index, viewport height, and drag offset', () => {

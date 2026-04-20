@@ -12,7 +12,15 @@ export interface VibeRenderedItem {
   index: number
 }
 
-export const VIBE_WINDOW_OVERSCAN = 2
+export interface VibeRenderedOverscan {
+  backward: number
+  forward: number
+}
+
+export const VIBE_WINDOW_OVERSCAN: VibeRenderedOverscan = {
+  backward: 1,
+  forward: 3,
+}
 
 export function getRenderedRange(activeIndex: number, totalItems: number, overscan = VIBE_WINDOW_OVERSCAN): VibeRenderedRange {
   if (totalItems <= 0) {
@@ -23,8 +31,8 @@ export function getRenderedRange(activeIndex: number, totalItems: number, oversc
   }
 
   return {
-    start: Math.max(0, activeIndex - overscan),
-    end: Math.min(totalItems - 1, activeIndex + overscan),
+    start: Math.max(0, activeIndex - overscan.backward),
+    end: Math.min(totalItems - 1, activeIndex + overscan.forward),
   }
 }
 

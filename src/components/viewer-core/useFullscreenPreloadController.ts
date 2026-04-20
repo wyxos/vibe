@@ -15,13 +15,12 @@ interface FullscreenNeighborEntry {
   key: string
 }
 
-const FULLSCREEN_DESIRED_BACKGROUND_OFFSETS = [-1, 1, 2] as const
-const FULLSCREEN_IMMEDIATE_NEIGHBOR_OFFSETS = [-1, 1] as const
+const FULLSCREEN_DESIRED_BACKGROUND_OFFSETS = [1, 2, 3] as const
 
 const FULLSCREEN_QUEUE_PRIORITY_BY_OFFSET: Record<number, number> = {
-  [-1]: 0,
   1: 0,
   2: 1,
+  3: 2,
 }
 
 export function useFullscreenPreloadController(options: {
@@ -41,7 +40,6 @@ export function useFullscreenPreloadController(options: {
   const backgroundJobs = new Map<string, FullscreenBackgroundJob>()
   const imageElements = new Map<string, HTMLImageElement>()
   const mediaElements = new Map<string, HTMLMediaElement>()
-  const readyKeys = new Set<string>()
   let lastAttachedKeys = new Set<string>()
 
   watch(
@@ -79,7 +77,7 @@ export function useFullscreenPreloadController(options: {
       imageElements.set(id, element)
 
       if (isImageElementReady(element)) {
-        handleReadyAsset(id)
+        settleBackgroundPreload(id)
       }
       return
     }
@@ -92,7 +90,7 @@ export function useFullscreenPreloadController(options: {
       mediaElements.set(id, element)
 
       if (isMediaElementReady(element)) {
-        handleReadyAsset(id)
+        settleBackgroundPreload(id)
       }
       return
     }
@@ -101,10 +99,8 @@ export function useFullscreenPreloadController(options: {
   }
 
   function settleBackgroundPreload(id: string) {
-    readyKeys.add(id)
     const job = backgroundJobs.get(id)
     if (!job) {
-      refreshBackgroundJobs()
       return
     }
 
@@ -168,7 +164,6 @@ export function useFullscreenPreloadController(options: {
         key: desiredNeighbor.key,
         lease: backgroundQueue.request({
           assetType: desiredNeighbor.item.type === 'image' ? 'image' : 'video',
-          canGrant: () => canGrantBackgroundJob(job.index),
           getPriority: () => getBackgroundPriority(job.index),
           onGrant: () => {
             setAttachedNeighbor(desiredNeighbor.key, true)
@@ -216,22 +211,6 @@ export function useFullscreenPreloadController(options: {
     return FULLSCREEN_QUEUE_PRIORITY_BY_OFFSET[index - options.resolvedActiveIndex.value] ?? Number.POSITIVE_INFINITY
   }
 
-  function canGrantBackgroundJob(index: number) {
-    const offset = index - options.resolvedActiveIndex.value
-    if (offset !== 2) {
-      return true
-    }
-
-    return FULLSCREEN_IMMEDIATE_NEIGHBOR_OFFSETS.every((neighborOffset) => {
-      const entry = getPreloadableEntry(options.resolvedActiveIndex.value + neighborOffset)
-      if (!entry) {
-        return true
-      }
-
-      return readyKeys.has(entry.key)
-    })
-  }
-
   function getPreloadableEntry(index: number): FullscreenNeighborEntry | null {
     const item = options.items.value[index]
     if (!item || !isPreloadableItem(item)) {
@@ -242,16 +221,6 @@ export function useFullscreenPreloadController(options: {
       index,
       item,
       key: options.getItemKey(item),
-    }
-  }
-
-  function handleReadyAsset(id: string) {
-    settleBackgroundPreload(id)
-  }
-
-  function refreshBackgroundJobs() {
-    for (const job of backgroundJobs.values()) {
-      job.lease.refresh()
     }
   }
 
@@ -272,7 +241,6 @@ export function useFullscreenPreloadController(options: {
         continue
       }
 
-      readyKeys.delete(key)
       abortAssetLoad(key)
       options.onResetAssetState(key)
     }

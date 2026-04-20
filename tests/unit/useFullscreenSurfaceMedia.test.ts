@@ -5,7 +5,7 @@ import type { VibeViewerItem } from '@/components/viewer'
 import { useFullscreenSurfaceMedia } from '@/components/viewer-core/useFullscreenSurfaceMedia'
 
 describe('useFullscreenSurfaceMedia', () => {
-  it('keeps the active slide immediate and preloads immediate neighbors ahead of the forward frontier', () => {
+  it('keeps the active slide immediate and preloads the next two items ahead of the forward queue', () => {
     const items = ref([
       createImageItem('image-1'),
       createImageItem('image-2'),
@@ -21,21 +21,18 @@ describe('useFullscreenSurfaceMedia', () => {
       viewer: createViewerStub(),
     })
 
-    expect(media.shouldPreloadSlideAsset(1)).toBe(true)
+    expect(media.shouldPreloadSlideAsset(1)).toBe(false)
     expect(media.shouldPreloadSlideAsset(2)).toBe(true)
     expect(media.shouldPreloadSlideAsset(3)).toBe(true)
-    expect(media.shouldPreloadSlideAsset(4)).toBe(false)
-
-    media.settleBackgroundPreload('image-2')
-
-    expect(media.shouldPreloadSlideAsset(4)).toBe(false)
+    expect(media.shouldPreloadSlideAsset(4)).toBe(true)
+    expect(media.shouldPreloadSlideAsset(5)).toBe(false)
 
     media.settleBackgroundPreload('image-4')
 
-    expect(media.shouldPreloadSlideAsset(4)).toBe(true)
+    expect(media.shouldPreloadSlideAsset(5)).toBe(true)
   })
 
-  it('cancels stale previous work on swipe and keeps the new immediate neighbors ahead of the frontier', async () => {
+  it('drops stale previous work and keeps the forward pipeline hot as the active slide advances', async () => {
     const activeIndex = ref(2)
     const items = ref([
       createImageItem('image-1'),
@@ -45,6 +42,7 @@ describe('useFullscreenSurfaceMedia', () => {
       createImageItem('image-5'),
       createImageItem('image-6'),
       createImageItem('image-7'),
+      createImageItem('image-8'),
     ])
     const media = useFullscreenSurfaceMedia({
       active: ref(true),
@@ -54,19 +52,26 @@ describe('useFullscreenSurfaceMedia', () => {
     })
 
     expect(media.shouldPreloadSlideAsset(2)).toBe(true)
-    expect(media.shouldPreloadSlideAsset(1)).toBe(true)
+    expect(media.shouldPreloadSlideAsset(1)).toBe(false)
     expect(media.shouldPreloadSlideAsset(3)).toBe(true)
-    expect(media.shouldPreloadSlideAsset(4)).toBe(false)
+    expect(media.shouldPreloadSlideAsset(4)).toBe(true)
     expect(media.shouldPreloadSlideAsset(5)).toBe(false)
 
     activeIndex.value = 3
     await flushDom()
 
-    expect(media.shouldPreloadSlideAsset(1)).toBe(false)
-    expect(media.shouldPreloadSlideAsset(2)).toBe(true)
+    expect(media.shouldPreloadSlideAsset(2)).toBe(false)
     expect(media.shouldPreloadSlideAsset(4)).toBe(true)
-    expect(media.shouldPreloadSlideAsset(5)).toBe(false)
+    expect(media.shouldPreloadSlideAsset(5)).toBe(true)
     expect(media.shouldPreloadSlideAsset(6)).toBe(false)
+
+    activeIndex.value = 4
+    await flushDom()
+
+    expect(media.shouldPreloadSlideAsset(3)).toBe(false)
+    expect(media.shouldPreloadSlideAsset(5)).toBe(true)
+    expect(media.shouldPreloadSlideAsset(6)).toBe(true)
+    expect(media.shouldPreloadSlideAsset(7)).toBe(false)
   })
 
   it('clears active and neighbor asset state when fullscreen deactivates', async () => {

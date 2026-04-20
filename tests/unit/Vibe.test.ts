@@ -144,7 +144,7 @@ describe('VibeLayout', () => {
     wrapper.unmount()
   })
 
-  it('queues fullscreen neighbor image preloads and drops stale sources after a jump', async () => {
+  it('preloads forward fullscreen images so the swipe path stays warm', async () => {
     setViewportWidth(390)
 
     const wrapper = mount(Layout, {
@@ -164,12 +164,13 @@ describe('VibeLayout', () => {
 
     expect(wrapper.get('[data-index="0"] img').attributes('src')).toBe('https://example.com/image-preload-1.jpg')
     expect(wrapper.get('[data-index="1"] img').attributes('src')).toBe('https://example.com/image-preload-2.jpg')
-    expect(wrapper.get('[data-index="2"] img').attributes('src')).toBeUndefined()
+    expect(wrapper.get('[data-index="2"] img').attributes('src')).toBe('https://example.com/image-preload-3.jpg')
+    expect(wrapper.get('[data-index="3"] img').attributes('src')).toBeUndefined()
 
     await wrapper.get('[data-index="1"] img').trigger('load')
     await flushDom()
 
-    expect(wrapper.get('[data-index="2"] img').attributes('src')).toBe('https://example.com/image-preload-3.jpg')
+    expect(wrapper.get('[data-index="3"] img').attributes('src')).toBe('https://example.com/image-preload-4.jpg')
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
     await flushDom()
@@ -178,17 +179,9 @@ describe('VibeLayout', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
     await flushDom()
 
-    expect(wrapper.get('[data-index="1"] img').attributes('src')).toBeUndefined()
-    expect(wrapper.get('[data-index="2"] img').attributes('src')).toBe('https://example.com/image-preload-3.jpg')
+    expect(wrapper.find('[data-index="1"] img').exists()).toBe(false)
     expect(wrapper.get('[data-index="3"] img').attributes('src')).toBe('https://example.com/image-preload-4.jpg')
     expect(wrapper.get('[data-index="4"] img').attributes('src')).toBe('https://example.com/image-preload-5.jpg')
-    expect(wrapper.get('[data-index="5"] img').attributes('src')).toBeUndefined()
-
-    await wrapper.get('[data-index="2"] img').trigger('load')
-    await flushDom()
-    await wrapper.get('[data-index="4"] img').trigger('load')
-    await flushDom()
-
     expect(wrapper.get('[data-index="5"] img').attributes('src')).toBe('https://example.com/image-preload-6.jpg')
 
     wrapper.unmount()
