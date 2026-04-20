@@ -184,6 +184,8 @@ describe('VibeLayout', () => {
     expect(wrapper.get('[data-index="4"] img').attributes('src')).toBe('https://example.com/image-preload-5.jpg')
     expect(wrapper.get('[data-index="5"] img').attributes('src')).toBeUndefined()
 
+    await wrapper.get('[data-index="2"] img').trigger('load')
+    await flushDom()
     await wrapper.get('[data-index="4"] img').trigger('load')
     await flushDom()
 

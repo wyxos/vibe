@@ -6,6 +6,7 @@ export interface VibeAssetLoadQueueLimits {
 
 export interface VibeAssetLoadRequest {
   assetType: 'image' | 'video' | 'probe'
+  canGrant?: () => boolean
   getPriority: () => number
   onGrant: () => void
   url: string
@@ -82,7 +83,7 @@ export function createAssetLoadQueue(limits: VibeAssetLoadQueueLimits = DEFAULT_
         return
       }
 
-      if (!canGrant(request)) {
+      if (!canGrantRequest(request)) {
         continue
       }
 
@@ -98,7 +99,11 @@ export function createAssetLoadQueue(limits: VibeAssetLoadQueueLimits = DEFAULT_
     }
   }
 
-  function canGrant(request: InternalRequest) {
+  function canGrantRequest(request: InternalRequest) {
+    if (!passesGrantGate(request)) {
+      return false
+    }
+
     const domainActiveRequests = [...activeRequests.values()].filter((entry) => entry.domain === request.domain)
 
     if (domainActiveRequests.length >= limits.maxPerDomain) {
@@ -131,6 +136,15 @@ function getRequestPriority(request: InternalRequest) {
   }
   catch {
     return Number.POSITIVE_INFINITY
+  }
+}
+
+function passesGrantGate(request: InternalRequest) {
+  try {
+    return request.canGrant?.() ?? true
+  }
+  catch {
+    return false
   }
 }
 

@@ -5,7 +5,7 @@ import type { VibeViewerItem } from '@/components/viewer'
 import { useFullscreenSurfaceMedia } from '@/components/viewer-core/useFullscreenSurfaceMedia'
 
 describe('useFullscreenSurfaceMedia', () => {
-  it('grants the active slide immediately and queues fullscreen neighbors in order', () => {
+  it('keeps the active slide immediate and preloads immediate neighbors ahead of the forward frontier', () => {
     const items = ref([
       createImageItem('image-1'),
       createImageItem('image-2'),
@@ -17,26 +17,25 @@ describe('useFullscreenSurfaceMedia', () => {
     const media = useFullscreenSurfaceMedia({
       active: ref(true),
       items,
-      resolvedActiveIndex: ref(3),
+      resolvedActiveIndex: ref(2),
       viewer: createViewerStub(),
     })
 
-    expect(media.shouldPreloadSlideAsset(2)).toBe(false)
-    expect(media.shouldPreloadSlideAsset(3)).toBe(true)
-    expect(media.shouldPreloadSlideAsset(4)).toBe(true)
-    expect(media.shouldPreloadSlideAsset(5)).toBe(false)
-
-    media.settleBackgroundPreload('image-5')
-
-    expect(media.shouldPreloadSlideAsset(5)).toBe(true)
-    expect(media.shouldPreloadSlideAsset(2)).toBe(false)
-
-    media.settleBackgroundPreload('image-6')
-
+    expect(media.shouldPreloadSlideAsset(1)).toBe(true)
     expect(media.shouldPreloadSlideAsset(2)).toBe(true)
+    expect(media.shouldPreloadSlideAsset(3)).toBe(true)
+    expect(media.shouldPreloadSlideAsset(4)).toBe(false)
+
+    media.settleBackgroundPreload('image-2')
+
+    expect(media.shouldPreloadSlideAsset(4)).toBe(false)
+
+    media.settleBackgroundPreload('image-4')
+
+    expect(media.shouldPreloadSlideAsset(4)).toBe(true)
   })
 
-  it('keeps unfinished next preloads alive on swipe and extends the queue forward', async () => {
+  it('cancels stale previous work on swipe and keeps the new immediate neighbors ahead of the frontier', async () => {
     const activeIndex = ref(2)
     const items = ref([
       createImageItem('image-1'),
@@ -55,6 +54,7 @@ describe('useFullscreenSurfaceMedia', () => {
     })
 
     expect(media.shouldPreloadSlideAsset(2)).toBe(true)
+    expect(media.shouldPreloadSlideAsset(1)).toBe(true)
     expect(media.shouldPreloadSlideAsset(3)).toBe(true)
     expect(media.shouldPreloadSlideAsset(4)).toBe(false)
     expect(media.shouldPreloadSlideAsset(5)).toBe(false)
@@ -62,21 +62,11 @@ describe('useFullscreenSurfaceMedia', () => {
     activeIndex.value = 3
     await flushDom()
 
+    expect(media.shouldPreloadSlideAsset(1)).toBe(false)
     expect(media.shouldPreloadSlideAsset(2)).toBe(true)
-    expect(media.shouldPreloadSlideAsset(3)).toBe(true)
     expect(media.shouldPreloadSlideAsset(4)).toBe(true)
     expect(media.shouldPreloadSlideAsset(5)).toBe(false)
     expect(media.shouldPreloadSlideAsset(6)).toBe(false)
-
-    media.settleBackgroundPreload('image-5')
-
-    expect(media.shouldPreloadSlideAsset(5)).toBe(true)
-    expect(media.shouldPreloadSlideAsset(6)).toBe(false)
-
-    media.settleBackgroundPreload('image-6')
-
-    expect(media.shouldPreloadSlideAsset(6)).toBe(true)
-    expect(media.shouldPreloadSlideAsset(2)).toBe(true)
   })
 
   it('clears active and neighbor asset state when fullscreen deactivates', async () => {

@@ -9,13 +9,19 @@ interface FullscreenBackgroundJob {
   lease: VibeAssetLoadLease
 }
 
-const FULLSCREEN_FORWARD_PRELOAD_COUNT = 2
+interface FullscreenNeighborEntry {
+  index: number
+  item: VibeViewerItem
+  key: string
+}
+
+const FULLSCREEN_DESIRED_BACKGROUND_OFFSETS = [-1, 1, 2] as const
+const FULLSCREEN_IMMEDIATE_NEIGHBOR_OFFSETS = [-1, 1] as const
 
 const FULLSCREEN_QUEUE_PRIORITY_BY_OFFSET: Record<number, number> = {
+  [-1]: 0,
   1: 0,
   2: 1,
-  3: 2,
-  [-1]: 3,
 }
 
 export function useFullscreenPreloadController(options: {
@@ -27,14 +33,15 @@ export function useFullscreenPreloadController(options: {
 }) {
   const attachedNeighborKeys = ref<Record<string, true>>({})
   const backgroundQueue = createAssetLoadQueue({
-    maxGlobal: 1,
-    maxPerDomain: 1,
-    maxVideoPerDomain: 1,
+    maxGlobal: 2,
+    maxPerDomain: 2,
+    maxVideoPerDomain: 2,
   })
 
   const backgroundJobs = new Map<string, FullscreenBackgroundJob>()
   const imageElements = new Map<string, HTMLImageElement>()
   const mediaElements = new Map<string, HTMLMediaElement>()
+  const readyKeys = new Set<string>()
   let lastAttachedKeys = new Set<string>()
 
   watch(
@@ -72,7 +79,7 @@ export function useFullscreenPreloadController(options: {
       imageElements.set(id, element)
 
       if (isImageElementReady(element)) {
-        settleBackgroundPreload(id)
+        handleReadyAsset(id)
       }
       return
     }
@@ -85,7 +92,7 @@ export function useFullscreenPreloadController(options: {
       mediaElements.set(id, element)
 
       if (isMediaElementReady(element)) {
-        settleBackgroundPreload(id)
+        handleReadyAsset(id)
       }
       return
     }
@@ -94,8 +101,10 @@ export function useFullscreenPreloadController(options: {
   }
 
   function settleBackgroundPreload(id: string) {
+    readyKeys.add(id)
     const job = backgroundJobs.get(id)
     if (!job) {
+      refreshBackgroundJobs()
       return
     }
 
@@ -159,6 +168,7 @@ export function useFullscreenPreloadController(options: {
         key: desiredNeighbor.key,
         lease: backgroundQueue.request({
           assetType: desiredNeighbor.item.type === 'image' ? 'image' : 'video',
+          canGrant: () => canGrantBackgroundJob(job.index),
           getPriority: () => getBackgroundPriority(job.index),
           onGrant: () => {
             setAttachedNeighbor(desiredNeighbor.key, true)
@@ -182,80 +192,10 @@ export function useFullscreenPreloadController(options: {
 
   function getDesiredNeighbors() {
     const activeIndex = options.resolvedActiveIndex.value
-    const preloadableEntries = options.items.value
-      .map((item, index) => {
-        if (!isPreloadableItem(item)) {
-          return null
-        }
 
-        return {
-          index,
-          item,
-          key: options.getItemKey(item),
-        }
-      })
-      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
-    const preloadableEntriesByKey = new Map(preloadableEntries.map((entry) => [entry.key, entry]))
-    const desiredNeighborKeys = new Set<string>()
-    const desiredNeighbors: typeof preloadableEntries = []
-
-    const addDesiredNeighbor = (entry: (typeof preloadableEntries)[number] | undefined) => {
-      if (!entry || desiredNeighborKeys.has(entry.key)) {
-        return
-      }
-
-      desiredNeighborKeys.add(entry.key)
-      desiredNeighbors.push(entry)
-    }
-
-    const retainedForwardEntries = new Map<string, (typeof preloadableEntries)[number]>()
-
-    for (const key of Object.keys(attachedNeighborKeys.value)) {
-      const entry = preloadableEntriesByKey.get(key)
-      if (entry && entry.index > activeIndex) {
-        retainedForwardEntries.set(key, entry)
-      }
-    }
-
-    for (const job of backgroundJobs.values()) {
-      if (job.index <= activeIndex) {
-        continue
-      }
-
-      const entry = preloadableEntriesByKey.get(job.key)
-      if (entry) {
-        retainedForwardEntries.set(job.key, entry)
-      }
-    }
-
-    const sortedRetainedForwardEntries = [...retainedForwardEntries.values()].sort((left, right) => left.index - right.index)
-    for (const entry of sortedRetainedForwardEntries) {
-      addDesiredNeighbor(entry)
-    }
-
-    const forwardFrontierIndex = sortedRetainedForwardEntries.reduce(
-      (maxIndex, entry) => Math.max(maxIndex, entry.index),
-      activeIndex,
-    )
-    let forwardEntriesAdded = 0
-
-    for (const entry of preloadableEntries) {
-      if (entry.index <= forwardFrontierIndex || desiredNeighborKeys.has(entry.key)) {
-        continue
-      }
-
-      addDesiredNeighbor(entry)
-      forwardEntriesAdded += 1
-
-      if (forwardEntriesAdded >= FULLSCREEN_FORWARD_PRELOAD_COUNT) {
-        break
-      }
-    }
-
-    const previousEntry = preloadableEntries.find((entry) => entry.index === activeIndex - 1)
-    addDesiredNeighbor(previousEntry)
-
-    return desiredNeighbors
+    return FULLSCREEN_DESIRED_BACKGROUND_OFFSETS
+      .map((offset) => getPreloadableEntry(activeIndex + offset))
+      .filter((entry): entry is FullscreenNeighborEntry => Boolean(entry))
   }
 
   function getActivePreloadableKey() {
@@ -276,6 +216,45 @@ export function useFullscreenPreloadController(options: {
     return FULLSCREEN_QUEUE_PRIORITY_BY_OFFSET[index - options.resolvedActiveIndex.value] ?? Number.POSITIVE_INFINITY
   }
 
+  function canGrantBackgroundJob(index: number) {
+    const offset = index - options.resolvedActiveIndex.value
+    if (offset !== 2) {
+      return true
+    }
+
+    return FULLSCREEN_IMMEDIATE_NEIGHBOR_OFFSETS.every((neighborOffset) => {
+      const entry = getPreloadableEntry(options.resolvedActiveIndex.value + neighborOffset)
+      if (!entry) {
+        return true
+      }
+
+      return readyKeys.has(entry.key)
+    })
+  }
+
+  function getPreloadableEntry(index: number): FullscreenNeighborEntry | null {
+    const item = options.items.value[index]
+    if (!item || !isPreloadableItem(item)) {
+      return null
+    }
+
+    return {
+      index,
+      item,
+      key: options.getItemKey(item),
+    }
+  }
+
+  function handleReadyAsset(id: string) {
+    settleBackgroundPreload(id)
+  }
+
+  function refreshBackgroundJobs() {
+    for (const job of backgroundJobs.values()) {
+      job.lease.refresh()
+    }
+  }
+
   function syncAttachedAssets() {
     const nextAttachedKeys = new Set<string>()
     const activeKey = getActivePreloadableKey()
@@ -293,6 +272,7 @@ export function useFullscreenPreloadController(options: {
         continue
       }
 
+      readyKeys.delete(key)
       abortAssetLoad(key)
       options.onResetAssetState(key)
     }

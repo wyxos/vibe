@@ -80,6 +80,67 @@ describe('useAssetLoadQueue', () => {
       'center-item',
     ])
   })
+
+  it('keeps gated frontier work pending until higher-tier media finishes', () => {
+    const queue = createAssetLoadQueue({
+      maxGlobal: 2,
+      maxPerDomain: 2,
+      maxVideoPerDomain: 2,
+    })
+
+    const granted: string[] = []
+    let allowForwardFrontier = false
+
+    const previousLease = requestAsset(
+      queue,
+      granted,
+      'previous-neighbor',
+      'https://media.example.com/previous-neighbor.mp4',
+      'video',
+      0,
+    )
+    const nextLease = requestAsset(
+      queue,
+      granted,
+      'next-neighbor',
+      'https://media.example.com/next-neighbor.mp4',
+      'video',
+      0,
+    )
+    const frontierLease = requestAsset(
+      queue,
+      granted,
+      'forward-frontier',
+      'https://media.example.com/forward-frontier.mp4',
+      'video',
+      1,
+      () => allowForwardFrontier,
+    )
+
+    expect(granted).toEqual([
+      'previous-neighbor',
+      'next-neighbor',
+    ])
+
+    previousLease.release()
+
+    expect(granted).toEqual([
+      'previous-neighbor',
+      'next-neighbor',
+    ])
+
+    allowForwardFrontier = true
+    frontierLease.refresh()
+
+    expect(granted).toEqual([
+      'previous-neighbor',
+      'next-neighbor',
+      'forward-frontier',
+    ])
+
+    nextLease.release()
+    frontierLease.release()
+  })
 })
 
 function requestAsset(
@@ -89,9 +150,11 @@ function requestAsset(
   url: string,
   assetType: 'image' | 'video',
   priority: number,
+  canGrant?: () => boolean,
 ) {
   return queue.request({
     assetType,
+    canGrant,
     getPriority: vi.fn(() => priority),
     onGrant: vi.fn(() => {
       granted.push(id)
