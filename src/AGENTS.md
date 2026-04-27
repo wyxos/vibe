@@ -48,8 +48,7 @@ npm run build:types
 npm run check && npm run build && npm run build:lib && npm run build:types
 ```
 
-## WSL + Herd Runtime
-- Environment assumption: commands run from WSL on a Windows host where Laravel Herd manages primary PHP/Laravel services.
-- Before PHP/Laravel tasks, verify runtime resolution (`which php`, `php -v`).
-- If binaries/services are not available in WSL PATH, use Windows/Herd-aware invocation paths as needed.
-- For DB/service operations, confirm whether runtime/services are Windows-hosted before executing maintenance/debug commands.
+## Windows Runtime
+- Environment assumption: project commands run from Windows/PowerShell on this machine; WSL is not the active project runtime.
+- Use repo-local Node/npm scripts from the Windows checkout.
+- Do not route project work through WSL shims, WSL paths, or `wsl2-ubuntu` unless the user explicitly asks for that path.

@@ -17,6 +17,7 @@ npm run check
 npm run build
 npm run build:lib
 npm run build:types
+npm run verify:published -- --wait
 ```
 
 ## Universal Conventions
@@ -26,6 +27,8 @@ npm run build:types
 - Keep reusable library code in `src/components/`; keep the public package surface in `src/index.ts`.
 - Keep demo-only composition in `src/App.vue` and `src/style.css`.
 - Avoid backward-compat shims unless explicitly requested.
+- `npm run check` includes a max-lines guard. If a file over 500 lines is unavoidable, add it to `scripts/check-max-lines.mjs` with a concrete split follow-up instead of silently growing it.
+- After `npm run release`, verify npm visibility with `npm run verify:published -- --wait` before telling downstream consumers such as Atlas to bump. Use `npm run release:verified` when you want that wait bundled into the release command.
 
 ## Security & Secrets
 
@@ -43,8 +46,7 @@ npm run build:types
 - `npm run check` passes
 - `npm run build && npm run build:lib && npm run build:types` pass
 
-## WSL + Herd Runtime
-- Environment assumption: commands run from WSL on a Windows host where Laravel Herd manages primary PHP/Laravel services.
-- Before PHP/Laravel tasks, verify runtime resolution (`which php`, `php -v`).
-- If binaries/services are not available in WSL PATH, use Windows/Herd-aware invocation paths as needed.
-- For DB/service operations, confirm whether runtime/services are Windows-hosted before executing maintenance/debug commands.
+## Windows Runtime
+- Environment assumption: project commands run from Windows/PowerShell on this machine; WSL is not the active project runtime.
+- Use repo-local Node/npm scripts from the Windows checkout.
+- Do not route project work through WSL shims, WSL paths, or `wsl2-ubuntu` unless the user explicitly asks for that path.
