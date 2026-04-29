@@ -26,6 +26,10 @@ const workspaceLinks = [
     to: '/debug/fake-server',
     label: 'Fake Server Debug',
   },
+  {
+    to: '/debug/refresh-append',
+    label: 'Refresh Append Debug',
+  },
 ]
 
 watch(

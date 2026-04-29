@@ -168,21 +168,23 @@ export function useAutoResolveSource(options: {
       }
 
       const reloadResult = await reloadBoundaryBucket('trailing')
-      if (reloadResult?.followCursor && needsBoundaryReload('trailing')) {
+      if (reloadResult?.followCursor && (reloadResult.itemsInserted === 0 || needsBoundaryReload('trailing'))) {
         await appendBuckets(reloadResult.followCursor, appendOptions)
       }
       return
     }
     if (exhaustedNextCursor) {
       if (targetBucket?.cursor === exhaustedNextCursor) {
-        await reloadBoundaryBucket('trailing')
+        const reloadResult = await reloadBoundaryBucket('trailing')
+        if (reloadResult?.followCursor && reloadResult.itemsInserted === 0) await appendBuckets(reloadResult.followCursor, appendOptions)
         return
       }
       await appendBuckets(exhaustedNextCursor, appendOptions)
       return
     }
     if (!hasNextPage.value) {
-      if (canRefreshTrailingBoundary.value) await reloadBoundaryBucket('trailing')
+      const reloadResult = canRefreshTrailingBoundary.value ? await reloadBoundaryBucket('trailing') : null
+      if (reloadResult?.followCursor && reloadResult.itemsInserted === 0) await appendBuckets(reloadResult.followCursor, appendOptions)
       return
     }
     await appendBuckets(nextCursor.value, appendOptions)
@@ -191,7 +193,7 @@ export function useAutoResolveSource(options: {
     if (isPageLoadingLocked.value || !hasPreviousPage.value || loading.value) return
     if (needsBoundaryReload('leading')) {
       const reloadResult = await reloadBoundaryBucket('leading')
-      if (reloadResult?.itemsLoaded === 0 && reloadResult.followCursor) {
+      if (reloadResult?.itemsInserted === 0 && reloadResult.followCursor) {
         await prependBuckets(reloadResult.followCursor)
       }
       return
@@ -367,7 +369,7 @@ export function useAutoResolveSource(options: {
   }
   async function reloadBoundaryBucket(edge: 'leading' | 'trailing'): Promise<{
     followCursor: string | null
-    itemsLoaded: number
+    itemsInserted: number
   } | null> {
     lastLoadAttempt = async () => {
       await reloadBoundaryBucket(edge)
@@ -399,7 +401,6 @@ export function useAutoResolveSource(options: {
       const nextCursorState = resolveRefreshedNextCursor(targetBucket, response.nextPage)
       const refreshed = refreshAutoResolveBucket({
         cursor: targetBucket.cursor,
-        edge,
         nextCursor: nextCursorState.cursor,
         nextCursorExhausted: nextCursorState.exhausted,
         nextItems: response.items,
@@ -414,7 +415,7 @@ export function useAutoResolveSource(options: {
       finishLoadPhase()
       return {
         followCursor: edge === 'leading' ? (response.previousPage ?? null) : response.nextPage,
-        itemsLoaded: response.items.length,
+        itemsInserted: refreshed.insertedCount,
       }
     }
     catch (error) {

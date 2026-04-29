@@ -363,7 +363,13 @@ describe('useDataSource fill behavior', () => {
         })
       }
 
-      expect(cursor).toBe('page-1')
+      if (cursor === 'page-2') {
+        return createPageResult('page-2', {
+          nextPage: 'page-3',
+          previousPage: 'page-1',
+        })
+      }
+
       return createPageResult('page-1', {
         itemCount: 25,
         nextPage: 'page-2',
@@ -382,10 +388,12 @@ describe('useDataSource fill behavior', () => {
     await source.api.loadNext()
     await source.flush()
 
-    expect(resolve).toHaveBeenCalledTimes(2)
-    expect(source.api.phase.value).toBe('idle')
+    expect(resolve).toHaveBeenCalledTimes(3)
+    expect(resolve.mock.calls.map(([params]) => params.cursor)).toEqual(['page-1', 'page-1', 'page-2'])
+    expect(source.api.phase.value).toBe('loading')
     expect(source.api.hasNextPage.value).toBe(true)
     expect(source.api.nextCursor.value).toBe('page-2')
+    expect(source.api.pendingAppendItems.value).toHaveLength(25)
 
     source.unmount()
   })

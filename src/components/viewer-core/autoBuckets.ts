@@ -92,7 +92,6 @@ export function mergeRefreshedVibeBucketItems(
   nextItems: VibeViewerItem[],
   previousItems: VibeViewerItem[],
   sequence: number,
-  edge: 'leading' | 'trailing',
 ) {
   const availablePreviousMatches = new Map<string, Array<{ index: number, occurrenceKey: string }>>()
   const matchedEntries = nextItems.map((item) => ({
@@ -101,7 +100,7 @@ export function mergeRefreshedVibeBucketItems(
     occurrenceKey: null as string | null,
   }))
   const replacementByPreviousIndex = new Map<number, VibeViewerItem>()
-  const insertionsBeforeIndex = new Map<number, VibeViewerItem[]>()
+  const appendedItems: VibeViewerItem[] = []
   let nextSequence = sequence
 
   for (const [index, item] of previousItems.entries()) {
@@ -130,60 +129,21 @@ export function mergeRefreshedVibeBucketItems(
     entry.occurrenceKey = match.occurrenceKey
   }
 
-  const previousMatchedIndices: Array<number | null> = []
-  let lastMatchedIndex: number | null = null
   for (const entry of matchedEntries) {
-    previousMatchedIndices.push(lastMatchedIndex)
-    if (entry.matchIndex !== null) {
-      lastMatchedIndex = entry.matchIndex
-    }
-  }
-
-  const nextMatchedIndices = new Array<number | null>(matchedEntries.length).fill(null)
-  let nextMatchedIndex: number | null = null
-  for (let index = matchedEntries.length - 1; index >= 0; index -= 1) {
-    nextMatchedIndices[index] = nextMatchedIndex
-    if (matchedEntries[index].matchIndex !== null) {
-      nextMatchedIndex = matchedEntries[index].matchIndex
-    }
-  }
-
-  for (const [index, entry] of matchedEntries.entries()) {
     if (entry.matchIndex !== null && entry.occurrenceKey) {
       replacementByPreviousIndex.set(entry.matchIndex, withOccurrenceKey(entry.item, entry.occurrenceKey))
       continue
     }
 
-    const insertionIndex = nextMatchedIndices[index]
-      ?? (previousMatchedIndices[index] !== null ? previousMatchedIndices[index] + 1 : null)
-      ?? (edge === 'leading' ? 0 : previousItems.length)
     const nextItem = withOccurrenceKey(entry.item, `vibe-occurrence-${nextSequence += 1}`)
-    const nextInsertions = insertionsBeforeIndex.get(insertionIndex)
-
-    if (nextInsertions) {
-      nextInsertions.push(nextItem)
-    }
-    else {
-      insertionsBeforeIndex.set(insertionIndex, [nextItem])
-    }
+    appendedItems.push(nextItem)
   }
 
-  const mergedItems: VibeViewerItem[] = []
-  for (let index = 0; index <= previousItems.length; index += 1) {
-    const nextInsertions = insertionsBeforeIndex.get(index)
-    if (nextInsertions?.length) {
-      mergedItems.push(...nextInsertions)
-    }
-
-    if (index >= previousItems.length) {
-      continue
-    }
-
-    mergedItems.push(replacementByPreviousIndex.get(index) ?? previousItems[index])
-  }
+  const mergedItems = previousItems.map((item, index) => replacementByPreviousIndex.get(index) ?? item)
 
   return {
-    items: mergedItems,
+    insertedCount: appendedItems.length,
+    items: [...mergedItems, ...appendedItems],
     nextSequence,
   }
 }

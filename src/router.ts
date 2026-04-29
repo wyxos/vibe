@@ -4,6 +4,7 @@ import DocumentationPage from '@/pages/DocumentationPage.vue'
 import FeedBehaviorDemoPage from '@/pages/FeedBehaviorDemoPage.vue'
 import FakeServerDebugPage from '@/pages/FakeServerDebugPage.vue'
 import HomePage from '@/pages/HomePage.vue'
+import RefreshAppendDebugPage from '@/pages/RefreshAppendDebugPage.vue'
 import WorkspaceLayout from '@/pages/WorkspaceLayout.vue'
 
 export const router = createRouter({
@@ -35,6 +36,11 @@ export const router = createRouter({
           path: 'debug/fake-server',
           name: 'debug-fake-server',
           component: FakeServerDebugPage,
+        },
+        {
+          path: 'debug/refresh-append',
+          name: 'debug-refresh-append',
+          component: RefreshAppendDebugPage,
         },
       ],
     },

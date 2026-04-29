@@ -629,13 +629,12 @@ describe('useDataSource', () => {
     }))
     expect(source.api.items.value).toHaveLength(45)
     expect(getVisibleIds(source.api.items.value).slice(0, 5)).toEqual([
-      'page-2-refilled-item-1',
-      'page-2-refilled-item-2',
-      'page-2-refilled-item-3',
-      'page-2-refilled-item-4',
-      'page-2-refilled-item-5',
+      'page-2-item-6',
+      'page-2-item-7',
+      'page-2-item-8',
+      'page-2-item-9',
+      'page-2-item-10',
     ])
-
     await source.api.prefetchPreviousPage()
     await source.flush()
 
@@ -769,6 +768,11 @@ describe('useDataSource', () => {
         }))
       }
 
+      if (resolve.mock.calls.length > 2) {
+        expect(cursor).toBe('page-2')
+        return Promise.resolve(createPageResult('page-2', { nextPage: 'page-3', previousPage: 'page-1' }))
+      }
+
       expect(cursor).toBe('page-1')
       return deferred.promise
     })
@@ -793,7 +797,7 @@ describe('useDataSource', () => {
     }))
     await source.flush()
 
-    expect(source.api.phase.value).toBe('idle')
+    expect(source.api.phase.value).toBe('loading')
     expect(source.api.hasNextPage.value).toBe(true)
     expect(source.api.nextCursor.value).toBe('page-2')
 

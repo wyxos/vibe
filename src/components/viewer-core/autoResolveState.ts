@@ -63,7 +63,6 @@ export function createAutoResolveBucket(options: {
 
 export function refreshAutoResolveBucket(options: {
   cursor: string | null
-  edge: 'leading' | 'trailing'
   nextCursor: string | null
   nextCursorExhausted?: boolean
   nextItems: VibeViewerItem[]
@@ -75,7 +74,6 @@ export function refreshAutoResolveBucket(options: {
     options.nextItems,
     options.previousItems,
     options.sequence,
-    options.edge,
   )
 
   return {
@@ -86,6 +84,7 @@ export function refreshAutoResolveBucket(options: {
       nextCursorExhausted: options.nextCursorExhausted ?? false,
       previousCursor: options.previousCursor,
     } satisfies VibeAutoBucket,
+    insertedCount: resolvedItems.insertedCount,
     nextSequence: resolvedItems.nextSequence,
   }
 }
