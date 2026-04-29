@@ -58,6 +58,8 @@ onBeforeUnmount(() => {
 defineExpose<VibeHandle>({
   cancel: viewer.cancel,
   clearRemoved: viewer.clearRemoved,
+  getItemByOccurrenceKey: viewer.getItemByOccurrenceKey,
+  getItems: viewer.getItems,
   getRemovedIds: viewer.getRemovedIds,
   lockPageLoading: viewer.lockPageLoading,
   loadNext: viewer.loadNext,

@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import type { VibeViewerItem } from '../viewer'
 import { PREFETCH_OFFSET } from './autoResolveHelpers'
 import type { VibeEmptyStateMode } from './surfaceSlots'
+import { getVibeOccurrenceKey } from './itemIdentity'
 import { useVibeRemovalState } from './removalState'
 import { useAutoResolveSource } from './useAutoResolveSource'
 
@@ -154,6 +155,14 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
   }
 
+  function getItems() {
+    return [...items.value]
+  }
+
+  function getItemByOccurrenceKey(occurrenceKey: string) {
+    return items.value.find((item) => getVibeOccurrenceKey(item) === occurrenceKey) ?? null
+  }
+
   function clamp(value: number, min: number, max: number) {
     return Math.min(Math.max(value, min), max)
   }
@@ -187,6 +196,8 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     fillCursor: autoSource.fillCursor,
     fillDelayRemainingMs: autoSource.fillDelayRemainingMs,
     fillTargetCount: autoSource.fillTargetCount,
+    getItemByOccurrenceKey,
+    getItems,
     getRemovedIds,
     hasNextPage,
     hasPreviousPage,

@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import type { VibeViewerItem } from '../viewer'
 
 export interface VibeRemoveResult {
   ids: string[]
@@ -33,6 +34,8 @@ export interface VibeStatus {
 export interface VibeHandle {
   cancel: () => void
   clearRemoved: () => void
+  getItemByOccurrenceKey: (occurrenceKey: string) => VibeViewerItem | null
+  getItems: () => VibeViewerItem[]
   getRemovedIds: () => string[]
   lockPageLoading: () => void
   loadNext: () => Promise<void>

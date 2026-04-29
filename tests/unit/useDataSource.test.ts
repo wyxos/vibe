@@ -11,7 +11,6 @@ import {
   createSimpleItem,
   getVisibleIds,
 } from '../helpers/useDataSourceTestUtils'
-
 describe('useDataSource', () => {
   afterEach(() => {
     vi.useRealTimers()
@@ -869,4 +868,5 @@ describe('useDataSource', () => {
 
     source.unmount()
   })
+
 })
