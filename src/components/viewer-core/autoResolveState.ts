@@ -41,6 +41,7 @@ export function isAbortError(error: unknown) {
 export function createAutoResolveBucket(options: {
   cursor: string | null
   nextCursor: string | null
+  nextCursorExhausted?: boolean
   nextItems: VibeViewerItem[]
   previousCursor: string | null
   previousItems: VibeViewerItem[]
@@ -53,6 +54,7 @@ export function createAutoResolveBucket(options: {
       cursor: options.cursor,
       items: resolvedItems.items,
       nextCursor: options.nextCursor,
+      nextCursorExhausted: options.nextCursorExhausted ?? false,
       previousCursor: options.previousCursor,
     } satisfies VibeAutoBucket,
     nextSequence: resolvedItems.nextSequence,
@@ -63,6 +65,7 @@ export function refreshAutoResolveBucket(options: {
   cursor: string | null
   edge: 'leading' | 'trailing'
   nextCursor: string | null
+  nextCursorExhausted?: boolean
   nextItems: VibeViewerItem[]
   previousCursor: string | null
   previousItems: VibeViewerItem[]
@@ -80,6 +83,7 @@ export function refreshAutoResolveBucket(options: {
       cursor: options.cursor,
       items: resolvedItems.items,
       nextCursor: options.nextCursor,
+      nextCursorExhausted: options.nextCursorExhausted ?? false,
       previousCursor: options.previousCursor,
     } satisfies VibeAutoBucket,
     nextSequence: resolvedItems.nextSequence,
@@ -121,6 +125,7 @@ export function hydrateAutoResolveState(options: {
   const created = createAutoResolveBucket({
     cursor: options.initialState.cursor,
     nextCursor: options.initialState.nextCursor ?? null,
+    nextCursorExhausted: false,
     nextItems: options.initialState.items,
     previousCursor: options.initialState.previousCursor ?? null,
     previousItems: [],

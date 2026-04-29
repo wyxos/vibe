@@ -30,6 +30,7 @@ import {
   type ResolveFn,
   type VibeAutoDirection,
 } from './autoResolveHelpers'
+import { findLeadingBoundaryBucket, findTrailingBoundaryBucket, getExhaustedNextCursor, markVibeNextCursorExhausted, resolveCollectedNextCursor, resolveRefreshedNextCursor, trimVibeBucketsToVisibleWindow } from './autoResolveCursors'
 import { getVibeOccurrenceKey } from './itemIdentity'
 import { DEFAULT_FILL_DELAY_MS, DEFAULT_FILL_DELAY_STEP_MS, getFillDelayMs, normalizeFillDelayMs, useFillDelayCountdown } from './fillDelay'
 type VibeAutoEmit = (event: 'update:activeIndex', value: number) => void
@@ -81,7 +82,7 @@ export function useAutoResolveSource(options: {
   const trailingBoundaryBucket = computed(() => findTrailingBoundaryBucket(autoBuckets.value, options.removedIds.value))
   const nextCursor = computed(() => trailingBoundaryBucket.value?.nextCursor ?? null)
   const previousCursor = computed(() => isLeadingBoundarySuppressed.value ? null : (leadingBoundaryBucket.value?.previousCursor ?? null))
-  const hasNextPage = computed(() => Boolean(nextCursor.value))
+  const hasNextPage = computed(() => Boolean(nextCursor.value) && trailingBoundaryBucket.value?.nextCursorExhausted !== true)
   const hasPreviousPage = computed(() => Boolean(previousCursor.value))
   const canRefreshTrailingBoundary = computed(() => hasResolver.value && autoBuckets.value.length > 0)
   const pendingAppendItems = computed(() =>
@@ -155,18 +156,36 @@ export function useAutoResolveSource(options: {
   async function prefetchNextPage() {
     if (isPageLoadingLocked.value || loading.value) return
     const shouldCommitAppendImmediately = !items.value.length
-    if (needsBoundaryReload('trailing') || !hasNextPage.value) {
+    const targetBucket = trailingBoundaryBucket.value
+    const appendOptions = {
+      commitImmediately: shouldCommitAppendImmediately,
+      originCursor: targetBucket?.cursor ?? null,
+    }
+    const exhaustedNextCursor = getExhaustedNextCursor(targetBucket)
+    if (needsBoundaryReload('trailing')) {
       if (!canRefreshTrailingBoundary.value) {
         return
       }
 
       const reloadResult = await reloadBoundaryBucket('trailing')
       if (reloadResult?.followCursor && needsBoundaryReload('trailing')) {
-        await appendBuckets(reloadResult.followCursor, { commitImmediately: shouldCommitAppendImmediately })
+        await appendBuckets(reloadResult.followCursor, appendOptions)
       }
       return
     }
-    await appendBuckets(nextCursor.value, { commitImmediately: shouldCommitAppendImmediately })
+    if (exhaustedNextCursor) {
+      if (targetBucket?.cursor === exhaustedNextCursor) {
+        await reloadBoundaryBucket('trailing')
+        return
+      }
+      await appendBuckets(exhaustedNextCursor, appendOptions)
+      return
+    }
+    if (!hasNextPage.value) {
+      if (canRefreshTrailingBoundary.value) await reloadBoundaryBucket('trailing')
+      return
+    }
+    await appendBuckets(nextCursor.value, appendOptions)
   }
   async function prefetchPreviousPage() {
     if (isPageLoadingLocked.value || !hasPreviousPage.value || loading.value) return
@@ -298,7 +317,7 @@ export function useAutoResolveSource(options: {
     if (hasPreviousPage.value && autoActiveIndex.value < PREFETCH_OFFSET) await prefetchPreviousPage()
     if (hasNextPage.value && autoActiveIndex.value >= items.value.length - PREFETCH_OFFSET) await prefetchNextPage()
   }
-  async function appendBuckets(cursor: string | null, appendOptions: { commitImmediately?: boolean } = {}) {
+  async function appendBuckets(cursor: string | null, appendOptions: { commitImmediately?: boolean, originCursor?: string | null } = {}) {
     lastLoadAttempt = async () => {
       await appendBuckets(cursor, appendOptions)
     }
@@ -309,6 +328,12 @@ export function useAutoResolveSource(options: {
       phase: 'loading',
     })
     if (!resolvedBuckets) return
+    if (!resolvedBuckets.visibleCount) {
+      autoBuckets.value = markVibeNextCursorExhausted(autoBuckets.value, appendOptions.originCursor, cursor, true)
+      pendingAppendBuckets.value = []
+      isAwaitingAppendCommit.value = false
+      return finishLoadPhase()
+    }
     if (resolvedBuckets.canceled) {
       autoBuckets.value = [...autoBuckets.value, ...resolvedBuckets.buckets]
       pendingAppendBuckets.value = []
@@ -371,10 +396,12 @@ export function useAutoResolveSource(options: {
         finishLoadPhase()
         return null
       }
+      const nextCursorState = resolveRefreshedNextCursor(targetBucket, response.nextPage)
       const refreshed = refreshAutoResolveBucket({
         cursor: targetBucket.cursor,
         edge,
-        nextCursor: response.nextPage,
+        nextCursor: nextCursorState.cursor,
+        nextCursorExhausted: nextCursorState.exhausted,
         nextItems: response.items,
         previousCursor: response.previousPage ?? null,
         previousItems: targetBucket.items,
@@ -446,9 +473,11 @@ export function useAutoResolveSource(options: {
           signal: resolveController?.signal,
         })
         if (operationId !== operationSequence) return finalizeCollectedBuckets(collectedBuckets, request.direction, options.removedIds.value, true)
+        const nextCursorState = resolveCollectedNextCursor(request.direction, cursor, response.nextPage)
         const nextBucket = createBucket({
           cursor,
-          nextCursor: response.nextPage,
+          nextCursor: nextCursorState.cursor,
+          nextCursorExhausted: nextCursorState.exhausted,
           nextItems: response.items,
           previousCursor: response.previousPage ?? null,
           previousItems: [],
@@ -457,7 +486,9 @@ export function useAutoResolveSource(options: {
         const visibleCount = collectedBuckets.reduce((count, bucket) => {
           return count + getVibeBucketVisibleCount(bucket, options.removedIds.value)
         }, 0)
-        const nextCursor = request.direction === 'forward' ? nextBucket.nextCursor : nextBucket.previousCursor
+        const nextCursor = request.direction === 'forward'
+          ? (nextBucket.nextCursorExhausted ? null : nextBucket.nextCursor)
+          : nextBucket.previousCursor
         if (!request.continueUntilFilled || visibleCount >= pageSize.value || !nextCursor) {
           fillCursor.value = null
           return {
@@ -502,6 +533,7 @@ export function useAutoResolveSource(options: {
   function createBucket(options: {
     cursor: string | null
     nextCursor: string | null
+    nextCursorExhausted?: boolean
     nextItems: VibeViewerItem[]
     previousCursor: string | null
     previousItems: VibeViewerItem[]
@@ -509,6 +541,7 @@ export function useAutoResolveSource(options: {
     const created = createAutoResolveBucket({
       cursor: options.cursor,
       nextCursor: options.nextCursor,
+      nextCursorExhausted: options.nextCursorExhausted ?? false,
       nextItems: options.nextItems,
       previousCursor: options.previousCursor,
       previousItems: options.previousItems,
@@ -548,22 +581,7 @@ export function useAutoResolveSource(options: {
     return isBoundaryPageUnderfilled(targetBucket, options.removedIds.value, pageSize.value)
   }
   function trimBucketsToVisibleWindow() {
-    const firstVisibleIndex = autoBuckets.value.findIndex((bucket) => getVibeBucketVisibleCount(bucket, options.removedIds.value) > 0)
-
-    if (firstVisibleIndex < 0) {
-      return
-    }
-
-    let lastVisibleIndex = firstVisibleIndex
-
-    for (let index = autoBuckets.value.length - 1; index >= firstVisibleIndex; index -= 1) {
-      if (getVibeBucketVisibleCount(autoBuckets.value[index], options.removedIds.value) > 0) {
-        lastVisibleIndex = index
-        break
-      }
-    }
-
-    autoBuckets.value = autoBuckets.value.slice(firstVisibleIndex, lastVisibleIndex + 1)
+    autoBuckets.value = trimVibeBucketsToVisibleWindow(autoBuckets.value, options.removedIds.value)
   }
   return {
     activeIndex,
@@ -600,20 +618,4 @@ export function useAutoResolveSource(options: {
     getActiveOccurrenceKey,
     maybeCommitPendingAppendWhenFilteredOut,
   }
-}
-
-function findLeadingBoundaryBucket(buckets: VibeAutoBucket[], removedIds: Set<string>) {
-  return buckets.find((bucket) => getVibeBucketVisibleCount(bucket, removedIds) > 0) ?? buckets[0] ?? null
-}
-
-function findTrailingBoundaryBucket(buckets: VibeAutoBucket[], removedIds: Set<string>) {
-  for (let index = buckets.length - 1; index >= 0; index -= 1) {
-    const bucket = buckets[index]
-
-    if (getVibeBucketVisibleCount(bucket, removedIds) > 0) {
-      return bucket
-    }
-  }
-
-  return buckets[buckets.length - 1] ?? null
 }

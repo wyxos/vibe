@@ -6,6 +6,7 @@ export interface VibeAutoBucket {
   cursor: string | null
   items: VibeViewerItem[]
   nextCursor: string | null
+  nextCursorExhausted: boolean
   previousCursor: string | null
 }
 
