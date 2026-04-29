@@ -158,6 +158,30 @@ describe('useFullscreenSurfaceMedia', () => {
     expect(viewer.api.resetAssetState).toHaveBeenCalledWith('image-2')
     expect(viewer.api.resetAssetState).toHaveBeenCalledWith('image-3')
   })
+
+  it('ignores asset events for rendered slides that are outside the preload window', async () => {
+    const activeIndex = ref(0)
+    const items = ref([
+      createImageItem('image-1'),
+      createImageItem('image-2'),
+    ])
+    const viewer = createViewerStub()
+    const media = useFullscreenSurfaceMedia({
+      active: ref(true),
+      items,
+      resolvedActiveIndex: activeIndex,
+      viewer: viewer.api,
+    })
+
+    expect(media.shouldHandleSlideAssetEvent(0, items.value[0])).toBe(true)
+
+    activeIndex.value = 1
+    await flushDom()
+
+    expect(media.getSlidePreloadState(0)).toBe('idle')
+    expect(media.shouldHandleSlideAssetEvent(0, items.value[0])).toBe(false)
+    expect(media.shouldHandleSlideAssetEvent(1, items.value[1])).toBe(true)
+  })
 })
 
 function createViewerStub() {

@@ -44,6 +44,10 @@ export function useFullscreenSurfaceMedia(options: {
     return preloadController.shouldAttachSlideAsset(index)
   }
 
+  function shouldHandleSlideAssetEvent(index: number, item: VibeViewerItem) {
+    return isCurrentSlideItem(index, item) && shouldPreloadSlideAsset(index)
+  }
+
   function getSlidePreloadState(index: number) {
     return preloadController.getSlidePreloadState(index)
   }
@@ -97,6 +101,11 @@ export function useFullscreenSurfaceMedia(options: {
     return false
   }
 
+  function isCurrentSlideItem(index: number, item: VibeViewerItem) {
+    const currentItem = options.items.value[index]
+    return Boolean(currentItem) && getItemKey(currentItem!) === getItemKey(item)
+  }
+
   return {
     getAssetErrorKind,
     getAssetErrorLabel,
@@ -111,6 +120,7 @@ export function useFullscreenSurfaceMedia(options: {
     registerImageElement: preloadController.registerImageElement,
     registerMediaElement: preloadController.registerMediaElement,
     settleAssetPreload: preloadController.settleAssetPreload,
+    shouldHandleSlideAssetEvent,
     shouldPreloadSlideAsset,
   }
 }

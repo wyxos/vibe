@@ -120,6 +120,9 @@ export function useAutoResolveSource(options: {
       void maybePrefetchAround()
     },
   )
+  watch(() => nextCursor.value, (cursor) => {
+    if (cursor && !items.value.length && operationPhase.value === 'idle') void maybePrefetchAround()
+  })
   onMounted(() => {
     if (hydrateInitialState()) {
       return
@@ -151,35 +154,29 @@ export function useAutoResolveSource(options: {
   }
   async function prefetchNextPage() {
     if (isPageLoadingLocked.value || loading.value) return
+    const shouldCommitAppendImmediately = !items.value.length
     if (needsBoundaryReload('trailing') || !hasNextPage.value) {
       if (!canRefreshTrailingBoundary.value) {
         return
       }
 
       const reloadResult = await reloadBoundaryBucket('trailing')
-
       if (reloadResult?.followCursor && needsBoundaryReload('trailing')) {
-        await appendBuckets(reloadResult.followCursor)
+        await appendBuckets(reloadResult.followCursor, { commitImmediately: shouldCommitAppendImmediately })
       }
-
       return
     }
-
-    await appendBuckets(nextCursor.value)
+    await appendBuckets(nextCursor.value, { commitImmediately: shouldCommitAppendImmediately })
   }
   async function prefetchPreviousPage() {
     if (isPageLoadingLocked.value || !hasPreviousPage.value || loading.value) return
-
     if (needsBoundaryReload('leading')) {
       const reloadResult = await reloadBoundaryBucket('leading')
-
       if (reloadResult?.itemsLoaded === 0 && reloadResult.followCursor) {
         await prependBuckets(reloadResult.followCursor)
       }
-
       return
     }
-
     await prependBuckets(previousCursor.value)
   }
   async function retryInitialLoad() {
@@ -290,20 +287,20 @@ export function useAutoResolveSource(options: {
     autoActiveIndex.value = getSyncedActiveIndex(items.value, activeIndex.value, anchorOccurrenceKey)
   }
   function maybeCommitPendingAppendWhenFilteredOut() {
-    if (pendingAppendBuckets.value.length > 0 && !pendingAppendItems.value.length) void commitPendingAppend()
+    if (pendingAppendBuckets.value.length > 0 && (!pendingAppendItems.value.length || !items.value.length)) void commitPendingAppend()
   }
   async function maybePrefetchAround() {
     if (!isAutoPrefetchEnabled.value || isLoadingInitialPhase()) return
     if (!items.value.length) {
-      if (hasNextPage.value) await prefetchNextPage()
+      if (hasNextPage.value || canRefreshTrailingBoundary.value) await prefetchNextPage()
       return
     }
     if (hasPreviousPage.value && autoActiveIndex.value < PREFETCH_OFFSET) await prefetchPreviousPage()
     if (hasNextPage.value && autoActiveIndex.value >= items.value.length - PREFETCH_OFFSET) await prefetchNextPage()
   }
-  async function appendBuckets(cursor: string | null) {
+  async function appendBuckets(cursor: string | null, appendOptions: { commitImmediately?: boolean } = {}) {
     lastLoadAttempt = async () => {
-      await appendBuckets(cursor)
+      await appendBuckets(cursor, appendOptions)
     }
     const resolvedBuckets = await collectBuckets({
       continueUntilFilled: true,
@@ -319,7 +316,7 @@ export function useAutoResolveSource(options: {
       return finishLoadPhase()
     }
     pendingAppendBuckets.value = resolvedBuckets.buckets
-    if (!pendingAppendItems.value.length) {
+    if (appendOptions.commitImmediately || !pendingAppendItems.value.length) {
       autoBuckets.value = [...autoBuckets.value, ...pendingAppendBuckets.value]
       pendingAppendBuckets.value = []
       isAwaitingAppendCommit.value = false

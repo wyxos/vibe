@@ -692,20 +692,6 @@ describe('useDataSource', () => {
     expect(source.api.remove(removedIds).ids).toHaveLength(50)
     await source.flush()
 
-    expect(source.api.items.value).toHaveLength(0)
-    expect(source.api.previousCursor.value).toBeNull()
-    expect(source.api.nextCursor.value).toBe('page-12')
-    expect(source.api.hasPreviousPage.value).toBe(false)
-    expect(source.api.hasNextPage.value).toBe(true)
-
-    await source.api.prefetchPreviousPage()
-    await source.flush()
-
-    expect(resolve).toHaveBeenCalledTimes(2)
-
-    await source.api.prefetchNextPage()
-    await source.flush()
-
     expect(resolve).toHaveBeenCalledTimes(3)
     expect(resolve).toHaveBeenLastCalledWith(expect.objectContaining({
       cursor: 'page-11',
@@ -713,7 +699,16 @@ describe('useDataSource', () => {
       signal: expect.any(AbortSignal),
     }))
     expect(source.api.items.value).toHaveLength(25)
+    expect(source.api.previousCursor.value).toBe('page-10')
+    expect(source.api.nextCursor.value).toBe('page-12')
+    expect(source.api.hasPreviousPage.value).toBe(true)
+    expect(source.api.hasNextPage.value).toBe(true)
     expect(source.api.currentCursor.value).toBe('page-11')
+    expect(getVisibleIds(source.api.items.value).slice(0, 3)).toEqual([
+      'page-11-refilled-item-1',
+      'page-11-refilled-item-2',
+      'page-11-refilled-item-3',
+    ])
 
     await source.api.prefetchPreviousPage()
     await source.flush()

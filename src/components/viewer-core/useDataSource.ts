@@ -119,7 +119,7 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey, {
       preserveTrailingPlaceholder: shouldPreserveTrailingPlaceholder,
     })
-    if (shouldPrefetchAfterRemoval) {
+    if (shouldPrefetchAfterRemoval || !items.value.length) {
       void autoSource.maybePrefetchAround()
     }
     return result

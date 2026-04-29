@@ -155,6 +155,96 @@ describe('useDataSource fill behavior', () => {
     source.unmount()
   })
 
+  it('refreshes an emptied current page and fills from the next page after removal', async () => {
+    const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
+      if (resolve.mock.calls.length === 1) {
+        expect(cursor).toBe('page-400')
+        return createPageResult('page-400', {
+          nextPage: 'page-401',
+        })
+      }
+
+      if (resolve.mock.calls.length === 2) {
+        expect(cursor).toBe('page-400')
+        return createPageResult('page-400-refill', {
+          itemCount: 2,
+          nextPage: 'page-401',
+        })
+      }
+
+      expect(cursor).toBe('page-401')
+      return createPageResult('page-401', {
+        nextPage: 'page-402',
+        previousPage: 'page-400',
+      })
+    })
+
+    const source = await mountUseDataSource({
+      initialCursor: 'page-400',
+      resolve,
+    })
+
+    await source.flush()
+    expect(source.api.items.value).toHaveLength(25)
+
+    source.api.remove(source.api.items.value.map((item) => item.id))
+    await source.flush()
+    await source.flush()
+
+    expect(resolve.mock.calls.map(([params]) => params.cursor)).toEqual(['page-400', 'page-400', 'page-401'])
+    expect(source.api.items.value).toHaveLength(27)
+    expect(source.api.items.value.slice(0, 2).every((item) => item.id.startsWith('page-400-refill'))).toBe(true)
+    expect(source.api.items.value.slice(2).every((item) => item.id.startsWith('page-401'))).toBe(true)
+    expect(source.api.pendingAppendItems.value).toHaveLength(0)
+    expect(source.api.nextCursor.value).toBe('page-402')
+    expect(source.api.phase.value).toBe('idle')
+
+    source.unmount()
+  })
+
+  it('commits pending append items when removals empty the current batch', async () => {
+    const deferred = createDeferred<VibeResolveResult>()
+    const resolve = vi.fn(({ cursor }: VibeResolveParams) => {
+      if (cursor === 'page-2') {
+        return deferred.promise
+      }
+
+      return Promise.resolve(createPageResult('page-1', {
+        nextPage: 'page-2',
+      }))
+    })
+
+    const source = await mountUseDataSource({
+      resolve,
+    })
+
+    await source.flush()
+    source.api.setActiveIndex(24)
+    await source.flush()
+
+    deferred.resolve(createPageResult('page-2', {
+      nextPage: 'page-3',
+      previousPage: 'page-1',
+    }))
+    await source.flush()
+
+    expect(source.api.items.value).toHaveLength(25)
+    expect(source.api.pendingAppendItems.value).toHaveLength(25)
+
+    source.api.setAutoPrefetchEnabled(false)
+    source.api.remove(source.api.items.value.map((item) => item.id))
+    await source.flush()
+
+    expect(resolve).toHaveBeenCalledTimes(2)
+    expect(source.api.items.value).toHaveLength(25)
+    expect(source.api.items.value.every((item) => item.id.startsWith('page-2'))).toBe(true)
+    expect(source.api.pendingAppendItems.value).toHaveLength(0)
+    expect(source.api.nextCursor.value).toBe('page-3')
+    expect(source.api.phase.value).toBe('idle')
+
+    source.unmount()
+  })
+
   it('uses custom fill delay props when chaining additional resolve calls', async () => {
     vi.useFakeTimers()
 

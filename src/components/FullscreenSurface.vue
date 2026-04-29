@@ -15,6 +15,7 @@ import { useViewer } from './viewer-core/useViewer'
 import { getItemIcon } from './viewer-core/media'
 import { hasRenderableSlotContent } from './viewer-core/slotContent'
 import { getSlideToneClass, getStageToneClass } from './viewer-core/theme'
+import { useFullscreenAssetEvents } from './viewer-core/useFullscreenAssetEvents'
 import { useFullscreenDominantTone } from './viewer-core/useFullscreenDominantTone'
 import './viewer-core/fullscreenMediaBar.css'
 import SurfaceEmptyState from './SurfaceEmptyState.vue'
@@ -88,6 +89,11 @@ const { activeSlideToneStyle, activeStageToneStyle, updateFromImageElement } = u
   getItemKey: fullscreenMedia.getItemKey,
   isImageReady: viewer.isImageReady,
   showDominantImageTone: toRef(props, 'showDominantImageTone'),
+})
+const fullscreenAssetEvents = useFullscreenAssetEvents({
+  fullscreenMedia,
+  updateDominantToneFromImageElement,
+  viewer,
 })
 const mediaStatusOffsetClass = computed(() =>
   viewer.activeMediaItem.value && !viewer.activeAssetErrorKind.value ? 'bottom-[5.8rem] max-[720px]:bottom-[7.4rem]' : 'bottom-[1.8rem] max-[720px]:bottom-[1.3rem]',
@@ -169,19 +175,6 @@ onBeforeUnmount(() => {
 function updateViewportWidth() {
   viewportWidth.value = window.innerWidth || FULLSCREEN_ASIDE_COLUMN_BREAKPOINT_PX
 }
-function onFullscreenImageLoad(event: Event, id: string, url: string) {
-  fullscreenMedia.settleAssetPreload(id)
-  viewer.onImageLoad(id, url)
-  const element = event.currentTarget
-  if (element instanceof HTMLImageElement) {
-    updateDominantToneFromImageElement(id, element)
-  }
-}
-async function onFullscreenImageError(id: string, url: string) {
-  fullscreenMedia.settleAssetPreload(id)
-  await viewer.onImageError(id, url)
-}
-
 function registerFullscreenImageElement(id: string, element: unknown) {
   fullscreenMedia.registerImageElement(id, element)
   viewer.registerImageElement(id, element)
@@ -198,25 +191,24 @@ function registerFullscreenAudioElement(id: string, element: unknown) {
   fullscreenMedia.registerMediaElement(id, element)
   viewer.registerAudioElement(id, element)
 }
-async function onFullscreenMediaError(id: string, url: string) {
-  fullscreenMedia.settleAssetPreload(id)
-  await viewer.onMediaError(id, url)
-}
-
-function onFullscreenMediaEvent(id: string, event: Event) {
-  viewer.onMediaEvent(id, event)
-
+function onFullscreenMediaEvent(index: number, item: VibeViewerItem, event: Event) {
+  const id = fullscreenAssetEvents.onFullscreenMediaEvent(index, item, event)
   const element = event.currentTarget
   const metadataReadyState = typeof HTMLMediaElement === 'undefined' ? 1 : HTMLMediaElement.HAVE_METADATA
-  if (element instanceof HTMLMediaElement && element.readyState >= metadataReadyState) {
+  if (id && element instanceof HTMLMediaElement && element.readyState >= metadataReadyState) {
     fullscreenMedia.settleAssetPreload(id)
   }
 }
 function updateDominantToneFromImageElement(id: string, image: HTMLImageElement) {
   updateFromImageElement(id, image)
 }
-function handleFullscreenVideoEnded(event: Event, id: string) {
-  onFullscreenMediaEvent(id, event)
+function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewerItem) {
+  const id = fullscreenAssetEvents.getHandledItemKey(index, item)
+  if (!id) {
+    return
+  }
+
+  viewer.onMediaEvent(id, event)
 
   if (!props.loopFullscreenVideo) {
     return
@@ -322,8 +314,8 @@ function handleFullscreenVideoEnded(event: Event, id: string) {
                 class="block h-auto max-h-full w-auto max-w-full object-contain shadow-[0_40px_120px_-60px_rgba(0,0,0,0.9)] transition-opacity duration-300"
                 :class="viewer.isImageReady(fullscreenMedia.getItemKey(item)) ? 'opacity-100' : 'opacity-0'"
                 :ref="(element) => registerFullscreenImageElement(fullscreenMedia.getItemKey(item), element)"
-                @load="onFullscreenImageLoad($event, fullscreenMedia.getItemKey(item), item.url)"
-                @error="onFullscreenImageError(fullscreenMedia.getItemKey(item), item.url)"
+                @load="fullscreenAssetEvents.onFullscreenImageLoad($event, index, item)"
+                @error="fullscreenAssetEvents.onFullscreenImageError(index, item)"
               />
 
               <video
@@ -337,20 +329,20 @@ function handleFullscreenVideoEnded(event: Event, id: string) {
                 :preload="fullscreenMedia.getFullscreenMediaPreload(index)"
                 :ref="(element) => registerFullscreenVideoElement(fullscreenMedia.getItemKey(item), element)"
                 @click.stop="viewer.onVideoClick($event, fullscreenMedia.getItemKey(item))"
-                @canplay="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @durationchange="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @ended="handleFullscreenVideoEnded($event, fullscreenMedia.getItemKey(item))"
-                @error="onFullscreenMediaError(fullscreenMedia.getItemKey(item), item.url)"
-                @loadstart="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @loadedmetadata="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @pause="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @play="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @playing="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @seeking="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @seeked="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @stalled="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @timeupdate="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @waiting="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @canplay="onFullscreenMediaEvent(index, item, $event)"
+                @durationchange="onFullscreenMediaEvent(index, item, $event)"
+                @ended="handleFullscreenVideoEnded($event, index, item)"
+                @error="fullscreenAssetEvents.onFullscreenMediaError(index, item)"
+                @loadstart="onFullscreenMediaEvent(index, item, $event)"
+                @loadedmetadata="onFullscreenMediaEvent(index, item, $event)"
+                @pause="onFullscreenMediaEvent(index, item, $event)"
+                @play="onFullscreenMediaEvent(index, item, $event)"
+                @playing="onFullscreenMediaEvent(index, item, $event)"
+                @seeking="onFullscreenMediaEvent(index, item, $event)"
+                @seeked="onFullscreenMediaEvent(index, item, $event)"
+                @stalled="onFullscreenMediaEvent(index, item, $event)"
+                @timeupdate="onFullscreenMediaEvent(index, item, $event)"
+                @waiting="onFullscreenMediaEvent(index, item, $event)"
               />
             </div>
 
@@ -419,19 +411,19 @@ function handleFullscreenVideoEnded(event: Event, id: string) {
                 :preload="fullscreenMedia.getFullscreenMediaPreload(index)"
                 class="pointer-events-none absolute h-px w-px opacity-0"
                 :ref="(element) => registerFullscreenAudioElement(fullscreenMedia.getItemKey(item), element)"
-                @canplay="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @durationchange="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @error="onFullscreenMediaError(fullscreenMedia.getItemKey(item), item.url)"
-                @loadstart="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @loadedmetadata="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @pause="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @play="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @playing="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @seeking="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @seeked="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @stalled="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @timeupdate="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
-                @waiting="onFullscreenMediaEvent(fullscreenMedia.getItemKey(item), $event)"
+                @canplay="onFullscreenMediaEvent(index, item, $event)"
+                @durationchange="onFullscreenMediaEvent(index, item, $event)"
+                @error="fullscreenAssetEvents.onFullscreenMediaError(index, item)"
+                @loadstart="onFullscreenMediaEvent(index, item, $event)"
+                @loadedmetadata="onFullscreenMediaEvent(index, item, $event)"
+                @pause="onFullscreenMediaEvent(index, item, $event)"
+                @play="onFullscreenMediaEvent(index, item, $event)"
+                @playing="onFullscreenMediaEvent(index, item, $event)"
+                @seeking="onFullscreenMediaEvent(index, item, $event)"
+                @seeked="onFullscreenMediaEvent(index, item, $event)"
+                @stalled="onFullscreenMediaEvent(index, item, $event)"
+                @timeupdate="onFullscreenMediaEvent(index, item, $event)"
+                @waiting="onFullscreenMediaEvent(index, item, $event)"
               />
             </div>
 
