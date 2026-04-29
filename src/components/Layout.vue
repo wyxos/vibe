@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, type Component } from 'vue'
+import { onBeforeUnmount, watch, type Component } from 'vue'
 import { LoaderCircle } from 'lucide-vue-next'
 
 import type { VibeViewerItem } from './viewer'
@@ -38,6 +38,7 @@ const slots = defineSlots<{
 const emit = defineEmits<{
   'asset-errors': [errors: VibeAssetErrorEvent[]]
   'asset-loads': [loads: VibeAssetLoadEvent[]]
+  'items-change': [items: VibeViewerItem[]]
   'update:activeIndex': [value: number]
   'update:surfaceMode': [value: 'fullscreen' | 'list']
 }>()
@@ -54,6 +55,13 @@ onBeforeUnmount(() => {
   assetErrorBatch.stop()
   assetLoadBatch.stop()
 })
+
+watch(
+  () => viewer.items.value,
+  (items) => {
+    emit('items-change', [...items])
+  },
+)
 
 defineExpose<VibeHandle>({
   cancel: viewer.cancel,
