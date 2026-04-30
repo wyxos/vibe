@@ -83,7 +83,7 @@ describe('VibeLayout removal navigation', () => {
     wrapper.unmount()
   })
 
-  it('locks boundary loading while the empty-removal reset scroll is happening', async () => {
+  it('refreshes emptied current items without double-loading on reset scroll', async () => {
     setViewportWidth(1_280)
 
     const items = Array.from({ length: 24 }, (_, index) => createImageItem(`locked-remove-${index + 1}`, `Locked remove ${index + 1}`))
@@ -110,10 +110,13 @@ describe('VibeLayout removal navigation', () => {
     expect(handle.remove(items.map((item) => item.id)).ids).toHaveLength(items.length)
     await flushDom()
 
+    expect(resolve).toHaveBeenCalledTimes(1)
+
     await scrollViewport.trigger('scroll')
     await flushDom()
 
-    expect(resolve).not.toHaveBeenCalled()
+    expect(resolve).toHaveBeenCalledTimes(1)
+    expect(resolve).toHaveBeenCalledWith(expect.objectContaining({ cursor: null }))
 
     wrapper.unmount()
   })

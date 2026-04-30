@@ -1,4 +1,4 @@
-import { computed } from 'vue'
+import { computed, nextTick } from 'vue'
 
 import type { VibeViewerItem } from '../viewer'
 import { PREFETCH_OFFSET } from './autoResolveHelpers'
@@ -119,10 +119,14 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     autoSource.syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey, {
       preserveTrailingPlaceholder: shouldPreserveTrailingPlaceholder,
     })
-    if (shouldPrefetchAfterRemoval || !items.value.length) {
-      void autoSource.maybePrefetchAround()
+    if (shouldPrefetchAfterRemoval) {
+      scheduleMaybePrefetchAround()
     }
     return result
+  }
+
+  function scheduleMaybePrefetchAround() {
+    void nextTick().then(() => autoSource.maybePrefetchAround())
   }
 
   function restore(ids: string | string[]) {

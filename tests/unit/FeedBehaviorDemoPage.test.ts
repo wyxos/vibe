@@ -20,7 +20,7 @@ describe('FeedBehaviorDemoPage', () => {
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
   })
 
-  it('animates the demo list out before showing the empty status in the footer bar', async () => {
+  it('animates the demo list out while refreshing emptied visible items', async () => {
     vi.useFakeTimers()
     setViewportWidth(1_280)
 
@@ -39,15 +39,15 @@ describe('FeedBehaviorDemoPage', () => {
     expect(wrapper.find('[data-testid="vibe-empty-state-inline"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="vibe-empty-state-badge"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="vibe-list-card-leaving"]').exists()).toBe(true)
-    expect(wrapper.get('[data-testid="feed-behavior-status-bar"]').text()).toContain('no items available')
+    expect(wrapper.get('[data-testid="feed-behavior-status-bar"]').text()).toContain('refreshing')
 
-    await vi.advanceTimersByTimeAsync(getVibeMasonryLeaveDuration())
+    await vi.advanceTimersByTimeAsync(getVibeMasonryLeaveDuration() + 100)
     await flushDom()
 
     expect(wrapper.find('[data-testid="vibe-empty-state-inline"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="vibe-empty-state-badge"]').exists()).toBe(false)
-    expect(wrapper.get('[data-testid="feed-behavior-status-bar"]').text()).toContain('no items available')
-    expect(wrapper.get('[data-testid="feed-behavior-remove-all-button"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="feed-behavior-status-bar"]').text()).not.toContain('no items available')
+    expect(wrapper.get('[data-testid="feed-behavior-remove-all-button"]').attributes('disabled')).toBeUndefined()
 
     wrapper.unmount()
   })

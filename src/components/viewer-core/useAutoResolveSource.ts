@@ -31,6 +31,7 @@ import {
   type VibeAutoDirection,
 } from './autoResolveHelpers'
 import { findLeadingBoundaryBucket, findTrailingBoundaryBucket, getExhaustedNextCursor, markVibeNextCursorExhausted, resolveCollectedNextCursor, resolveRefreshedNextCursor, trimVibeBucketsToVisibleWindow } from './autoResolveCursors'
+import { createEmptyVisiblePrefetchScheduler } from './emptyVisiblePrefetch'
 import { getVibeOccurrenceKey } from './itemIdentity'
 import { DEFAULT_FILL_DELAY_MS, DEFAULT_FILL_DELAY_STEP_MS, getFillDelayMs, normalizeFillDelayMs, useFillDelayCountdown } from './fillDelay'
 type VibeAutoEmit = (event: 'update:activeIndex', value: number) => void
@@ -84,7 +85,7 @@ export function useAutoResolveSource(options: {
   const previousCursor = computed(() => isLeadingBoundarySuppressed.value ? null : (leadingBoundaryBucket.value?.previousCursor ?? null))
   const hasNextPage = computed(() => Boolean(nextCursor.value) && trailingBoundaryBucket.value?.nextCursorExhausted !== true)
   const hasPreviousPage = computed(() => Boolean(previousCursor.value))
-  const canRefreshTrailingBoundary = computed(() => hasResolver.value && autoBuckets.value.length > 0)
+  const canRefreshTrailingBoundary = computed(() => hasResolver.value && Boolean(trailingBoundaryBucket.value?.items.length))
   const pendingAppendItems = computed(() =>
     filterRemovedItems(flattenVibeBuckets(pendingAppendBuckets.value), options.removedIds.value),
   )
@@ -96,13 +97,12 @@ export function useAutoResolveSource(options: {
     && !loading.value
     && Boolean(errorMessage.value),
   )
+  const emptyVisiblePrefetch = createEmptyVisiblePrefetchScheduler({ canRefreshTrailingBoundary, hasNextPage, isInitialLoading: isLoadingInitialPhase, isPageLoadingLocked, items, loading, prefetchNextPage, removedIds: options.removedIds, trailingBoundaryBucket })
   watch(
     () => items.value.length,
     (length) => {
-      if (length === 0) {
-        autoActiveIndex.value = 0
-        return
-      }
+      if (length === 0) { autoActiveIndex.value = 0; emptyVisiblePrefetch.schedule(); return }
+      emptyVisiblePrefetch.resetRefreshAttempt()
       if (isLeadingBoundarySuppressed.value) {
         trimBucketsToVisibleWindow()
         isLeadingBoundarySuppressed.value = false
@@ -121,9 +121,6 @@ export function useAutoResolveSource(options: {
       void maybePrefetchAround()
     },
   )
-  watch(() => nextCursor.value, (cursor) => {
-    if (cursor && !items.value.length && operationPhase.value === 'idle') void maybePrefetchAround()
-  })
   onMounted(() => {
     if (hydrateInitialState()) {
       return
@@ -248,16 +245,12 @@ export function useAutoResolveSource(options: {
     autoActiveIndex.value = clampedIndex
     options.emit('update:activeIndex', clampedIndex)
   }
-  function setAutoPrefetchEnabled(nextValue: boolean) {
-    isAutoPrefetchEnabled.value = nextValue
-  }
+  function setAutoPrefetchEnabled(nextValue: boolean) { isAutoPrefetchEnabled.value = nextValue; emptyVisiblePrefetch.schedule() }
   function lockPageLoading() {
     isPageLoadingLocked.value = true
     fillDelay.clear(true)
   }
-  function unlockPageLoading() {
-    isPageLoadingLocked.value = false
-  }
+  function unlockPageLoading() { isPageLoadingLocked.value = false; emptyVisiblePrefetch.schedule() }
   function cancel() {
     operationSequence += 1
     activeResolveController?.abort()
@@ -343,7 +336,7 @@ export function useAutoResolveSource(options: {
       return finishLoadPhase()
     }
     pendingAppendBuckets.value = resolvedBuckets.buckets
-    if (appendOptions.commitImmediately || !pendingAppendItems.value.length) {
+    if (appendOptions.commitImmediately || !items.value.length || !pendingAppendItems.value.length) {
       autoBuckets.value = [...autoBuckets.value, ...pendingAppendBuckets.value]
       pendingAppendBuckets.value = []
       isAwaitingAppendCommit.value = false
@@ -557,6 +550,7 @@ export function useAutoResolveSource(options: {
     fillCursor.value = null
     fillTargetCount.value = null
     fillDelay.clear()
+    emptyVisiblePrefetch.schedule()
   }
   function hydrateInitialState() {
     if (!options.initialState || !options.initialState.items.length) return false
