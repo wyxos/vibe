@@ -5,7 +5,7 @@ import type { VibeViewerItem } from '@/components/viewer'
 import { useFullscreenSurfaceMedia } from '@/components/viewer-core/useFullscreenSurfaceMedia'
 
 describe('useFullscreenSurfaceMedia', () => {
-  it('tracks the active slide, the next two slides, and the queued fourth slide through one preload state machine', () => {
+  it('tracks the active slide and the next three slides through one preload state machine', () => {
     const items = ref([
       createImageItem('image-1'),
       createImageItem('image-2'),
@@ -26,10 +26,10 @@ describe('useFullscreenSurfaceMedia', () => {
     expect(media.getSlidePreloadState(2)).toBe('loading')
     expect(media.getSlidePreloadState(3)).toBe('loading')
     expect(media.getSlidePreloadState(4)).toBe('loading')
-    expect(media.getSlidePreloadState(5)).toBe('queued')
+    expect(media.getSlidePreloadState(5)).toBe('loading')
   })
 
-  it('scenario 1: keeps a promoted pending active slide loading after the previous active slide had completed', async () => {
+  it('scenario 1: keeps a promoted loading active slide loading after the previous active slide had completed', async () => {
     const activeIndex = ref(2)
     const items = ref(createFullscreenItems())
     const viewer = createViewerStub()
@@ -51,7 +51,7 @@ describe('useFullscreenSurfaceMedia', () => {
     expect(media.isAssetLoading(3, items.value[3])).toBe(true)
     expect(media.getSlidePreloadState(4)).toBe('loading')
     expect(media.getSlidePreloadState(5)).toBe('loading')
-    expect(media.getSlidePreloadState(6)).toBe('queued')
+    expect(media.getSlidePreloadState(6)).toBe('loading')
   })
 
   it('scenario 2: renders the promoted active slide immediately when its fullscreen preload had already finished', async () => {
@@ -99,7 +99,7 @@ describe('useFullscreenSurfaceMedia', () => {
     expect(media.isAssetLoading(3, items.value[3])).toBe(true)
     expect(media.getSlidePreloadState(4)).toBe('loading')
     expect(media.getSlidePreloadState(5)).toBe('loading')
-    expect(media.getSlidePreloadState(6)).toBe('queued')
+    expect(media.getSlidePreloadState(6)).toBe('loading')
   })
 
   it('scenario 4: renders the promoted active slide immediately when it had finished even though the old active slide had not', async () => {
@@ -145,7 +145,7 @@ describe('useFullscreenSurfaceMedia', () => {
     expect(media.getSlidePreloadState(0)).toBe('loading')
     expect(media.getSlidePreloadState(1)).toBe('loading')
     expect(media.getSlidePreloadState(2)).toBe('loading')
-    expect(media.getSlidePreloadState(3)).toBe('queued')
+    expect(media.getSlidePreloadState(3)).toBe('loading')
 
     active.value = false
     await flushDom()
@@ -157,6 +157,7 @@ describe('useFullscreenSurfaceMedia', () => {
     expect(viewer.api.resetAssetState).toHaveBeenCalledWith('image-1')
     expect(viewer.api.resetAssetState).toHaveBeenCalledWith('image-2')
     expect(viewer.api.resetAssetState).toHaveBeenCalledWith('image-3')
+    expect(viewer.api.resetAssetState).toHaveBeenCalledWith('image-4')
   })
 
   it('ignores asset events for rendered slides that are outside the preload window', async () => {

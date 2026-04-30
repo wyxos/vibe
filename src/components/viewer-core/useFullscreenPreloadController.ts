@@ -33,11 +33,7 @@ export function useFullscreenPreloadController(options: {
   onResetAssetState: (id: string) => void
 }) {
   const attachedKeys = ref<Record<string, true>>({})
-  const preloadQueue = createAssetLoadQueue({
-    maxGlobal: 3,
-    maxPerDomain: 3,
-    maxVideoPerDomain: 3,
-  })
+  const preloadQueue = createAssetLoadQueue()
 
   const preloadJobs = new Map<string, FullscreenPreloadJob>()
   const imageElements = new Map<string, HTMLImageElement>()

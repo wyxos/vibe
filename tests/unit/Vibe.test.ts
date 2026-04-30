@@ -165,7 +165,7 @@ describe('VibeLayout', () => {
     expect(wrapper.get('[data-index="0"] img').attributes('src')).toBe('https://example.com/image-preload-1.jpg')
     expect(wrapper.get('[data-index="1"] img').attributes('src')).toBe('https://example.com/image-preload-2.jpg')
     expect(wrapper.get('[data-index="2"] img').attributes('src')).toBe('https://example.com/image-preload-3.jpg')
-    expect(wrapper.get('[data-index="3"] img').attributes('src')).toBeUndefined()
+    expect(wrapper.get('[data-index="3"] img').attributes('src')).toBe('https://example.com/image-preload-4.jpg')
 
     await wrapper.get('[data-index="1"] img').trigger('load')
     await flushDom()
@@ -187,7 +187,7 @@ describe('VibeLayout', () => {
     wrapper.unmount()
   })
 
-  it('keeps the spinner on a promoted pending fullscreen image while the forward queue advances', async () => {
+  it('keeps the spinner on a promoted loading fullscreen image while the forward preload window advances', async () => {
     setViewportWidth(390)
 
     const wrapper = mount(Layout, {
@@ -207,7 +207,7 @@ describe('VibeLayout', () => {
 
     expect(wrapper.get('[data-index="1"] img').attributes('src')).toBe('https://example.com/image-pending-2.jpg')
     expect(wrapper.get('[data-index="2"] img').attributes('src')).toBe('https://example.com/image-pending-3.jpg')
-    expect(wrapper.get('[data-index="3"] img').attributes('src')).toBeUndefined()
+    expect(wrapper.get('[data-index="3"] img').attributes('src')).toBe('https://example.com/image-pending-4.jpg')
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
     await flushDom()
@@ -217,7 +217,7 @@ describe('VibeLayout', () => {
     expect(wrapper.get('[data-index="1"] img').attributes('src')).toBe('https://example.com/image-pending-2.jpg')
     expect(wrapper.get('[data-index="2"] img').attributes('src')).toBe('https://example.com/image-pending-3.jpg')
     expect(wrapper.get('[data-index="3"] img').attributes('src')).toBe('https://example.com/image-pending-4.jpg')
-    expect(wrapper.get('[data-index="4"] img').attributes('src')).toBeUndefined()
+    expect(wrapper.get('[data-index="4"] img').attributes('src')).toBe('https://example.com/image-pending-5.jpg')
 
     await wrapper.get('[data-index="1"] img').trigger('load')
     await flushDom()

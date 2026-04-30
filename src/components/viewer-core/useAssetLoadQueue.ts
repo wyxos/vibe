@@ -1,9 +1,3 @@
-export interface VibeAssetLoadQueueLimits {
-  maxGlobal: number
-  maxPerDomain: number
-  maxVideoPerDomain: number
-}
-
 export interface VibeAssetLoadRequest {
   assetType: 'image' | 'video' | 'probe'
   getPriority: () => number
@@ -18,18 +12,11 @@ export interface VibeAssetLoadLease {
 }
 
 interface InternalRequest extends VibeAssetLoadRequest {
-  domain: string
   enqueuedAt: number
   id: string
 }
 
-const DEFAULT_LIMITS: VibeAssetLoadQueueLimits = {
-  maxGlobal: 10,
-  maxPerDomain: 4,
-  maxVideoPerDomain: 2,
-}
-
-export function createAssetLoadQueue(limits: VibeAssetLoadQueueLimits = DEFAULT_LIMITS) {
+export function createAssetLoadQueue() {
   const activeRequests = new Map<string, InternalRequest>()
   const pendingRequests = new Map<string, InternalRequest>()
   let nextId = 0
@@ -37,7 +24,6 @@ export function createAssetLoadQueue(limits: VibeAssetLoadQueueLimits = DEFAULT_
   function request(options: VibeAssetLoadRequest): VibeAssetLoadLease {
     const entry: InternalRequest = {
       ...options,
-      domain: getAssetDomain(options.url),
       enqueuedAt: nextId,
       id: `vibe-asset-load-${nextId += 1}`,
     }
@@ -78,14 +64,6 @@ export function createAssetLoadQueue(limits: VibeAssetLoadQueueLimits = DEFAULT_
     })
 
     for (const request of sortedPendingRequests) {
-      if (activeRequests.size >= limits.maxGlobal) {
-        return
-      }
-
-      if (!canGrant(request)) {
-        continue
-      }
-
       pendingRequests.delete(request.id)
       activeRequests.set(request.id, request)
 
@@ -96,24 +74,6 @@ export function createAssetLoadQueue(limits: VibeAssetLoadQueueLimits = DEFAULT_
         activeRequests.delete(request.id)
       }
     }
-  }
-
-  function canGrant(request: InternalRequest) {
-    const domainActiveRequests = [...activeRequests.values()].filter((entry) => entry.domain === request.domain)
-
-    if (domainActiveRequests.length >= limits.maxPerDomain) {
-      return false
-    }
-
-    if (request.assetType === 'video') {
-      const domainActiveVideos = domainActiveRequests.filter((entry) => entry.assetType === 'video')
-
-      if (domainActiveVideos.length >= limits.maxVideoPerDomain) {
-        return false
-      }
-    }
-
-    return true
   }
 
   return {
@@ -131,14 +91,5 @@ function getRequestPriority(request: InternalRequest) {
   }
   catch {
     return Number.POSITIVE_INFINITY
-  }
-}
-
-function getAssetDomain(url: string) {
-  try {
-    return new URL(url).hostname || 'local'
-  }
-  catch {
-    return 'local'
   }
 }
