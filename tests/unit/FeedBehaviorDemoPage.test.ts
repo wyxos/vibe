@@ -155,7 +155,7 @@ describe('FeedBehaviorDemoPage', () => {
     expect(Number(previousProgress.attributes('aria-valuenow'))).toBe(100)
     expect(Number(nextProgress.attributes('aria-valuenow'))).toBeLessThan(10)
 
-    setScrollMetrics(scrollViewport, maxScrollTop - 1, viewportHeight, contentHeight)
+    setScrollMetrics(scrollViewport, maxScrollTop - 1.5, viewportHeight, contentHeight)
     await wrapper.get('[data-testid="vibe-list-scroll"]').trigger('scroll')
     await flushDom()
 
@@ -177,7 +177,7 @@ describe('FeedBehaviorDemoPage', () => {
 
     expect(Number(nextProgress.attributes('aria-valuenow'))).toBe(100)
 
-    setScrollMetrics(scrollViewport, maxScrollTop - 1, viewportHeight, contentHeight + 600)
+    setScrollMetrics(scrollViewport, maxScrollTop - 1.5, viewportHeight, contentHeight + 600)
     await wrapper.get('[data-testid="vibe-list-scroll"]').trigger('scroll')
     await flushDom()
 
@@ -185,6 +185,33 @@ describe('FeedBehaviorDemoPage', () => {
 
     expect(nextAfterBudgetIncrease).toBeGreaterThan(0)
     expect(nextAfterBudgetIncrease).toBeLessThan(nextNearBottom)
+
+    wrapper.unmount()
+  })
+
+  it('starts the next load when browser scrolling lands within one pixel of the bottom', async () => {
+    vi.useFakeTimers()
+    setViewportWidth(1_280)
+
+    const wrapper = mount(FeedBehaviorDemoPage)
+
+    await vi.advanceTimersByTimeAsync(100)
+    await flushDom()
+
+    const scrollViewport = wrapper.get('[data-testid="vibe-list-scroll"]').element as HTMLElement
+    const listContent = wrapper.get('[data-testid="vibe-list-content"]').element as HTMLElement
+    const contentHeight = Number.parseFloat(listContent.style.height)
+    const viewportHeight = 700
+    const maxScrollTop = contentHeight - viewportHeight
+
+    setScrollMetrics(scrollViewport, maxScrollTop - 0.5, viewportHeight, contentHeight)
+    await wrapper.get('[data-testid="vibe-list-scroll"]').trigger('scroll')
+    await flushDom()
+
+    const nextProgress = Number(wrapper.get('[data-testid="feed-behavior-next-boundary-progress"]').attributes('aria-valuenow'))
+
+    expect(nextProgress).toBeLessThan(100)
+    expect(wrapper.get('[data-testid="feed-behavior-status-bar"]').text()).toContain('loading')
 
     wrapper.unmount()
   })

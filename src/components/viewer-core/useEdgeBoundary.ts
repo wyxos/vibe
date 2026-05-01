@@ -4,6 +4,7 @@ const EDGE_WHEEL_LOCK_MS = 250
 const EDGE_FAILURE_COOLDOWN_MS = 1000
 
 export type VibeMasonryEdgeDirection = 'bottom' | 'top'
+export type VibeMasonryBoundarySyncSource = 'layout' | 'scroll'
 
 export function useEdgeBoundary(options: {
   direction: VibeMasonryEdgeDirection
@@ -20,6 +21,7 @@ export function useEdgeBoundary(options: {
   const consumedIntentVersion = ref(0)
   const isCycleLocked = ref(false)
   const isRequestPending = ref(false)
+  const hasDeferredBoundaryIntent = ref(false)
 
   let wheelLockedUntil = 0
   let releaseTimer: ReturnType<typeof setTimeout> | null = null
@@ -28,18 +30,22 @@ export function useEdgeBoundary(options: {
     clearReleaseTimer()
   })
 
-  function syncBoundary() {
+  function syncBoundary(source: VibeMasonryBoundarySyncSource = 'layout') {
     const wasAtBoundary = isBoundaryActive.value
     isBoundaryActive.value = options.isAtBoundary()
 
     if (!isBoundaryActive.value) {
-      if (!isCycleLocked.value && !isRequestPending.value) {
+      if ((!isCycleLocked.value && !isRequestPending.value) || source === 'scroll') {
         hasSeenOffBoundary.value = true
       }
       return
     }
 
     if (!wasAtBoundary && hasSeenOffBoundary.value) {
+      if (source === 'scroll' && isCycleLocked.value) {
+        hasDeferredBoundaryIntent.value = true
+        return
+      }
       registerIntent()
     }
   }
@@ -55,6 +61,10 @@ export function useEdgeBoundary(options: {
     }
 
     wheelLockedUntil = now + EDGE_WHEEL_LOCK_MS
+    if (isCycleLocked.value) {
+      hasDeferredBoundaryIntent.value = true
+      return
+    }
     registerIntent()
   }
 
@@ -143,7 +153,27 @@ export function useEdgeBoundary(options: {
     releaseTimer = setTimeout(() => {
       releaseTimer = null
       isCycleLocked.value = false
+      requestDeferredBoundaryIntent()
     }, Math.max(0, delayMs))
+  }
+
+  function requestDeferredBoundaryIntent() {
+    if (!hasDeferredBoundaryIntent.value) {
+      return
+    }
+
+    hasDeferredBoundaryIntent.value = false
+
+    if (!options.isAtBoundary()) {
+      if (!isRequestPending.value) {
+        hasSeenOffBoundary.value = true
+      }
+      return
+    }
+
+    isBoundaryActive.value = true
+    registerIntent()
+    maybeRequestPage()
   }
 
   function clearReleaseTimer() {

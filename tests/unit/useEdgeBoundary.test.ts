@@ -17,6 +17,7 @@ describe('useEdgeBoundary', () => {
     const requestPage = vi.fn()
 
     const mounted = await mountUseEdgeBoundary({
+      direction: 'bottom',
       getAnimationLockMs: () => 10,
       hasPage,
       isAtBoundary: () => boundaryActive.value,
@@ -49,6 +50,49 @@ describe('useEdgeBoundary', () => {
       deltaY: 180,
     }))
     mounted.api.maybeRequestPage()
+
+    expect(requestPage).toHaveBeenCalledTimes(2)
+
+    mounted.unmount()
+  })
+
+  it('requests after cooldown when the user scrolls back to the boundary during a mutation lock', async () => {
+    vi.useFakeTimers()
+
+    const boundaryActive = ref(false)
+    const hasPage = ref(true)
+    const loading = ref(false)
+    const requestPage = vi.fn()
+
+    const mounted = await mountUseEdgeBoundary({
+      direction: 'bottom',
+      getAnimationLockMs: () => 10,
+      hasPage,
+      isAtBoundary: () => boundaryActive.value,
+      loading,
+      requestPage: ref(requestPage),
+    })
+
+    boundaryActive.value = false
+    mounted.api.syncBoundary('scroll')
+
+    boundaryActive.value = true
+    mounted.api.syncBoundary('scroll')
+    mounted.api.maybeRequestPage()
+
+    expect(requestPage).toHaveBeenCalledTimes(1)
+
+    mounted.api.onItemsMutated(1)
+
+    boundaryActive.value = false
+    mounted.api.syncBoundary('scroll')
+    boundaryActive.value = true
+    mounted.api.syncBoundary('scroll')
+    mounted.api.maybeRequestPage()
+
+    expect(requestPage).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(10)
 
     expect(requestPage).toHaveBeenCalledTimes(2)
 

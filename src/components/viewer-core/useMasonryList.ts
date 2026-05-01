@@ -29,7 +29,8 @@ const CONTENT_INSET_PX = 24
 const GAP_PX = 16
 const ITEM_WIDTH_PX = 300
 const OVERSCAN_PX = 200
-const NEXT_PAGE_BOUNDARY_THRESHOLD_PX = 0
+const NEXT_PAGE_LOAD_PROGRESS_THRESHOLD_PX = 0
+const NEXT_PAGE_BOUNDARY_EPSILON_PX = 1
 const PREVIOUS_PAGE_BOUNDARY_THRESHOLD_PX = CONTENT_INSET_PX + GAP_PX
 const SCROLL_BUFFER_PX = 200
 const PREPEND_MOVE_MOTION_MS = 500
@@ -87,7 +88,7 @@ export function useVibeMasonryList(options: {
     active: options.active.value,
     maxScrollTop: getMaxScrollTop(),
     progressDistancePx: scrollTop.value,
-    thresholdPx: NEXT_PAGE_BOUNDARY_THRESHOLD_PX,
+    thresholdPx: NEXT_PAGE_LOAD_PROGRESS_THRESHOLD_PX,
     triggerEnabled: canRequestNextBoundary.value,
   }))
   const paginationLabel = computed(() => options.items.value.length > 0
@@ -132,7 +133,7 @@ export function useVibeMasonryList(options: {
     hasPage: canRequestNextBoundary,
     interactionLocked: boundaryLock.isBoundaryInteractionLocked,
     isAtBoundary() {
-      return getDistanceFromBottom() <= NEXT_PAGE_BOUNDARY_THRESHOLD_PX
+      return getDistanceFromBottom() <= NEXT_PAGE_BOUNDARY_EPSILON_PX
     },
     loading: options.loading,
     requestPage: options.requestNextPage,
@@ -309,8 +310,8 @@ export function useVibeMasonryList(options: {
     if (!options.active.value) return
     scrollTop.value = scrollViewportRef.value?.scrollTop ?? 0
     viewportHeight.value = getViewportHeight()
-    previousPageBoundary.syncBoundary()
-    nextPageBoundary.syncBoundary()
+    previousPageBoundary.syncBoundary('scroll')
+    nextPageBoundary.syncBoundary('scroll')
     maybeRequestMoreAtBoundary()
     if (syncBoundaryIndexFromScroll()) {
       return
@@ -424,7 +425,7 @@ export function useVibeMasonryList(options: {
 
   function syncBoundaryIndexFromScroll() {
     const nearTop = scrollTop.value <= PREVIOUS_PAGE_BOUNDARY_THRESHOLD_PX
-    const nearBottom = getDistanceFromBottom() <= NEXT_PAGE_BOUNDARY_THRESHOLD_PX
+    const nearBottom = getDistanceFromBottom() <= NEXT_PAGE_BOUNDARY_EPSILON_PX
 
     if (nearTop) {
       options.setActiveIndex(0)
