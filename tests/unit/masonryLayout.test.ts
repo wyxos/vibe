@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  appendMasonryLayoutItems,
   buildMasonryLayout,
+  canAppendMasonryLayout,
   estimateItemHeight,
+  estimateMasonryAppendContentHeight,
   getColumnCount,
   getColumnWidth,
   getMasonryDimensions,
@@ -140,6 +143,65 @@ describe('masonryLayout', () => {
     ])
     expect(layout.heights).toEqual([300, 600, 300, 300])
     expect(layout.contentHeight).toBe(916)
+  })
+
+  it('can append tail items without changing the full masonry result', () => {
+    const options = {
+      bucketPx: 600,
+      columnCount: 2,
+      columnWidth: 300,
+      gapX: 16,
+      gapY: 16,
+    }
+    const items = [
+      createItem('append-1', { preview: { url: 'https://example.com/append-1.jpg', width: 300, height: 300 } }),
+      createItem('append-2', { preview: { url: 'https://example.com/append-2.jpg', width: 300, height: 600 } }),
+      createItem('append-3', { preview: { url: 'https://example.com/append-3.jpg', width: 300, height: 300 } }),
+      createItem('append-4', { preview: { url: 'https://example.com/append-4.jpg', width: 300, height: 300 } }),
+    ]
+    const incremental = buildMasonryLayout(items.slice(0, 2), options)
+    appendMasonryLayoutItems(incremental, items.slice(2), { ...options, startIndex: 2 })
+    const full = buildMasonryLayout(items, options)
+
+    expect(incremental.positions).toEqual(full.positions)
+    expect(incremental.heights).toEqual(full.heights)
+    expect(incremental.buckets).toEqual(full.buckets)
+    expect(incremental.indexById).toEqual(full.indexById)
+    expect(incremental.columnHeights).toEqual(full.columnHeights)
+    expect(incremental.contentHeight).toBe(full.contentHeight)
+    expect(estimateMasonryAppendContentHeight(items.slice(2), {
+      columnHeights: buildMasonryLayout(items.slice(0, 2), options).columnHeights,
+      columnWidth: options.columnWidth,
+      contentHeight: buildMasonryLayout(items.slice(0, 2), options).contentHeight,
+      gapY: options.gapY,
+    })).toBe(full.contentHeight)
+  })
+
+  it('only allows incremental layout for pure tail appends', () => {
+    const previousItems = [createItem('tail-1'), createItem('tail-2')]
+    const addedItems = [createItem('tail-3')]
+    const currentItems = [...previousItems, ...addedItems]
+
+    expect(canAppendMasonryLayout({
+      addedItems,
+      columnCount: 2,
+      columnHeights: [300, 600],
+      currentItems,
+      isPrepend: false,
+      layoutItemCount: previousItems.length,
+      previousItems,
+      removedItemCount: 0,
+    })).toBe(true)
+    expect(canAppendMasonryLayout({
+      addedItems,
+      columnCount: 2,
+      columnHeights: [300, 600],
+      currentItems: [previousItems[1], previousItems[0], addedItems[0]],
+      isPrepend: false,
+      layoutItemCount: previousItems.length,
+      previousItems,
+      removedItemCount: 0,
+    })).toBe(false)
   })
 
   it('returns only bucket-visible indices for the current scroll range', () => {

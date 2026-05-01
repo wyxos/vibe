@@ -1,11 +1,11 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import type { VibeViewerItem } from '../viewer'
 import {
-  buildMasonryLayout,
   getColumnCount,
   getColumnWidth,
   getVisibleIndicesFromBuckets,
 } from './masonryLayout'
+import { useMasonryLayoutState } from './masonryLayoutState'
 import { getVibeMasonryEnterDuration, getVibeMasonryLeaveDuration, useMasonryMotion } from './useMasonryMotion'
 import {
   getVibeMasonryDistanceFromBottom,
@@ -55,11 +55,8 @@ export function useVibeMasonryList(options: {
   const scrollTop = ref(0)
   const viewportHeight = ref(typeof window === 'undefined' ? 0 : (window.innerHeight || 0))
   const viewportWidth = ref(typeof window === 'undefined' ? 0 : (window.innerWidth || ITEM_WIDTH_PX))
-  const layoutPositions = ref<{ x: number; y: number }[]>([])
-  const layoutHeights = ref<number[]>([])
-  const layoutBuckets = ref<Map<number, number[]>>(new Map())
-  const layoutContentHeight = ref(0)
-  const layoutIndexById = ref<Map<string, number>>(new Map())
+  const layout = useMasonryLayoutState({ bucketPx: BUCKET_PX, contentInsetPx: CONTENT_INSET_PX, gapPx: GAP_PX })
+  const { buckets: layoutBuckets, columnHeights: layoutColumnHeights, contentHeight: layoutContentHeight, heights: layoutHeights, indexById: layoutIndexById, positions: layoutPositions } = layout
   const preservedScrollTop = ref<number | null>(null)
   const boundaryLock = useMasonryBoundaryLock()
   const availableWidth = computed(() => Math.max(ITEM_WIDTH_PX, viewportWidth.value - CONTENT_INSET_PX * 2))
@@ -146,9 +143,11 @@ export function useVibeMasonryList(options: {
   })
   const pendingAppend = useMasonryPendingAppend({
     bucketPx: BUCKET_PX,
+    columnHeights: layoutColumnHeights,
     columnCount,
     columnWidth,
     commitPendingAppend: options.commitPendingAppend,
+    contentHeight: layoutContentHeight,
     contentInsetPx: CONTENT_INSET_PX,
     gapPx: GAP_PX,
     items: options.items,
@@ -177,7 +176,13 @@ export function useVibeMasonryList(options: {
       if (mutation.shouldResetScrollForEmptyRemoval) {
         resetScrollToTop()
       }
-      rebuildLayout()
+      const previousLayoutItems = previousItems ?? []
+      if (layout.canAppend(currentItems, previousLayoutItems, mutation, columnCount.value)) {
+        layout.append(mutation.addedItems, previousLayoutItems.length, columnCount.value, columnWidth.value)
+      }
+      else {
+        layout.rebuild(currentItems, columnCount.value, columnWidth.value)
+      }
       if (mutation.removedItems.length > 0) {
         motion.markLeave(mutation.removedItems)
       }
@@ -286,25 +291,6 @@ export function useVibeMasonryList(options: {
     }
     autoScrollController.stop()
   })
-
-  function rebuildLayout() {
-    const nextLayout = buildMasonryLayout(options.items.value, {
-      columnCount: columnCount.value,
-      columnWidth: columnWidth.value,
-      gapX: GAP_PX,
-      gapY: GAP_PX,
-      bucketPx: BUCKET_PX,
-    })
-
-    layoutPositions.value = nextLayout.positions.map((position) => ({
-      x: position.x + CONTENT_INSET_PX,
-      y: position.y + CONTENT_INSET_PX,
-    }))
-    layoutHeights.value = nextLayout.heights
-    layoutBuckets.value = nextLayout.buckets
-    layoutContentHeight.value = nextLayout.contentHeight
-    layoutIndexById.value = nextLayout.indexById
-  }
 
   function onScroll() {
     if (!options.active.value) return

@@ -18,6 +18,7 @@ export interface VibeMasonryLayoutResult {
   buckets: Map<number, number[]>
   contentHeight: number
   indexById: Map<string, number>
+  columnHeights: number[]
 }
 
 const FALLBACK_SIZE = 1
@@ -105,13 +106,84 @@ export function buildMasonryLayout(
   const heights: number[] = new Array(items.length)
   const buckets = new Map<number, number[]>()
   const indexById = new Map<string, number>()
+  const layout = { positions, heights, buckets, contentHeight: 0, indexById, columnHeights }
 
-  let contentHeight = 0
+  appendMasonryLayoutItems(layout, items, {
+    ...options,
+    startIndex: 0,
+  })
 
-  for (let index = 0; index < items.length; index += 1) {
-    const item = items[index]
-    indexById.set(getVibeOccurrenceKey(item), index)
+  return layout
+}
 
+export function appendMasonryLayoutItems(
+  layout: VibeMasonryLayoutResult,
+  items: VibeViewerItem[],
+  options: {
+    columnCount: number
+    columnWidth: number
+    gapX: number
+    gapY: number
+    bucketPx: number
+    startIndex: number
+    positionOffsetX?: number
+    positionOffsetY?: number
+  },
+): VibeMasonryLayoutResult {
+  for (let offset = 0; offset < items.length; offset += 1) {
+    const item = items[offset]
+    const index = options.startIndex + offset
+    layout.indexById.set(getVibeOccurrenceKey(item), index)
+
+    let bestColumn = 0
+    for (let column = 1; column < layout.columnHeights.length; column += 1) {
+      if (layout.columnHeights[column] < layout.columnHeights[bestColumn]) {
+        bestColumn = column
+      }
+    }
+
+    const x = bestColumn * (options.columnWidth + options.gapX)
+    const y = layout.columnHeights[bestColumn]
+    const height = estimateItemHeight(item, options.columnWidth)
+
+    layout.positions[index] = {
+      x: x + (options.positionOffsetX ?? 0),
+      y: y + (options.positionOffsetY ?? 0),
+    }
+    layout.heights[index] = height
+    layout.columnHeights[bestColumn] = y + height + options.gapY
+    layout.contentHeight = Math.max(layout.contentHeight, y + height)
+
+    const startBucket = Math.floor(y / options.bucketPx)
+    const endBucket = Math.floor((y + height) / options.bucketPx)
+
+    for (let bucket = startBucket; bucket <= endBucket; bucket += 1) {
+      const nextIndices = layout.buckets.get(bucket)
+      if (nextIndices) {
+        layout.buckets.set(bucket, [...nextIndices, index])
+      }
+      else {
+        layout.buckets.set(bucket, [index])
+      }
+    }
+  }
+
+  return layout
+}
+
+export function estimateMasonryAppendContentHeight(
+  items: VibeViewerItem[],
+  options: {
+    columnHeights: number[]
+    columnWidth: number
+    contentHeight: number
+    gapY: number
+  },
+) {
+  const columnHeights = [...options.columnHeights]
+  let contentHeight = options.contentHeight
+
+  for (const item of items) {
     let bestColumn = 0
     for (let column = 1; column < columnHeights.length; column += 1) {
       if (columnHeights[column] < columnHeights[bestColumn]) {
@@ -119,36 +191,40 @@ export function buildMasonryLayout(
       }
     }
 
-    const x = bestColumn * (options.columnWidth + options.gapX)
     const y = columnHeights[bestColumn]
     const height = estimateItemHeight(item, options.columnWidth)
-
-    positions[index] = { x, y }
-    heights[index] = height
     columnHeights[bestColumn] = y + height + options.gapY
     contentHeight = Math.max(contentHeight, y + height)
-
-    const startBucket = Math.floor(y / options.bucketPx)
-    const endBucket = Math.floor((y + height) / options.bucketPx)
-
-    for (let bucket = startBucket; bucket <= endBucket; bucket += 1) {
-      const nextIndices = buckets.get(bucket)
-      if (nextIndices) {
-        nextIndices.push(index)
-      }
-      else {
-        buckets.set(bucket, [index])
-      }
-    }
   }
 
-  return {
-    positions,
-    heights,
-    buckets,
-    contentHeight,
-    indexById,
+  return contentHeight
+}
+
+export function canAppendMasonryLayout(options: {
+  addedItems: VibeViewerItem[]
+  columnCount: number
+  columnHeights: number[]
+  currentItems: VibeViewerItem[]
+  isPrepend: boolean
+  layoutItemCount: number
+  previousItems: VibeViewerItem[]
+  removedItemCount: number
+}) {
+  if (
+    options.addedItems.length === 0
+    || options.removedItemCount > 0
+    || options.isPrepend
+    || options.previousItems.length === 0
+    || options.layoutItemCount !== options.previousItems.length
+    || options.columnHeights.length !== options.columnCount
+    || options.currentItems.length !== options.previousItems.length + options.addedItems.length
+  ) {
+    return false
   }
+
+  return options.previousItems.every((item, index) => (
+    getVibeOccurrenceKey(item) === getVibeOccurrenceKey(options.currentItems[index])
+  ))
 }
 
 export function getVisibleIndicesFromBuckets(options: {
