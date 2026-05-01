@@ -121,7 +121,7 @@ describe('VibeLayout removal navigation', () => {
     wrapper.unmount()
   })
 
-  it('ignores a removal-driven bottom re-entry until the user scrolls again', async () => {
+  it('loads the next page when post-removal scrolling reaches the strict bottom', async () => {
     vi.useFakeTimers()
     setViewportWidth(1_280)
 
@@ -153,7 +153,8 @@ describe('VibeLayout removal navigation', () => {
     await scrollViewport.trigger('scroll')
     await flushDom()
 
-    expect(resolve).not.toHaveBeenCalled()
+    expect(resolve).toHaveBeenCalledTimes(1)
+    expect(resolve).toHaveBeenCalledWith(expect.objectContaining({ cursor: null }))
 
     await vi.advanceTimersByTimeAsync(1_301)
 
