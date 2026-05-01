@@ -1,4 +1,8 @@
-import { ref, type Ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
+import { getVibeMasonryScrollbarThumbStyle } from './masonryViewport'
+
+const SCROLLBAR_INSET_PX = 24
+const SCROLLBAR_MIN_THUMB_HEIGHT_PX = 48
 
 export function useMasonryAutoScroll(options: {
   active: Ref<boolean>
@@ -92,6 +96,32 @@ export function getTrailingBoundaryLoadProgress(options: {
   if (progressRangePx <= 0) return 1
 
   return clamp(options.progressDistancePx / progressRangePx, 0, 1)
+}
+
+export function useMasonryScrollbar(options: {
+  containerHeight: Ref<number>
+  scrollTop: Ref<number>
+  viewportHeight: Ref<number>
+}) {
+  const scrollbarTrackHeight = computed(() => Math.max(0, options.viewportHeight.value - SCROLLBAR_INSET_PX * 2))
+  const showScrollbar = computed(() => options.containerHeight.value > options.viewportHeight.value + 1 && scrollbarTrackHeight.value > 0)
+  const scrollbarThumbHeight = computed(() => {
+    if (!showScrollbar.value) return 0
+    const rawThumbHeight = (options.viewportHeight.value / options.containerHeight.value) * scrollbarTrackHeight.value
+    return Math.min(scrollbarTrackHeight.value, Math.max(SCROLLBAR_MIN_THUMB_HEIGHT_PX, rawThumbHeight))
+  })
+  const scrollbarThumbTop = computed(() => {
+    if (!showScrollbar.value) return SCROLLBAR_INSET_PX
+    const maxScrollTop = Math.max(0, options.containerHeight.value - options.viewportHeight.value)
+    const maxThumbTravel = Math.max(0, scrollbarTrackHeight.value - scrollbarThumbHeight.value)
+    const progress = maxScrollTop > 0 ? clamp(options.scrollTop.value / maxScrollTop, 0, 1) : 0
+    return SCROLLBAR_INSET_PX + maxThumbTravel * progress
+  })
+
+  return {
+    getScrollbarThumbStyle: () => getVibeMasonryScrollbarThumbStyle(scrollbarThumbHeight.value, scrollbarThumbTop.value),
+    showScrollbar,
+  }
 }
 
 export function normalizeMasonryBottomLoadBufferPx(value: number | undefined) {

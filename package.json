@@ -41,7 +41,6 @@
     "build:lib": "vite build --config vite.config.lib.ts && npm run build:types",
     "build:types": "vue-tsc -p tsconfig.lib.json",
     "check:demo-dist": "node scripts/check-demo-dist.mjs",
-    "check:max-lines": "node scripts/check-max-lines.mjs",
     "check:package": "node scripts/check-package-shape.mjs",
     "prepublishOnly": "npm run check && npm run test:unit && npm run build:lib && npm run test:e2e && npm run check:package",
     "preview": "vite preview",
@@ -55,7 +54,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
-    "check": "npm run lint && npm run typecheck && npm run check:max-lines",
+    "check": "npm run lint && npm run typecheck",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "typecheck": "vue-tsc --noEmit --pretty false"

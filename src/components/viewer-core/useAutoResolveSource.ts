@@ -1,4 +1,3 @@
-/* eslint-disable max-lines */
 import { computed, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import type { VibeViewerItem } from '../viewer'
 import type { VibeLoadPhase } from './removalState'
@@ -6,33 +5,26 @@ import {
   type VibeAutoBucket,
   filterRemovedItems,
   flattenVibeBuckets,
-  getVibeBucketVisibleCount,
   getVibeCursorAtVisibleIndex,
-  replaceVibeBucketAtCursor,
 } from './autoBuckets'
 import {
-  finalizeCollectedBuckets,
   getActiveOccurrenceKey as getActiveOccurrenceKeyFromItems,
-  refreshAutoResolveBucket,
   getSyncedActiveIndex,
   hydrateAutoResolveState,
   isBoundaryPageUnderfilled,
-  isAbortError,
-  type VibeCollectedBuckets,
 } from './autoResolveState'
 import { createAutoResolveBucketFactory } from './autoResolveBucketFactory'
 import { createAutoResolveFillUntilController } from './autoResolveFillUntil'
+import { createAutoResolveLoadingController } from './autoResolveLoading'
 import { useFillProgressState } from './fillProgress'
 import {
   clamp,
-  getCursorKey,
   isActiveLoadPhase,
   normalizePageSize,
   PREFETCH_OFFSET,
   type ResolveFn,
-  type VibeAutoDirection,
 } from './autoResolveHelpers'
-import { findLeadingBoundaryBucket, findTrailingBoundaryBucket, getExhaustedNextCursor, markVibeNextCursorExhausted, resolveCollectedNextCursor, resolveRefreshedNextCursor, trimVibeBucketsToVisibleWindow } from './autoResolveCursors'
+import { findLeadingBoundaryBucket, findTrailingBoundaryBucket, getExhaustedNextCursor, markVibeNextCursorExhausted, trimVibeBucketsToVisibleWindow } from './autoResolveCursors'
 import { createEmptyVisiblePrefetchScheduler } from './emptyVisiblePrefetch'
 import { getVibeOccurrenceKey } from './itemIdentity'
 import { DEFAULT_FILL_DELAY_MS, DEFAULT_FILL_DELAY_STEP_MS, getFillDelayMs, normalizeFillDelayMs, useFillDelayCountdown } from './fillDelay'
@@ -133,6 +125,33 @@ export function useAutoResolveSource(options: {
     waitFillDelay: (delayMs) => fillDelay.wait(delayMs),
   })
   const emptyVisiblePrefetch = createEmptyVisiblePrefetchScheduler({ canRefreshTrailingBoundary, hasNextPage, isInitialLoading: isLoadingInitialPhase, isPageLoadingLocked, items, loading, prefetchNextPage, removedIds: options.removedIds, trailingBoundaryBucket })
+  const loadingController = createAutoResolveLoadingController({
+    autoBuckets,
+    clearActiveResolveController(controller) { if (activeResolveController === controller) activeResolveController = null },
+    clearFillState,
+    createBucket,
+    errorMessage,
+    fillCollectedCount,
+    fillCursor,
+    fillTargetCount,
+    finishLoadPhase,
+    getActiveOccurrenceKey,
+    getBoundaryBucket: (edge) => edge === 'leading' ? leadingBoundaryBucket.value : trailingBoundaryBucket.value,
+    getFillDelayMs: (index) => getFillDelayMs(index, fillDelayMs.value, fillDelayStepMs.value),
+    getOperationIsCurrent: (operationId) => operationId === operationSequence,
+    getPageSize: () => pageSize.value,
+    getResolve: () => options.resolve,
+    getSequence: () => occurrenceSequence,
+    inFlightCursors,
+    isManualPageLoadingLocked,
+    nextOperationId: () => ++operationSequence,
+    operationPhase,
+    removedIds: options.removedIds,
+    setActiveResolveController: (controller) => { activeResolveController = controller },
+    setSequence: (sequence) => { occurrenceSequence = sequence },
+    syncActiveIndexAfterVisibilityChange,
+    waitFillDelay: (delayMs) => fillDelay.wait(delayMs),
+  })
   watch(
     () => items.value.length,
     (length) => {
@@ -398,154 +417,10 @@ export function useAutoResolveSource(options: {
     lastLoadAttempt = async () => {
       await reloadBoundaryBucket(edge)
     }
-    if (!options.resolve) return null
-    const targetBucket = edge === 'leading' ? leadingBoundaryBucket.value : trailingBoundaryBucket.value
-    if (!targetBucket) return null
-    const cursorKey = getCursorKey(targetBucket.cursor)
-    if (inFlightCursors.has(cursorKey)) return null
-    inFlightCursors.add(cursorKey)
-    errorMessage.value = null
-    operationPhase.value = 'refreshing'
-    clearFillState()
-    const operationId = ++operationSequence
-    const resolveController = typeof AbortController === 'undefined' ? null : new AbortController()
-    activeResolveController = resolveController
-    try {
-      const response = await options.resolve({
-        cursor: targetBucket.cursor,
-        pageSize: pageSize.value,
-        signal: resolveController?.signal,
-      })
-      if (operationId !== operationSequence) {
-        finishLoadPhase()
-        return null
-      }
-      const nextCursorState = resolveRefreshedNextCursor(targetBucket, response.nextPage)
-      const refreshed = refreshAutoResolveBucket({
-        cursor: targetBucket.cursor,
-        nextCursor: nextCursorState.cursor,
-        nextCursorExhausted: nextCursorState.exhausted,
-        nextItems: response.items,
-        previousCursor: response.previousPage ?? null,
-        previousItems: targetBucket.items,
-        sequence: occurrenceSequence,
-      })
-      occurrenceSequence = refreshed.nextSequence
-      const anchorOccurrenceKey = getActiveOccurrenceKey()
-      autoBuckets.value = replaceVibeBucketAtCursor(autoBuckets.value, targetBucket.cursor, refreshed.bucket)
-      syncActiveIndexAfterVisibilityChange(anchorOccurrenceKey)
-      finishLoadPhase()
-      return {
-        followCursor: edge === 'leading' ? (response.previousPage ?? null) : response.nextPage,
-        itemsInserted: refreshed.insertedCount,
-      }
-    }
-    catch (error) {
-      if (isAbortError(error) || operationId !== operationSequence) {
-        finishLoadPhase()
-        return null
-      }
-      errorMessage.value = error instanceof Error ? error.message : 'The viewer could not load items.'
-      operationPhase.value = 'failed'
-      clearFillState()
-      return null
-    }
-    finally {
-      if (activeResolveController === resolveController) activeResolveController = null
-      inFlightCursors.delete(cursorKey)
-    }
+    return loadingController.reloadBoundaryBucket(edge)
   }
-  async function collectBuckets(request: {
-    continueUntilFilled: boolean
-    cursor: string | null
-    direction: VibeAutoDirection
-    phase: Extract<VibeLoadPhase, 'filling' | 'initializing' | 'loading'>
-  }): Promise<VibeCollectedBuckets | null> {
-    if (!options.resolve) {
-      return null
-    }
-    const operationId = ++operationSequence
-    const visitedCursorKeys = new Set<string>()
-    const collectedBuckets: VibeAutoBucket[] = []
-    let cursor = request.cursor
-    let fillRequestIndex = 0
-    errorMessage.value = null
-    operationPhase.value = request.phase
-    clearFillState()
-    while (true) {
-      if (operationId !== operationSequence) return finalizeCollectedBuckets(collectedBuckets, request.direction, options.removedIds.value, true)
-      if (collectedBuckets.length > 0 && isManualPageLoadingLocked.value) {
-        return finalizeCollectedBuckets(collectedBuckets, request.direction, options.removedIds.value, false)
-      }
-      const cursorKey = getCursorKey(cursor)
-      if (visitedCursorKeys.has(cursorKey) || inFlightCursors.has(cursorKey)) {
-        break
-      }
-      visitedCursorKeys.add(cursorKey)
-      inFlightCursors.add(cursorKey)
-      const resolveController = typeof AbortController === 'undefined' ? null : new AbortController()
-      activeResolveController = resolveController
-      try {
-        const response = await options.resolve({
-          cursor,
-          pageSize: pageSize.value,
-          signal: resolveController?.signal,
-        })
-        if (operationId !== operationSequence) return finalizeCollectedBuckets(collectedBuckets, request.direction, options.removedIds.value, true)
-        const nextCursorState = resolveCollectedNextCursor(request.direction, cursor, response.nextPage)
-        const nextBucket = createBucket({
-          cursor,
-          nextCursor: nextCursorState.cursor,
-          nextCursorExhausted: nextCursorState.exhausted,
-          nextItems: response.items,
-          previousCursor: response.previousPage ?? null,
-          previousItems: [],
-        })
-        collectedBuckets.push(nextBucket)
-        const visibleCount = collectedBuckets.reduce((count, bucket) => {
-          return count + getVibeBucketVisibleCount(bucket, options.removedIds.value)
-        }, 0)
-        const nextCursor = request.direction === 'forward'
-          ? (nextBucket.nextCursorExhausted ? null : nextBucket.nextCursor)
-          : nextBucket.previousCursor
-        if (!request.continueUntilFilled || visibleCount >= pageSize.value || !nextCursor) {
-          fillCursor.value = null
-          return {
-            canceled: false,
-            buckets: request.direction === 'backward'
-              ? [...collectedBuckets].reverse()
-              : collectedBuckets,
-            visibleCount,
-          }
-        }
-        if (isManualPageLoadingLocked.value) {
-          return finalizeCollectedBuckets(collectedBuckets, request.direction, options.removedIds.value, false)
-        }
-        operationPhase.value = 'filling'
-        fillCollectedCount.value = visibleCount
-        fillCursor.value = nextCursor
-        fillTargetCount.value = pageSize.value
-        fillRequestIndex += 1
-        const nextDelayMs = getFillDelayMs(fillRequestIndex, fillDelayMs.value, fillDelayStepMs.value)
-        await fillDelay.wait(nextDelayMs)
-        if (operationId !== operationSequence) return finalizeCollectedBuckets(collectedBuckets, request.direction, options.removedIds.value, true)
-        cursor = nextCursor
-      }
-      catch (error) {
-        if (isAbortError(error) || operationId !== operationSequence) {
-          return finalizeCollectedBuckets(collectedBuckets, request.direction, options.removedIds.value, true)
-        }
-        errorMessage.value = error instanceof Error ? error.message : 'The viewer could not load items.'
-        operationPhase.value = 'failed'
-        clearFillState()
-        return null
-      }
-      finally {
-        if (activeResolveController === resolveController) activeResolveController = null
-        inFlightCursors.delete(cursorKey)
-      }
-    }
-    return finalizeCollectedBuckets(collectedBuckets, request.direction, options.removedIds.value, false)
+  function collectBuckets(request: Parameters<typeof loadingController.collectBuckets>[0]) {
+    return loadingController.collectBuckets(request)
   }
   function finishLoadPhase() {
     operationPhase.value = 'idle'

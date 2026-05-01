@@ -1,4 +1,3 @@
-<!-- eslint-disable max-lines -->
 <script setup lang="ts">
 import type { Component } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, toRef } from 'vue'

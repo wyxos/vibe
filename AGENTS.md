@@ -27,7 +27,7 @@ npm run verify:published -- --wait
 - Keep reusable library code in `src/components/`; keep the public package surface in `src/index.ts`.
 - Keep demo-only composition in `src/App.vue` and `src/style.css`.
 - Avoid backward-compat shims unless explicitly requested.
-- `npm run check` includes a max-lines guard. If a file over 500 lines is unavoidable, add it to `scripts/check-max-lines.mjs` with a concrete split follow-up instead of silently growing it.
+- `npm run check` enforces the ESLint `max-lines` rule. Split files before they exceed 500 lines.
 - After `npm run release`, verify npm visibility with `npm run verify:published -- --wait` before telling downstream consumers such as Atlas to bump. Use `npm run release:verified` when you want that wait bundled into the release command.
 
 ## Security & Secrets
