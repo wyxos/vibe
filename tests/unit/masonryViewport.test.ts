@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  getVibeMasonryDistanceFromBottom,
   getVibeMasonryViewportHeight,
   getVibeMasonryViewportWidth,
 } from '@/components/viewer-core/masonryViewport'
@@ -22,5 +23,11 @@ describe('masonryViewport helpers', () => {
     } as unknown as HTMLElement
 
     expect(getVibeMasonryViewportHeight(viewport, 981)).toBe(981)
+  })
+
+  it('uses the larger container height when the browser scrollHeight is stale', () => {
+    const viewport = { scrollHeight: 2_000 } as HTMLElement
+
+    expect(getVibeMasonryDistanceFromBottom(viewport, 1_300, 700, 2_200)).toBe(200)
   })
 })

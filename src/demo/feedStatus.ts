@@ -2,8 +2,14 @@ export interface DemoFeedStatus {
   activeIndex: number
   currentCursor?: string | null
   fillCollectedCount?: number | null
+  fillCompletedCalls?: number | null
   fillDelayRemainingMs?: number | null
+  fillLoadedCount?: number | null
+  fillMode?: 'count' | 'cursor' | 'end' | 'idle' | string | null
+  fillProgress?: number | null
+  fillTargetCalls?: number | null
   fillTargetCount?: number | null
+  fillTotalCount?: number | null
   firstLoadedCursor?: string | null
   hasNextPage: boolean
   hasPreviousPage: boolean
@@ -47,6 +53,7 @@ export function createDemoFeedStatusEntries(status: DemoFeedStatus | null | unde
   const fillCollectedCount = status?.fillCollectedCount ?? Math.min(status?.itemCount ?? options.pageSize, options.pageSize)
   const fillDelay = formatFillDelay(status?.fillDelayRemainingMs ?? null)
   const fillTargetCount = status?.fillTargetCount ?? options.pageSize
+  const fillValue = resolveFillValue(status, `${fillCollectedCount} / ${fillTargetCount}`)
   const phase = status?.phase ?? status?.loadState ?? 'loaded'
   const statusValue = resolveStatusValue(status, phase)
 
@@ -79,7 +86,7 @@ export function createDemoFeedStatusEntries(status: DemoFeedStatus | null | unde
       key: 'fill',
       label: options.labels.fill,
       testId: `${options.testIdPrefix}-fill`,
-      value: `${fillCollectedCount} / ${fillTargetCount}`,
+      value: fillValue,
     },
     {
       key: 'total',
@@ -99,6 +106,25 @@ export function createDemoFeedStatusEntries(status: DemoFeedStatus | null | unde
   }
 
   return entries
+}
+
+function resolveFillValue(status: DemoFeedStatus | null | undefined, fallback: string) {
+  const completedCalls = status?.fillCompletedCalls ?? 0
+  const loadedCount = status?.fillLoadedCount ?? status?.itemCount ?? 0
+
+  if (status?.fillTargetCalls != null) {
+    return `${completedCalls} / ${status.fillTargetCalls} calls`
+  }
+
+  if (status?.fillTotalCount != null) {
+    return `${loadedCount} / ${status.fillTotalCount} loaded`
+  }
+
+  if (completedCalls > 0) {
+    return `${loadedCount} loaded / ${completedCalls} calls`
+  }
+
+  return fallback
 }
 
 function resolveStatusValue(status: DemoFeedStatus | null | undefined, phase: string) {

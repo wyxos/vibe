@@ -13,6 +13,7 @@ export type ResolveFn = (params: {
   items: VibeViewerItem[]
   nextPage: string | null
   previousPage?: string | null
+  total?: number | null
 }>
 
 export type VibeAutoDirection = 'backward' | 'forward'

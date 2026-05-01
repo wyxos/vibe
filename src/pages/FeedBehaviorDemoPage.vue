@@ -2,7 +2,19 @@
 import type { Component } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Heart, Laugh, LockKeyhole, LockKeyholeOpen, ThumbsDown, ThumbsUp } from 'lucide-vue-next'
+import {
+  ChevronsDown,
+  Heart,
+  Laugh,
+  ListPlus,
+  LockKeyhole,
+  LockKeyholeOpen,
+  Pause,
+  Play,
+  ThumbsDown,
+  ThumbsUp,
+  X,
+} from 'lucide-vue-next'
 
 import Layout from '@/components/Layout.vue'
 import type { VibeViewerItem } from '@/components/viewer'
@@ -13,6 +25,8 @@ import { getFakeMediaItemIcon } from '@/demo/fakeMediaItemIcon'
 
 const INITIAL_PAGE = 9
 const PAGE_SIZE = 25
+const AUTO_SCROLL_SPEED_PX_PER_SECOND = 50
+const FILL_UNTIL_COUNT = 2
 const REACTION_ACTIONS = [
   { icon: Heart, label: 'Favorite' },
   { icon: ThumbsUp, label: 'Like' },
@@ -20,8 +34,16 @@ const REACTION_ACTIONS = [
   { icon: ThumbsDown, label: 'Dislike' },
 ] as const
 
+type FeedBehaviorDemoHandle = VibeHandle & {
+  autoScroll?: (speedPxPerSecond: number) => void
+  cancelFill?: () => void
+  fillUntil?: (cursorOrCount: number | string) => Promise<void> | void
+  fillUntilEnd?: () => Promise<void> | void
+}
+
 const route = useRoute()
-const vibeRef = ref<VibeHandle | null>(null)
+const vibeRef = ref<FeedBehaviorDemoHandle | null>(null)
+const isAutoScrollActive = ref(false)
 const loadedItemIds = ref<Set<string>>(new Set())
 
 const failureConfig = computed(() => {
@@ -88,12 +110,18 @@ const removableLoadedItemIds = computed(() => {
 
 const canRemoveAllItems = computed(() => removableLoadedItemIds.value.length > 0)
 const canRemoveRandomItems = computed(() => removableLoadedItemIds.value.length > 0)
+const isFillActive = computed(() => (vibeRef.value?.status.fillMode ?? 'idle') !== 'idle')
 const isPageLoadingLocked = computed(() => Boolean(vibeRef.value?.status.pageLoadingLocked))
-const nextBoundaryProgressPercent = computed(() => Math.round((vibeRef.value?.status.nextBoundaryLoadProgress ?? 0) * 100))
-const previousBoundaryProgressPercent = computed(() => Math.round((vibeRef.value?.status.previousBoundaryLoadProgress ?? 0) * 100))
+const nextBoundaryProgressPercent = computed(() => formatBoundaryProgressPercent(vibeRef.value?.status.nextBoundaryLoadProgress ?? 0))
+const previousBoundaryProgressPercent = computed(() => formatBoundaryProgressPercent(vibeRef.value?.status.previousBoundaryLoadProgress ?? 0))
 
 function renderItemIcon(item: VibeViewerItem, icon: unknown) {
   return (getFakeMediaItemIcon(item) ?? icon) as Component
+}
+
+function formatBoundaryProgressPercent(value: number) {
+  const progress = Math.min(Math.max(value, 0), 1)
+  return progress >= 1 ? 100 : Math.floor(progress * 100)
 }
 
 function removeItemById(id: string) {
@@ -143,6 +171,36 @@ function takeRandomIds(ids: string[], maxCount: number) {
   return nextIds.slice(0, targetCount)
 }
 
+function fillFixedCount() {
+  if (isPageLoadingLocked.value) {
+    return
+  }
+
+  void vibeRef.value?.fillUntil?.(FILL_UNTIL_COUNT)
+}
+
+function fillUntilEnd() {
+  if (isPageLoadingLocked.value) {
+    return
+  }
+
+  void vibeRef.value?.fillUntilEnd?.()
+}
+
+function cancelFill() {
+  vibeRef.value?.cancelFill?.()
+}
+
+function toggleAutoScroll() {
+  if (!vibeRef.value) {
+    return
+  }
+
+  const nextSpeed = isAutoScrollActive.value ? 0 : AUTO_SCROLL_SPEED_PX_PER_SECOND
+  vibeRef.value.autoScroll?.(nextSpeed)
+  isAutoScrollActive.value = nextSpeed > 0
+}
+
 function togglePageLoadingLock() {
   if (!vibeRef.value) {
     return
@@ -177,6 +235,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onWindowKeydown)
+  vibeRef.value?.autoScroll?.(0)
 })
 </script>
 
@@ -285,6 +344,49 @@ onBeforeUnmount(() => {
             <span>
               {{ isPageLoadingLocked ? 'Unlock paging' : 'Lock paging' }}
             </span>
+          </button>
+          <button
+            type="button"
+            data-testid="feed-behavior-fill-count-button"
+            class="pointer-events-auto inline-flex h-10 items-center justify-center gap-2 border border-white/12 bg-white/[0.03] px-4 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-[#f7f1ea]/72 transition enabled:hover:border-white/24 enabled:hover:bg-white/[0.08] enabled:hover:text-[#f7f1ea] disabled:cursor-default disabled:border-white/10 disabled:bg-white/[0.03] disabled:text-[#f7f1ea]/34"
+            :disabled="isPageLoadingLocked"
+            @click="fillFixedCount"
+          >
+            <ListPlus class="h-4 w-4 stroke-[2]" aria-hidden="true" />
+            <span>Fill 2</span>
+          </button>
+          <button
+            type="button"
+            data-testid="feed-behavior-fill-until-end-button"
+            class="pointer-events-auto inline-flex h-10 items-center justify-center gap-2 border border-white/12 bg-white/[0.03] px-4 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-[#f7f1ea]/72 transition enabled:hover:border-white/24 enabled:hover:bg-white/[0.08] enabled:hover:text-[#f7f1ea] disabled:cursor-default disabled:border-white/10 disabled:bg-white/[0.03] disabled:text-[#f7f1ea]/34"
+            :disabled="isPageLoadingLocked"
+            @click="fillUntilEnd"
+          >
+            <ChevronsDown class="h-4 w-4 stroke-[2]" aria-hidden="true" />
+            <span>Fill to end</span>
+          </button>
+          <button
+            v-if="isFillActive"
+            type="button"
+            data-testid="feed-behavior-cancel-fill-button"
+            class="pointer-events-auto inline-flex h-10 items-center justify-center gap-2 border border-rose-400/40 bg-rose-500/12 px-4 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-rose-50 transition hover:border-rose-300/55 hover:bg-rose-500/20"
+            @click="cancelFill"
+          >
+            <X class="h-4 w-4 stroke-[2]" aria-hidden="true" />
+            <span>Cancel fill</span>
+          </button>
+          <button
+            type="button"
+            data-testid="feed-behavior-auto-scroll-button"
+            class="pointer-events-auto inline-flex h-10 items-center justify-center gap-2 border px-4 text-[0.68rem] font-semibold uppercase tracking-[0.2em] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f7f1ea]"
+            :class="isAutoScrollActive
+              ? 'border-sky-300/45 bg-sky-500/14 text-sky-50 hover:border-sky-200/60 hover:bg-sky-500/22'
+              : 'border-white/12 bg-white/[0.03] text-[#f7f1ea]/72 hover:border-white/24 hover:bg-white/[0.08] hover:text-[#f7f1ea]'"
+            :aria-pressed="isAutoScrollActive ? 'true' : 'false'"
+            @click="toggleAutoScroll"
+          >
+            <component :is="isAutoScrollActive ? Pause : Play" class="h-4 w-4 stroke-[2]" aria-hidden="true" />
+            <span>{{ isAutoScrollActive ? 'Stop scroll' : 'Auto scroll' }}</span>
           </button>
           <button
             type="button"

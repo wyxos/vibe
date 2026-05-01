@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, watch, type Component } from 'vue'
+import { onBeforeUnmount, ref, watch, type Component } from 'vue'
 import { LoaderCircle } from 'lucide-vue-next'
 
 import type { VibeViewerItem } from './viewer'
@@ -43,7 +43,12 @@ const emit = defineEmits<{
   'update:surfaceMode': [value: 'fullscreen' | 'list']
 }>()
 
+type ListSurfaceHandle = {
+  autoScroll: (speedPxPerSecond: number) => void
+}
+
 const viewer = useController(props, emit)
+const listSurfaceRef = ref<ListSurfaceHandle | null>(null)
 const assetErrorBatch = createAssetErrorBatchReporter((errors) => {
   emit('asset-errors', errors)
 })
@@ -63,9 +68,17 @@ watch(
   },
 )
 
+function autoScroll(speedPxPerSecond: number) {
+  listSurfaceRef.value?.autoScroll(speedPxPerSecond)
+}
+
 defineExpose<VibeHandle>({
+  autoScroll,
   cancel: viewer.cancel,
+  cancelFill: viewer.cancelFill,
   clearRemoved: viewer.clearRemoved,
+  fillUntil: viewer.fillUntil,
+  fillUntilEnd: viewer.fillUntilEnd,
   getItemByOccurrenceKey: viewer.getItemByOccurrenceKey,
   getItems: viewer.getItems,
   getRemovedIds: viewer.getRemovedIds,
@@ -121,8 +134,10 @@ defineExpose<VibeHandle>({
           class="absolute inset-0 z-[2]"
         >
           <ListSurface
+            ref="listSurfaceRef"
             :active="viewer.surfaceMode.value === 'list'"
             :allow-exhausted-next-page-refresh="viewer.canRefreshExhaustedNextPage.value"
+            :bottom-load-buffer-px="props.bottomLoadBufferPx"
             :items="viewer.items.value"
             :active-index="viewer.activeIndex.value"
             :error-message="viewer.errorMessage.value"

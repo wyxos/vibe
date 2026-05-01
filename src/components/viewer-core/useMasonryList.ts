@@ -15,6 +15,12 @@ import {
   getVibeMasonryViewportHeight,
   getVibeMasonryViewportWidth,
 } from './masonryViewport'
+import {
+  getLeadingBoundaryLoadProgress,
+  getTrailingBoundaryLoadProgress,
+  normalizeMasonryBottomLoadBufferPx,
+  useMasonryAutoScroll,
+} from './masonryScrollBehavior'
 import { useEdgeBoundary } from './useEdgeBoundary'
 import { getVibeOccurrenceKey } from './itemIdentity'
 const BUCKET_PX = 600
@@ -22,7 +28,7 @@ const CONTENT_INSET_PX = 24
 const GAP_PX = 16
 const ITEM_WIDTH_PX = 300
 const OVERSCAN_PX = 200
-const PREFETCH_THRESHOLD_PX = 200
+const NEXT_PAGE_BOUNDARY_THRESHOLD_PX = 0
 const PREVIOUS_PAGE_BOUNDARY_THRESHOLD_PX = CONTENT_INSET_PX + GAP_PX
 const SCROLL_BUFFER_PX = 200
 const HEIGHT_RESERVE_MS = 300
@@ -33,6 +39,7 @@ const EDGE_COOLDOWN_MS = 1000
 export function useVibeMasonryList(options: {
   active: Ref<boolean>
   allowExhaustedNextPageRefresh: Ref<boolean>
+  bottomLoadBufferPx: Ref<number | undefined>
   items: Ref<VibeViewerItem[]>
   activeIndex: Ref<number>
   loading: Ref<boolean>
@@ -60,6 +67,7 @@ export function useVibeMasonryList(options: {
   const availableWidth = computed(() => Math.max(ITEM_WIDTH_PX, viewportWidth.value - CONTENT_INSET_PX * 2))
   const columnCount = computed(() => getColumnCount(availableWidth.value, ITEM_WIDTH_PX))
   const columnWidth = computed(() => getColumnWidth(availableWidth.value, columnCount.value, ITEM_WIDTH_PX, GAP_PX))
+  const bottomLoadBufferPx = computed(() => normalizeMasonryBottomLoadBufferPx(options.bottomLoadBufferPx.value))
   const resolvedActiveIndex = computed(() => clamp(options.activeIndex.value, 0, Math.max(0, options.items.value.length - 1)))
   const renderedIndices = computed(() =>
     getVisibleIndicesFromBuckets({
@@ -75,14 +83,14 @@ export function useVibeMasonryList(options: {
   const containerHeight = computed(() => {
     const contentHeight = layoutContentHeight.value + CONTENT_INSET_PX * 2
     const nextReservedHeight = reservedContentHeight.value ?? 0
-    return Math.max(contentHeight, nextReservedHeight, viewportHeight.value) + SCROLL_BUFFER_PX
+    return Math.max(contentHeight, nextReservedHeight, viewportHeight.value) + SCROLL_BUFFER_PX + bottomLoadBufferPx.value
   })
   const canRequestNextBoundary = computed(() => options.hasNextPage.value || options.allowExhaustedNextPageRefresh.value)
   const nextBoundaryLoadProgress = computed(() => getTrailingBoundaryLoadProgress({
     active: options.active.value,
     maxScrollTop: getMaxScrollTop(),
     progressDistancePx: scrollTop.value,
-    thresholdPx: PREFETCH_THRESHOLD_PX,
+    thresholdPx: NEXT_PAGE_BOUNDARY_THRESHOLD_PX,
     triggerEnabled: canRequestNextBoundary.value,
   }))
   const paginationLabel = computed(() => options.items.value.length > 0
@@ -144,10 +152,16 @@ export function useVibeMasonryList(options: {
     hasPage: canRequestNextBoundary,
     interactionLocked: isBoundaryInteractionLocked,
     isAtBoundary() {
-      return getDistanceFromBottom() <= PREFETCH_THRESHOLD_PX
+      return getDistanceFromBottom() <= NEXT_PAGE_BOUNDARY_THRESHOLD_PX
     },
     loading: options.loading,
     requestPage: options.requestNextPage,
+  })
+  const autoScrollController = useMasonryAutoScroll({
+    active: options.active,
+    getMaxScrollTop,
+    getViewport: () => scrollViewportRef.value,
+    onScroll,
   })
   let resizeObserver: ResizeObserver | null = null
   let scrollFrame = 0
@@ -246,11 +260,15 @@ export function useVibeMasonryList(options: {
     () => options.active.value,
     async (nextActive, previousActive) => {
       const viewport = scrollViewportRef.value
-      if (!viewport) {
+      if (!nextActive) {
+        if (viewport) {
+          preservedScrollTop.value = viewport.scrollTop
+        }
+        autoScrollController.stop()
         return
       }
-      if (!nextActive) {
-        preservedScrollTop.value = viewport.scrollTop
+      autoScrollController.start()
+      if (!viewport) {
         return
       }
       if (previousActive !== false || preservedScrollTop.value == null) {
@@ -312,6 +330,7 @@ export function useVibeMasonryList(options: {
       cancelAnimationFrame(scrollFrame)
       scrollFrame = 0
     }
+    autoScrollController.stop()
   })
 
   function rebuildLayout() {
@@ -462,7 +481,7 @@ export function useVibeMasonryList(options: {
 
   function syncBoundaryIndexFromScroll() {
     const nearTop = scrollTop.value <= PREVIOUS_PAGE_BOUNDARY_THRESHOLD_PX
-    const nearBottom = getDistanceFromBottom() <= PREFETCH_THRESHOLD_PX
+    const nearBottom = getDistanceFromBottom() <= NEXT_PAGE_BOUNDARY_THRESHOLD_PX
 
     if (nearTop) {
       options.setActiveIndex(0)
@@ -592,6 +611,7 @@ export function useVibeMasonryList(options: {
   }
 
   return {
+    autoScroll: autoScrollController.autoScroll,
     columnWidth,
     containerHeight,
     getCardStyle,
@@ -615,40 +635,3 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }
 
-function getLeadingBoundaryLoadProgress(options: {
-  active: boolean
-  maxScrollTop: number
-  progressDistancePx: number
-  thresholdPx: number
-  triggerEnabled: boolean
-}) {
-  if (!options.active || !options.triggerEnabled) {
-    return 0
-  }
-
-  const progressRangePx = Math.max(0, options.maxScrollTop - options.thresholdPx)
-  if (progressRangePx <= 0) {
-    return 1
-  }
-
-  return clamp(1 - ((options.progressDistancePx - options.thresholdPx) / progressRangePx), 0, 1)
-}
-
-function getTrailingBoundaryLoadProgress(options: {
-  active: boolean
-  maxScrollTop: number
-  progressDistancePx: number
-  thresholdPx: number
-  triggerEnabled: boolean
-}) {
-  if (!options.active || !options.triggerEnabled) {
-    return 0
-  }
-
-  const progressRangePx = Math.max(0, options.maxScrollTop - options.thresholdPx)
-  if (progressRangePx <= 0) {
-    return 1
-  }
-
-  return clamp(options.progressDistancePx / progressRangePx, 0, 1)
-}

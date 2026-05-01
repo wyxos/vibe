@@ -135,6 +135,7 @@ function sliceDemoPage(page: number, pageSize: number, initialCursor: number, re
     items,
     nextPage: hasNextPage ? String(page + 1) : null,
     previousPage: page > 1 ? String(page - 1) : null,
+    total: visibleFeed.length,
   }
 }
 
@@ -176,6 +177,7 @@ export function createFakeFeedResolver(options: CreateFakeFeedResolverOptions = 
       items: response.items,
       nextPage: response.nextPage,
       previousPage: response.previousPage,
+      total: response.totalItems,
     }
   }
 }

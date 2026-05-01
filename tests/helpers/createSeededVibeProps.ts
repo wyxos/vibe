@@ -5,6 +5,7 @@ export function createSeededVibeProps(
   items: VibeViewerItem[],
   options: {
     activeIndex?: number
+    bottomLoadBufferPx?: number
     cursor?: string | null
     emptyStateMode?: VibeProps['emptyStateMode']
     fillDelayMs?: number
@@ -21,6 +22,7 @@ export function createSeededVibeProps(
   } = {},
 ): VibeProps {
   const props: VibeProps = {
+    bottomLoadBufferPx: options.bottomLoadBufferPx,
     emptyStateMode: options.emptyStateMode,
     fillDelayMs: options.fillDelayMs,
     fillDelayStepMs: options.fillDelayStepMs,

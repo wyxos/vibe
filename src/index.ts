@@ -11,6 +11,7 @@ export type {
   VibeAssetLoadSurface,
   VibeEmptyStateMode,
   VibeEmptyStateSlotProps,
+  VibeFillMode,
   VibeResolveParams,
   VibeResolveResult,
   VibeHandle,

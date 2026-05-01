@@ -6,6 +6,7 @@ export interface VibeRemoveResult {
 }
 
 export type VibeLoadPhase = 'failed' | 'filling' | 'idle' | 'initializing' | 'loading' | 'refreshing'
+export type VibeFillMode = 'count' | 'cursor' | 'end' | 'idle'
 export type VibeSurfaceMode = 'fullscreen' | 'list'
 
 export interface VibeStatus {
@@ -13,9 +14,15 @@ export interface VibeStatus {
   currentCursor: string | null
   errorMessage: string | null
   fillCollectedCount: number | null
+  fillCompletedCalls: number
   fillCursor: string | null
   fillDelayRemainingMs: number | null
+  fillLoadedCount: number
+  fillMode: VibeFillMode
+  fillProgress: number | null
+  fillTargetCalls: number | null
   fillTargetCount: number | null
+  fillTotalCount: number | null
   hasNextPage: boolean
   hasPreviousPage: boolean
   itemCount: number
@@ -32,8 +39,12 @@ export interface VibeStatus {
 }
 
 export interface VibeHandle {
+  autoScroll: (speedPxPerSecond: number) => void
   cancel: () => void
+  cancelFill: () => void
   clearRemoved: () => void
+  fillUntil: (cursorOrCount: number | string) => Promise<void>
+  fillUntilEnd: () => Promise<void>
   getItemByOccurrenceKey: (occurrenceKey: string) => VibeViewerItem | null
   getItems: () => VibeViewerItem[]
   getRemovedIds: () => string[]

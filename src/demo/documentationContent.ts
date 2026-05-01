@@ -107,6 +107,7 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
         notes: [
           'Resolve must return items and nextPage.',
           'previousPage is optional and enables previous-page loading.',
+          'total is optional and lets fillUntilEnd expose loaded/total progress when the server provides it.',
           'Underfilled resolve results automatically continue filling until Vibe has a full visible batch or runs out of cursor.',
         ],
       },
@@ -121,6 +122,7 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
         code: `<VibeLayout
   :resolve="resolve"
   :page-size="25"
+  :bottom-load-buffer-px="100"
   :fill-delay-ms="2000"
   :fill-delay-step-ms="1000"
   :show-end-badge="false"
@@ -128,6 +130,7 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
 />`,
         language: 'vue',
         notes: [
+          'bottomLoadBufferPx defaults to 100px and adds scrollable space after the grid before Vibe loads the next boundary.',
           'fill-delay-ms controls the base delay before the first chained fill request.',
           'fill-delay-step-ms adds extra delay for each additional chained request in the same fill cycle.',
           'Defaults are 2000ms and 1000ms.',
@@ -251,6 +254,7 @@ app.use(VibePlugin)
           'Use resolve for live paging, and optionally initialState to hydrate a known snapshot before Vibe continues from there.',
         ],
         code: `type VibeProps = {
+  bottomLoadBufferPx?: number
   resolve?: (params: VibeResolveParams) => Promise<VibeResolveResult>
   initialState?: VibeInitialState
   initialCursor?: string | null
@@ -390,7 +394,7 @@ function onAssetErrors(errors: VibeAssetErrorEvent[]) {
         label: 'Handle',
         title: 'Exposed Handle',
         description: [
-          'VibeLayout exposes a handle for removal actions, manual page loading, page-load locking, and lightweight status inspection.',
+          'VibeLayout exposes a handle for removal actions, manual page loading and filling, auto-scroll, page-load locking, and lightweight status inspection.',
           'Removal works by item id and preserves original order when items are restored.',
         ],
         code: `import { ref } from 'vue'
@@ -400,15 +404,21 @@ const vibe = ref<VibeHandle | null>(null)
 
 vibe.value?.lockPageLoading()
 await vibe.value?.loadNext()
+await vibe.value?.fillUntil(2)
+await vibe.value?.fillUntilEnd()
+vibe.value?.cancelFill()
+vibe.value?.autoScroll(50)
+vibe.value?.autoScroll(0)
 vibe.value?.remove(['item-2', 'item-5'])
 vibe.value?.undo()
 vibe.value?.unlockPageLoading()
 console.log(vibe.value?.status.nextCursor)
+console.log(vibe.value?.status.fillProgress)
 console.log(vibe.value?.status.pageLoadingLocked)`,
         language: 'ts',
         notes: [
-          'Handle methods: lockPageLoading, unlockPageLoading, loadNext, loadPrevious, retry, cancel, remove, restore, undo, getRemovedIds, and clearRemoved.',
-          'Status exposes activeIndex, currentCursor, nextCursor, previousCursor, pageLoadingLocked, phase, fill counts, loadState, itemCount, removedCount, and surfaceMode.',
+          'Handle methods: lockPageLoading, unlockPageLoading, loadNext, loadPrevious, fillUntil, fillUntilEnd, cancelFill, autoScroll, retry, cancel, remove, restore, undo, getRemovedIds, and clearRemoved.',
+          'Status exposes activeIndex, currentCursor, nextCursor, previousCursor, pageLoadingLocked, phase, fill counts, fill progress, loadState, itemCount, removedCount, and surfaceMode.',
           'Phase differentiates the first load from later requests and end-of-list refreshes.',
         ],
       },

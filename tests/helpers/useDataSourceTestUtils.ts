@@ -7,13 +7,20 @@ export function createPageResult(
     itemCount?: number
     nextPage?: string | null
     previousPage?: string | null
+    total?: number | null
   } = {},
 ): VibeResolveResult {
-  return {
+  const result: VibeResolveResult = {
     items: createItems(pageLabel, options.itemCount ?? 25),
     nextPage: options.nextPage ?? null,
     previousPage: options.previousPage,
   }
+
+  if ('total' in options) {
+    result.total = options.total ?? null
+  }
+
+  return result
 }
 
 export function createItems(prefix: string, count = 25): VibeViewerItem[] {

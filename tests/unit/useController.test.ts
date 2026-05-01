@@ -11,13 +11,20 @@ vi.mock('@/components/viewer-core/useDataSource', () => ({
   useDataSource: () => ({
     activeIndex: dataSourceMock.activeIndex,
     canRetryInitialLoad: dataSourceMock.canRetryInitialLoad,
+    cancelFill: dataSourceMock.cancelFill,
     commitPendingAppend: dataSourceMock.commitPendingAppend,
     currentCursor: dataSourceMock.currentCursor,
     errorMessage: dataSourceMock.errorMessage,
     fillCollectedCount: dataSourceMock.fillCollectedCount,
+    fillCompletedCalls: dataSourceMock.fillCompletedCalls,
     fillCursor: dataSourceMock.fillCursor,
     fillDelayRemainingMs: dataSourceMock.fillDelayRemainingMs,
+    fillLoadedCount: dataSourceMock.fillLoadedCount,
+    fillMode: dataSourceMock.fillMode,
+    fillProgress: dataSourceMock.fillProgress,
+    fillTargetCalls: dataSourceMock.fillTargetCalls,
     fillTargetCount: dataSourceMock.fillTargetCount,
+    fillTotalCount: dataSourceMock.fillTotalCount,
     hasNextPage: dataSourceMock.hasNextPage,
     hasPreviousPage: dataSourceMock.hasPreviousPage,
     isPageLoadingLocked: dataSourceMock.isPageLoadingLocked,
@@ -44,13 +51,20 @@ vi.mock('@/components/viewer-core/useDataSource', () => ({
 function createDataSourceMock() {
   const activeIndex = ref(0)
   const canRetryInitialLoad = ref(false)
+  const cancelFill = vi.fn()
   const commitPendingAppend = vi.fn(async () => {})
   const currentCursor = ref<string | null>(null)
   const errorMessage = ref<string | null>(null)
   const fillCollectedCount = ref<number | null>(null)
+  const fillCompletedCalls = ref(0)
   const fillCursor = ref<string | null>(null)
   const fillDelayRemainingMs = ref<number | null>(null)
+  const fillLoadedCount = ref(0)
+  const fillMode = ref<'count' | 'cursor' | 'end' | 'idle'>('idle')
+  const fillProgress = ref<number | null>(null)
+  const fillTargetCalls = ref<number | null>(null)
   const fillTargetCount = ref<number | null>(null)
+  const fillTotalCount = ref<number | null>(null)
   const hasNextPage = ref(false)
   const hasPreviousPage = ref(false)
   const isPageLoadingLocked = ref(false)
@@ -81,13 +95,20 @@ function createDataSourceMock() {
   return {
     activeIndex,
     canRetryInitialLoad,
+    cancelFill,
     commitPendingAppend,
     currentCursor,
     errorMessage,
     fillCollectedCount,
+    fillCompletedCalls,
     fillCursor,
     fillDelayRemainingMs,
+    fillLoadedCount,
+    fillMode,
+    fillProgress,
+    fillTargetCalls,
     fillTargetCount,
+    fillTotalCount,
     hasNextPage,
     hasPreviousPage,
     isPageLoadingLocked,
@@ -177,18 +198,32 @@ describe('useController', () => {
     dataSourceMock.phase.value = 'filling'
     dataSourceMock.fillCursor.value = 'page-2'
     dataSourceMock.fillCollectedCount.value = 20
+    dataSourceMock.fillCompletedCalls.value = 1
+    dataSourceMock.fillLoadedCount.value = 50
+    dataSourceMock.fillMode.value = 'count'
+    dataSourceMock.fillProgress.value = 0.5
+    dataSourceMock.fillTargetCalls.value = 2
     dataSourceMock.fillTargetCount.value = 25
+    dataSourceMock.fillTotalCount.value = 100
     await controller.flush()
 
     expect(controller.api.status.fillCursor).toBe('page-2')
+    expect(controller.api.status.fillCompletedCalls).toBe(1)
+    expect(controller.api.status.fillLoadedCount).toBe(50)
+    expect(controller.api.status.fillMode).toBe('count')
+    expect(controller.api.status.fillProgress).toBe(0.5)
+    expect(controller.api.status.fillTargetCalls).toBe(2)
+    expect(controller.api.status.fillTotalCount).toBe(100)
 
     dataSourceMock.phase.value = 'idle'
     dataSourceMock.fillCursor.value = null
     dataSourceMock.fillCollectedCount.value = null
     dataSourceMock.fillTargetCount.value = null
+    dataSourceMock.fillMode.value = 'idle'
     await controller.flush()
 
     expect(controller.api.status.fillCursor).toBeNull()
+    expect(controller.api.status.fillMode).toBe('idle')
 
     controller.unmount()
   })
@@ -376,13 +411,20 @@ function createItem(id: string): VibeViewerItem {
 function resetDataSourceMock() {
   dataSourceMock.activeIndex.value = 0
   dataSourceMock.canRetryInitialLoad.value = false
+  dataSourceMock.cancelFill.mockClear()
   dataSourceMock.commitPendingAppend.mockClear()
   dataSourceMock.currentCursor.value = null
   dataSourceMock.errorMessage.value = null
   dataSourceMock.fillCollectedCount.value = null
+  dataSourceMock.fillCompletedCalls.value = 0
   dataSourceMock.fillCursor.value = null
   dataSourceMock.fillDelayRemainingMs.value = null
+  dataSourceMock.fillLoadedCount.value = 0
+  dataSourceMock.fillMode.value = 'idle'
+  dataSourceMock.fillProgress.value = null
+  dataSourceMock.fillTargetCalls.value = null
   dataSourceMock.fillTargetCount.value = null
+  dataSourceMock.fillTotalCount.value = null
   dataSourceMock.hasNextPage.value = false
   dataSourceMock.hasPreviousPage.value = false
   dataSourceMock.isPageLoadingLocked.value = false

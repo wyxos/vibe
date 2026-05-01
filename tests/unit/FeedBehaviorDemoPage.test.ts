@@ -65,18 +65,68 @@ describe('FeedBehaviorDemoPage', () => {
 
     expect(lockButton.text()).toContain('Lock paging')
     expect(lockButton.attributes('aria-pressed')).toBe('false')
+    expect(wrapper.get('[data-testid="feed-behavior-fill-count-button"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('[data-testid="feed-behavior-fill-until-end-button"]').attributes('disabled')).toBeUndefined()
 
     await lockButton.trigger('click')
     await flushDom()
 
     expect(lockButton.text()).toContain('Unlock paging')
     expect(lockButton.attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('[data-testid="feed-behavior-fill-count-button"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="feed-behavior-fill-until-end-button"]').attributes('disabled')).toBeDefined()
 
     await lockButton.trigger('click')
     await flushDom()
 
     expect(lockButton.text()).toContain('Lock paging')
     expect(lockButton.attributes('aria-pressed')).toBe('false')
+    expect(wrapper.get('[data-testid="feed-behavior-fill-count-button"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('[data-testid="feed-behavior-fill-until-end-button"]').attributes('disabled')).toBeUndefined()
+
+    wrapper.unmount()
+  })
+
+  it('renders the manual fill and auto-scroll footer controls', async () => {
+    vi.useFakeTimers()
+    setViewportWidth(1_280)
+
+    const wrapper = mount(FeedBehaviorDemoPage)
+
+    await vi.advanceTimersByTimeAsync(100)
+    await flushDom()
+
+    const fillCountButton = wrapper.get('[data-testid="feed-behavior-fill-count-button"]')
+    const fillUntilEndButton = wrapper.get('[data-testid="feed-behavior-fill-until-end-button"]')
+    const autoScrollButton = wrapper.get('[data-testid="feed-behavior-auto-scroll-button"]')
+
+    expect(fillCountButton.text()).toContain('Fill 2')
+    expect(fillUntilEndButton.text()).toContain('Fill to end')
+    expect(wrapper.find('[data-testid="feed-behavior-cancel-fill-button"]').exists()).toBe(false)
+    expect(autoScrollButton.text()).toContain('Auto scroll')
+    expect(autoScrollButton.attributes('aria-pressed')).toBe('false')
+
+    await fillCountButton.trigger('click')
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="feed-behavior-cancel-fill-button"]').text()).toContain('Cancel fill')
+
+    await wrapper.get('[data-testid="feed-behavior-cancel-fill-button"]').trigger('click')
+    await flushDom()
+
+    expect(wrapper.find('[data-testid="feed-behavior-cancel-fill-button"]').exists()).toBe(false)
+
+    await autoScrollButton.trigger('click')
+    await flushDom()
+
+    expect(autoScrollButton.text()).toContain('Stop scroll')
+    expect(autoScrollButton.attributes('aria-pressed')).toBe('true')
+
+    await autoScrollButton.trigger('click')
+    await flushDom()
+
+    expect(autoScrollButton.text()).toContain('Auto scroll')
+    expect(autoScrollButton.attributes('aria-pressed')).toBe('false')
 
     wrapper.unmount()
   })
@@ -91,28 +141,43 @@ describe('FeedBehaviorDemoPage', () => {
     await flushDom()
 
     const scrollViewport = wrapper.get('[data-testid="vibe-list-scroll"]').element as HTMLElement
+    const listContent = wrapper.get('[data-testid="vibe-list-content"]').element as HTMLElement
+    const contentHeight = Number.parseFloat(listContent.style.height)
+    const viewportHeight = 700
+    const maxScrollTop = contentHeight - viewportHeight
     const previousProgress = wrapper.get('[data-testid="feed-behavior-previous-boundary-progress"]')
     const nextProgress = wrapper.get('[data-testid="feed-behavior-next-boundary-progress"]')
 
-    setScrollMetrics(scrollViewport, 20, 700, 2_000)
+    setScrollMetrics(scrollViewport, 20, viewportHeight, contentHeight)
     await wrapper.get('[data-testid="vibe-list-scroll"]').trigger('scroll')
     await flushDom()
 
     expect(Number(previousProgress.attributes('aria-valuenow'))).toBe(100)
     expect(Number(nextProgress.attributes('aria-valuenow'))).toBeLessThan(10)
 
-    setScrollMetrics(scrollViewport, 1_180, 700, 2_000)
+    setScrollMetrics(scrollViewport, maxScrollTop - 1, viewportHeight, contentHeight)
     await wrapper.get('[data-testid="vibe-list-scroll"]').trigger('scroll')
     await flushDom()
 
     const previousNearBottom = Number(previousProgress.attributes('aria-valuenow'))
     const nextNearBottom = Number(nextProgress.attributes('aria-valuenow'))
 
-    expect(previousNearBottom).toBeGreaterThan(0)
     expect(previousNearBottom).toBeLessThan(50)
-    expect(nextNearBottom).toBeGreaterThan(90)
+    expect(nextNearBottom).toBeGreaterThanOrEqual(95)
+    expect(nextNearBottom).toBeLessThan(100)
 
-    setScrollMetrics(scrollViewport, 1_181, 700, 2_600)
+    await vi.advanceTimersByTimeAsync(500)
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="feed-behavior-status-total"]').text()).toContain('25')
+
+    setScrollMetrics(scrollViewport, maxScrollTop, viewportHeight, contentHeight)
+    await wrapper.get('[data-testid="vibe-list-scroll"]').trigger('scroll')
+    await flushDom()
+
+    expect(Number(nextProgress.attributes('aria-valuenow'))).toBe(100)
+
+    setScrollMetrics(scrollViewport, maxScrollTop - 1, viewportHeight, contentHeight + 600)
     await wrapper.get('[data-testid="vibe-list-scroll"]').trigger('scroll')
     await flushDom()
 

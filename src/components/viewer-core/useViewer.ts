@@ -16,6 +16,7 @@ export type {
   VibeEmit,
   VibeHandle,
   VibeInitialState,
+  VibeFillMode,
   VibeLoadPhase,
   VibeProps,
   VibeSurfaceMode,

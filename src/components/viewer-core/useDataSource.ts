@@ -8,7 +8,7 @@ import { useVibeRemovalState } from './removalState'
 import { useAutoResolveSource } from './useAutoResolveSource'
 
 export type { VibeHandle, VibeRemoveResult } from './removalState'
-export type { VibeLoadPhase, VibeSurfaceMode } from './removalState'
+export type { VibeFillMode, VibeLoadPhase, VibeSurfaceMode } from './removalState'
 
 export interface VibeResolveParams {
   cursor: string | null
@@ -20,6 +20,7 @@ export interface VibeResolveResult {
   items: VibeViewerItem[]
   nextPage: string | null
   previousPage?: string | null
+  total?: number | null
 }
 
 export interface VibeInitialState {
@@ -31,6 +32,7 @@ export interface VibeInitialState {
 }
 
 export interface VibeProps {
+  bottomLoadBufferPx?: number
   emptyStateMode?: VibeEmptyStateMode
   fillDelayMs?: number
   fillDelayStepMs?: number
@@ -192,14 +194,23 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
     canRefreshExhaustedNextPage,
     canRetryInitialLoad: autoSource.canRetryInitialLoad,
     cancel,
+    cancelFill: autoSource.cancelFill,
     clearRemoved: resetRemovedItems,
     commitPendingAppend: autoSource.commitPendingAppend,
     currentCursor: autoSource.currentCursor,
     errorMessage: autoSource.errorMessage,
     fillCollectedCount: autoSource.fillCollectedCount,
+    fillCompletedCalls: autoSource.fillCompletedCalls,
     fillCursor: autoSource.fillCursor,
     fillDelayRemainingMs: autoSource.fillDelayRemainingMs,
+    fillLoadedCount: autoSource.fillLoadedCount,
+    fillMode: autoSource.fillMode,
+    fillProgress: autoSource.fillProgress,
+    fillTargetCalls: autoSource.fillTargetCalls,
     fillTargetCount: autoSource.fillTargetCount,
+    fillTotalCount: autoSource.fillTotalCount,
+    fillUntil: autoSource.fillUntil,
+    fillUntilEnd: autoSource.fillUntilEnd,
     getItemByOccurrenceKey,
     getItems,
     getRemovedIds,

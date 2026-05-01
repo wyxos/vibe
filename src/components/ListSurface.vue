@@ -18,6 +18,7 @@ const props = withDefaults(defineProps<{
   active?: boolean
   activeIndex?: number
   allowExhaustedNextPageRefresh?: boolean
+  bottomLoadBufferPx?: number
   commitPendingAppend?: (() => void | Promise<void>) | null
   emptyStateMode?: VibeEmptyStateMode
   errorMessage?: string | null
@@ -37,6 +38,7 @@ const props = withDefaults(defineProps<{
   active: true,
   activeIndex: 0,
   allowExhaustedNextPageRefresh: false,
+  bottomLoadBufferPx: 100,
   commitPendingAppend: null,
   emptyStateMode: 'inline',
   errorMessage: null,
@@ -79,6 +81,7 @@ const emit = defineEmits<{
 const list = useVibeMasonryList({
   active: toRef(props, 'active'),
   allowExhaustedNextPageRefresh: toRef(props, 'allowExhaustedNextPageRefresh'),
+  bottomLoadBufferPx: toRef(props, 'bottomLoadBufferPx'),
   items: toRef(props, 'items'),
   activeIndex: toRef(props, 'activeIndex'),
   loading: toRef(props, 'loading'),
@@ -92,6 +95,10 @@ const list = useVibeMasonryList({
   setActiveIndex(index) {
     emit('update:activeIndex', index)
   },
+})
+
+defineExpose({
+  autoScroll: list.autoScroll,
 })
 const resolvedPhase = computed(() => resolveVibeSurfacePhase({
   itemCount: props.items.length,

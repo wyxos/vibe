@@ -11,7 +11,6 @@ import {
   replaceVibeBucketAtCursor,
 } from './autoBuckets'
 import {
-  createAutoResolveBucket,
   finalizeCollectedBuckets,
   getActiveOccurrenceKey as getActiveOccurrenceKeyFromItems,
   refreshAutoResolveBucket,
@@ -21,6 +20,9 @@ import {
   isAbortError,
   type VibeCollectedBuckets,
 } from './autoResolveState'
+import { createAutoResolveBucketFactory } from './autoResolveBucketFactory'
+import { createAutoResolveFillUntilController } from './autoResolveFillUntil'
+import { useFillProgressState } from './fillProgress'
 import {
   clamp,
   getCursorKey,
@@ -65,17 +67,20 @@ export function useAutoResolveSource(options: {
   const fillTargetCount = ref<number | null>(null)
   const isAwaitingAppendCommit = ref(false)
   const isAutoPrefetchEnabled = ref(true)
-  const isPageLoadingLocked = ref(false)
+  const isFillUntilActive = ref(false)
+  const isManualPageLoadingLocked = ref(false)
   const inFlightCursors = new Set<string>()
   let activeResolveController: AbortController | null = null
   let lastLoadAttempt: (() => Promise<void>) | null = null
   let operationSequence = 0
   let occurrenceSequence = 0
+  const createBucket = createAutoResolveBucketFactory({ getSequence: () => occurrenceSequence, setSequence: (sequence) => { occurrenceSequence = sequence } })
   const fillDelayMs = computed(() => normalizeFillDelayMs(options.fillDelayMs, DEFAULT_FILL_DELAY_MS))
   const fillDelayStepMs = computed(() => normalizeFillDelayMs(options.fillDelayStepMs, DEFAULT_FILL_DELAY_STEP_MS))
   const hasResolver = computed(() => typeof options.resolve === 'function')
   const pageSize = computed(() => normalizePageSize(options.pageSize))
   const sourceItems = computed(() => flattenVibeBuckets(autoBuckets.value))
+  const fillProgressState = useFillProgressState(() => sourceItems.value.length)
   const items = computed(() => filterRemovedItems(sourceItems.value, options.removedIds.value))
   const activeIndex = computed(() => autoActiveIndex.value)
   const loading = computed(() => isActiveLoadPhase(operationPhase.value) || isAwaitingAppendCommit.value)
@@ -85,6 +90,7 @@ export function useAutoResolveSource(options: {
   const previousCursor = computed(() => isLeadingBoundarySuppressed.value ? null : (leadingBoundaryBucket.value?.previousCursor ?? null))
   const hasNextPage = computed(() => Boolean(nextCursor.value) && trailingBoundaryBucket.value?.nextCursorExhausted !== true)
   const hasPreviousPage = computed(() => Boolean(previousCursor.value))
+  const isPageLoadingLocked = computed(() => isManualPageLoadingLocked.value || isFillUntilActive.value)
   const canRefreshTrailingBoundary = computed(() => hasResolver.value && Boolean(trailingBoundaryBucket.value?.items.length))
   const pendingAppendItems = computed(() =>
     filterRemovedItems(flattenVibeBuckets(pendingAppendBuckets.value), options.removedIds.value),
@@ -97,6 +103,35 @@ export function useAutoResolveSource(options: {
     && !loading.value
     && Boolean(errorMessage.value),
   )
+  const fillUntilController = createAutoResolveFillUntilController({
+    autoBuckets,
+    clearActiveResolveController(controller) { if (activeResolveController === controller) activeResolveController = null },
+    clearFillDelay: (cancel) => fillDelay.clear(cancel),
+    createBucket,
+    errorMessage,
+    fillCollectedCount, fillCursor, fillTargetCount, ...fillProgressState.refs,
+    finishLoadPhase,
+    getFillDelayMs: (index) => getFillDelayMs(index, fillDelayMs.value, fillDelayStepMs.value),
+    getHasNextPage: () => hasNextPage.value,
+    getIsLoading: () => loading.value,
+    getIsManualPageLoadingLocked: () => isManualPageLoadingLocked.value,
+    getLoadedItemCount: () => sourceItems.value.length,
+    getNextCursor: () => nextCursor.value,
+    getOperationIsCurrent: (operationId) => operationId === operationSequence,
+    getPageSize: () => pageSize.value,
+    getResolve: () => options.resolve,
+    getTrailingBoundaryBucket: () => trailingBoundaryBucket.value,
+    getVisibleItemCount: () => items.value.length,
+    inFlightCursors,
+    isAwaitingAppendCommit,
+    isFillUntilActive,
+    nextOperationId: () => ++operationSequence,
+    operationPhase,
+    pendingAppendBuckets,
+    setActiveResolveController: (controller) => { activeResolveController = controller },
+    setLastLoadAttempt: (attempt) => { lastLoadAttempt = attempt },
+    waitFillDelay: (delayMs) => fillDelay.wait(delayMs),
+  })
   const emptyVisiblePrefetch = createEmptyVisiblePrefetchScheduler({ canRefreshTrailingBoundary, hasNextPage, isInitialLoading: isLoadingInitialPhase, isPageLoadingLocked, items, loading, prefetchNextPage, removedIds: options.removedIds, trailingBoundaryBucket })
   watch(
     () => items.value.length,
@@ -207,9 +242,8 @@ export function useAutoResolveSource(options: {
     isLeadingBoundarySuppressed.value = false
     errorMessage.value = null
     operationPhase.value = hasResolver.value ? 'initializing' : 'idle'
-    fillCollectedCount.value = null
-    fillCursor.value = null
-    fillTargetCount.value = null
+    clearFillState()
+    fillProgressState.reset()
     isAwaitingAppendCommit.value = false
     inFlightCursors.clear()
     activeResolveController?.abort()
@@ -247,20 +281,15 @@ export function useAutoResolveSource(options: {
   }
   function setAutoPrefetchEnabled(nextValue: boolean) { isAutoPrefetchEnabled.value = nextValue; emptyVisiblePrefetch.schedule() }
   function lockPageLoading() {
-    isPageLoadingLocked.value = true
+    isManualPageLoadingLocked.value = true
     fillDelay.clear(true)
   }
-  function unlockPageLoading() { isPageLoadingLocked.value = false; emptyVisiblePrefetch.schedule() }
+  function unlockPageLoading() { isManualPageLoadingLocked.value = false; emptyVisiblePrefetch.schedule() }
   function cancel() {
-    operationSequence += 1
-    activeResolveController?.abort()
-    activeResolveController = null
-    fillDelay.clear(true)
-    inFlightCursors.clear()
+    abortActiveResolve()
     errorMessage.value = null
-    fillCollectedCount.value = null
-    fillCursor.value = null
-    fillTargetCount.value = null
+    clearFillState()
+    fillUntilController.cancel()
     if (pendingAppendBuckets.value.length > 0) {
       autoBuckets.value = [...autoBuckets.value, ...pendingAppendBuckets.value]
       pendingAppendBuckets.value = []
@@ -269,6 +298,8 @@ export function useAutoResolveSource(options: {
     isLeadingBoundarySuppressed.value = false
     finishLoadPhase()
   }
+  function cancelFill() { if (!isFillUntilActive.value) return; abortActiveResolve(); clearFillState(); fillUntilController.cancel(); isAwaitingAppendCommit.value = false; finishLoadPhase() }
+  function abortActiveResolve() { operationSequence += 1; activeResolveController?.abort(); activeResolveController = null; fillDelay.clear(true); inFlightCursors.clear() }
   function getActiveOccurrenceKey() {
     return getActiveOccurrenceKeyFromItems(items.value, activeIndex.value)
   }
@@ -375,9 +406,7 @@ export function useAutoResolveSource(options: {
     inFlightCursors.add(cursorKey)
     errorMessage.value = null
     operationPhase.value = 'refreshing'
-    fillCollectedCount.value = null
-    fillCursor.value = null
-    fillTargetCount.value = null
+    clearFillState()
     const operationId = ++operationSequence
     const resolveController = typeof AbortController === 'undefined' ? null : new AbortController()
     activeResolveController = resolveController
@@ -418,9 +447,7 @@ export function useAutoResolveSource(options: {
       }
       errorMessage.value = error instanceof Error ? error.message : 'The viewer could not load items.'
       operationPhase.value = 'failed'
-      fillCollectedCount.value = null
-      fillCursor.value = null
-      fillTargetCount.value = null
+      clearFillState()
       return null
     }
     finally {
@@ -432,7 +459,7 @@ export function useAutoResolveSource(options: {
     continueUntilFilled: boolean
     cursor: string | null
     direction: VibeAutoDirection
-    phase: Extract<VibeLoadPhase, 'initializing' | 'loading'>
+    phase: Extract<VibeLoadPhase, 'filling' | 'initializing' | 'loading'>
   }): Promise<VibeCollectedBuckets | null> {
     if (!options.resolve) {
       return null
@@ -444,12 +471,10 @@ export function useAutoResolveSource(options: {
     let fillRequestIndex = 0
     errorMessage.value = null
     operationPhase.value = request.phase
-    fillCollectedCount.value = null
-    fillCursor.value = null
-    fillTargetCount.value = null
+    clearFillState()
     while (true) {
       if (operationId !== operationSequence) return finalizeCollectedBuckets(collectedBuckets, request.direction, options.removedIds.value, true)
-      if (collectedBuckets.length > 0 && isPageLoadingLocked.value) {
+      if (collectedBuckets.length > 0 && isManualPageLoadingLocked.value) {
         return finalizeCollectedBuckets(collectedBuckets, request.direction, options.removedIds.value, false)
       }
       const cursorKey = getCursorKey(cursor)
@@ -493,7 +518,7 @@ export function useAutoResolveSource(options: {
             visibleCount,
           }
         }
-        if (isPageLoadingLocked.value) {
+        if (isManualPageLoadingLocked.value) {
           return finalizeCollectedBuckets(collectedBuckets, request.direction, options.removedIds.value, false)
         }
         operationPhase.value = 'filling'
@@ -512,9 +537,7 @@ export function useAutoResolveSource(options: {
         }
         errorMessage.value = error instanceof Error ? error.message : 'The viewer could not load items.'
         operationPhase.value = 'failed'
-        fillCollectedCount.value = null
-        fillCursor.value = null
-        fillTargetCount.value = null
+        clearFillState()
         return null
       }
       finally {
@@ -524,33 +547,15 @@ export function useAutoResolveSource(options: {
     }
     return finalizeCollectedBuckets(collectedBuckets, request.direction, options.removedIds.value, false)
   }
-  function createBucket(options: {
-    cursor: string | null
-    nextCursor: string | null
-    nextCursorExhausted?: boolean
-    nextItems: VibeViewerItem[]
-    previousCursor: string | null
-    previousItems: VibeViewerItem[]
-  }) {
-    const created = createAutoResolveBucket({
-      cursor: options.cursor,
-      nextCursor: options.nextCursor,
-      nextCursorExhausted: options.nextCursorExhausted ?? false,
-      nextItems: options.nextItems,
-      previousCursor: options.previousCursor,
-      previousItems: options.previousItems,
-      sequence: occurrenceSequence,
-    })
-    occurrenceSequence = created.nextSequence
-    return created.bucket
-  }
   function finishLoadPhase() {
     operationPhase.value = 'idle'
+    clearFillState()
+    fillDelay.clear(); emptyVisiblePrefetch.schedule()
+  }
+  function clearFillState() {
     fillCollectedCount.value = null
     fillCursor.value = null
     fillTargetCount.value = null
-    fillDelay.clear()
-    emptyVisiblePrefetch.schedule()
   }
   function hydrateInitialState() {
     if (!options.initialState || !options.initialState.items.length) return false
@@ -582,14 +587,14 @@ export function useAutoResolveSource(options: {
     activeIndex,
     canRetryInitialLoad,
     cancel,
+    cancelFill,
     canRefreshTrailingBoundary,
     commitPendingAppend,
     currentCursor,
     errorMessage,
-    fillCollectedCount,
-    fillCursor,
-    fillDelayRemainingMs,
-    fillTargetCount,
+    fillCollectedCount, fillCursor, fillDelayRemainingMs, fillTargetCount, ...fillProgressState.refs,
+    fillUntil: fillUntilController.fillUntil,
+    fillUntilEnd: fillUntilController.fillUntilEnd,
     hasNextPage,
     hasPreviousPage,
     isAutoPrefetchEnabled,

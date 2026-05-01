@@ -20,7 +20,7 @@ export function getVibeMasonryDistanceFromBottom(
   viewportHeight: number,
   containerHeight: number,
 ) {
-  const scrollHeight = viewport?.scrollHeight ?? containerHeight
+  const scrollHeight = Math.max(viewport?.scrollHeight ?? 0, containerHeight)
   return scrollHeight - (scrollTop + viewportHeight)
 }
 

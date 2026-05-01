@@ -19,9 +19,15 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     currentCursor: null,
     errorMessage: null,
     fillCollectedCount: null,
+    fillCompletedCalls: 0,
     fillCursor: null,
     fillDelayRemainingMs: null,
+    fillLoadedCount: 0,
+    fillMode: 'idle',
+    fillProgress: null,
+    fillTargetCalls: null,
     fillTargetCount: null,
+    fillTotalCount: null,
     hasNextPage: false,
     hasPreviousPage: false,
     itemCount: 0,
@@ -104,9 +110,15 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     status.currentCursor = dataSource.currentCursor.value
     status.errorMessage = dataSource.errorMessage.value
     status.fillCollectedCount = dataSource.fillCollectedCount.value
+    status.fillCompletedCalls = dataSource.fillCompletedCalls.value
     status.fillCursor = dataSource.fillCursor.value
     status.fillDelayRemainingMs = dataSource.fillDelayRemainingMs.value
+    status.fillLoadedCount = dataSource.fillLoadedCount.value
+    status.fillMode = dataSource.fillMode.value
+    status.fillProgress = dataSource.fillProgress.value
+    status.fillTargetCalls = dataSource.fillTargetCalls.value
     status.fillTargetCount = dataSource.fillTargetCount.value
+    status.fillTotalCount = dataSource.fillTotalCount.value
     status.hasNextPage = dataSource.hasNextPage.value
     status.hasPreviousPage = dataSource.hasPreviousPage.value
     status.itemCount = dataSource.items.value.length
