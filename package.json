@@ -45,6 +45,7 @@
     "prepublishOnly": "npm run check && npm run test:unit && npm run build:lib && npm run test:e2e && npm run check:package",
     "preview": "vite preview",
     "release": "npx @wyxos/zephyr --type=node",
+    "release:atlas": "npm exec --yes --package @wyxos/zephyr@latest -- zephyr --type=node --non-interactive --auto-commit --then-deploy ../../php/atlas --consumer-preset \"Atlas Production (Windows)\" --consumer-package @wyxos/vibe --consumer-maintenance off --consumer-skip-git-hooks --consumer-auto-commit --skip-git-hooks patch",
     "release:verified": "npm run release && npm run verify:published -- --wait",
     "verify:published": "node scripts/verify-published-version.mjs",
     "test:e2e": "playwright test",

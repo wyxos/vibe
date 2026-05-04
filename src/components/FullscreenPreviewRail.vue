@@ -87,7 +87,7 @@ function isPreviewLoading(preview: FullscreenPreviewItem) {
 
 function getPreviewOpacityClass(preview: FullscreenPreviewItem, readyClass: string) {
   return previewLoadStates.value[getPreviewKey(preview)] === 'ready'
-    ? `${readyClass} group-hover:opacity-100`
+    ? readyClass
     : 'opacity-0'
 }
 
@@ -97,23 +97,32 @@ function settlePreview(preview: FullscreenPreviewItem, state: Exclude<PreviewLoa
     [getPreviewKey(preview)]: state,
   }
 }
+
+function getPreviewButtonSizeClass(position: number) {
+  return position === 0 ? 'h-[220px] w-[220px]' : 'h-[140px] w-[140px]'
+}
+
+function getPreviewReadyOpacityClass(position: number) {
+  return position === 0 ? 'opacity-90' : 'opacity-40'
+}
 </script>
 
 <template>
   <div
     v-if="previewItems.length"
     data-testid="vibe-fullscreen-next-previews"
-    class="pointer-events-auto absolute right-[clamp(1.25rem,2.6vw,2.25rem)] top-[clamp(5.75rem,7vw,7rem)] z-[4] grid gap-2 max-[860px]:hidden"
+    class="pointer-events-auto absolute right-[clamp(1.25rem,2.6vw,2.25rem)] top-1/2 z-[4] flex -translate-y-1/2 items-center justify-end gap-3 max-[860px]:hidden"
   >
     <button
-      v-for="preview in previewItems"
+      v-for="(preview, previewPosition) in previewItems"
       :key="`${preview.item.id}-${preview.index}`"
       type="button"
       data-testid="vibe-fullscreen-next-preview"
       :data-index="preview.index"
       :aria-label="getPreviewLabel(preview)"
       :title="preview.asset.label"
-      class="group relative h-[150px] w-[150px] overflow-hidden border border-white/14 bg-black/45 text-[#f7f1ea] shadow-[0_20px_50px_-30px_rgba(0,0,0,0.9)] backdrop-blur-[18px] transition hover:border-white/34 hover:bg-black/58 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f7f1ea]"
+      class="group relative overflow-hidden border border-white/14 bg-black/45 text-[#f7f1ea] shadow-[0_20px_50px_-30px_rgba(0,0,0,0.9)] backdrop-blur-[18px] transition hover:border-white/34 hover:bg-black/58 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f7f1ea]"
+      :class="getPreviewButtonSizeClass(previewPosition)"
       @click="emit('select', preview.index)"
     >
       <img
@@ -124,7 +133,7 @@ function settlePreview(preview: FullscreenPreviewItem, state: Exclude<PreviewLoa
         draggable="false"
         loading="lazy"
         class="h-full w-full bg-black/18 object-center transition-[opacity,transform] duration-300 group-hover:scale-[1.04]"
-        :class="[getPreviewFitClass(preview.asset), getPreviewOpacityClass(preview, 'opacity-[0.82]')]"
+        :class="[getPreviewFitClass(preview.asset), getPreviewOpacityClass(preview, getPreviewReadyOpacityClass(previewPosition))]"
         @error="settlePreview(preview, 'error')"
         @load="settlePreview(preview, 'ready')"
       >
@@ -133,7 +142,7 @@ function settlePreview(preview: FullscreenPreviewItem, state: Exclude<PreviewLoa
         :src="preview.asset.url ?? undefined"
         aria-hidden="true"
         class="h-full w-full bg-black/18 object-center transition-[opacity,transform] duration-300 group-hover:scale-[1.04]"
-        :class="[getPreviewFitClass(preview.asset), getPreviewOpacityClass(preview, 'opacity-[0.78]')]"
+        :class="[getPreviewFitClass(preview.asset), getPreviewOpacityClass(preview, getPreviewReadyOpacityClass(previewPosition))]"
         muted
         playsinline
         preload="metadata"

@@ -92,10 +92,13 @@ describe('VibeLayout fullscreen aside layout', () => {
     await wrapper.get('[data-testid="vibe-list-card"] button').trigger('click')
     await flushDom()
 
+    const previewRail = wrapper.get('[data-testid="vibe-fullscreen-next-previews"]')
     const previewButtons = wrapper.findAll('[data-testid="vibe-fullscreen-next-preview"]')
     expect(previewButtons).toHaveLength(2)
     expect(previewButtons.map((button) => button.attributes('data-index'))).toEqual(['1', '2'])
-    expect(previewButtons[0].classes()).toEqual(expect.arrayContaining(['h-[150px]', 'w-[150px]']))
+    expect(previewRail.classes()).toEqual(expect.arrayContaining(['top-1/2', 'flex', '-translate-y-1/2', 'justify-end']))
+    expect(previewButtons[0].classes()).toEqual(expect.arrayContaining(['h-[220px]', 'w-[220px]']))
+    expect(previewButtons[1].classes()).toEqual(expect.arrayContaining(['h-[140px]', 'w-[140px]']))
     expect(previewButtons[0].get('img').attributes('src')).toBe('https://example.com/image-next-one-preview.jpg')
     expect(previewButtons[0].get('img').classes()).toContain('object-cover')
     expect(previewButtons[0].get('img').classes()).toContain('opacity-0')
@@ -106,7 +109,13 @@ describe('VibeLayout fullscreen aside layout', () => {
     await flushDom()
 
     expect(wrapper.findAll('[data-testid="vibe-fullscreen-next-preview-spinner"]')).toHaveLength(1)
-    expect(previewButtons[0].get('img').classes()).toContain('opacity-[0.82]')
+    expect(previewButtons[0].get('img').classes()).toContain('opacity-90')
+
+    await previewButtons[1].get('img').trigger('load')
+    await flushDom()
+
+    expect(wrapper.findAll('[data-testid="vibe-fullscreen-next-preview-spinner"]')).toHaveLength(0)
+    expect(previewButtons[1].get('img').classes()).toContain('opacity-40')
 
     await previewButtons[1].trigger('click')
     await flushDom()
