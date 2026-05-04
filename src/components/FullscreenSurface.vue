@@ -9,7 +9,7 @@ import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './viewer-cor
 import type { VibeEmptyStateMode, VibeEmptyStateSlotProps, VibeFullscreenStatusSlotProps, VibeSurfaceSlotProps } from './viewer-core/surfaceSlots'
 import { useFullscreenSurfaceMedia } from './viewer-core/useFullscreenSurfaceMedia'
 import { useSurfaceEmptyState } from './viewer-core/useSurfaceEmptyState'
-import type { VibeLoadPhase } from './viewer-core/useViewer'
+import type { VibeFillMode, VibeLoadPhase } from './viewer-core/useViewer'
 import { useViewer } from './viewer-core/useViewer'
 import { getItemIcon } from './viewer-core/media'
 import { hasRenderableSlotContent } from './viewer-core/slotContent'
@@ -18,6 +18,7 @@ import { useFullscreenAssetEvents } from './viewer-core/useFullscreenAssetEvents
 import { useFullscreenDominantTone } from './viewer-core/useFullscreenDominantTone'
 import { useVideoFullscreen } from './viewer-core/useVideoFullscreen'
 import './viewer-core/fullscreenMediaBar.css'
+import FullscreenForwardFillPlaceholder from './FullscreenForwardFillPlaceholder.vue'
 import FullscreenPreviewRail from './FullscreenPreviewRail.vue'
 import SurfaceEmptyState from './SurfaceEmptyState.vue'
 interface FullscreenSurfaceProps {
@@ -25,6 +26,14 @@ interface FullscreenSurfaceProps {
   activeIndex?: number
   emptyStateMode?: VibeEmptyStateMode
   errorMessage?: string | null
+  fillCollectedCount?: number | null
+  fillCompletedCalls?: number | null
+  fillLoadedCount?: number | null
+  fillMode?: VibeFillMode | null
+  fillProgress?: number | null
+  fillTargetCalls?: number | null
+  fillTargetCount?: number | null
+  fillTotalCount?: number | null
   hasNextPage?: boolean
   items: VibeViewerItem[]
   loading?: boolean
@@ -43,6 +52,14 @@ const props = withDefaults(defineProps<FullscreenSurfaceProps>(), {
   activeIndex: 0,
   emptyStateMode: 'inline',
   errorMessage: null,
+  fillCollectedCount: null,
+  fillCompletedCalls: 0,
+  fillLoadedCount: 0,
+  fillMode: 'idle',
+  fillProgress: null,
+  fillTargetCalls: null,
+  fillTargetCount: null,
+  fillTotalCount: null,
   hasNextPage: false,
   loading: false,
   loopFullscreenVideo: true,
@@ -104,7 +121,6 @@ const showMediaBar = computed(() => Boolean(viewer.activeMediaItem.value) && !vi
 const volumeControlLayout = computed(() => viewportWidth.value < PHONE_MEDIA_BAR_BREAKPOINT_PX ? 'vertical' : 'horizontal')
 const mediaStageInsetClass = computed(() => showMediaBar.value ? 'pb-[5.75rem] max-[720px]:pb-[7rem]' : '')
 const showForwardFillPlaceholder = computed(() => props.activeIndex >= props.items.length && (props.loading || props.hasNextPage))
-const forwardFillMessage = computed(() => props.hasNextPage ? 'Loading more items' : (viewer.statusMessage.value ?? 'Loading more items'))
 const fullscreenSlotProps = computed<VibeSurfaceSlotProps | null>(() => {
   const item = viewer.activeItem.value
   if (!item) {
@@ -189,7 +205,6 @@ function registerFullscreenVideoElement(id: string, element: unknown) {
   viewer.registerVideoElement(id, element)
   videoFullscreen.registerElement(id, element)
 }
-
 function registerFullscreenAudioElement(id: string, element: unknown) {
   fullscreenMedia.registerMediaElement(id, element)
   viewer.registerAudioElement(id, element)
@@ -210,7 +225,6 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
   if (!id) {
     return
   }
-
   viewer.onMediaEvent(id, event)
 
   if (!props.loopFullscreenVideo) {
@@ -460,12 +474,7 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
           </div>
         </div>
 
-        <div v-else-if="showForwardFillPlaceholder" data-testid="vibe-forward-fill-placeholder" class="grid h-full min-h-0 place-items-center px-6 text-center">
-          <div class="grid justify-items-center gap-4 border border-white/14 bg-black/40 px-8 py-7 backdrop-blur-[18px]">
-            <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-black/45 shadow-[0_18px_40px_-18px_rgba(0,0,0,0.85)]"><LoaderCircle class="h-5 w-5 animate-spin stroke-[1.9] text-[#f7f1ea]/78" aria-hidden="true" /></span>
-            <p class="m-0 text-[0.78rem] font-bold uppercase tracking-[0.24em] text-[#f7f1ea]/72">{{ forwardFillMessage }}</p>
-          </div>
-        </div>
+        <FullscreenForwardFillPlaceholder v-else-if="showForwardFillPlaceholder" :fill-collected-count="props.fillCollectedCount" :fill-completed-calls="props.fillCompletedCalls" :fill-loaded-count="props.fillLoadedCount" :fill-mode="props.fillMode" :fill-progress="props.fillProgress" :fill-target-calls="props.fillTargetCalls" :fill-target-count="props.fillTargetCount" :fill-total-count="props.fillTotalCount" :has-next-page="props.hasNextPage" :phase="props.phase" :status-message="viewer.statusMessage.value" />
 
         <SurfaceEmptyState v-else-if="showInlineEmptyState && emptyStateProps" :message="emptyStateProps.message" :mode="emptyStateProps.mode" :surface="emptyStateProps.surface">
           <slot v-if="showCustomEmptyState" name="empty-state" v-bind="emptyStateProps" />

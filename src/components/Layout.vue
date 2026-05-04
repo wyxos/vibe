@@ -198,6 +198,14 @@ defineExpose<VibeHandle>({
             :active="viewer.surfaceMode.value === 'fullscreen'"
             :active-index="viewer.activeIndex.value"
             :error-message="viewer.errorMessage.value"
+            :fill-collected-count="viewer.fillCollectedCount.value"
+            :fill-completed-calls="viewer.fillCompletedCalls.value"
+            :fill-loaded-count="viewer.fillLoadedCount.value"
+            :fill-mode="viewer.fillMode.value"
+            :fill-progress="viewer.fillProgress.value"
+            :fill-target-calls="viewer.fillTargetCalls.value"
+            :fill-target-count="viewer.fillTargetCount.value"
+            :fill-total-count="viewer.fillTotalCount.value"
             :loading="viewer.loading.value"
             :has-next-page="viewer.hasNextPage.value"
             :pagination-detail="viewer.paginationDetail.value"
@@ -237,7 +245,7 @@ defineExpose<VibeHandle>({
     </template>
 
     <div
-      v-else-if="viewer.items.value.length === 0 && viewer.loading.value"
+      v-else-if="viewer.items.value.length === 0 && viewer.loading.value && viewer.phase.value === 'initializing'"
       class="relative z-[1] grid h-full w-full content-center justify-items-center gap-6 px-[clamp(2rem,4vw,3rem)] py-[clamp(2rem,4vw,3rem)] text-center"
     >
       <LoaderCircle class="size-10 animate-spin text-[#f7f1ea]/82" aria-hidden="true" />
@@ -252,6 +260,14 @@ defineExpose<VibeHandle>({
       :active="true"
       :active-index="viewer.activeIndex.value"
       :error-message="viewer.errorMessage.value"
+      :fill-collected-count="viewer.fillCollectedCount.value"
+      :fill-completed-calls="viewer.fillCompletedCalls.value"
+      :fill-loaded-count="viewer.fillLoadedCount.value"
+      :fill-mode="viewer.fillMode.value"
+      :fill-progress="viewer.fillProgress.value"
+      :fill-target-calls="viewer.fillTargetCalls.value"
+      :fill-target-count="viewer.fillTargetCount.value"
+      :fill-total-count="viewer.fillTotalCount.value"
       :loading="viewer.loading.value"
       :has-next-page="viewer.hasNextPage.value"
       :pagination-detail="viewer.paginationDetail.value"

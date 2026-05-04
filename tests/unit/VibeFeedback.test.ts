@@ -79,6 +79,14 @@ function createControllerState() {
   const canRetryInitialLoad = ref(false)
   const commitPendingAppend = vi.fn(async () => {})
   const errorMessage = ref<string | null>(null)
+  const fillCollectedCount = ref<number | null>(null)
+  const fillCompletedCalls = ref(0)
+  const fillLoadedCount = ref(0)
+  const fillMode = ref<'count' | 'cursor' | 'end' | 'idle'>('idle')
+  const fillProgress = ref<number | null>(null)
+  const fillTargetCalls = ref<number | null>(null)
+  const fillTargetCount = ref<number | null>(null)
+  const fillTotalCount = ref<number | null>(null)
   const hasNextPage = ref(false)
   const hasPreviousPage = ref(false)
   const isDesktop = ref(false)
@@ -100,6 +108,14 @@ function createControllerState() {
     canRetryInitialLoad,
     commitPendingAppend,
     errorMessage,
+    fillCollectedCount,
+    fillCompletedCalls,
+    fillLoadedCount,
+    fillMode,
+    fillProgress,
+    fillTargetCalls,
+    fillTargetCount,
+    fillTotalCount,
     hasNextPage,
     hasPreviousPage,
     isDesktop,
@@ -125,6 +141,14 @@ function resetControllerState() {
   controllerState.canRetryInitialLoad.value = false
   controllerState.commitPendingAppend.mockClear()
   controllerState.errorMessage.value = null
+  controllerState.fillCollectedCount.value = null
+  controllerState.fillCompletedCalls.value = 0
+  controllerState.fillLoadedCount.value = 0
+  controllerState.fillMode.value = 'idle'
+  controllerState.fillProgress.value = null
+  controllerState.fillTargetCalls.value = null
+  controllerState.fillTargetCount.value = null
+  controllerState.fillTotalCount.value = null
   controllerState.hasNextPage.value = false
   controllerState.hasPreviousPage.value = false
   controllerState.isDesktop.value = false

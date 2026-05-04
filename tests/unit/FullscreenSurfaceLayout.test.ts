@@ -2,6 +2,7 @@ import { mount } from '@vue/test-utils'
 import { h, nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import FullscreenSurface from '@/components/FullscreenSurface.vue'
 import Layout from '@/components/Layout.vue'
 import type { VibeViewerItem } from '@/components/viewer'
 import type { VibeHandle } from '@/components/viewer-core/useViewer'
@@ -143,6 +144,28 @@ describe('VibeLayout fullscreen aside layout', () => {
 
     deferred.resolve({ items: [], nextPage: null })
     await flushDom()
+
+    wrapper.unmount()
+  })
+
+  it('renders filling progress inside the fullscreen forward-fill placeholder', () => {
+    const wrapper = mount(FullscreenSurface, {
+      props: {
+        active: true,
+        activeIndex: 0,
+        fillCollectedCount: 6,
+        fillTargetCount: 20,
+        hasNextPage: true,
+        items: [],
+        loading: true,
+        phase: 'filling',
+      },
+    })
+
+    expect(wrapper.get('[data-testid="vibe-forward-fill-message"]').text()).toBe('Filling the view')
+    expect(wrapper.get('[data-testid="vibe-forward-fill-progress"]').text()).toContain('6 / 20 items')
+    expect(wrapper.get('[data-testid="vibe-forward-fill-progress"]').text()).toContain('30%')
+    expect(wrapper.get('[data-testid="vibe-forward-fill-progress-bar"]').attributes('style')).toContain('width: 30%')
 
     wrapper.unmount()
   })
