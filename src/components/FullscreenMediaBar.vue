@@ -1,19 +1,23 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Volume1, Volume2, VolumeX } from 'lucide-vue-next'
+import { Maximize2, Volume1, Volume2, VolumeX } from 'lucide-vue-next'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   currentTime: number
   currentTimeLabel: string
   duration: number
   durationLabel: string
   muted: boolean
   progress: number
+  showFullscreenControl?: boolean
   volume: number
   volumeControlLayout: 'horizontal' | 'vertical'
-}>()
+}>(), {
+  showFullscreenControl: false,
+})
 
 const emit = defineEmits<{
+  'fullscreen-request': []
   'seek-input': [event: Event]
   'volume-input': [event: Event]
   'volume-toggle': []
@@ -95,7 +99,7 @@ function clamp(value: number, min: number, max: number) {
     data-testid="vibe-media-bar"
     class="absolute inset-x-0 bottom-0 z-[5] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.42)_24%,rgba(0,0,0,0.78))] px-[clamp(1rem,2.6vw,2.25rem)] pt-4 pb-[1.15rem]"
   >
-    <div class="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 border-t border-white/12 bg-black/70 px-4 py-3 backdrop-blur-[18px]">
+    <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-white/12 bg-black/70 px-4 py-3 backdrop-blur-[18px]">
       <span class="text-[0.76rem] font-bold uppercase tracking-[0.18em] text-[#f7f1ea]/74">
         {{ props.currentTimeLabel }}
       </span>
@@ -120,74 +124,87 @@ function clamp(value: number, min: number, max: number) {
         />
       </div>
 
-      <span class="text-[0.76rem] font-bold uppercase tracking-[0.18em] text-[#f7f1ea]/74">
-        {{ props.durationLabel }}
-      </span>
+      <div class="flex items-center justify-end gap-3">
+        <span class="text-[0.76rem] font-bold uppercase tracking-[0.18em] text-[#f7f1ea]/74">
+          {{ props.durationLabel }}
+        </span>
 
-      <div
-        ref="rootRef"
-        data-testid="vibe-media-volume"
-        :data-layout="props.volumeControlLayout"
-        class="relative flex items-center justify-end"
-      >
-        <div
-          v-if="isVerticalVolumeControl && isMobileVolumeOpen"
-          data-testid="vibe-media-volume-popover"
-          class="absolute bottom-[calc(100%+0.8rem)] right-0 grid justify-items-center gap-3 border border-white/12 bg-black/82 px-3 py-4 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.85)] backdrop-blur-[18px]"
+        <button
+          v-if="props.showFullscreenControl"
+          type="button"
+          data-testid="vibe-media-fullscreen-button"
+          class="inline-flex h-10 w-10 items-center justify-center border border-white/14 bg-black/50 text-[#f7f1ea]/82 backdrop-blur-[18px] transition hover:border-white/28 hover:bg-black/65"
+          aria-label="Open active video fullscreen"
+          @click="emit('fullscreen-request')"
         >
-          <div class="relative flex h-28 w-4 items-center justify-center">
-            <div class="absolute bottom-0 left-1/2 h-full w-px -translate-x-1/2 bg-white/12" />
-            <div
-              class="absolute bottom-0 left-1/2 w-px -translate-x-1/2 bg-[#f7f1ea]"
-              :style="volumeFillStyle"
-            />
-            <input
-              data-testid="vibe-media-volume-slider"
-              data-swipe-lock="true"
-              type="range"
-              aria-label="Adjust active media volume"
-              min="0"
-              max="1"
-              step="0.05"
-              :value="normalizedVolume"
-              class="vibe-media-slider absolute left-1/2 top-1/2 h-4 w-28 -translate-x-1/2 -translate-y-1/2 -rotate-90 bg-transparent"
-              @input="emit('volume-input', $event)"
-            />
-          </div>
-        </div>
+          <Maximize2 class="h-4 w-4 stroke-[1.9]" aria-hidden="true" />
+        </button>
 
-        <div class="flex items-center gap-3">
-          <button
-            type="button"
-            data-testid="vibe-media-volume-button"
-            :aria-label="volumeButtonLabel"
-            class="inline-flex h-10 w-10 items-center justify-center border border-white/14 bg-black/50 text-[#f7f1ea]/82 backdrop-blur-[18px] transition hover:border-white/28 hover:bg-black/65"
-            @click="onVolumeButtonClick"
-          >
-            <component :is="volumeIcon" class="h-4 w-4 stroke-[1.9]" aria-hidden="true" />
-          </button>
-
+        <div
+          ref="rootRef"
+          data-testid="vibe-media-volume"
+          :data-layout="props.volumeControlLayout"
+          class="relative flex items-center justify-end"
+        >
           <div
-            v-if="props.volumeControlLayout === 'horizontal'"
-            class="relative h-4 w-24"
+            v-if="isVerticalVolumeControl && isMobileVolumeOpen"
+            data-testid="vibe-media-volume-popover"
+            class="absolute bottom-[calc(100%+0.8rem)] right-0 grid justify-items-center gap-3 border border-white/12 bg-black/82 px-3 py-4 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.85)] backdrop-blur-[18px]"
           >
-            <div class="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-white/12" />
+            <div class="relative flex h-28 w-4 items-center justify-center">
+              <div class="absolute bottom-0 left-1/2 h-full w-px -translate-x-1/2 bg-white/12" />
+              <div
+                class="absolute bottom-0 left-1/2 w-px -translate-x-1/2 bg-[#f7f1ea]"
+                :style="volumeFillStyle"
+              />
+              <input
+                data-testid="vibe-media-volume-slider"
+                data-swipe-lock="true"
+                type="range"
+                aria-label="Adjust active media volume"
+                min="0"
+                max="1"
+                step="0.05"
+                :value="normalizedVolume"
+                class="vibe-media-slider absolute left-1/2 top-1/2 h-4 w-28 -translate-x-1/2 -translate-y-1/2 -rotate-90 bg-transparent"
+                @input="emit('volume-input', $event)"
+              />
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              data-testid="vibe-media-volume-button"
+              :aria-label="volumeButtonLabel"
+              class="inline-flex h-10 w-10 items-center justify-center border border-white/14 bg-black/50 text-[#f7f1ea]/82 backdrop-blur-[18px] transition hover:border-white/28 hover:bg-black/65"
+              @click="onVolumeButtonClick"
+            >
+              <component :is="volumeIcon" class="h-4 w-4 stroke-[1.9]" aria-hidden="true" />
+            </button>
+
             <div
-              class="absolute left-0 top-1/2 h-px -translate-y-1/2 bg-[#f7f1ea]"
-              :style="volumeFillStyle"
-            />
-            <input
-              data-testid="vibe-media-volume-slider"
-              data-swipe-lock="true"
-              type="range"
-              aria-label="Adjust active media volume"
-              min="0"
-              max="1"
-              step="0.05"
-              :value="normalizedVolume"
-              class="vibe-media-slider absolute inset-0 z-10 h-4 w-full cursor-pointer bg-transparent"
-              @input="emit('volume-input', $event)"
-            />
+              v-if="props.volumeControlLayout === 'horizontal'"
+              class="relative h-4 w-24"
+            >
+              <div class="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-white/12" />
+              <div
+                class="absolute left-0 top-1/2 h-px -translate-y-1/2 bg-[#f7f1ea]"
+                :style="volumeFillStyle"
+              />
+              <input
+                data-testid="vibe-media-volume-slider"
+                data-swipe-lock="true"
+                type="range"
+                aria-label="Adjust active media volume"
+                min="0"
+                max="1"
+                step="0.05"
+                :value="normalizedVolume"
+                class="vibe-media-slider absolute inset-0 z-10 h-4 w-full cursor-pointer bg-transparent"
+                @input="emit('volume-input', $event)"
+              />
+            </div>
           </div>
         </div>
       </div>

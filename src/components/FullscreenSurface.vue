@@ -16,7 +16,9 @@ import { hasRenderableSlotContent } from './viewer-core/slotContent'
 import { getSlideToneClass, getStageToneClass } from './viewer-core/theme'
 import { useFullscreenAssetEvents } from './viewer-core/useFullscreenAssetEvents'
 import { useFullscreenDominantTone } from './viewer-core/useFullscreenDominantTone'
+import { useVideoFullscreen } from './viewer-core/useVideoFullscreen'
 import './viewer-core/fullscreenMediaBar.css'
+import FullscreenPreviewRail from './FullscreenPreviewRail.vue'
 import SurfaceEmptyState from './SurfaceEmptyState.vue'
 interface FullscreenSurfaceProps {
   active?: boolean
@@ -82,6 +84,7 @@ const fullscreenMedia = useFullscreenSurfaceMedia({
   resolvedActiveIndex: viewer.resolvedActiveIndex,
   viewer,
 })
+const videoFullscreen = useVideoFullscreen({ activeItem: viewer.activeItem, getItemKey: fullscreenMedia.getItemKey })
 const activeStageToneClass = computed(() => getStageToneClass(viewer.activeItem.value?.type ?? 'image'))
 const { activeSlideToneStyle, activeStageToneStyle, updateFromImageElement } = useFullscreenDominantTone({
   activeItem: viewer.activeItem,
@@ -184,6 +187,7 @@ function registerFullscreenImageElement(id: string, element: unknown) {
 function registerFullscreenVideoElement(id: string, element: unknown) {
   fullscreenMedia.registerMediaElement(id, element)
   viewer.registerVideoElement(id, element)
+  videoFullscreen.registerElement(id, element)
 }
 
 function registerFullscreenAudioElement(id: string, element: unknown) {
@@ -446,7 +450,9 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
             <template v-if="showFullscreenHeaderActions && fullscreenSlotProps" #actions><slot name="fullscreen-header-actions" v-bind="fullscreenSlotProps" /></template>
           </FullscreenHeader>
 
-          <FullscreenMediaBar v-if="showMediaBar" :current-time="viewer.activeMediaState.value.currentTime" :current-time-label="viewer.formatPlaybackTime(viewer.activeMediaState.value.currentTime)" :duration="viewer.activeMediaDuration.value" :duration-label="viewer.formatPlaybackTime(viewer.activeMediaDuration.value)" :muted="viewer.activeMediaState.value.muted" :progress="viewer.activeMediaProgress.value" :volume="viewer.activeMediaState.value.volume" :volume-control-layout="volumeControlLayout" @seek-input="viewer.onMediaSeekInput" @volume-input="viewer.onMediaVolumeInput" @volume-toggle="viewer.onMediaVolumeToggle" />
+          <FullscreenPreviewRail :active-index="viewer.resolvedActiveIndex.value" :items="viewer.items.value" @select="emit('update:activeIndex', $event)" />
+
+          <FullscreenMediaBar v-if="showMediaBar" :current-time="viewer.activeMediaState.value.currentTime" :current-time-label="viewer.formatPlaybackTime(viewer.activeMediaState.value.currentTime)" :duration="viewer.activeMediaDuration.value" :duration-label="viewer.formatPlaybackTime(viewer.activeMediaDuration.value)" :muted="viewer.activeMediaState.value.muted" :progress="viewer.activeMediaProgress.value" :show-fullscreen-control="viewer.activeMediaItem.value?.type === 'video'" :volume="viewer.activeMediaState.value.volume" :volume-control-layout="volumeControlLayout" @fullscreen-request="videoFullscreen.request" @seek-input="viewer.onMediaSeekInput" @volume-input="viewer.onMediaVolumeInput" @volume-toggle="viewer.onMediaVolumeToggle" />
 
           <div v-if="fullscreenStatusProps" class="absolute left-1/2 z-[4] -translate-x-1/2" :class="mediaStatusOffsetClass">
             <slot v-if="showCustomFullscreenStatus" name="fullscreen-status" v-bind="fullscreenStatusProps" />

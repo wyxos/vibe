@@ -75,6 +75,47 @@ describe('VibeLayout fullscreen aside layout', () => {
     wrapper.unmount()
   })
 
+  it('shows the next two fullscreen previews and lets them select an item', async () => {
+    setViewportWidth(1_280)
+
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps([
+        createImageItem('image-current', 'Current item'),
+        createImageItem('image-next-one', 'Next one'),
+        createImageItem('image-next-two', 'Next two', { height: 320, width: 400 }),
+        createImageItem('image-next-three', 'Next three'),
+      ]),
+    })
+
+    await flushDom()
+    await wrapper.get('[data-testid="vibe-list-card"] button').trigger('click')
+    await flushDom()
+
+    const previewButtons = wrapper.findAll('[data-testid="vibe-fullscreen-next-preview"]')
+    expect(previewButtons).toHaveLength(2)
+    expect(previewButtons.map((button) => button.attributes('data-index'))).toEqual(['1', '2'])
+    expect(previewButtons[0].classes()).toEqual(expect.arrayContaining(['h-[150px]', 'w-[150px]']))
+    expect(previewButtons[0].get('img').attributes('src')).toBe('https://example.com/image-next-one-preview.jpg')
+    expect(previewButtons[0].get('img').classes()).toContain('object-cover')
+    expect(previewButtons[0].get('img').classes()).toContain('opacity-0')
+    expect(previewButtons[1].get('img').classes()).toContain('object-contain')
+    expect(wrapper.findAll('[data-testid="vibe-fullscreen-next-preview-spinner"]')).toHaveLength(2)
+
+    await previewButtons[0].get('img').trigger('load')
+    await flushDom()
+
+    expect(wrapper.findAll('[data-testid="vibe-fullscreen-next-preview-spinner"]')).toHaveLength(1)
+    expect(previewButtons[0].get('img').classes()).toContain('opacity-[0.82]')
+
+    await previewButtons[1].trigger('click')
+    await flushDom()
+
+    expect(wrapper.get('[data-testid="vibe-pagination"]').text()).toContain('3 / 4')
+    expect(wrapper.findAll('[data-testid="vibe-fullscreen-next-preview"]').map((button) => button.attributes('data-index'))).toEqual(['3'])
+
+    wrapper.unmount()
+  })
+
   it('renders a custom fullscreen status slot for loading-more state', async () => {
     setViewportWidth(1_280)
     const deferred = createDeferred<{ items: VibeViewerItem[]; nextPage: string | null }>()
@@ -211,18 +252,18 @@ describe('VibeLayout fullscreen aside layout', () => {
   })
 })
 
-function createImageItem(id: string, title?: string): VibeViewerItem {
+function createImageItem(id: string, title?: string, dimensions: { height: number; width: number } = { height: 1_080, width: 1_920 }): VibeViewerItem {
   return {
     id,
     type: 'image',
     title,
     url: `https://example.com/${id}.jpg`,
-    width: 1_920,
-    height: 1_080,
+    width: dimensions.width,
+    height: dimensions.height,
     preview: {
       url: `https://example.com/${id}-preview.jpg`,
-      width: 320,
-      height: 180,
+      width: dimensions.width,
+      height: dimensions.height,
     },
   }
 }

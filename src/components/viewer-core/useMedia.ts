@@ -6,6 +6,7 @@ import { createMediaUiState, DEFAULT_MEDIA_UI_STATE, isImageElementReady, syncMe
 import { getVibeOccurrenceKey } from './itemIdentity'
 import { canRetryVibeAssetError, getVibeAssetErrorLabel, resolveVibeAssetErrorKind, type VibeAssetErrorKind } from './loadError'
 import { playMediaElement } from './mediaPlayback'
+import { isNativeFullscreenVideoElement } from './nativeVideoFullscreen'
 export function useMedia(options: {
   items: Ref<VibeViewerItem[]>
   activeItem: Ref<VibeViewerItem | null>
@@ -223,7 +224,7 @@ export function useMedia(options: {
   }
 
   function onVideoClick(event: MouseEvent, id: string, suppressMediaToggleUntil: number) {
-    if (event.button !== 0 || Date.now() < suppressMediaToggleUntil) {
+    if (event.button !== 0 || Date.now() < suppressMediaToggleUntil || isNativeFullscreenVideoElement(event.currentTarget)) {
       return
     }
 
