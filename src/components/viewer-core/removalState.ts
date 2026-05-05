@@ -26,6 +26,7 @@ export interface VibeStatus {
   hasNextPage: boolean
   hasPreviousPage: boolean
   itemCount: number
+  itemsRevision: number
   loadState: 'failed' | 'loaded' | 'loading'
   nextBoundaryLoadProgress: number
   nextCursor: string | null
@@ -35,6 +36,7 @@ export interface VibeStatus {
   previousCursor: string | null
   removedCount: number
   removedIds: readonly string[]
+  removedRevision: number
   surfaceMode: VibeSurfaceMode
 }
 

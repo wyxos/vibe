@@ -418,7 +418,7 @@ console.log(vibe.value?.status.pageLoadingLocked)`,
         language: 'ts',
         notes: [
           'Handle methods: lockPageLoading, unlockPageLoading, loadNext, loadPrevious, fillUntil, fillUntilEnd, cancelFill, autoScroll, retry, cancel, remove, restore, undo, getRemovedIds, and clearRemoved.',
-          'Status exposes activeIndex, currentCursor, nextCursor, previousCursor, pageLoadingLocked, phase, fill counts, fill progress, loadState, itemCount, removedCount, and surfaceMode.',
+          'Status exposes activeIndex, currentCursor, nextCursor, previousCursor, pageLoadingLocked, phase, fill counts, fill progress, loadState, itemCount, itemsRevision, removedCount, removedRevision, and surfaceMode.',
           'Phase differentiates the first load from later requests and end-of-list refreshes.',
         ],
       },

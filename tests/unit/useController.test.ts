@@ -190,6 +190,26 @@ describe('useController', () => {
     controller.unmount()
   })
 
+  it('revises items independently from scroll-driven active index updates', async () => {
+    const controller = await mountController()
+    const initialRevision = controller.api.status.itemsRevision
+    const initialRemovedRevision = controller.api.status.removedRevision
+
+    dataSourceMock.activeIndex.value = 4
+    await controller.flush()
+
+    expect(controller.api.status.itemsRevision).toBe(initialRevision)
+    expect(controller.api.status.removedRevision).toBe(initialRemovedRevision)
+
+    dataSourceMock.items.value = [createItem('item-1')]
+    await controller.flush()
+
+    expect(controller.api.status.itemsRevision).toBeGreaterThan(initialRevision)
+    expect(controller.api.status.itemCount).toBe(1)
+
+    controller.unmount()
+  })
+
   it('mirrors the active fill cursor into status while refilling', async () => {
     const controller = await mountController()
 

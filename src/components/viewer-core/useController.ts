@@ -31,6 +31,7 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     hasNextPage: false,
     hasPreviousPage: false,
     itemCount: 0,
+    itemsRevision: 0,
     loadState: 'loaded',
     nextBoundaryLoadProgress: 0,
     nextCursor: null,
@@ -40,10 +41,13 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     previousCursor: null,
     removedCount: 0,
     removedIds: [],
+    removedRevision: 0,
     surfaceMode: 'list',
   })
 
   const isDesktop = computed(() => viewportWidth.value >= DESKTOP_BREAKPOINT_PX)
+  const itemsRevision = ref(0)
+  const removedRevision = ref(0)
   const surfaceMode = computed<VibeSurfaceMode>(() => isDesktop.value ? desktopSurface.value : 'fullscreen')
   const showBackToList = computed(() => isDesktop.value && surfaceMode.value === 'fullscreen')
 
@@ -105,6 +109,27 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     },
   )
 
+  watch(
+    () => dataSource.items.value,
+    (items) => {
+      itemsRevision.value += 1
+      status.itemCount = items.length
+      status.itemsRevision = itemsRevision.value
+    },
+    { immediate: true },
+  )
+
+  watch(
+    () => dataSource.getRemovedIds(),
+    (removedIds) => {
+      removedRevision.value += 1
+      status.removedCount = dataSource.removedCount.value
+      status.removedIds = removedIds
+      status.removedRevision = removedRevision.value
+    },
+    { immediate: true },
+  )
+
   watchEffect(() => {
     status.activeIndex = dataSource.activeIndex.value
     status.currentCursor = dataSource.currentCursor.value
@@ -121,7 +146,6 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     status.fillTotalCount = dataSource.fillTotalCount.value
     status.hasNextPage = dataSource.hasNextPage.value
     status.hasPreviousPage = dataSource.hasPreviousPage.value
-    status.itemCount = dataSource.items.value.length
     status.loadState = dataSource.loading.value
       ? 'loading'
       : (dataSource.errorMessage.value ? 'failed' : 'loaded')
@@ -131,8 +155,6 @@ export function useController(props: Readonly<VibeProps>, emit: VibeEmit) {
     status.phase = dataSource.phase.value
     status.previousBoundaryLoadProgress = listBoundaryLoadProgress.previousBoundaryLoadProgress
     status.previousCursor = dataSource.previousCursor.value
-    status.removedCount = dataSource.removedCount.value
-    status.removedIds = dataSource.getRemovedIds()
     status.surfaceMode = surfaceMode.value
   })
 
