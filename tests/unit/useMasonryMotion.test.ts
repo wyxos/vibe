@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getVibeMasonryEnterOrder, getVibeMasonryEnterStartY } from '@/components/viewer-core/useMasonryMotion'
+import { getVibeMasonryEnterOrder, getVibeMasonryEnterStartY, shouldWindowVibeMasonryEnterTracking } from '@/components/viewer-core/useMasonryMotion'
 
 describe('useMasonryMotion', () => {
   it('starts prepended items above the viewport and appended items below it', () => {
@@ -24,5 +24,10 @@ describe('useMasonryMotion', () => {
   it('reverses prepend stagger order and keeps append order unchanged', () => {
     expect(getVibeMasonryEnterOrder(['0', '1', '2', '3'], 'bottom')).toEqual(['0', '1', '2', '3'])
     expect(getVibeMasonryEnterOrder(['0', '1', '2', '3'], 'top')).toEqual(['3', '2', '1', '0'])
+  })
+
+  it('windows pending enter tracking before large loaded feeds retain offscreen animation state', () => {
+    expect(shouldWindowVibeMasonryEnterTracking(200, 100)).toBe(false)
+    expect(shouldWindowVibeMasonryEnterTracking(201, 100)).toBe(true)
   })
 })

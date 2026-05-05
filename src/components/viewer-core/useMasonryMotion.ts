@@ -10,6 +10,7 @@ const ENTER_MOTION_MS = 600
 const ENTER_STAGGER_MS = 40
 const LEAVE_MOTION_MS = 300
 const MAX_ENTER_STAGGER_TOTAL_MS = 400
+const MAX_PENDING_ENTER_ITEMS = 300
 export type VibeMasonryEnterDirection = 'bottom' | 'top'
 export interface VibeMasonryLeavingItem {
   height: number
@@ -31,6 +32,10 @@ export function getVibeMasonryEnterDuration(itemCount: number) {
   }
 
   return ENTER_MOTION_MS + Math.min((itemCount - 1) * ENTER_STAGGER_MS, MAX_ENTER_STAGGER_TOTAL_MS)
+}
+
+export function shouldWindowVibeMasonryEnterTracking(pendingCount: number, addedCount: number, maxPendingItems = MAX_PENDING_ENTER_ITEMS) {
+  return pendingCount + addedCount > maxPendingItems
 }
 
 export function getVibeMasonryLeaveDuration() {
@@ -189,15 +194,63 @@ export function useMasonryMotion(options: {
       return
     }
 
-    const nextStartIds = new Set(enterStartIds.value)
-    const nextEnterDirectionById = new Map(enterDirectionById.value)
+    const windowEnterTracking = shouldWindowVibeMasonryEnterTracking(enterStartIds.value.size, items.length)
+    const renderedIndices = windowEnterTracking ? new Set(options.visibleIndices.value) : null
+    const nextStartIds = renderedIndices ? getRenderedPendingEnterIds(renderedIndices) : new Set(enterStartIds.value)
+    const nextEnterDirectionById = windowEnterTracking ? getRenderedEnterDirections(nextStartIds) : new Map(enterDirectionById.value)
+
     for (const item of items) {
       const itemId = getVibeOccurrenceKey(item)
+      const itemIndex = windowEnterTracking ? options.indexById.value.get(itemId) : null
+      if (renderedIndices && (itemIndex == null || !renderedIndices.has(itemIndex))) {
+        continue
+      }
+
       nextStartIds.add(itemId)
       nextEnterDirectionById.set(itemId, direction)
     }
+
     enterStartIds.value = nextStartIds
     enterDirectionById.value = nextEnterDirectionById
+  }
+
+  function getRenderedPendingEnterIds(renderedIndices: Set<number>) {
+    const nextStartIds = new Set<string>()
+
+    for (const index of renderedIndices) {
+      const item = options.items.value[index]
+      const itemId = item ? getVibeOccurrenceKey(item) : null
+      if (itemId && enterStartIds.value.has(itemId)) {
+        nextStartIds.add(itemId)
+      }
+    }
+
+    for (const itemId of scheduledEnterIds) {
+      if (enterStartIds.value.has(itemId)) {
+        nextStartIds.add(itemId)
+      }
+    }
+
+    for (const itemId of enterAnimatingIds.value) {
+      if (enterStartIds.value.has(itemId)) {
+        nextStartIds.add(itemId)
+      }
+    }
+
+    return nextStartIds
+  }
+
+  function getRenderedEnterDirections(nextStartIds: Set<string>) {
+    const nextEnterDirectionById = new Map<string, VibeMasonryEnterDirection>()
+
+    for (const itemId of nextStartIds) {
+      const direction = enterDirectionById.value.get(itemId)
+      if (direction) {
+        nextEnterDirectionById.set(itemId, direction)
+      }
+    }
+
+    return nextEnterDirectionById
   }
 
   function markLeave(items: VibeMasonryLeavingItem[]) {
