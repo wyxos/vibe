@@ -76,8 +76,9 @@ describe('VibeLayout fullscreen aside layout', () => {
     wrapper.unmount()
   })
 
-  it('shows the next two fullscreen previews and lets them select an item', async () => {
+  it('exposes next fullscreen previews through the fullscreen slot props', async () => {
     setViewportWidth(1_280)
+    let receivedNextPreviews: Array<{ asset: { kind: string; url: string | null }; index: number; item: VibeViewerItem }> = []
 
     const wrapper = mount(Layout, {
       props: createSeededVibeProps([
@@ -86,42 +87,25 @@ describe('VibeLayout fullscreen aside layout', () => {
         createImageItem('image-next-two', 'Next two', { height: 320, width: 400 }),
         createImageItem('image-next-three', 'Next three'),
       ]),
+      slots: {
+        'fullscreen-aside': (slotProps: { nextPreviews: typeof receivedNextPreviews }) => {
+          receivedNextPreviews = slotProps.nextPreviews
+          return h('div', { 'data-testid': 'custom-fullscreen-aside' }, slotProps.nextPreviews.map((preview) => `${preview.index}:${preview.asset.kind}:${preview.asset.url}`).join('|'))
+        },
+      },
     })
 
     await flushDom()
     await wrapper.get('[data-testid="vibe-list-card"] button').trigger('click')
     await flushDom()
 
-    const previewRail = wrapper.get('[data-testid="vibe-fullscreen-next-previews"]')
-    const previewButtons = wrapper.findAll('[data-testid="vibe-fullscreen-next-preview"]')
-    expect(previewButtons).toHaveLength(2)
-    expect(previewButtons.map((button) => button.attributes('data-index'))).toEqual(['1', '2'])
-    expect(previewRail.classes()).toEqual(expect.arrayContaining(['top-1/2', 'flex', '-translate-y-1/2', 'justify-end']))
-    expect(previewButtons[0].classes()).toEqual(expect.arrayContaining(['h-[220px]', 'w-[220px]']))
-    expect(previewButtons[1].classes()).toEqual(expect.arrayContaining(['h-[140px]', 'w-[140px]']))
-    expect(previewButtons[0].get('img').attributes('src')).toBe('https://example.com/image-next-one-preview.jpg')
-    expect(previewButtons[0].get('img').classes()).toContain('object-cover')
-    expect(previewButtons[0].get('img').classes()).toContain('opacity-0')
-    expect(previewButtons[1].get('img').classes()).toContain('object-contain')
-    expect(wrapper.findAll('[data-testid="vibe-fullscreen-next-preview-spinner"]')).toHaveLength(2)
-
-    await previewButtons[0].get('img').trigger('load')
-    await flushDom()
-
-    expect(wrapper.findAll('[data-testid="vibe-fullscreen-next-preview-spinner"]')).toHaveLength(1)
-    expect(previewButtons[0].get('img').classes()).toContain('opacity-90')
-
-    await previewButtons[1].get('img').trigger('load')
-    await flushDom()
-
-    expect(wrapper.findAll('[data-testid="vibe-fullscreen-next-preview-spinner"]')).toHaveLength(0)
-    expect(previewButtons[1].get('img').classes()).toContain('opacity-40')
-
-    await previewButtons[1].trigger('click')
-    await flushDom()
-
-    expect(wrapper.get('[data-testid="vibe-pagination"]').text()).toContain('3 / 4')
-    expect(wrapper.findAll('[data-testid="vibe-fullscreen-next-preview"]').map((button) => button.attributes('data-index'))).toEqual(['3'])
+    expect(wrapper.findAll('[data-testid="vibe-fullscreen-next-preview"]')).toHaveLength(0)
+    expect(receivedNextPreviews).toHaveLength(2)
+    expect(receivedNextPreviews.map((preview) => preview.index)).toEqual([1, 2])
+    expect(receivedNextPreviews.map((preview) => preview.item.id)).toEqual(['image-next-one', 'image-next-two'])
+    expect(receivedNextPreviews[0].asset.url).toBe('https://example.com/image-next-one-preview.jpg')
+    expect(receivedNextPreviews[0].asset.kind).toBe('image')
+    expect(wrapper.get('[data-testid="custom-fullscreen-aside"]').text()).toContain('1:image:https://example.com/image-next-one-preview.jpg')
 
     wrapper.unmount()
   })

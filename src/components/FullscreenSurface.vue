@@ -19,8 +19,8 @@ import { useFullscreenDominantTone } from './viewer-core/useFullscreenDominantTo
 import { useVideoFullscreen } from './viewer-core/useVideoFullscreen'
 import './viewer-core/fullscreenMediaBar.css'
 import FullscreenForwardFillPlaceholder from './FullscreenForwardFillPlaceholder.vue'
-import FullscreenPreviewRail from './FullscreenPreviewRail.vue'
 import SurfaceEmptyState from './SurfaceEmptyState.vue'
+import { getFullscreenNextPreviews } from './viewer-core/fullscreenPreviews'
 interface FullscreenSurfaceProps {
   active?: boolean
   activeIndex?: number
@@ -131,6 +131,7 @@ const fullscreenSlotProps = computed<VibeSurfaceSlotProps | null>(() => {
     index: viewer.resolvedActiveIndex.value,
     item,
     loading: props.loading,
+    nextPreviews: getFullscreenNextPreviews(viewer.items.value, viewer.resolvedActiveIndex.value),
     paginationDetail: props.paginationDetail,
     total: props.items.length,
   }
@@ -463,8 +464,6 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
           <FullscreenHeader v-if="viewer.activeItem.value" :current-index="viewer.resolvedActiveIndex.value" :loading="props.loading" :pagination-detail="viewer.paginationDetail.value" :show-back-to-list="props.showBackToList" :show-end-badge="props.showEndBadge && viewer.isAtEnd.value && !viewer.hasNextPage.value && !viewer.loading.value" :title="viewer.activeItem.value.title ?? null" :total="viewer.items.value.length" @back-to-list="emit('back-to-list')">
             <template v-if="showFullscreenHeaderActions && fullscreenSlotProps" #actions><slot name="fullscreen-header-actions" v-bind="fullscreenSlotProps" /></template>
           </FullscreenHeader>
-
-          <FullscreenPreviewRail :active-index="viewer.resolvedActiveIndex.value" :items="viewer.items.value" @select="emit('update:activeIndex', $event)" />
 
           <FullscreenMediaBar v-if="showMediaBar" :current-time="viewer.activeMediaState.value.currentTime" :current-time-label="viewer.formatPlaybackTime(viewer.activeMediaState.value.currentTime)" :duration="viewer.activeMediaDuration.value" :duration-label="viewer.formatPlaybackTime(viewer.activeMediaDuration.value)" :muted="viewer.activeMediaState.value.muted" :progress="viewer.activeMediaProgress.value" :show-fullscreen-control="viewer.activeMediaItem.value?.type === 'video'" :volume="viewer.activeMediaState.value.volume" :volume-control-layout="volumeControlLayout" @fullscreen-request="videoFullscreen.request" @seek-input="viewer.onMediaSeekInput" @volume-input="viewer.onMediaVolumeInput" @volume-toggle="viewer.onMediaVolumeToggle" />
 

@@ -4,6 +4,10 @@ import './style.css'
 import Layout from './components/Layout.vue'
 export type { VibeViewerAsset, VibeViewerItem, VibeViewerType } from './components/viewer'
 export type {
+  VibeFullscreenPreviewItem,
+  VibeSurfaceSlotProps,
+} from './components/viewer-core/surfaceSlots'
+export type {
   VibeAssetErrorEvent,
   VibeAssetErrorKind,
   VibeAssetErrorSurface,

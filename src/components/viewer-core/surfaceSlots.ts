@@ -1,10 +1,14 @@
 import type { VibeViewerItem } from '../viewer'
+import type { VibeFullscreenPreviewItem } from './fullscreenPreviews'
+
+export type { VibeFullscreenPreviewItem } from './fullscreenPreviews'
 
 export type VibeSurfaceSlotProps = {
   hasNextPage: boolean
   index: number
   item: VibeViewerItem
   loading: boolean
+  nextPreviews: VibeFullscreenPreviewItem[]
   paginationDetail: string | null
   total: number
 }
