@@ -5,6 +5,8 @@ import { getVibeOccurrenceKey } from './itemIdentity'
 import { getItemLabel } from './media'
 import { useFullscreenPreloadController } from './useFullscreenPreloadController'
 
+const IMAGE_URL_PATTERN = /\.(avif|gif|jpe?g|png|svg|webp)(\?|#|$)/i
+
 export function useFullscreenSurfaceMedia(options: {
   active: Ref<boolean | undefined>
   items: Ref<VibeViewerItem[]>
@@ -89,6 +91,18 @@ export function useFullscreenSurfaceMedia(options: {
     return shouldPreloadSlideAsset(index) ? item.url : undefined
   }
 
+  function getFullscreenAudioCoverSource(item: VibeViewerItem) {
+    if (item.type !== 'audio' || !item.preview?.url) {
+      return null
+    }
+
+    if (item.preview.mediaType === 'image' || (!item.preview.mediaType && IMAGE_URL_PATTERN.test(item.preview.url))) {
+      return item.preview.url
+    }
+
+    return null
+  }
+
   function isAssetReady(id: string, item: VibeViewerItem) {
     if (item.type === 'image') {
       return options.viewer.isImageReady(id)
@@ -109,6 +123,7 @@ export function useFullscreenSurfaceMedia(options: {
   return {
     getAssetErrorKind,
     getAssetErrorLabel,
+    getFullscreenAudioCoverSource,
     getFullscreenImageSource,
     getFullscreenMediaPreload,
     getFullscreenMediaSource,

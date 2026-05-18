@@ -32,7 +32,7 @@ export function createVideoItem(id: string, title?: string): VibeViewerItem {
   }
 }
 
-export function createAudioItem(id: string, title?: string): VibeViewerItem {
+export function createAudioItem(id: string, title?: string, overrides: Partial<VibeViewerItem> = {}): VibeViewerItem {
   return {
     id,
     type: 'audio',
@@ -41,6 +41,7 @@ export function createAudioItem(id: string, title?: string): VibeViewerItem {
     preview: {
       url: `https://example.com/${id}.mp3`,
     },
+    ...overrides,
   }
 }
 

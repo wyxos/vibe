@@ -377,10 +377,11 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
                   :disabled="Boolean(fullscreenMedia.getAssetErrorKind(item))"
                   @click="viewer.onAudioCoverClick($event, fullscreenMedia.getItemKey(item))"
                 >
+                  <img v-if="fullscreenMedia.getFullscreenAudioCoverSource(item)" data-testid="vibe-fullscreen-audio-cover" :src="fullscreenMedia.getFullscreenAudioCoverSource(item) ?? undefined" :alt="item.title ?? ''" draggable="false" class="pointer-events-none absolute inset-0 h-full w-full object-cover" />
                   <span class="pointer-events-none absolute inset-0 border border-white/8 bg-[radial-gradient(circle,rgba(16,185,129,0.16),transparent_66%)]" />
                   <span class="pointer-events-none absolute h-[clamp(220px,30vw,360px)] w-[clamp(220px,30vw,360px)] border border-white/8 bg-[radial-gradient(circle,rgba(255,255,255,0.08),transparent_62%)]" />
 
-                  <span class="relative z-[1] inline-flex min-h-[4.25rem] min-w-[4.25rem] items-center justify-center border border-white/18 bg-emerald-500/12 p-4 backdrop-blur-[20px]">
+                  <span v-if="!fullscreenMedia.getFullscreenAudioCoverSource(item)" class="relative z-[1] inline-flex min-h-[4.25rem] min-w-[4.25rem] items-center justify-center border border-white/18 bg-emerald-500/12 p-4 backdrop-blur-[20px]">
                     <slot name="item-icon" :icon="getItemIcon(item.type)" :item="item">
                       <component :is="getItemIcon(item.type)" class="h-6 w-6 stroke-[1.9]" aria-hidden="true" />
                     </slot>

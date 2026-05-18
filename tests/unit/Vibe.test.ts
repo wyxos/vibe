@@ -23,7 +23,7 @@ import Layout from '@/components/Layout.vue'
 import type { VibeViewerItem } from '@/components/viewer'
 import type { VibeHandle } from '@/components/viewer-core/useViewer'
 import { createSeededVibeProps } from '../helpers/createSeededVibeProps'
-import { createImageItem, createOtherItem, createVideoItem, flushDom, setViewportHeight, setViewportWidth } from '../helpers/vibeTestUtils'
+import { createAudioItem, createImageItem, createOtherItem, createVideoItem, flushDom, setViewportHeight, setViewportWidth } from '../helpers/vibeTestUtils'
 
 const DEFAULT_VIEWPORT_WIDTH = window.innerWidth
 const DEFAULT_VIEWPORT_HEIGHT = window.innerHeight
@@ -155,6 +155,35 @@ describe('VibeLayout', () => {
 
     expect(wrapper.get('[data-testid="vibe"]').attributes('data-surface-mode')).toBe('fullscreen')
     expect(fullscreenSurface.find('[data-testid="custom-other-icon"]').exists()).toBe(true)
+
+    wrapper.unmount()
+  })
+
+  it('renders audio preview art as the fullscreen audio cover', async () => {
+    setViewportWidth(1_280)
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+    const coverUrl = 'https://example.com/audio-cover.jpg'
+
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps([createAudioItem('audio-cover', 'Cover track', {
+        preview: {
+          mediaType: 'image',
+          url: coverUrl,
+        },
+      })]),
+    })
+
+    await flushDom()
+    await wrapper.get('[data-testid="vibe-list-card"] button').trigger('click')
+    await flushDom()
+
+    const fullscreenSurface = wrapper.get('[data-testid="vibe-fullscreen-surface"]')
+    const cover = fullscreenSurface.get('[data-testid="vibe-fullscreen-audio-cover"]')
+
+    expect(wrapper.get('[data-testid="vibe"]').attributes('data-surface-mode')).toBe('fullscreen')
+    expect(cover.attributes('src')).toBe(coverUrl)
+    expect(cover.classes()).toContain('object-cover')
 
     wrapper.unmount()
   })
