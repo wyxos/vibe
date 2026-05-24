@@ -219,6 +219,7 @@ Common behavior props:
 
 - `empty-state`
 - `fullscreen-aside`
+- `fullscreen-footer`
 - `fullscreen-header-actions`
 - `fullscreen-overlay`
 - `fullscreen-status`

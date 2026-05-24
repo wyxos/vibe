@@ -5,6 +5,7 @@ import { LoaderCircle, Pause, Play, TriangleAlert } from 'lucide-vue-next'
 import FullscreenMediaBar from './FullscreenMediaBar.vue'
 import type { VibeViewerItem } from './viewer'
 import FullscreenHeader from './FullscreenHeader.vue'
+import FullscreenFooter from './FullscreenFooter.vue'
 import type { VibeAssetErrorReporter, VibeAssetLoadReporter } from './viewer-core/assetErrors'
 import type { VibeEmptyStateMode, VibeEmptyStateSlotProps, VibeFullscreenStatusSlotProps, VibeSurfaceSlotProps } from './viewer-core/surfaceSlots'
 import { useFullscreenSurfaceMedia } from './viewer-core/useFullscreenSurfaceMedia'
@@ -75,6 +76,7 @@ const props = withDefaults(defineProps<FullscreenSurfaceProps>(), {
 const slots = defineSlots<{
   'empty-state'?: (props: VibeEmptyStateSlotProps) => unknown
   'fullscreen-aside'?: (props: VibeSurfaceSlotProps) => unknown
+  'fullscreen-footer'?: (props: VibeSurfaceSlotProps) => unknown
   'fullscreen-header-actions'?: (props: VibeSurfaceSlotProps) => unknown
   'fullscreen-overlay'?: (props: VibeSurfaceSlotProps) => unknown
   'fullscreen-status'?: (props: VibeFullscreenStatusSlotProps) => unknown
@@ -114,12 +116,8 @@ const fullscreenAssetEvents = useFullscreenAssetEvents({
   updateDominantToneFromImageElement,
   viewer,
 })
-const mediaStatusOffsetClass = computed(() =>
-  viewer.activeMediaItem.value && !viewer.activeAssetErrorKind.value ? 'bottom-[5.8rem] max-[720px]:bottom-[7.4rem]' : 'bottom-[1.8rem] max-[720px]:bottom-[1.3rem]',
-)
 const showMediaBar = computed(() => Boolean(viewer.activeMediaItem.value) && !viewer.activeAssetErrorKind.value)
 const volumeControlLayout = computed(() => viewportWidth.value < PHONE_MEDIA_BAR_BREAKPOINT_PX ? 'vertical' : 'horizontal')
-const mediaStageInsetClass = computed(() => showMediaBar.value ? 'pb-[5.75rem] max-[720px]:pb-[7rem]' : '')
 const showForwardFillPlaceholder = computed(() => props.activeIndex >= props.items.length && (props.loading || props.hasNextPage))
 const fullscreenSlotProps = computed<VibeSurfaceSlotProps | null>(() => {
   const item = viewer.activeItem.value
@@ -141,6 +139,12 @@ const fullscreenHeaderActionNodes = computed(() => {
     return []
   }
   return slots['fullscreen-header-actions'](fullscreenSlotProps.value)
+})
+const fullscreenFooterNodes = computed(() => {
+  if (!fullscreenSlotProps.value || !slots['fullscreen-footer']) {
+    return []
+  }
+  return slots['fullscreen-footer'](fullscreenSlotProps.value)
 })
 const fullscreenAsideNodes = computed(() => {
   if (!fullscreenSlotProps.value || !slots['fullscreen-aside']) {
@@ -164,15 +168,16 @@ const fullscreenStatusNodes = computed(() => {
   }
   return slots['fullscreen-status'](fullscreenStatusProps.value)
 })
-const gridLayoutStyle = computed(() => ({
-  gridTemplateColumns: showFullscreenAsideAsColumn.value ? 'minmax(0, 1fr) 22rem' : 'minmax(0, 1fr) 0rem',
-  transition: 'grid-template-columns 320ms cubic-bezier(0.22, 1, 0.36, 1)',
-}))
 const showFullscreenHeaderActions = computed(() => hasRenderableSlotContent(fullscreenHeaderActionNodes.value))
 const showFullscreenAside = computed(() => hasRenderableSlotContent(fullscreenAsideNodes.value))
+const showFullscreenFooterSlot = computed(() => hasRenderableSlotContent(fullscreenFooterNodes.value))
 const showFullscreenAsideAsColumn = computed(() => showFullscreenAside.value && viewportWidth.value >= FULLSCREEN_ASIDE_COLUMN_BREAKPOINT_PX)
 const showFullscreenAsideAsDrawer = computed(() => showFullscreenAside.value && !showFullscreenAsideAsColumn.value)
 const showCustomFullscreenStatus = computed(() => hasRenderableSlotContent(fullscreenStatusNodes.value))
+const showFullscreenHeader = computed(() => Boolean(viewer.activeItem.value && (props.showBackToList || viewer.activeItem.value.title || viewer.items.value.length || showFullscreenHeaderActions.value)))
+const showFooterEndBadge = computed(() => props.showEndBadge && viewer.isAtEnd.value && !viewer.hasNextPage.value && !viewer.loading.value)
+const showFullscreenFooter = computed(() => showFullscreenFooterSlot.value || Boolean(fullscreenStatusProps.value) || showFooterEndBadge.value)
+const mediaStageInsetClass = computed(() => showMediaBar.value ? 'pb-[5.75rem] max-[720px]:pb-[7rem]' : '')
 const {
   emptyStateProps,
   showBadgeEmptyState,
@@ -227,23 +232,19 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
     return
   }
   viewer.onMediaEvent(id, event)
-
   if (!props.loopFullscreenVideo) {
     return
   }
-
   const element = event.currentTarget
   if (!(element instanceof HTMLVideoElement)) {
     return
   }
-
   try {
     element.currentTime = 0
   }
   catch {
     // Ignore reset failures for streams that cannot seek immediately.
   }
-
   const playback = element.play()
   if (playback && typeof playback.catch === 'function') {
     void playback.catch(() => {})
@@ -253,14 +254,16 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
 
 <template>
   <div
-    class="relative h-full min-h-0 overflow-hidden bg-[#05060a] text-[#f7f1ea]"
+    class="relative flex h-full min-h-0 flex-col overflow-hidden bg-[#05060a] text-[#f7f1ea]"
   >
     <div class="absolute inset-0 transition-[background] duration-200" :class="activeStageToneClass" :style="activeStageToneStyle" />
-    <div
-      class="relative z-[1] grid h-full min-h-0"
-      :style="gridLayoutStyle"
-    >
-      <div
+    <div class="relative z-[1] flex h-full min-h-0">
+      <div class="relative flex min-h-0 min-w-0 flex-1 flex-col">
+        <FullscreenHeader v-if="showFullscreenHeader" :current-index="viewer.resolvedActiveIndex.value" :loading="props.loading" :pagination-detail="viewer.paginationDetail.value" :show-back-to-list="props.showBackToList" :title="viewer.activeItem.value?.title ?? null" :total="viewer.items.value.length" @back-to-list="emit('back-to-list')">
+          <template v-if="showFullscreenHeaderActions && fullscreenSlotProps" #actions><slot name="fullscreen-header-actions" v-bind="fullscreenSlotProps" /></template>
+        </FullscreenHeader>
+        <div class="relative min-h-0 flex-1">
+          <div
         ref="viewer.stageRef"
         data-testid="vibe-stage"
         class="relative h-full min-h-0 touch-none overflow-hidden"
@@ -289,7 +292,6 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
               :class="getSlideToneClass(item.type)"
               :style="(index === viewer.resolvedActiveIndex.value && item.type === 'image') ? activeSlideToneStyle : undefined"
             />
-
             <div
               v-if="viewer.isVisual(item)"
               class="relative z-[1] flex h-full w-full items-center justify-center overflow-hidden"
@@ -304,7 +306,6 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
                   <LoaderCircle class="h-5 w-5 animate-spin stroke-[1.9] text-[#f7f1ea]/78" aria-hidden="true" />
                 </span>
               </div>
-
               <div
                 v-if="fullscreenMedia.isAssetErrored(index, item)"
                 data-testid="vibe-asset-error"
@@ -321,7 +322,6 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
                   </button>
                 </div>
               </div>
-
               <img
                 v-else-if="item.type === 'image'"
                 :key="viewer.getAssetRenderKey(fullscreenMedia.getItemKey(item))"
@@ -335,7 +335,6 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
                 @load="fullscreenAssetEvents.onFullscreenImageLoad($event, index, item)"
                 @error="fullscreenAssetEvents.onFullscreenImageError(index, item)"
               />
-
               <video
                 v-else
                 :key="viewer.getAssetRenderKey(fullscreenMedia.getItemKey(item))"
@@ -363,7 +362,6 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
                 @waiting="onFullscreenMediaEvent(index, item, $event)"
               />
             </div>
-
             <div
               v-else-if="viewer.isAudio(item)"
               class="relative z-[1] grid w-full max-w-[1100px] justify-items-center gap-6 px-[clamp(2rem,4vw,3rem)] py-[clamp(2rem,4vw,3rem)] text-center"
@@ -380,13 +378,11 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
                   <img v-if="fullscreenMedia.getFullscreenAudioCoverSource(item)" data-testid="vibe-fullscreen-audio-cover" :src="fullscreenMedia.getFullscreenAudioCoverSource(item) ?? undefined" :alt="item.title ?? ''" draggable="false" class="pointer-events-none absolute inset-0 h-full w-full object-cover" />
                   <span class="pointer-events-none absolute inset-0 border border-white/8 bg-[radial-gradient(circle,rgba(16,185,129,0.16),transparent_66%)]" />
                   <span class="pointer-events-none absolute h-[clamp(220px,30vw,360px)] w-[clamp(220px,30vw,360px)] border border-white/8 bg-[radial-gradient(circle,rgba(255,255,255,0.08),transparent_62%)]" />
-
                   <span v-if="!fullscreenMedia.getFullscreenAudioCoverSource(item)" class="relative z-[1] inline-flex min-h-[4.25rem] min-w-[4.25rem] items-center justify-center border border-white/18 bg-emerald-500/12 p-4 backdrop-blur-[20px]">
                     <slot name="item-icon" :icon="getItemIcon(item.type)" :item="item">
                       <component :is="getItemIcon(item.type)" class="h-6 w-6 stroke-[1.9]" aria-hidden="true" />
                     </slot>
                   </span>
-
                   <span class="pointer-events-none absolute bottom-4 right-4 inline-flex h-10 w-10 items-center justify-center border border-white/14 bg-black/50 backdrop-blur-[18px]">
                     <component
                       :is="(viewer.mediaStates.value[fullscreenMedia.getItemKey(item)]?.paused ?? true) ? Play : Pause"
@@ -395,7 +391,6 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
                     />
                   </span>
                 </button>
-
                 <div
                   v-if="fullscreenMedia.isAssetLoading(index, item)"
                   data-testid="vibe-asset-spinner"
@@ -405,7 +400,6 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
                     <LoaderCircle class="h-5 w-5 animate-spin stroke-[1.9] text-[#f7f1ea]/78" aria-hidden="true" />
                   </span>
                 </div>
-
                 <template v-if="fullscreenMedia.getAssetErrorKind(item)">
                   <div class="pointer-events-none absolute inset-0 border border-white/8 bg-[radial-gradient(circle,rgba(239,68,68,0.12),transparent_66%)]" />
                   <div
@@ -423,7 +417,6 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
                   </div>
                 </template>
               </div>
-
               <audio
                 :key="viewer.getAssetRenderKey(fullscreenMedia.getItemKey(item))"
                 :src="fullscreenMedia.getFullscreenMediaSource(index, item)"
@@ -445,7 +438,6 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
                 @waiting="onFullscreenMediaEvent(index, item, $event)"
               />
             </div>
-
             <div
               v-else
               class="relative z-[1] grid w-full max-w-[1100px] justify-items-center gap-6 px-[clamp(2rem,4vw,3rem)] py-[clamp(2rem,4vw,3rem)] text-center"
@@ -457,36 +449,29 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
               </div>
             </div>
           </article>
-
           <div v-if="fullscreenSlotProps && slots['fullscreen-overlay']" data-testid="vibe-fullscreen-overlay" class="pointer-events-none absolute inset-0 z-[6]">
             <div class="h-full w-full"><slot name="fullscreen-overlay" v-bind="fullscreenSlotProps" /></div>
           </div>
-
-          <FullscreenHeader v-if="viewer.activeItem.value" :current-index="viewer.resolvedActiveIndex.value" :loading="props.loading" :pagination-detail="viewer.paginationDetail.value" :show-back-to-list="props.showBackToList" :show-end-badge="props.showEndBadge && viewer.isAtEnd.value && !viewer.hasNextPage.value && !viewer.loading.value" :title="viewer.activeItem.value.title ?? null" :total="viewer.items.value.length" @back-to-list="emit('back-to-list')">
-            <template v-if="showFullscreenHeaderActions && fullscreenSlotProps" #actions><slot name="fullscreen-header-actions" v-bind="fullscreenSlotProps" /></template>
-          </FullscreenHeader>
-
           <FullscreenMediaBar v-if="showMediaBar" :current-time="viewer.activeMediaState.value.currentTime" :current-time-label="viewer.formatPlaybackTime(viewer.activeMediaState.value.currentTime)" :duration="viewer.activeMediaDuration.value" :duration-label="viewer.formatPlaybackTime(viewer.activeMediaDuration.value)" :muted="viewer.activeMediaState.value.muted" :progress="viewer.activeMediaProgress.value" :show-fullscreen-control="viewer.activeMediaItem.value?.type === 'video'" :volume="viewer.activeMediaState.value.volume" :volume-control-layout="volumeControlLayout" @fullscreen-request="videoFullscreen.request" @seek-input="viewer.onMediaSeekInput" @volume-input="viewer.onMediaVolumeInput" @volume-toggle="viewer.onMediaVolumeToggle" />
-
-          <div v-if="fullscreenStatusProps" class="absolute left-1/2 z-[4] -translate-x-1/2" :class="mediaStatusOffsetClass">
-            <slot v-if="showCustomFullscreenStatus" name="fullscreen-status" v-bind="fullscreenStatusProps" />
-            <div v-else data-testid="vibe-fullscreen-status-badge" class="inline-flex w-auto items-center border border-white/14 bg-black/40 px-5 py-3 text-[0.75rem] font-bold uppercase tracking-[0.18em] text-[#f7f1ea]/74 backdrop-blur-[18px] max-[720px]:w-[calc(100%-2.5rem)] max-[720px]:justify-center" :class="fullscreenStatusProps.kind === 'end' ? 'border-amber-300/35 text-amber-200' : (fullscreenStatusProps.kind === 'failed' ? 'border-rose-400/45 text-rose-100' : '')">{{ fullscreenStatusProps.message }}</div>
-          </div>
         </div>
-
         <FullscreenForwardFillPlaceholder v-else-if="showForwardFillPlaceholder" :fill-collected-count="props.fillCollectedCount" :fill-completed-calls="props.fillCompletedCalls" :fill-loaded-count="props.fillLoadedCount" :fill-mode="props.fillMode" :fill-progress="props.fillProgress" :fill-target-calls="props.fillTargetCalls" :fill-target-count="props.fillTargetCount" :fill-total-count="props.fillTotalCount" :has-next-page="props.hasNextPage" :phase="props.phase" :status-message="viewer.statusMessage.value" />
-
         <SurfaceEmptyState v-else-if="showInlineEmptyState && emptyStateProps" :message="emptyStateProps.message" :mode="emptyStateProps.mode" :surface="emptyStateProps.surface">
           <slot v-if="showCustomEmptyState" name="empty-state" v-bind="emptyStateProps" />
         </SurfaceEmptyState>
-
         <SurfaceEmptyState v-if="showBadgeEmptyState && emptyStateProps" :message="emptyStateProps.message" :mode="emptyStateProps.mode" :surface="emptyStateProps.surface">
           <slot v-if="showCustomEmptyState" name="empty-state" v-bind="emptyStateProps" />
         </SurfaceEmptyState>
+          </div>
+        </div>
+        <FullscreenFooter v-if="showFullscreenFooter" :show-end-badge="showFooterEndBadge" :show-status="Boolean(fullscreenStatusProps)" :status-kind="fullscreenStatusProps?.kind ?? null" :status-message="fullscreenStatusProps?.message ?? null">
+          <slot v-if="showFullscreenFooterSlot && fullscreenSlotProps" name="fullscreen-footer" v-bind="fullscreenSlotProps" />
+          <template v-if="showCustomFullscreenStatus && fullscreenStatusProps" #status>
+            <slot name="fullscreen-status" v-bind="fullscreenStatusProps" />
+          </template>
+        </FullscreenFooter>
       </div>
-
       <Transition enter-active-class="transform-gpu transition-all duration-320 ease-out" enter-from-class="translate-x-full opacity-0" enter-to-class="translate-x-0 opacity-100" leave-active-class="transform-gpu transition-all duration-260 ease-in" leave-from-class="translate-x-0 opacity-100" leave-to-class="translate-x-full opacity-0">
-        <aside v-if="showFullscreenAsideAsColumn && fullscreenSlotProps" data-testid="vibe-fullscreen-aside" class="h-full min-h-0 overflow-hidden border-l border-white/10 bg-black/45 backdrop-blur-[18px]">
+        <aside v-if="showFullscreenAsideAsColumn && fullscreenSlotProps" data-testid="vibe-fullscreen-aside" class="h-full min-h-0 w-[var(--vibe-fullscreen-aside-width,22rem)] shrink-0 overflow-hidden border-l border-white/10 bg-black/45 backdrop-blur-[18px]">
           <div class="h-full min-h-0 overflow-y-auto overscroll-y-contain"><slot name="fullscreen-aside" v-bind="fullscreenSlotProps" /></div>
         </aside>
       </Transition>

@@ -19,6 +19,7 @@ const props = defineProps<VibeProps>()
 const slots = defineSlots<{
   'empty-state'?: (props: VibeEmptyStateSlotProps) => unknown
   'fullscreen-aside'?: (props: VibeSurfaceSlotProps) => unknown
+  'fullscreen-footer'?: (props: VibeSurfaceSlotProps) => unknown
   'fullscreen-header-actions'?: (props: VibeSurfaceSlotProps) => unknown
   'fullscreen-overlay'?: (props: VibeSurfaceSlotProps) => unknown
   'fullscreen-status'?: (props: VibeFullscreenStatusSlotProps) => unknown
@@ -230,6 +231,9 @@ defineExpose<VibeHandle>({
             <template v-if="slots['fullscreen-aside']" #fullscreen-aside="slotProps">
               <slot name="fullscreen-aside" v-bind="slotProps" />
             </template>
+            <template v-if="slots['fullscreen-footer']" #fullscreen-footer="slotProps">
+              <slot name="fullscreen-footer" v-bind="slotProps" />
+            </template>
             <template v-if="slots['fullscreen-header-actions']" #fullscreen-header-actions="slotProps">
               <slot name="fullscreen-header-actions" v-bind="slotProps" />
             </template>
@@ -291,6 +295,9 @@ defineExpose<VibeHandle>({
       </template>
       <template v-if="slots['fullscreen-aside']" #fullscreen-aside="slotProps">
         <slot name="fullscreen-aside" v-bind="slotProps" />
+      </template>
+      <template v-if="slots['fullscreen-footer']" #fullscreen-footer="slotProps">
+        <slot name="fullscreen-footer" v-bind="slotProps" />
       </template>
       <template v-if="slots['fullscreen-header-actions']" #fullscreen-header-actions="slotProps">
         <slot name="fullscreen-header-actions" v-bind="slotProps" />

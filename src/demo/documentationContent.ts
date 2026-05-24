@@ -368,7 +368,7 @@ function onAssetErrors(errors: VibeAssetErrorEvent[]) {
         title: 'Slots',
         description: [
           'The current customization surface is slot-based and focused on grid composition, fullscreen composition, and fallback states.',
-          'The slot names include item-icon, empty-state, grid-item-overlay, and grid-footer.',
+          'The slot names include item-icon, empty-state, grid-item-overlay, grid-footer, fullscreen-header-actions, fullscreen-aside, fullscreen-footer, fullscreen-overlay, and fullscreen-status.',
         ],
         code: `<VibeLayout :resolve="resolve">
   <template #item-icon="{ item, icon }">
@@ -385,6 +385,14 @@ function onAssetErrors(errors: VibeAssetErrorEvent[]) {
 
   <template #grid-footer>
     <div>Footer UI</div>
+  </template>
+
+  <template #fullscreen-footer="{ item }">
+    <div>{{ item.title }}</div>
+  </template>
+
+  <template #fullscreen-aside="{ item }">
+    <aside>{{ item.title }}</aside>
   </template>
 </VibeLayout>`,
         language: 'vue',

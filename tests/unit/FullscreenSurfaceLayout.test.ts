@@ -31,7 +31,14 @@ describe('VibeLayout fullscreen aside layout', () => {
     await flushDom()
 
     expect(wrapper.get('[data-testid="vibe"]').attributes('data-surface-mode')).toBe('fullscreen')
-    expect(wrapper.get('[data-testid="vibe-fullscreen-aside"]').text()).toContain('Details column')
+    const aside = wrapper.get('[data-testid="vibe-fullscreen-aside"]')
+    const stage = wrapper.get('[data-testid="vibe-stage"]')
+    const header = wrapper.get('[data-testid="vibe-fullscreen-header"]')
+
+    expect(aside.text()).toContain('Details column')
+    expect(aside.classes()).toContain('w-[var(--vibe-fullscreen-aside-width,22rem)]')
+    expect(stage.element.contains(aside.element)).toBe(false)
+    expect(header.element.parentElement?.contains(aside.element)).toBe(false)
 
     wrapper.unmount()
   })
@@ -72,6 +79,78 @@ describe('VibeLayout fullscreen aside layout', () => {
 
     expect(wrapper.get('[data-testid="custom-header-action"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="vibe-pagination"]').text()).toContain('1 / 1')
+
+    wrapper.unmount()
+  })
+
+  it('keeps populated fullscreen header chrome outside the media stage without rendering an empty footer', async () => {
+    setViewportWidth(1_280)
+
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps([createImageItem('image-header-placement', 'Header placement item')], {
+        nextCursor: 'page-2',
+      }),
+    })
+
+    await flushDom()
+    await wrapper.get('[data-testid="vibe-list-card"] button').trigger('click')
+    await flushDom()
+
+    const stage = wrapper.get('[data-testid="vibe-stage"]')
+    const header = wrapper.get('[data-testid="vibe-fullscreen-header"]')
+    const exitButton = wrapper.get('[data-testid="vibe-back-to-list"]')
+
+    expect(header.text()).toContain('Header placement item')
+    expect(header.text()).toContain('1 / 1')
+    expect(exitButton.attributes('aria-label')).toBe('Exit viewer')
+    expect(stage.element.contains(header.element)).toBe(false)
+    expect(wrapper.find('[data-testid="vibe-fullscreen-footer"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('keeps fullscreen media controls over the stage without rendering an empty footer', async () => {
+    setViewportWidth(1_280)
+
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps([createVideoItem('video-stage-controls', 'Stage controls item')], {
+        nextCursor: 'page-2',
+      }),
+    })
+
+    await flushDom()
+    await wrapper.get('[data-testid="vibe-list-card"] button').trigger('click')
+    await flushDom()
+
+    const stage = wrapper.get('[data-testid="vibe-stage"]')
+    const mediaBar = wrapper.get('[data-testid="vibe-media-bar"]')
+
+    expect(stage.element.contains(mediaBar.element)).toBe(true)
+    expect(wrapper.find('[data-testid="vibe-fullscreen-footer"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('renders custom fullscreen footer content below the stage', async () => {
+    setViewportWidth(1_280)
+
+    const wrapper = mount(Layout, {
+      props: createSeededVibeProps([createImageItem('image-footer-slot', 'Footer slot item')]),
+      slots: {
+        'fullscreen-footer': () => h('div', { 'data-testid': 'custom-fullscreen-footer' }, 'Reactions'),
+      },
+    })
+
+    await flushDom()
+    await wrapper.get('[data-testid="vibe-list-card"] button').trigger('click')
+    await flushDom()
+
+    const stage = wrapper.get('[data-testid="vibe-stage"]')
+    const footer = wrapper.get('[data-testid="vibe-fullscreen-footer"]')
+    const customFooter = wrapper.get('[data-testid="custom-fullscreen-footer"]')
+
+    expect(footer.element.contains(customFooter.element)).toBe(true)
+    expect(stage.element.contains(customFooter.element)).toBe(false)
 
     wrapper.unmount()
   })
