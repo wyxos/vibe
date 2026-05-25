@@ -32,11 +32,14 @@ describe('VibeLayout fullscreen aside layout', () => {
 
     expect(wrapper.get('[data-testid="vibe"]').attributes('data-surface-mode')).toBe('fullscreen')
     const aside = wrapper.get('[data-testid="vibe-fullscreen-aside"]')
+    const asideColumn = wrapper.get('[data-testid="vibe-fullscreen-aside-column"]')
     const stage = wrapper.get('[data-testid="vibe-stage"]')
     const header = wrapper.get('[data-testid="vibe-fullscreen-header"]')
 
     expect(aside.text()).toContain('Details column')
+    expect(asideColumn.classes()).toContain('vibe-fullscreen-aside-column-shell')
     expect(aside.classes()).toContain('w-[var(--vibe-fullscreen-aside-width,22rem)]')
+    expect(aside.classes()).toContain('right-0')
     expect(stage.element.contains(aside.element)).toBe(false)
     expect(header.element.parentElement?.contains(aside.element)).toBe(false)
 

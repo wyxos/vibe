@@ -470,10 +470,12 @@ function handleFullscreenVideoEnded(event: Event, index: number, item: VibeViewe
           </template>
         </FullscreenFooter>
       </div>
-      <Transition enter-active-class="transform-gpu transition-all duration-320 ease-out" enter-from-class="translate-x-full opacity-0" enter-to-class="translate-x-0 opacity-100" leave-active-class="transform-gpu transition-all duration-260 ease-in" leave-from-class="translate-x-0 opacity-100" leave-to-class="translate-x-full opacity-0">
-        <aside v-if="showFullscreenAsideAsColumn && fullscreenSlotProps" data-testid="vibe-fullscreen-aside" class="h-full min-h-0 w-[var(--vibe-fullscreen-aside-width,22rem)] shrink-0 overflow-hidden border-l border-white/10 bg-black/45 backdrop-blur-[18px]">
-          <div class="h-full min-h-0 overflow-y-auto overscroll-y-contain"><slot name="fullscreen-aside" v-bind="fullscreenSlotProps" /></div>
-        </aside>
+      <Transition name="vibe-fullscreen-aside-column">
+        <div v-if="showFullscreenAsideAsColumn && fullscreenSlotProps" data-testid="vibe-fullscreen-aside-column" class="vibe-fullscreen-aside-column-shell relative h-full min-h-0 shrink-0 overflow-hidden">
+          <aside data-testid="vibe-fullscreen-aside" class="absolute inset-y-0 right-0 h-full min-h-0 w-[var(--vibe-fullscreen-aside-width,22rem)] overflow-hidden border-l border-white/10 bg-black/45 backdrop-blur-[18px]">
+            <div class="h-full min-h-0 overflow-y-auto overscroll-y-contain"><slot name="fullscreen-aside" v-bind="fullscreenSlotProps" /></div>
+          </aside>
+        </div>
       </Transition>
     </div>
     <Transition enter-active-class="transform-gpu transition-all duration-320 ease-out" enter-from-class="translate-x-full opacity-0" enter-to-class="translate-x-0 opacity-100" leave-active-class="transform-gpu transition-all duration-260 ease-in" leave-from-class="translate-x-0 opacity-100" leave-to-class="translate-x-full opacity-0">
