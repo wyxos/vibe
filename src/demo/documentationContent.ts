@@ -125,6 +125,7 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
   :bottom-load-buffer-px="100"
   :fill-delay-ms="2000"
   :fill-delay-step-ms="1000"
+  :fill-delay-max-ms="15000"
   :show-end-badge="false"
   :show-status-badges="false"
 />`,
@@ -133,7 +134,8 @@ async function resolve({ cursor, pageSize }: VibeResolveParams): Promise<VibeRes
           'bottomLoadBufferPx defaults to 100px and adds scrollable space after the grid before Vibe loads the next boundary.',
           'fill-delay-ms controls the base delay before the first chained fill request.',
           'fill-delay-step-ms adds extra delay for each additional chained request in the same fill cycle.',
-          'Defaults are 2000ms and 1000ms.',
+          'fill-delay-max-ms caps each chained fill delay when provided.',
+          'Defaults are 2000ms and 1000ms with no maximum cap.',
           'Boundary refresh reconciles only the active edge page; earlier loaded pages stay untouched.',
           'If that boundary refresh comes back empty, the same boundary attempt can continue to the next or previous cursor.',
           'A trailing-edge retry after exhaustion still reloads the current boundary cursor so newly available pages can appear.',
@@ -259,6 +261,7 @@ app.use(VibePlugin)
   initialState?: VibeInitialState
   initialCursor?: string | null
   pageSize?: number
+  fillDelayMaxMs?: number
   fillDelayMs?: number
   fillDelayStepMs?: number
   emptyStateMode?: 'inline' | 'badge' | 'hidden'

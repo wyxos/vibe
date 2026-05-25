@@ -27,10 +27,11 @@ import {
 import { findLeadingBoundaryBucket, findTrailingBoundaryBucket, getExhaustedNextCursor, markVibeNextCursorExhausted, trimVibeBucketsToVisibleWindow } from './autoResolveCursors'
 import { createEmptyVisiblePrefetchScheduler } from './emptyVisiblePrefetch'
 import { getVibeOccurrenceKey } from './itemIdentity'
-import { DEFAULT_FILL_DELAY_MS, DEFAULT_FILL_DELAY_STEP_MS, getFillDelayMs, normalizeFillDelayMs, useFillDelayCountdown } from './fillDelay'
+import { DEFAULT_FILL_DELAY_MS, DEFAULT_FILL_DELAY_STEP_MS, getFillDelayMs, normalizeFillDelayMaxMs, normalizeFillDelayMs, useFillDelayCountdown } from './fillDelay'
 type VibeAutoEmit = (event: 'update:activeIndex', value: number) => void
 export function useAutoResolveSource(options: {
   emit: VibeAutoEmit
+  fillDelayMaxMs?: number
   fillDelayMs?: number
   fillDelayStepMs?: number
   initialCursor?: string | null
@@ -67,6 +68,7 @@ export function useAutoResolveSource(options: {
   let operationSequence = 0
   let occurrenceSequence = 0
   const createBucket = createAutoResolveBucketFactory({ getSequence: () => occurrenceSequence, setSequence: (sequence) => { occurrenceSequence = sequence } })
+  const fillDelayMaxMs = computed(() => normalizeFillDelayMaxMs(options.fillDelayMaxMs))
   const fillDelayMs = computed(() => normalizeFillDelayMs(options.fillDelayMs, DEFAULT_FILL_DELAY_MS))
   const fillDelayStepMs = computed(() => normalizeFillDelayMs(options.fillDelayStepMs, DEFAULT_FILL_DELAY_STEP_MS))
   const hasResolver = computed(() => typeof options.resolve === 'function')
@@ -103,7 +105,7 @@ export function useAutoResolveSource(options: {
     errorMessage,
     fillCollectedCount, fillCursor, fillTargetCount, ...fillProgressState.refs,
     finishLoadPhase,
-    getFillDelayMs: (index) => getFillDelayMs(index, fillDelayMs.value, fillDelayStepMs.value),
+    getFillDelayMs: (index) => getFillDelayMs(index, fillDelayMs.value, fillDelayStepMs.value, fillDelayMaxMs.value),
     getHasNextPage: () => hasNextPage.value,
     getIsLoading: () => loading.value,
     getIsManualPageLoadingLocked: () => isManualPageLoadingLocked.value,
@@ -120,6 +122,7 @@ export function useAutoResolveSource(options: {
     nextOperationId: () => ++operationSequence,
     operationPhase,
     pendingAppendBuckets,
+    refreshTrailingBoundaryBeforeEnd: async () => { if (canRefreshTrailingBoundary.value) { await prefetchNextPage(); await commitPendingAppend() } },
     setActiveResolveController: (controller) => { activeResolveController = controller },
     setLastLoadAttempt: (attempt) => { lastLoadAttempt = attempt },
     waitFillDelay: (delayMs) => fillDelay.wait(delayMs),
@@ -137,7 +140,7 @@ export function useAutoResolveSource(options: {
     finishLoadPhase,
     getActiveOccurrenceKey,
     getBoundaryBucket: (edge) => edge === 'leading' ? leadingBoundaryBucket.value : trailingBoundaryBucket.value,
-    getFillDelayMs: (index) => getFillDelayMs(index, fillDelayMs.value, fillDelayStepMs.value),
+    getFillDelayMs: (index) => getFillDelayMs(index, fillDelayMs.value, fillDelayStepMs.value, fillDelayMaxMs.value),
     getOperationIsCurrent: (operationId) => operationId === operationSequence,
     getPageSize: () => pageSize.value,
     getResolve: () => options.resolve,
@@ -353,14 +356,14 @@ export function useAutoResolveSource(options: {
   function maybeCommitPendingAppendWhenFilteredOut() {
     if (pendingAppendBuckets.value.length > 0 && (!pendingAppendItems.value.length || !items.value.length)) void commitPendingAppend()
   }
-  async function maybePrefetchAround() {
+  async function maybePrefetchAround(refreshExhausted = true) {
     if (!isAutoPrefetchEnabled.value || isLoadingInitialPhase()) return
     if (!items.value.length) {
       if (hasNextPage.value || canRefreshTrailingBoundary.value) await prefetchNextPage()
       return
     }
     if (hasPreviousPage.value && autoActiveIndex.value < PREFETCH_OFFSET) await prefetchPreviousPage()
-    if (hasNextPage.value && autoActiveIndex.value >= items.value.length - PREFETCH_OFFSET) await prefetchNextPage()
+    if ((hasNextPage.value || (refreshExhausted && canRefreshTrailingBoundary.value)) && autoActiveIndex.value >= items.value.length - PREFETCH_OFFSET) await prefetchNextPage()
   }
   async function appendBuckets(cursor: string | null, appendOptions: { commitImmediately?: boolean, originCursor?: string | null } = {}) {
     lastLoadAttempt = async () => {

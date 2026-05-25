@@ -299,6 +299,77 @@ describe('useDataSource fill behavior', () => {
     source.unmount()
   })
 
+  it('caps custom fill delay props when chaining additional resolve calls', async () => {
+    vi.useFakeTimers()
+
+    const resolve = vi.fn(async ({ cursor }: VibeResolveParams) => {
+      if (cursor === 'page-2') {
+        return createPageResult('page-2', {
+          itemCount: 3,
+          nextPage: 'page-3',
+          previousPage: 'page-1',
+        })
+      }
+
+      if (cursor === 'page-3') {
+        return createPageResult('page-3', {
+          itemCount: 1,
+          nextPage: 'page-4',
+          previousPage: 'page-2',
+        })
+      }
+
+      if (cursor === 'page-4') {
+        return createPageResult('page-4', {
+          itemCount: 20,
+          nextPage: 'page-5',
+          previousPage: 'page-3',
+        })
+      }
+
+      return createPageResult('page-1', {
+        itemCount: 20,
+        nextPage: 'page-2',
+      })
+    })
+
+    const source = await mountUseDataSource({
+      fillDelayMaxMs: 225,
+      fillDelayMs: 200,
+      fillDelayStepMs: 50,
+      resolve,
+    })
+
+    await source.flush()
+    expect(resolve).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(199)
+    await source.flush()
+    expect(resolve).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(1)
+    await source.flush()
+    expect(resolve).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(224)
+    await source.flush()
+    expect(resolve).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(1)
+    await source.flush()
+    expect(resolve).toHaveBeenCalledTimes(3)
+
+    await vi.advanceTimersByTimeAsync(224)
+    await source.flush()
+    expect(resolve).toHaveBeenCalledTimes(3)
+
+    await vi.advanceTimersByTimeAsync(1)
+    await source.flush()
+    expect(resolve).toHaveBeenCalledTimes(4)
+
+    source.unmount()
+  })
+
   it('stops chained fill requests while page loading is locked', async () => {
     vi.useFakeTimers()
 

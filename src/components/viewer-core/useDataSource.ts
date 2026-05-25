@@ -34,6 +34,7 @@ export interface VibeInitialState {
 export interface VibeProps {
   bottomLoadBufferPx?: number
   emptyStateMode?: VibeEmptyStateMode
+  fillDelayMaxMs?: number
   fillDelayMs?: number
   fillDelayStepMs?: number
   initialCursor?: string | null
@@ -65,6 +66,7 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
   } = removalState
   const autoSource = useAutoResolveSource({
     emit,
+    fillDelayMaxMs: props.fillDelayMaxMs,
     fillDelayMs: props.fillDelayMs,
     fillDelayStepMs: props.fillDelayStepMs,
     initialCursor: props.initialCursor,
@@ -128,7 +130,7 @@ export function useDataSource(props: Readonly<VibeProps>, emit: VibeEmit) {
   }
 
   function scheduleMaybePrefetchAround() {
-    void nextTick().then(() => autoSource.maybePrefetchAround())
+    void nextTick().then(() => autoSource.maybePrefetchAround(false))
   }
 
   function restore(ids: string | string[]) {

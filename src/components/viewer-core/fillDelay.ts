@@ -8,13 +8,28 @@ export function getFillDelayMs(
   fillRequestIndex: number,
   baseDelayMs = DEFAULT_FILL_DELAY_MS,
   stepDelayMs = DEFAULT_FILL_DELAY_STEP_MS,
+  maxDelayMs?: number,
 ) {
-  return baseDelayMs + Math.max(0, fillRequestIndex - 1) * stepDelayMs
+  const delayMs = baseDelayMs + Math.max(0, fillRequestIndex - 1) * stepDelayMs
+
+  if (!Number.isFinite(maxDelayMs) || maxDelayMs == null || maxDelayMs < 0) {
+    return delayMs
+  }
+
+  return Math.min(delayMs, Math.floor(maxDelayMs))
 }
 
 export function normalizeFillDelayMs(value: number | undefined, fallback: number) {
   if (!Number.isFinite(value) || value == null || value < 0) {
     return fallback
+  }
+
+  return Math.floor(value)
+}
+
+export function normalizeFillDelayMaxMs(value: number | undefined) {
+  if (!Number.isFinite(value) || value == null || value < 0) {
+    return undefined
   }
 
   return Math.floor(value)

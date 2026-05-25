@@ -41,6 +41,7 @@ export function createAutoResolveFillUntilController(options: {
   nextOperationId: () => number
   operationPhase: Ref<VibeLoadPhase>
   pendingAppendBuckets: Ref<VibeAutoBucket[]>
+  refreshTrailingBoundaryBeforeEnd: () => Promise<void>
   setActiveResolveController: (controller: AbortController | null) => void
   setLastLoadAttempt: (attempt: () => Promise<void>) => void
   waitFillDelay: (delayMs: number) => Promise<void>
@@ -55,6 +56,10 @@ export function createAutoResolveFillUntilController(options: {
   }
 
   async function fillUntilEnd() {
+    if (!options.getHasNextPage()) {
+      await options.refreshTrailingBoundaryBeforeEnd()
+    }
+
     await runFillUntilSequence('end', () => options.getHasNextPage())
   }
 

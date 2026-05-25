@@ -152,7 +152,7 @@ Vibe owns:
 Vibe has one built-in paging model:
 
 - if a resolve returns fewer visible items than `pageSize`, Vibe enters a fill loop
-- it waits `fillDelayMs`, then `fillDelayMs + fillDelayStepMs`, and so on for each chained request
+- it waits `fillDelayMs`, then `fillDelayMs + fillDelayStepMs`, and so on for each chained request, capped by `fillDelayMaxMs` when provided
 - it keeps accumulating results until the collected count reaches `pageSize` or there is no further cursor
 - then it commits that batch into the layout once
 - before advancing at the bottom or top, Vibe checks whether the current boundary page is underfilled after local removals
@@ -168,6 +168,7 @@ Example:
   :page-size="25"
   :fill-delay-ms="2000"
   :fill-delay-step-ms="1000"
+  :fill-delay-max-ms="15000"
   :show-end-badge="false"
   :show-status-badges="false"
 />
