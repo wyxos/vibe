@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  calculateMasonryEntryOffset,
   calculateMasonryLayout,
   type MasonryMediaDimensions,
 } from '@/demo/masonry'
@@ -14,6 +15,18 @@ function media(width: number | null, height: number | null): MasonryMediaDimensi
 }
 
 describe('calculated masonry layout', () => {
+  it('offsets the entering layout below the full container', () => {
+    expect(calculateMasonryEntryOffset({
+      containerHeight: 700,
+      gap: 10,
+    })).toBe(710)
+
+    expect(calculateMasonryEntryOffset({
+      containerHeight: -1,
+      gap: -1,
+    })).toBe(0)
+  })
+
   it('places each item in the current shortest column', () => {
     const layout = calculateMasonryLayout(
       [media(100, 200), media(100, 100), media(100, 100), media(100, 100)],

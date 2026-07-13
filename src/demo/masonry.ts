@@ -20,6 +20,11 @@ export interface MasonryLayout {
   items: MasonryPosition[]
 }
 
+export interface MasonryEntryOptions {
+  containerHeight: number
+  gap: number
+}
+
 interface MasonryOptions {
   gap: number
   minColumnWidth: number
@@ -41,6 +46,13 @@ function shortestColumn(columnHeights: number[]): number {
       : shortest,
     0,
   )
+}
+
+export function calculateMasonryEntryOffset(
+  options: MasonryEntryOptions,
+): number {
+  return Math.max(0, options.containerHeight)
+    + Math.max(0, options.gap)
 }
 
 export function calculateMasonryLayout(

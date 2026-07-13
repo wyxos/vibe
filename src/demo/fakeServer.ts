@@ -1,5 +1,6 @@
 const FIXTURE_PAGE_COUNT = 10
 const PREVIEW_MAX_WIDTH = 450
+const DEFAULT_RESPONSE_DELAY_MS = 1000
 
 export type FakeMediaCursor = string | number | null | undefined
 
@@ -128,8 +129,15 @@ function numericPage(cursor: FakeMediaCursor): number | null {
   return value
 }
 
+function wait(milliseconds: number): Promise<void> {
+  if (milliseconds <= 0) return Promise.resolve()
+
+  return new Promise((resolve) => setTimeout(resolve, milliseconds))
+}
+
 export function createFakeMediaServer(
   fetcher: FakeMediaFetch = (url) => fetch(url),
+  responseDelayMs = 0,
 ) {
   const pageCache = new Map<number, Promise<FixturePage>>()
   const cursorPages = new Map<string, number>()
@@ -220,10 +228,12 @@ export function createFakeMediaServer(
   }
 
   return async function getMediaPage(cursor?: FakeMediaCursor): Promise<FakeMediaPage> {
+    const responseDelay = wait(responseDelayMs)
     const dataset = await loadDataset()
     const page = numericPage(cursor)
       ?? cursorPage(String(cursor))
     const fixture = await loadFixture(page)
+    await responseDelay
 
     return {
       items: dataset.itemsByPage.get(page) ?? [],
@@ -237,4 +247,7 @@ export function createFakeMediaServer(
   }
 }
 
-export const getFakeMediaPage = createFakeMediaServer()
+export const getFakeMediaPage = createFakeMediaServer(
+  undefined,
+  DEFAULT_RESPONSE_DELAY_MS,
+)

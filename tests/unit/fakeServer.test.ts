@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   createFakeMediaServer,
@@ -51,6 +51,25 @@ function fixtureFetcher(overrides = new Map<number, TestFixtureItem[]>()) {
 }
 
 describe('fake media server', () => {
+  afterEach(() => vi.useRealTimers())
+
+  it('can hold a response long enough to expose loading state', async () => {
+    vi.useFakeTimers()
+    const getMediaPage = createFakeMediaServer(fixtureFetcher(), 1000)
+    let settled = false
+    const pageRequest = getMediaPage(1).finally(() => {
+      settled = true
+    })
+
+    await vi.advanceTimersByTimeAsync(999)
+    expect(settled).toBe(false)
+
+    await vi.advanceTimersByTimeAsync(1)
+    await expect(pageRequest).resolves.toMatchObject({
+      items: [{ postId: 1 }],
+    })
+  })
+
   it.each([undefined, null, 1, '1'])('loads page one for %s', async (cursor) => {
     const fetcher = fixtureFetcher()
     const getMediaPage = createFakeMediaServer(fetcher)

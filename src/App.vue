@@ -12,19 +12,27 @@ import {
   getFakeMediaPage,
   type FakeMediaPage,
 } from '@/demo/fakeServer'
-import { calculateMasonryLayout } from '@/demo/masonry'
+import {
+  calculateMasonryEntryOffset,
+  calculateMasonryLayout,
+} from '@/demo/masonry'
 
 const MIN_COLUMN_WIDTH = 240
 const MIN_GAP = 6
 const MAX_GAP = 12
+const ENTRY_STAGGER_MS = 35
 
 const mediaPage = shallowRef<FakeMediaPage | null>(null)
 const mediaPageError = shallowRef<unknown>(null)
 const masonryElement = shallowRef<HTMLElement | null>(null)
 const masonryWidth = shallowRef(0)
 const masonryGap = shallowRef(MIN_GAP)
+const enteringPostIds = shallowRef<ReadonlySet<number>>(new Set())
+const entryDelays = shallowRef<ReadonlyMap<number, number>>(new Map())
+let previousPostIds = new Set<number>()
 let resizeObserver: ResizeObserver | null = null
 let resizeFrame: number | null = null
+let enterReleaseFrame: number | null = null
 
 const masonryLayout = computed(() => calculateMasonryLayout(
   mediaPage.value?.items ?? [],
@@ -40,12 +48,48 @@ const masonryStyle = computed<CSSProperties>(() => ({
 }))
 
 const masonryItemStyles = computed<CSSProperties[]>(() => (
-  masonryLayout.value.items.map((item) => ({
-    width: `${item.width}px`,
-    height: `${item.height}px`,
-    transform: `translate3d(${item.x}px, ${item.y}px, 0)`,
-  }))
+  masonryLayout.value.items.map((item, index) => {
+    const postId = mediaPage.value?.items[index]?.postId
+    const entryOffset = postId !== undefined && enteringPostIds.value.has(postId)
+      ? masonryEntryOffset()
+      : 0
+    const entryDelay = postId === undefined
+      ? 0
+      : entryDelays.value.get(postId) ?? 0
+
+    return {
+      '--masonry-entry-delay': `${entryDelay}ms`,
+      top: `${item.y}px`,
+      left: `${item.x}px`,
+      width: `${item.width}px`,
+      height: `${item.height}px`,
+      transform: `translate3d(0, ${entryOffset}px, 0)`,
+    }
+  })
 ))
+
+function masonryEntryOffset(): number {
+  return calculateMasonryEntryOffset({
+    containerHeight: masonryLayout.value.height,
+    gap: masonryGap.value,
+  })
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function scheduleEnterRelease(): void {
+  if (enterReleaseFrame !== null) cancelAnimationFrame(enterReleaseFrame)
+
+  enterReleaseFrame = requestAnimationFrame(() => {
+    enterReleaseFrame = requestAnimationFrame(() => {
+      enterReleaseFrame = null
+      enteringPostIds.value = new Set()
+    })
+  })
+}
 
 function measureMasonry(element: HTMLElement): void {
   const viewportWidth = element.ownerDocument.documentElement.clientWidth
@@ -100,9 +144,37 @@ watch(masonryElement, (element) => {
   resizeObserver.observe(element)
 })
 
+watch(
+  () => mediaPage.value?.items.map((item) => item.postId) ?? [],
+  (postIds) => {
+    const addedPostIds = postIds.filter((postId) => !previousPostIds.has(postId))
+    previousPostIds = new Set(postIds)
+
+    if (addedPostIds.length === 0 || prefersReducedMotion()) return
+
+    const nextEntryDelays = new Map<number, number>()
+    postIds.forEach((postId) => {
+      const existingDelay = entryDelays.value.get(postId)
+      if (existingDelay !== undefined) nextEntryDelays.set(postId, existingDelay)
+    })
+    addedPostIds.forEach((postId, index) => {
+      nextEntryDelays.set(postId, index * ENTRY_STAGGER_MS)
+    })
+    entryDelays.value = nextEntryDelays
+
+    enteringPostIds.value = new Set([
+      ...enteringPostIds.value,
+      ...addedPostIds,
+    ])
+    scheduleEnterRelease()
+  },
+  { flush: 'sync' },
+)
+
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   if (resizeFrame !== null) cancelAnimationFrame(resizeFrame)
+  if (enterReleaseFrame !== null) cancelAnimationFrame(enterReleaseFrame)
 })
 
 defineExpose({ mediaPage, mediaPageError })
@@ -145,6 +217,7 @@ defineExpose({ mediaPage, mediaPageError })
         v-for="(item, index) in mediaPage.items"
         :key="item.postId"
         class="masonry-item"
+        :class="{ 'masonry-item--entering': enteringPostIds.has(item.postId) }"
         :style="masonryItemStyles[index]"
       >
         <video
@@ -208,6 +281,7 @@ defineExpose({ mediaPage, mediaPageError })
 
 .masonry {
   position: relative;
+  overflow: clip;
   opacity: 0;
   transition: opacity 160ms ease;
 }
@@ -226,7 +300,12 @@ defineExpose({ mediaPage, mediaPageError })
   transition:
     width 160ms ease,
     height 160ms ease,
-    transform 160ms ease;
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1) var(--masonry-entry-delay, 0ms);
+}
+
+.masonry-item--entering {
+  transition: none;
+  will-change: transform;
 }
 
 .media-preview {
