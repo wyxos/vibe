@@ -6,9 +6,15 @@ import { fileURLToPath, URL } from 'node:url'
 
 function demoErrorAssetMiddleware(): Connect.NextHandleFunction {
   return (request, response, next) => {
-    if (request.url?.startsWith('/demo-missing/proof-sheet-404.jpg')) {
-      response.statusCode = 404
-      response.end()
+    const status = request.url?.match(
+      /^\/demo-errors\/(401|403|404|419|500)\//,
+    )?.[1]
+
+    if (status) {
+      response.statusCode = Number(status)
+      response.setHeader('Cache-Control', 'no-store')
+      response.setHeader('Content-Type', 'text/plain; charset=utf-8')
+      response.end(`Demo media error ${status}`)
       return
     }
 

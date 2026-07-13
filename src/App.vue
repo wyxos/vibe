@@ -18,6 +18,11 @@ import {
   calculateMasonryLayout,
   calculateVisibleMasonryIndices,
 } from '@/demo/masonry'
+import {
+  mediaErrorLabel,
+  mediaErrorStatus,
+  type MediaPreviewState,
+} from '@/demo/mediaPreview'
 
 const MIN_COLUMN_WIDTH = 240
 const MIN_GAP = 6
@@ -41,6 +46,7 @@ const infiniteScroll = shallowRef(true)
 const isLoadingMore = shallowRef(false)
 const enteringPostIds = shallowRef<ReadonlySet<number>>(new Set())
 const entryDelays = shallowRef<ReadonlyMap<number, number>>(new Map())
+const mediaPreviewStates = shallowRef<ReadonlyMap<number, MediaPreviewState>>(new Map())
 let previousPostIds = new Set<number>()
 let resizeObserver: ResizeObserver | null = null
 let galleryResizeObserver: ResizeObserver | null = null
@@ -74,11 +80,23 @@ const visibleMasonryItems = computed(() => {
       overscan,
     },
   )
+  const viewportIndices = new Set(calculateVisibleMasonryIndices(
+    masonryLayout.value.items,
+    {
+      scrollTop: galleryScrollTop.value - masonryContentTop.value,
+      viewportHeight: galleryViewportHeight.value,
+      overscan: 0,
+    },
+  ))
 
   return indices.flatMap((index) => {
     const item = media[index]
 
-    return item ? [{ index, item }] : []
+    return item ? [{
+      fetchPriority: viewportIndices.has(index) ? 'high' as const : 'low' as const,
+      index,
+      item,
+    }] : []
   })
 })
 
@@ -161,6 +179,16 @@ function isVideo(src: string): boolean {
   } catch {
     return /\.(mp4|webm|mov)(?:$|\?)/i.test(src)
   }
+}
+
+function mediaPreviewState(postId: number): MediaPreviewState {
+  return mediaPreviewStates.value.get(postId) ?? 'loading'
+}
+
+function setMediaPreviewState(postId: number, state: MediaPreviewState): void {
+  if (mediaPreviewStates.value.get(postId) === state) return
+
+  mediaPreviewStates.value = new Map(mediaPreviewStates.value).set(postId, state)
 }
 
 function isNearGalleryBottom(element: HTMLElement): boolean {
@@ -368,16 +396,43 @@ defineExpose({
           aria-label="Media gallery"
         >
           <article
-            v-for="({ item, index }) in visibleMasonryItems"
+            v-for="({ fetchPriority, item, index }) in visibleMasonryItems"
             :key="item.postId"
             :data-post-id="item.postId"
             class="masonry-item"
-            :class="{ 'masonry-item--entering': enteringPostIds.has(item.postId) }"
+            :class="{
+              'masonry-item--entering': enteringPostIds.has(item.postId),
+              'masonry-item--error': mediaPreviewState(item.postId) === 'error',
+            }"
             :style="masonryItemStyle(index)"
+            :aria-busy="mediaPreviewState(item.postId) === 'loading'"
           >
+            <div
+              v-if="mediaPreviewState(item.postId) === 'loading'"
+              data-test="media-loading"
+              class="media-loading"
+              aria-hidden="true"
+            >
+              <span class="media-loading-shimmer" />
+            </div>
+
+            <div
+              v-else-if="mediaPreviewState(item.postId) === 'error'"
+              data-test="media-error"
+              class="media-error"
+              role="img"
+              :aria-label="`${mediaErrorStatus(item.preview.src)} ${mediaErrorLabel(item.preview.src)}`"
+            >
+              <strong class="media-error-code">
+                {{ mediaErrorStatus(item.preview.src) }}
+              </strong>
+              <span>{{ mediaErrorLabel(item.preview.src) }}</span>
+            </div>
+
             <video
               v-if="isVideo(item.preview.src)"
               class="media-preview"
+              :class="{ 'media-preview--ready': mediaPreviewState(item.postId) === 'ready' }"
               :src="item.preview.src"
               :width="item.preview.width ?? undefined"
               :height="item.preview.height ?? undefined"
@@ -385,17 +440,24 @@ defineExpose({
               loop
               muted
               playsinline
-              preload="metadata"
+              :preload="fetchPriority === 'high' ? 'auto' : 'metadata'"
+              @loadedmetadata="setMediaPreviewState(item.postId, 'ready')"
+              @error="setMediaPreviewState(item.postId, 'error')"
             />
 
             <img
               v-else
               class="media-preview"
+              :class="{ 'media-preview--ready': mediaPreviewState(item.postId) === 'ready' }"
               :src="item.preview.src"
               :width="item.preview.width ?? undefined"
               :height="item.preview.height ?? undefined"
+              :fetchpriority="fetchPriority"
               alt=""
               decoding="async"
+              loading="eager"
+              @load="setMediaPreviewState(item.postId, 'ready')"
+              @error="setMediaPreviewState(item.postId, 'error')"
             >
           </article>
         </section>

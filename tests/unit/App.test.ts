@@ -71,8 +71,41 @@ describe('App', () => {
 
     expect(fakeServer.getFakeMediaPage).toHaveBeenCalledWith(null)
     expect(wrapper.findAll('.masonry-item')).toHaveLength(1)
-    expect(wrapper.get('img').attributes('src')).toBe('https://example.com/image-10-preview.jpeg')
+    const image = wrapper.get('img')
+    expect(image.attributes('src')).toBe('https://example.com/image-10-preview.jpeg')
+    expect(image.attributes('loading')).toBe('eager')
+    expect(image.attributes('fetchpriority')).toBe('high')
+    expect(wrapper.get('[data-test="media-loading"]').exists()).toBe(true)
+
+    await image.trigger('load')
+
+    expect(wrapper.find('[data-test="media-loading"]').exists()).toBe(false)
+    expect(image.classes()).toContain('media-preview--ready')
     expect(wrapper.find('video').exists()).toBe(false)
+  })
+
+  it('replaces a failed preview with its HTTP error state', async () => {
+    fakeServer.getFakeMediaPage.mockResolvedValueOnce({
+      items: [{
+        ...feedItem(404),
+        preview: {
+          src: '/demo-errors/404/page-01-1.jpg',
+          width: 450,
+          height: 600,
+        },
+      }],
+      meta: { next: null, total: 1 },
+    })
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    await wrapper.get('img').trigger('error')
+
+    const error = wrapper.get('[data-test="media-error"]')
+    expect(error.text()).toContain('404')
+    expect(error.text()).toContain('Preview not found')
+    expect(error.attributes('aria-label')).toBe('404 Preview not found')
   })
 
   it('loads the next page when infinite scrolling reaches the gallery bottom', async () => {
@@ -154,6 +187,8 @@ describe('App', () => {
     expect(initialItems.length).toBeLessThan(100)
     expect(Number.parseFloat((masonry.element as HTMLElement).style.height)).toBeGreaterThan(500)
     expect(wrapper.find('[data-post-id="1"]').exists()).toBe(true)
+    expect(wrapper.findAll('img').map((image) => image.attributes('fetchpriority')))
+      .toEqual(expect.arrayContaining(['high', 'low']))
 
     const gallery = wrapper.get('.gallery-shell')
     const fullLayoutHeight = (masonry.element as HTMLElement).style.height
