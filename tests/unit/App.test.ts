@@ -15,16 +15,15 @@ describe('App', () => {
     fakeServer.getFakeMediaPage.mockResolvedValue({
       items: [{
         postId: 10,
+        src: 'https://example.com/image.jpeg',
+        preview: {
+          src: 'https://example.com/image-preview.jpeg',
+          width: 450,
+          height: 600,
+        },
+        width: 900,
+        height: 1200,
         items: [{
-          src: 'https://example.com/image.jpeg',
-          preview: {
-            src: 'https://example.com/image-preview.jpeg',
-            width: 450,
-            height: 600,
-          },
-          width: 900,
-          height: 1200,
-        }, {
           src: 'https://example.com/video.mp4',
           preview: {
             src: 'https://example.com/video-preview.mp4',
@@ -35,7 +34,7 @@ describe('App', () => {
           height: 1200,
         }],
       }],
-      meta: { next: 'cursor-2', total: 1000 },
+      meta: { next: 'cursor-2', total: 1 },
     })
   })
 
@@ -48,7 +47,7 @@ describe('App', () => {
     expect(fakeServer.getFakeMediaPage).toHaveBeenCalledWith(null)
     expect(wrapper.findAll('.masonry-item')).toHaveLength(1)
     expect(wrapper.get('img').attributes('src')).toBe('https://example.com/image-preview.jpeg')
-    expect(wrapper.get('video').attributes('src')).toBe('https://example.com/video-preview.mp4')
+    expect(wrapper.find('video').exists()).toBe(false)
   })
 
   it('renders a load error', async () => {

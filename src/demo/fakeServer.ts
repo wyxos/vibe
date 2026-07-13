@@ -1,6 +1,4 @@
 const FIXTURE_PAGE_COUNT = 10
-const FIXTURE_PAGE_SIZE = 100
-const FIXTURE_TOTAL = FIXTURE_PAGE_COUNT * FIXTURE_PAGE_SIZE
 const PREVIEW_MAX_WIDTH = 450
 
 export type FakeMediaCursor = string | number | null | undefined
@@ -11,20 +9,20 @@ export interface FakeMediaPreview {
   height: number | null
 }
 
-export interface FakeMediaItem {
+export interface FakeMediaAsset {
   src: string
   preview: FakeMediaPreview
   width: number | null
   height: number | null
 }
 
-export interface FakeMediaGroup {
+export interface FakeMediaItem extends FakeMediaAsset {
   postId: number
-  items: FakeMediaItem[]
+  items: FakeMediaAsset[]
 }
 
 export interface FakeMediaPage {
-  items: FakeMediaGroup[]
+  items: FakeMediaItem[]
   meta: {
     next: string | null
     total: number
@@ -54,7 +52,8 @@ interface FetchResponse {
 export type FakeMediaFetch = (url: string) => Promise<FetchResponse>
 
 interface FixtureDataset {
-  groupsByPage: Map<number, FakeMediaGroup[]>
+  itemsByPage: Map<number, FakeMediaItem[]>
+  total: number
 }
 
 function fixtureUrl(page: number): string {
@@ -99,7 +98,7 @@ function previewDimensions(
   }
 }
 
-function normalizeItem(item: FixtureItem): FakeMediaItem {
+function normalizeItem(item: FixtureItem): FakeMediaAsset {
   const width = sourceDimension(item.width)
   const height = sourceDimension(item.height)
 
@@ -171,8 +170,8 @@ export function createFakeMediaServer(
         (_, index) => loadFixture(index + 1),
       ),
     ).then((fixtures) => {
-      const groupsByPage = new Map<number, FakeMediaGroup[]>()
-      const groupsByPost = new Map<number, FakeMediaGroup>()
+      const itemsByPage = new Map<number, FakeMediaItem[]>()
+      const itemsByPost = new Map<number, FakeMediaItem>()
 
       fixtures.forEach((fixture, index) => {
         const page = index + 1
@@ -182,22 +181,30 @@ export function createFakeMediaServer(
             throw new TypeError(`Fake media fixture ${page} contains an item without a postId`)
           }
 
-          let group = groupsByPost.get(item.postId)
+          const media = normalizeItem(item)
+          const primary = itemsByPost.get(item.postId)
 
-          if (!group) {
-            group = { postId: item.postId, items: [] }
-            groupsByPost.set(item.postId, group)
+          if (!primary) {
+            const feedItem: FakeMediaItem = {
+              postId: item.postId,
+              ...media,
+              items: [],
+            }
+            itemsByPost.set(item.postId, feedItem)
 
-            const pageGroups = groupsByPage.get(page) ?? []
-            pageGroups.push(group)
-            groupsByPage.set(page, pageGroups)
+            const pageItems = itemsByPage.get(page) ?? []
+            pageItems.push(feedItem)
+            itemsByPage.set(page, pageItems)
+          } else {
+            primary.items.push(media)
           }
-
-          group.items.push(normalizeItem(item))
         })
       })
 
-      return { groupsByPage }
+      return {
+        itemsByPage,
+        total: itemsByPost.size,
+      }
     })
 
     return datasetRequest
@@ -219,12 +226,12 @@ export function createFakeMediaServer(
     const fixture = await loadFixture(page)
 
     return {
-      items: dataset.groupsByPage.get(page) ?? [],
+      items: dataset.itemsByPage.get(page) ?? [],
       meta: {
         next: page < FIXTURE_PAGE_COUNT
           ? fixture.metadata.nextCursor ?? null
           : null,
-        total: FIXTURE_TOTAL,
+        total: dataset.total,
       },
     }
   }

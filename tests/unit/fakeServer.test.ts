@@ -61,20 +61,19 @@ describe('fake media server', () => {
     expect(page).toEqual({
       items: [{
         postId: 1,
-        items: [{
-          src: 'https://image.civitai.com/example/original=true/image-1.jpeg',
-          preview: {
-            src: 'https://image.civitai.com/example/width=450/image-1.jpeg',
-            width: 450,
-            height: 600,
-          },
-          width: 900,
-          height: 1200,
-        }],
+        src: 'https://image.civitai.com/example/original=true/image-1.jpeg',
+        preview: {
+          src: 'https://image.civitai.com/example/width=450/image-1.jpeg',
+          width: 450,
+          height: 600,
+        },
+        width: 900,
+        height: 1200,
+        items: [],
       }],
       meta: {
         next: 'cursor-2',
-        total: 1000,
+        total: 10,
       },
     })
   })
@@ -102,7 +101,7 @@ describe('fake media server', () => {
 
     expect(firstPage.items).toHaveLength(1)
     expect(firstPage.items[0]?.postId).toBe(99)
-    expect(firstPage.items[0]?.items).toHaveLength(2)
+    expect(firstPage.items[0]?.items).toHaveLength(1)
     expect(secondPage.items).toHaveLength(0)
   })
 
@@ -113,7 +112,7 @@ describe('fake media server', () => {
     const getMediaPage = createFakeMediaServer(fetcher)
 
     const page = await getMediaPage(10)
-    const item = page.items[0]?.items[0]
+    const item = page.items[0]
 
     expect(item).toMatchObject({
       width: null,

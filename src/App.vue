@@ -59,37 +59,32 @@ defineExpose({ mediaPage, mediaPageError })
       aria-label="Media gallery"
     >
       <article
-        v-for="group in mediaPage.items"
-        :key="group.postId"
+        v-for="item in mediaPage.items"
+        :key="item.postId"
         class="masonry-item"
       >
-        <template
-          v-for="item in group.items"
-          :key="item.src"
-        >
-          <video
-            v-if="isVideo(item.preview.src)"
-            class="media-preview"
-            :src="item.preview.src"
-            :width="item.preview.width ?? undefined"
-            :height="item.preview.height ?? undefined"
-            autoplay
-            loop
-            muted
-            playsinline
-            preload="metadata"
-          />
+        <video
+          v-if="isVideo(item.preview.src)"
+          class="media-preview"
+          :src="item.preview.src"
+          :width="item.preview.width ?? undefined"
+          :height="item.preview.height ?? undefined"
+          autoplay
+          loop
+          muted
+          playsinline
+          preload="metadata"
+        />
 
-          <img
-            v-else
-            class="media-preview"
-            :src="item.preview.src"
-            :width="item.preview.width ?? undefined"
-            :height="item.preview.height ?? undefined"
-            alt=""
-            decoding="async"
-          >
-        </template>
+        <img
+          v-else
+          class="media-preview"
+          :src="item.preview.src"
+          :width="item.preview.width ?? undefined"
+          :height="item.preview.height ?? undefined"
+          alt=""
+          decoding="async"
+        >
       </article>
     </section>
   </main>
@@ -147,7 +142,4 @@ defineExpose({ mediaPage, mediaPageError })
   background: #171717;
 }
 
-.media-preview + .media-preview {
-  border-top: 2px solid #080808;
-}
 </style>
