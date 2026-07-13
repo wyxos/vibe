@@ -25,6 +25,12 @@ export interface MasonryEntryOptions {
   gap: number
 }
 
+export interface MasonryViewportOptions {
+  scrollTop: number
+  viewportHeight: number
+  overscan: number
+}
+
 interface MasonryOptions {
   gap: number
   minColumnWidth: number
@@ -53,6 +59,27 @@ export function calculateMasonryEntryOffset(
 ): number {
   return Math.max(0, options.containerHeight)
     + Math.max(0, options.gap)
+}
+
+export function calculateVisibleMasonryIndices(
+  items: MasonryPosition[],
+  options: MasonryViewportOptions,
+): number[] {
+  const overscan = Math.max(0, options.overscan)
+  const viewportTop = options.scrollTop - overscan
+  const viewportBottom = options.scrollTop
+    + Math.max(0, options.viewportHeight)
+    + overscan
+
+  return items.reduce<number[]>((indices, item, index) => {
+    const itemBottom = item.y + item.height
+
+    if (itemBottom >= viewportTop && item.y <= viewportBottom) {
+      indices.push(index)
+    }
+
+    return indices
+  }, [])
 }
 
 export function calculateMasonryLayout(

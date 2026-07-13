@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   calculateMasonryEntryOffset,
   calculateMasonryLayout,
+  calculateVisibleMasonryIndices,
   type MasonryMediaDimensions,
 } from '@/demo/masonry'
 
@@ -15,6 +16,22 @@ function media(width: number | null, height: number | null): MasonryMediaDimensi
 }
 
 describe('calculated masonry layout', () => {
+  it('returns only items intersecting the viewport and overscan', () => {
+    const indices = calculateVisibleMasonryIndices([
+      { x: 0, y: 0, width: 100, height: 200 },
+      { x: 110, y: 0, width: 100, height: 100 },
+      { x: 110, y: 110, width: 100, height: 100 },
+      { x: 0, y: 210, width: 100, height: 100 },
+      { x: 110, y: 220, width: 100, height: 100 },
+    ], {
+      scrollTop: 205,
+      viewportHeight: 10,
+      overscan: 0,
+    })
+
+    expect(indices).toEqual([2, 3])
+  })
+
   it('offsets the entering layout below the full container', () => {
     expect(calculateMasonryEntryOffset({
       containerHeight: 700,

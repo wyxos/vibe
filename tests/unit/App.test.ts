@@ -35,6 +35,7 @@ describe('App', () => {
     }))
     vi.stubGlobal('cancelAnimationFrame', vi.fn())
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(500)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(500)
     fakeServer.getFakeMediaPage.mockReset()
     fakeServer.getFakeMediaPage.mockResolvedValue({
       items: [{
@@ -135,6 +136,36 @@ describe('App', () => {
 
     expect(fakeServer.getFakeMediaPage).toHaveBeenNthCalledWith(2, 'cursor-2')
     expect(wrapper.findAll('.masonry-item')).toHaveLength(2)
+  })
+
+  it('renders only the masonry items near the virtual viewport', async () => {
+    fakeServer.getFakeMediaPage.mockResolvedValueOnce({
+      items: Array.from({ length: 5000 }, (_, index) => feedItem(index + 1)),
+      meta: { next: null, total: 5000 },
+    })
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    const masonry = wrapper.get('.masonry')
+    const initialItems = wrapper.findAll('.masonry-item')
+
+    expect(initialItems.length).toBeGreaterThan(0)
+    expect(initialItems.length).toBeLessThan(100)
+    expect(Number.parseFloat((masonry.element as HTMLElement).style.height)).toBeGreaterThan(500)
+    expect(wrapper.find('[data-post-id="1"]').exists()).toBe(true)
+
+    const gallery = wrapper.get('.gallery-shell')
+    const fullLayoutHeight = (masonry.element as HTMLElement).style.height
+    Object.defineProperty(gallery.element, 'scrollTop', {
+      configurable: true,
+      value: 5000,
+    })
+    await gallery.trigger('scroll')
+
+    expect(wrapper.find('[data-post-id="1"]').exists()).toBe(false)
+    expect(wrapper.findAll('.masonry-item').length).toBeLessThan(100)
+    expect((masonry.element as HTMLElement).style.height).toBe(fullLayoutHeight)
   })
 
   it('staggers newly added items in feed order', async () => {

@@ -16,6 +16,7 @@ import {
 import {
   calculateMasonryEntryOffset,
   calculateMasonryLayout,
+  calculateVisibleMasonryIndices,
 } from '@/demo/masonry'
 
 const MIN_COLUMN_WIDTH = 240
@@ -23,6 +24,8 @@ const MIN_GAP = 6
 const MAX_GAP = 12
 const ENTRY_STAGGER_MS = 35
 const LOAD_MORE_THRESHOLD = 240
+const VIRTUAL_OVERSCAN_MIN = 800
+const VIRTUAL_OVERSCAN_FACTOR = 1.5
 
 const mediaPage = shallowRef<FakeMediaPage | null>(null)
 const mediaPageError = shallowRef<unknown>(null)
@@ -31,12 +34,16 @@ const galleryElement = shallowRef<HTMLElement | null>(null)
 const masonryElement = shallowRef<HTMLElement | null>(null)
 const masonryWidth = shallowRef(0)
 const masonryGap = shallowRef(MIN_GAP)
+const galleryScrollTop = shallowRef(0)
+const galleryViewportHeight = shallowRef(0)
+const masonryContentTop = shallowRef(0)
 const infiniteScroll = shallowRef(true)
 const isLoadingMore = shallowRef(false)
 const enteringPostIds = shallowRef<ReadonlySet<number>>(new Set())
 const entryDelays = shallowRef<ReadonlyMap<number, number>>(new Map())
 let previousPostIds = new Set<number>()
 let resizeObserver: ResizeObserver | null = null
+let galleryResizeObserver: ResizeObserver | null = null
 let resizeFrame: number | null = null
 let enterReleaseFrame: number | null = null
 
@@ -53,32 +60,56 @@ const masonryStyle = computed<CSSProperties>(() => ({
   height: `${masonryLayout.value.height}px`,
 }))
 
-const masonryItemStyles = computed<CSSProperties[]>(() => (
-  masonryLayout.value.items.map((item, index) => {
-    const postId = mediaPage.value?.items[index]?.postId
-    const entryOffset = postId !== undefined && enteringPostIds.value.has(postId)
-      ? masonryEntryOffset()
-      : 0
-    const entryDelay = postId === undefined
-      ? 0
-      : entryDelays.value.get(postId) ?? 0
+const visibleMasonryItems = computed(() => {
+  const media = mediaPage.value?.items ?? []
+  const overscan = Math.max(
+    VIRTUAL_OVERSCAN_MIN,
+    galleryViewportHeight.value * VIRTUAL_OVERSCAN_FACTOR,
+  )
+  const indices = calculateVisibleMasonryIndices(
+    masonryLayout.value.items,
+    {
+      scrollTop: galleryScrollTop.value - masonryContentTop.value,
+      viewportHeight: galleryViewportHeight.value,
+      overscan,
+    },
+  )
 
-    return {
-      '--masonry-entry-delay': `${entryDelay}ms`,
-      top: `${item.y}px`,
-      left: `${item.x}px`,
-      width: `${item.width}px`,
-      height: `${item.height}px`,
-      transform: `translate3d(0, ${entryOffset}px, 0)`,
-    }
+  return indices.flatMap((index) => {
+    const item = media[index]
+
+    return item ? [{ index, item }] : []
   })
-))
+})
 
 function masonryEntryOffset(): number {
   return calculateMasonryEntryOffset({
     containerHeight: masonryLayout.value.height,
     gap: masonryGap.value,
   })
+}
+
+function masonryItemStyle(index: number): CSSProperties {
+  const position = masonryLayout.value.items[index]
+  const postId = mediaPage.value?.items[index]?.postId
+
+  if (!position) return {}
+
+  const entryOffset = postId !== undefined && enteringPostIds.value.has(postId)
+    ? masonryEntryOffset()
+    : 0
+  const entryDelay = postId === undefined
+    ? 0
+    : entryDelays.value.get(postId) ?? 0
+
+  return {
+    '--masonry-entry-delay': `${entryDelay}ms`,
+    top: `${position.y}px`,
+    left: `${position.x}px`,
+    width: `${position.width}px`,
+    height: `${position.height}px`,
+    transform: `translate3d(0, ${entryOffset}px, 0)`,
+  }
 }
 
 function prefersReducedMotion(): boolean {
@@ -105,6 +136,23 @@ function measureMasonry(element: HTMLElement): void {
     MAX_GAP,
     Math.max(MIN_GAP, viewportWidth * 0.0075),
   )
+  measureVirtualViewport()
+}
+
+function measureVirtualViewport(): void {
+  const gallery = galleryElement.value
+  const masonry = masonryElement.value
+
+  if (!gallery) return
+
+  galleryScrollTop.value = gallery.scrollTop
+  galleryViewportHeight.value = gallery.clientHeight
+
+  if (!masonry) return
+
+  masonryContentTop.value = masonry.getBoundingClientRect().top
+    - gallery.getBoundingClientRect().top
+    + gallery.scrollTop
 }
 
 function isVideo(src: string): boolean {
@@ -147,10 +195,12 @@ async function loadNextPage(): Promise<void> {
 }
 
 function onGalleryScroll(event: Event): void {
-  if (!infiniteScroll.value) return
-
   const element = event.currentTarget as HTMLElement | null
-  if (element && isNearGalleryBottom(element)) void loadNextPage()
+  if (!element) return
+
+  galleryScrollTop.value = element.scrollTop
+
+  if (infiniteScroll.value && isNearGalleryBottom(element)) void loadNextPage()
 }
 
 async function onInfiniteScrollChange(): Promise<void> {
@@ -197,6 +247,22 @@ watch(masonryElement, (element) => {
   resizeObserver.observe(element)
 })
 
+watch(galleryElement, (element) => {
+  galleryResizeObserver?.disconnect()
+  galleryResizeObserver = null
+
+  if (!element) return
+
+  measureVirtualViewport()
+
+  if (typeof ResizeObserver === 'undefined') return
+
+  galleryResizeObserver = new ResizeObserver(() => {
+    measureVirtualViewport()
+  })
+  galleryResizeObserver.observe(element)
+})
+
 watch(
   () => mediaPage.value?.items.map((item) => item.postId) ?? [],
   (postIds) => {
@@ -226,6 +292,7 @@ watch(
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
+  galleryResizeObserver?.disconnect()
   if (resizeFrame !== null) cancelAnimationFrame(resizeFrame)
   if (enterReleaseFrame !== null) cancelAnimationFrame(enterReleaseFrame)
 })
@@ -301,11 +368,12 @@ defineExpose({
           aria-label="Media gallery"
         >
           <article
-            v-for="(item, index) in mediaPage.items"
+            v-for="({ item, index }) in visibleMasonryItems"
             :key="item.postId"
+            :data-post-id="item.postId"
             class="masonry-item"
             :class="{ 'masonry-item--entering': enteringPostIds.has(item.postId) }"
-            :style="masonryItemStyles[index]"
+            :style="masonryItemStyle(index)"
           >
             <video
               v-if="isVideo(item.preview.src)"
@@ -364,106 +432,3 @@ defineExpose({
     </main>
   </div>
 </template>
-
-<style scoped>
-.gallery-status {
-  display: grid;
-  min-height: calc(100% - 1.75rem);
-  margin: 0;
-  place-items: center;
-  color: #a3a3a3;
-  font: 500 0.875rem/1.5 system-ui, sans-serif;
-}
-
-.masonry {
-  position: relative;
-  overflow: clip;
-  opacity: 0;
-  transition: opacity 160ms ease;
-}
-
-.masonry--ready {
-  opacity: 1;
-}
-
-.masonry-item {
-  position: absolute;
-  top: 0;
-  left: 0;
-  overflow: hidden;
-  border-radius: 0.5rem;
-  background: #171717;
-  transition:
-    width 160ms ease,
-    height 160ms ease,
-    transform 420ms cubic-bezier(0.22, 1, 0.36, 1) var(--masonry-entry-delay, 0ms);
-}
-
-.masonry-item--entering {
-  transition: none;
-  will-change: transform;
-}
-
-.media-preview {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  background: #171717;
-}
-
-.gallery-footer {
-  display: grid;
-  min-height: 5rem;
-  place-items: center;
-}
-
-.gallery-sentinel {
-  width: 1px;
-  height: 2rem;
-}
-
-.load-more-status {
-  margin: 0;
-  color: #a3a3a3;
-  font: 500 0.8125rem/1.5 system-ui, sans-serif;
-}
-
-.load-more-button {
-  min-width: 8rem;
-  min-height: 2.5rem;
-  padding: 0.625rem 1rem;
-  border: 1px solid #404040;
-  border-radius: 999px;
-  color: #f5f5f5;
-  background: #171717;
-  cursor: pointer;
-  font: 600 0.8125rem/1 system-ui, sans-serif;
-  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
-}
-
-.load-more-button:hover {
-  border-color: #737373;
-  background: #262626;
-}
-
-.load-more-button:active {
-  transform: translateY(1px);
-}
-
-.load-more-button:focus-visible {
-  outline: 2px solid #a3a3a3;
-  outline-offset: 3px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .masonry,
-  .masonry-item,
-  .toggle-track,
-  .toggle-thumb,
-  .load-more-button {
-    transition: none;
-  }
-}
-
-</style>
