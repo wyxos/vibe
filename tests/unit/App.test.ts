@@ -63,12 +63,78 @@ describe('App', () => {
     const wrapper = mount(App)
 
     expect(wrapper.get('[role="status"]').text()).toBe('Loading media…')
+    expect(wrapper.get('.app-shell > .app-header').text()).toContain('Vibe')
+    expect((wrapper.get('[data-test="infinite-scroll-toggle"]').element as HTMLInputElement).checked)
+      .toBe(true)
     await flushPromises()
 
     expect(fakeServer.getFakeMediaPage).toHaveBeenCalledWith(null)
     expect(wrapper.findAll('.masonry-item')).toHaveLength(1)
     expect(wrapper.get('img').attributes('src')).toBe('https://example.com/image-10-preview.jpeg')
     expect(wrapper.find('video').exists()).toBe(false)
+  })
+
+  it('loads the next page when infinite scrolling reaches the gallery bottom', async () => {
+    fakeServer.getFakeMediaPage
+      .mockResolvedValueOnce({
+        items: [feedItem(10)],
+        meta: { next: 'cursor-2', total: 2 },
+      })
+      .mockResolvedValueOnce({
+        items: [feedItem(11)],
+        meta: { next: null, total: 2 },
+      })
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    const gallery = wrapper.get('.gallery-shell')
+    Object.defineProperties(gallery.element, {
+      clientHeight: { configurable: true, value: 500 },
+      scrollHeight: { configurable: true, value: 1000 },
+      scrollTop: { configurable: true, value: 480 },
+    })
+
+    await gallery.trigger('scroll')
+    await flushPromises()
+
+    expect(fakeServer.getFakeMediaPage).toHaveBeenNthCalledWith(2, 'cursor-2')
+    expect(wrapper.findAll('.masonry-item')).toHaveLength(2)
+  })
+
+  it('uses a load-more CTA when infinite scrolling is off', async () => {
+    fakeServer.getFakeMediaPage
+      .mockResolvedValueOnce({
+        items: [feedItem(10)],
+        meta: { next: 'cursor-2', total: 2 },
+      })
+      .mockResolvedValueOnce({
+        items: [feedItem(11)],
+        meta: { next: null, total: 2 },
+      })
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    await wrapper.get('[data-test="infinite-scroll-toggle"]').setValue(false)
+
+    const gallery = wrapper.get('.gallery-shell')
+    Object.defineProperties(gallery.element, {
+      clientHeight: { configurable: true, value: 500 },
+      scrollHeight: { configurable: true, value: 1000 },
+      scrollTop: { configurable: true, value: 480 },
+    })
+    await gallery.trigger('scroll')
+    await flushPromises()
+
+    expect(fakeServer.getFakeMediaPage).toHaveBeenCalledTimes(1)
+    expect(wrapper.get('[data-test="load-more"]').text()).toBe('Load more')
+
+    await wrapper.get('[data-test="load-more"]').trigger('click')
+    await flushPromises()
+
+    expect(fakeServer.getFakeMediaPage).toHaveBeenNthCalledWith(2, 'cursor-2')
+    expect(wrapper.findAll('.masonry-item')).toHaveLength(2)
   })
 
   it('staggers newly added items in feed order', async () => {
