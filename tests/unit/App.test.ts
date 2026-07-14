@@ -84,6 +84,170 @@ describe('App', () => {
     expect(wrapper.find('video').exists()).toBe(false)
   })
 
+  it('enables native vertical swipe snapping only for a one-column layout', async () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(230)
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    const gallery = wrapper.get('.gallery-shell')
+
+    expect(gallery.classes()).toContain('gallery-shell--swipe')
+    expect(gallery.attributes('data-layout-mode')).toBe('swipe')
+    expect(wrapper.get('.masonry-item').attributes('style')).toContain('width: 230px')
+    expect(wrapper.get('.masonry-item').attributes('style')).toContain('height: 500px')
+    expect((wrapper.get('.masonry-item').element as HTMLElement).style.transform)
+      .toBe('translate3d(0, 0px, 0)')
+    expect((wrapper.get('.masonry-item-content').element as HTMLElement).style.transform)
+      .toBe('translate3d(0, 500px, 0)')
+  })
+
+  it('keeps the regular masonry scroll behavior when multiple columns fit', async () => {
+    const wrapper = mount(App)
+    await flushPromises()
+
+    const gallery = wrapper.get('.gallery-shell')
+
+    expect(gallery.classes()).not.toContain('gallery-shell--swipe')
+    expect(gallery.attributes('data-layout-mode')).toBe('masonry')
+  })
+
+  it('forces reel mode on an iPhone 14 Pro Max in landscape', async () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(932)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(430)
+    vi.spyOn(window.screen, 'width', 'get').mockReturnValue(932)
+    vi.spyOn(window.screen, 'height', 'get').mockReturnValue(430)
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })))
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    const gallery = wrapper.get('.gallery-shell')
+
+    expect(gallery.attributes('data-layout-mode')).toBe('swipe')
+    expect(wrapper.get('.masonry-item').attributes('style')).toContain('width: 932px')
+    expect(wrapper.get('.masonry-item').attributes('style')).toContain('height: 430px')
+  })
+
+  it('forces reel mode when phone emulation retains desktop screen dimensions', async () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(932)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(430)
+    vi.spyOn(window.screen, 'width', 'get').mockReturnValue(1920)
+    vi.spyOn(window.screen, 'height', 'get').mockReturnValue(1080)
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: query !== '(hover: hover)',
+    })))
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    expect(wrapper.get('.gallery-shell').attributes('data-layout-mode')).toBe('swipe')
+  })
+
+  it('preserves the active reel item without adjacent slides peeking during resize', async () => {
+    let viewportWidth = 430
+    let viewportHeight = 932
+    const resizeObservers: Array<{
+      callback: ResizeObserverCallback
+      element?: Element
+    }> = []
+
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+      .mockImplementation(() => viewportWidth)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get')
+      .mockImplementation(() => viewportHeight)
+    vi.spyOn(window.screen, 'width', 'get').mockImplementation(() => viewportWidth)
+    vi.spyOn(window.screen, 'height', 'get').mockImplementation(() => viewportHeight)
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })))
+    vi.stubGlobal('ResizeObserver', class {
+      private readonly record: (typeof resizeObservers)[number]
+
+      constructor(callback: ResizeObserverCallback) {
+        this.record = { callback }
+        resizeObservers.push(this.record)
+      }
+
+      disconnect(): void {}
+
+      observe(element: Element): void {
+        this.record.element = element
+      }
+
+      unobserve(): void {}
+    })
+    fakeServer.getFakeMediaPage.mockResolvedValueOnce({
+      items: [feedItem(10), feedItem(11), feedItem(12)],
+      meta: { next: null, total: 3 },
+    })
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    const gallery = wrapper.get('.gallery-shell').element as HTMLElement
+    const masonry = wrapper.get('.masonry').element as HTMLElement
+    vi.spyOn(gallery, 'getBoundingClientRect').mockReturnValue({ top: 0 } as DOMRect)
+    vi.spyOn(masonry, 'getBoundingClientRect').mockImplementation(() => ({
+      top: -gallery.scrollTop,
+    }) as DOMRect)
+    const anchoredItem = wrapper.get('[data-post-id="12"]').element as HTMLElement
+    const previousItem = wrapper.get('[data-post-id="11"]').element as HTMLElement
+    const portraitTop = Number.parseFloat(anchoredItem.style.top)
+    expect(portraitTop - Number.parseFloat(previousItem.style.top)).toBe(viewportHeight)
+    Object.defineProperty(gallery, 'scrollTop', {
+      configurable: true,
+      writable: true,
+      value: portraitTop,
+    })
+    gallery.dispatchEvent(new Event('scroll'))
+
+    viewportWidth = 932
+    viewportHeight = 932
+    const galleryObserver = resizeObservers.find(({ element }) =>
+      element?.classList.contains('gallery-shell'))
+    const masonryObserver = resizeObservers.find(({ element }) =>
+      element?.classList.contains('masonry'))
+    galleryObserver?.callback([], {} as ResizeObserver)
+    masonryObserver?.callback([
+      { contentRect: { width: viewportWidth } } as ResizeObserverEntry,
+    ], {} as ResizeObserver)
+    animationFrames.at(-1)?.(0)
+    await flushPromises()
+
+    expect(wrapper.get('.gallery-shell').attributes('data-layout-mode')).toBe('swipe')
+    expect(wrapper.get('.gallery-shell').attributes('data-layout-transition')).toBe('resizing')
+
+    viewportHeight = 430
+    galleryObserver?.callback([], {} as ResizeObserver)
+    await flushPromises()
+
+    const restoredItem = wrapper.get('[data-post-id="12"]').element as HTMLElement
+
+    expect(gallery.scrollTop).toBe(Number.parseFloat(restoredItem.style.top))
+    expect(gallery.scrollTop).toBeLessThan(portraitTop)
+
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    await flushPromises()
+    animationFrames.at(-1)?.(0)
+    animationFrames.at(-1)?.(16)
+    await wrapper.vm.$nextTick()
+    animationFrames.at(-1)?.(32)
+
+    expect(gallery.scrollTop).toBe(Number.parseFloat(restoredItem.style.top))
+    expect(wrapper.get('.gallery-shell').attributes('data-layout-transition')).toBe('settled')
+  })
+
+  it('keeps a touch tablet in masonry mode', async () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(820)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(1180)
+    vi.spyOn(window.screen, 'width', 'get').mockReturnValue(820)
+    vi.spyOn(window.screen, 'height', 'get').mockReturnValue(1180)
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    expect(wrapper.get('.gallery-shell').attributes('data-layout-mode')).toBe('masonry')
+  })
+
   it('replaces a failed preview with its HTTP error state', async () => {
     fakeServer.getFakeMediaPage.mockResolvedValueOnce({
       items: [{

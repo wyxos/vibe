@@ -25,6 +25,11 @@ export interface MasonryEntryOptions {
   gap: number
 }
 
+export interface SingleColumnFeedOptions {
+  gap: number
+  itemHeight: number
+}
+
 export interface MasonryViewportOptions {
   scrollTop: number
   viewportHeight: number
@@ -33,6 +38,7 @@ export interface MasonryViewportOptions {
 
 interface MasonryOptions {
   gap: number
+  maxColumns?: number
   minColumnWidth: number
 }
 
@@ -61,6 +67,29 @@ export function calculateMasonryEntryOffset(
     + Math.max(0, options.gap)
 }
 
+export function calculateSingleColumnFeedLayout(
+  layout: MasonryLayout,
+  options: SingleColumnFeedOptions,
+): MasonryLayout {
+  if (layout.columns !== 1 || layout.items.length === 0 || options.itemHeight <= 0) {
+    return layout
+  }
+
+  const gap = Math.max(0, options.gap)
+  const itemHeight = options.itemHeight
+  const items = layout.items.map((item, index) => ({
+    ...item,
+    y: index * (itemHeight + gap),
+    height: itemHeight,
+  }))
+
+  return {
+    columns: 1,
+    height: items.length * itemHeight + (items.length - 1) * gap,
+    items,
+  }
+}
+
 export function calculateVisibleMasonryIndices(
   items: MasonryPosition[],
   options: MasonryViewportOptions,
@@ -82,6 +111,23 @@ export function calculateVisibleMasonryIndices(
   }, [])
 }
 
+export function findNearestMasonryItemIndex(
+  items: MasonryPosition[],
+  offset: number,
+): number | null {
+  if (items.length === 0) return null
+
+  return items.reduce(
+    (nearestIndex, item, index) => {
+      const nearestDistance = Math.abs(items[nearestIndex]!.y - offset)
+      const itemDistance = Math.abs(item.y - offset)
+
+      return itemDistance < nearestDistance ? index : nearestIndex
+    },
+    0,
+  )
+}
+
 export function calculateMasonryLayout(
   media: MasonryMediaDimensions[],
   containerWidth: number,
@@ -93,10 +139,14 @@ export function calculateMasonryLayout(
 
   const gap = Math.max(0, options.gap)
   const minColumnWidth = Math.max(1, options.minColumnWidth)
-  const columns = Math.max(
+  const calculatedColumns = Math.max(
     1,
     Math.floor((containerWidth + gap) / (minColumnWidth + gap)),
   )
+  const maxColumns = options.maxColumns === undefined
+    ? calculatedColumns
+    : Math.max(1, Math.floor(options.maxColumns))
+  const columns = Math.min(calculatedColumns, maxColumns)
   const itemWidth = (containerWidth - gap * (columns - 1)) / columns
   const columnHeights = Array.from({ length: columns }, () => 0)
 

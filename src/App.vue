@@ -9,20 +9,17 @@ import {
   type CSSProperties,
 } from 'vue'
 
-import {
-  getFakeMediaPage,
-  type FakeMediaPage,
-} from '@/demo/fakeServer'
+import { getFakeMediaPage, type FakeMediaPage } from '@/demo/fakeServer'
+import MediaCard from '@/demo/MediaCard.vue'
 import {
   calculateMasonryEntryOffset,
   calculateMasonryLayout,
+  calculateSingleColumnFeedLayout,
   calculateVisibleMasonryIndices,
 } from '@/demo/masonry'
-import {
-  mediaErrorLabel,
-  mediaErrorStatus,
-  type MediaPreviewState,
-} from '@/demo/mediaPreview'
+import type { MediaPreviewState } from '@/demo/mediaPreview'
+import { createReelAnchorController } from '@/demo/reelAnchor'
+import { shouldForceSingleColumnForElement } from '@/demo/responsiveFeed'
 
 const MIN_COLUMN_WIDTH = 240
 const MIN_GAP = 6
@@ -41,7 +38,10 @@ const masonryWidth = shallowRef(0)
 const masonryGap = shallowRef(MIN_GAP)
 const galleryScrollTop = shallowRef(0)
 const galleryViewportHeight = shallowRef(0)
+const galleryContentHeight = shallowRef(0)
 const masonryContentTop = shallowRef(0)
+const forceSingleColumn = shallowRef(false)
+const reelResizing = shallowRef(false)
 const infiniteScroll = shallowRef(true)
 const isLoadingMore = shallowRef(false)
 const enteringPostIds = shallowRef<ReadonlySet<number>>(new Set())
@@ -53,18 +53,40 @@ let galleryResizeObserver: ResizeObserver | null = null
 let resizeFrame: number | null = null
 let enterReleaseFrame: number | null = null
 
-const masonryLayout = computed(() => calculateMasonryLayout(
-  mediaPage.value?.items ?? [],
-  masonryWidth.value,
-  {
-    gap: masonryGap.value,
-    minColumnWidth: MIN_COLUMN_WIDTH,
-  },
-))
+const masonryLayout = computed(() => {
+  const layout = calculateMasonryLayout(
+    mediaPage.value?.items ?? [],
+    masonryWidth.value,
+    {
+      gap: masonryGap.value,
+      maxColumns: forceSingleColumn.value ? 1 : undefined,
+      minColumnWidth: MIN_COLUMN_WIDTH,
+    },
+  )
+
+  return calculateSingleColumnFeedLayout(layout, {
+    gap: Math.max(0, galleryViewportHeight.value - galleryContentHeight.value),
+    itemHeight: galleryContentHeight.value,
+  })
+})
 
 const masonryStyle = computed<CSSProperties>(() => ({
   height: `${masonryLayout.value.height}px`,
 }))
+
+const isSingleColumn = computed(() => masonryLayout.value.columns === 1)
+
+const reelAnchor = createReelAnchorController({
+  getContentTop: () => masonryContentTop.value,
+  getGallery: () => galleryElement.value,
+  getItems: () => mediaPage.value?.items ?? [],
+  getLayout: () => masonryLayout.value,
+  isSingleColumn: () => isSingleColumn.value,
+  measureViewport: measureVirtualViewport,
+  settleLayout: settleResponsiveMode,
+  setScrollTop: (scrollTop) => { galleryScrollTop.value = scrollTop },
+  setTransitioning: (transitioning) => { reelResizing.value = transitioning },
+})
 
 const visibleMasonryItems = computed(() => {
   const media = mediaPage.value?.items ?? []
@@ -102,8 +124,10 @@ const visibleMasonryItems = computed(() => {
 
 function masonryEntryOffset(): number {
   return calculateMasonryEntryOffset({
-    containerHeight: masonryLayout.value.height,
-    gap: masonryGap.value,
+    containerHeight: isSingleColumn.value
+      ? galleryViewportHeight.value
+      : masonryLayout.value.height,
+    gap: isSingleColumn.value ? 0 : masonryGap.value,
   })
 }
 
@@ -126,7 +150,18 @@ function masonryItemStyle(index: number): CSSProperties {
     left: `${position.x}px`,
     width: `${position.width}px`,
     height: `${position.height}px`,
-    transform: `translate3d(0, ${entryOffset}px, 0)`,
+    transform: `translate3d(0, ${isSingleColumn.value ? 0 : entryOffset}px, 0)`,
+  }
+}
+
+function masonryItemContentStyle(index: number): CSSProperties {
+  const postId = mediaPage.value?.items[index]?.postId
+  const entryOffset = postId !== undefined && enteringPostIds.value.has(postId)
+    ? masonryEntryOffset()
+    : 0
+
+  return {
+    transform: `translate3d(0, ${isSingleColumn.value ? entryOffset : 0}px, 0)`,
   }
 }
 
@@ -147,7 +182,10 @@ function scheduleEnterRelease(): void {
 }
 
 function measureMasonry(element: HTMLElement): void {
+  reelAnchor.capture()
   const viewportWidth = element.ownerDocument.documentElement.clientWidth
+
+  updateResponsiveMode(element)
 
   masonryWidth.value = element.clientWidth
   masonryGap.value = Math.min(
@@ -155,6 +193,18 @@ function measureMasonry(element: HTMLElement): void {
     Math.max(MIN_GAP, viewportWidth * 0.0075),
   )
   measureVirtualViewport()
+  reelAnchor.restore()
+}
+
+function settleResponsiveMode(): void {
+  const element = galleryElement.value
+  if (element) forceSingleColumn.value = shouldForceSingleColumnForElement(element)
+}
+
+function updateResponsiveMode(element: HTMLElement): void {
+  forceSingleColumn.value = reelAnchor.isTransitioning() && forceSingleColumn.value
+    ? true
+    : shouldForceSingleColumnForElement(element)
 }
 
 function measureVirtualViewport(): void {
@@ -165,20 +215,19 @@ function measureVirtualViewport(): void {
 
   galleryScrollTop.value = gallery.scrollTop
   galleryViewportHeight.value = gallery.clientHeight
+  const galleryStyle = getComputedStyle(gallery)
+  const paddingTop = Number.parseFloat(galleryStyle.paddingTop) || 0
+  const paddingBottom = Number.parseFloat(galleryStyle.paddingBottom) || 0
+  galleryContentHeight.value = Math.max(
+    0,
+    gallery.clientHeight - paddingTop - paddingBottom,
+  )
 
   if (!masonry) return
 
   masonryContentTop.value = masonry.getBoundingClientRect().top
     - gallery.getBoundingClientRect().top
     + gallery.scrollTop
-}
-
-function isVideo(src: string): boolean {
-  try {
-    return /\.(mp4|webm|mov)$/i.test(new URL(src).pathname)
-  } catch {
-    return /\.(mp4|webm|mov)(?:$|\?)/i.test(src)
-  }
 }
 
 function mediaPreviewState(postId: number): MediaPreviewState {
@@ -286,7 +335,10 @@ watch(galleryElement, (element) => {
   if (typeof ResizeObserver === 'undefined') return
 
   galleryResizeObserver = new ResizeObserver(() => {
+    reelAnchor.capture()
+    updateResponsiveMode(element)
     measureVirtualViewport()
+    reelAnchor.restore()
   })
   galleryResizeObserver.observe(element)
 })
@@ -319,6 +371,7 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  reelAnchor.dispose()
   resizeObserver?.disconnect()
   galleryResizeObserver?.disconnect()
   if (resizeFrame !== null) cancelAnimationFrame(resizeFrame)
@@ -362,6 +415,9 @@ defineExpose({
     <main
       ref="galleryElement"
       class="gallery-shell"
+      :class="{ 'gallery-shell--resizing': reelResizing, 'gallery-shell--swipe': isSingleColumn }"
+      :data-layout-mode="isSingleColumn ? 'swipe' : 'masonry'"
+      :data-layout-transition="reelResizing ? 'resizing' : 'settled'"
       @scroll.passive="onGalleryScroll"
     >
       <p
@@ -395,71 +451,18 @@ defineExpose({
           :style="masonryStyle"
           aria-label="Media gallery"
         >
-          <article
+          <MediaCard
             v-for="({ fetchPriority, item, index }) in visibleMasonryItems"
             :key="item.postId"
-            :data-post-id="item.postId"
-            class="masonry-item"
-            :class="{
-              'masonry-item--entering': enteringPostIds.has(item.postId),
-              'masonry-item--error': mediaPreviewState(item.postId) === 'error',
-            }"
-            :style="masonryItemStyle(index)"
-            :aria-busy="mediaPreviewState(item.postId) === 'loading'"
-          >
-            <div
-              v-if="mediaPreviewState(item.postId) === 'loading'"
-              data-test="media-loading"
-              class="media-loading"
-              aria-hidden="true"
-            >
-              <span class="media-loading-shimmer" />
-            </div>
-
-            <div
-              v-else-if="mediaPreviewState(item.postId) === 'error'"
-              data-test="media-error"
-              class="media-error"
-              role="img"
-              :aria-label="`${mediaErrorStatus(item.preview.src)} ${mediaErrorLabel(item.preview.src)}`"
-            >
-              <strong class="media-error-code">
-                {{ mediaErrorStatus(item.preview.src) }}
-              </strong>
-              <span>{{ mediaErrorLabel(item.preview.src) }}</span>
-            </div>
-
-            <video
-              v-if="isVideo(item.preview.src)"
-              class="media-preview"
-              :class="{ 'media-preview--ready': mediaPreviewState(item.postId) === 'ready' }"
-              :src="item.preview.src"
-              :width="item.preview.width ?? undefined"
-              :height="item.preview.height ?? undefined"
-              autoplay
-              loop
-              muted
-              playsinline
-              :preload="fetchPriority === 'high' ? 'auto' : 'metadata'"
-              @loadedmetadata="setMediaPreviewState(item.postId, 'ready')"
-              @error="setMediaPreviewState(item.postId, 'error')"
-            />
-
-            <img
-              v-else
-              class="media-preview"
-              :class="{ 'media-preview--ready': mediaPreviewState(item.postId) === 'ready' }"
-              :src="item.preview.src"
-              :width="item.preview.width ?? undefined"
-              :height="item.preview.height ?? undefined"
-              :fetchpriority="fetchPriority"
-              alt=""
-              decoding="async"
-              loading="eager"
-              @load="setMediaPreviewState(item.postId, 'ready')"
-              @error="setMediaPreviewState(item.postId, 'error')"
-            >
-          </article>
+            :content-style="masonryItemContentStyle(index)"
+            :entering="enteringPostIds.has(item.postId)"
+            :fetch-priority="fetchPriority"
+            :item="item"
+            :item-style="masonryItemStyle(index)"
+            :preview-state="mediaPreviewState(item.postId)"
+            @ready="setMediaPreviewState(item.postId, 'ready')"
+            @error="setMediaPreviewState(item.postId, 'error')"
+          />
         </section>
 
         <footer

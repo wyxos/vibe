@@ -106,14 +106,34 @@ body {
 }
 
 .gallery-shell {
+  --gallery-padding: clamp(0.375rem, 1vw, 0.875rem);
+
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: contain;
-  padding: clamp(0.375rem, 1vw, 0.875rem);
+  padding: var(--gallery-padding);
   scrollbar-color: #525252 #111111;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
+}
+
+.gallery-shell--swipe {
+  scroll-padding-block: var(--gallery-padding);
+  scroll-snap-type: y mandatory;
+}
+
+.gallery-shell--swipe.gallery-shell--resizing {
+  scroll-snap-type: none;
+}
+
+.gallery-shell--swipe .masonry-item {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.gallery-shell--swipe .media-preview {
+  object-fit: contain;
 }
 
 .gallery-shell::-webkit-scrollbar {
@@ -167,6 +187,11 @@ body {
     transform 420ms cubic-bezier(0.22, 1, 0.36, 1) var(--masonry-entry-delay, 0ms);
 }
 
+.gallery-shell--swipe.gallery-shell--resizing .masonry-item,
+.gallery-shell--swipe.gallery-shell--resizing .masonry-item-content {
+  transition: none;
+}
+
 .masonry-item--entering {
   transition: none;
   will-change: transform;
@@ -174,6 +199,21 @@ body {
 
 .masonry-item--error {
   background: #121212;
+}
+
+.masonry-item-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.gallery-shell--swipe .masonry-item-content {
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1) var(--masonry-entry-delay, 0ms);
+}
+
+.gallery-shell--swipe .masonry-item--entering .masonry-item-content {
+  transition: none;
+  will-change: transform;
 }
 
 .media-loading,
@@ -290,6 +330,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .masonry,
   .masonry-item,
+  .masonry-item-content,
   .toggle-track,
   .toggle-thumb,
   .load-more-button,
