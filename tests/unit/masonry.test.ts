@@ -3,9 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   calculateMasonryEntryOffset,
   calculateMasonryLayout,
-  calculateSingleColumnFeedLayout,
   calculateVisibleMasonryIndices,
-  findNearestMasonryItemIndex,
   type MasonryMediaDimensions,
 } from '@/demo/masonry'
 
@@ -46,18 +44,6 @@ describe('calculated masonry layout', () => {
     })).toBe(0)
   })
 
-  it('finds the item nearest to a reel scroll offset', () => {
-    const items = [
-      { x: 0, y: 0, width: 100, height: 500 },
-      { x: 0, y: 506, width: 100, height: 500 },
-      { x: 0, y: 1012, width: 100, height: 500 },
-    ]
-
-    expect(findNearestMasonryItemIndex(items, 800)).toBe(2)
-    expect(findNearestMasonryItemIndex(items, 510)).toBe(1)
-    expect(findNearestMasonryItemIndex([], 510)).toBeNull()
-  })
-
   it('places each item in the current shortest column', () => {
     const layout = calculateMasonryLayout(
       [media(100, 200), media(100, 100), media(100, 100), media(100, 100)],
@@ -90,51 +76,6 @@ describe('calculated masonry layout', () => {
       height: 460,
     })
     expect(layout.height).toBe(696)
-  })
-
-  it('can cap a wide layout at one column', () => {
-    const layout = calculateMasonryLayout(
-      [media(100, 100), media(100, 200)],
-      1180,
-      { gap: 8, maxColumns: 1, minColumnWidth: 240 },
-    )
-
-    expect(layout.columns).toBe(1)
-    expect(layout.items[1]?.x).toBe(0)
-    expect(layout.items[1]?.width).toBe(1180)
-  })
-
-  it('turns a one-column layout into equal viewport-height feed slides', () => {
-    const masonry = calculateMasonryLayout(
-      [media(100, 100), media(100, 200), media(200, 100)],
-      230,
-      { gap: 6, minColumnWidth: 240 },
-    )
-
-    const layout = calculateSingleColumnFeedLayout(masonry, {
-      gap: 6,
-      itemHeight: 500,
-    })
-
-    expect(layout.items.map(({ y, height }) => ({ y, height }))).toEqual([
-      { y: 0, height: 500 },
-      { y: 506, height: 500 },
-      { y: 1012, height: 500 },
-    ])
-    expect(layout.height).toBe(1512)
-  })
-
-  it('leaves a multi-column masonry layout unchanged', () => {
-    const masonry = calculateMasonryLayout(
-      [media(100, 100), media(100, 200)],
-      500,
-      { gap: 10, minColumnWidth: 200 },
-    )
-
-    expect(calculateSingleColumnFeedLayout(masonry, {
-      gap: 10,
-      itemHeight: 500,
-    })).toBe(masonry)
   })
 
   it('falls back to a square when dimensions are unavailable', () => {

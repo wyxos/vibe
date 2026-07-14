@@ -9,11 +9,10 @@ import {
 } from '@/demo/mediaPreview'
 
 defineProps<{
-  contentStyle: CSSProperties
   entering: boolean
   fetchPriority: 'high' | 'low'
   item: FakeMediaItem
-  itemStyle: CSSProperties
+  itemStyle?: CSSProperties
   previewState: MediaPreviewState
 }>()
 
@@ -34,17 +33,16 @@ function isVideo(src: string): boolean {
 <template>
   <article
     :data-post-id="item.postId"
-    class="masonry-item"
+    class="media-card"
     :class="{
-      'masonry-item--entering': entering,
-      'masonry-item--error': previewState === 'error',
+      'media-card--entering': entering,
+      'media-card--error': previewState === 'error',
     }"
     :style="itemStyle"
     :aria-busy="previewState === 'loading'"
   >
     <div
-      class="masonry-item-content"
-      :style="contentStyle"
+      class="media-card-content"
     >
       <div
         v-if="previewState === 'loading'"

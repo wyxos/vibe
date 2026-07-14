@@ -118,24 +118,6 @@ body {
   scrollbar-width: thin;
 }
 
-.gallery-shell--swipe {
-  scroll-padding-block: var(--gallery-padding);
-  scroll-snap-type: y mandatory;
-}
-
-.gallery-shell--swipe.gallery-shell--resizing {
-  scroll-snap-type: none;
-}
-
-.gallery-shell--swipe .masonry-item {
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-}
-
-.gallery-shell--swipe .media-preview {
-  object-fit: contain;
-}
-
 .gallery-shell::-webkit-scrollbar {
   width: 0.625rem;
 }
@@ -187,33 +169,63 @@ body {
     transform 420ms cubic-bezier(0.22, 1, 0.36, 1) var(--masonry-entry-delay, 0ms);
 }
 
-.gallery-shell--swipe.gallery-shell--resizing .masonry-item,
-.gallery-shell--swipe.gallery-shell--resizing .masonry-item-content {
-  transition: none;
-}
-
-.masonry-item--entering {
+.masonry-item.media-card--entering {
   transition: none;
   will-change: transform;
 }
 
-.masonry-item--error {
+.media-card {
+  background: #171717;
+}
+
+.media-card--error {
   background: #121212;
 }
 
-.masonry-item-content {
+.media-card-content {
   position: relative;
   width: 100%;
   height: 100%;
 }
 
-.gallery-shell--swipe .masonry-item-content {
-  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1) var(--masonry-entry-delay, 0ms);
+.reel-feed {
+  container-type: size;
+  padding: 0;
+  scroll-snap-type: y mandatory;
 }
 
-.gallery-shell--swipe .masonry-item--entering .masonry-item-content {
-  transition: none;
-  will-change: transform;
+.reel-feed[data-resizing] {
+  scroll-snap-type: none;
+}
+
+.reel-track {
+  display: grid;
+  width: 100%;
+}
+
+.reel-item {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: var(--gallery-padding);
+  background: #080808;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.reel-item .media-card-content {
+  overflow: hidden;
+  border-radius: 0.5rem;
+  background: #171717;
+}
+
+.reel-item .media-preview {
+  object-fit: contain;
+}
+
+.reel-feed .gallery-footer {
+  scroll-snap-align: end;
 }
 
 .media-loading,
@@ -330,7 +342,6 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .masonry,
   .masonry-item,
-  .masonry-item-content,
   .toggle-track,
   .toggle-thumb,
   .load-more-button,
