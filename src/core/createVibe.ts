@@ -82,6 +82,8 @@ class VibeController implements VibeInstance {
   private abortController: AbortController | null = null
   private pendingRequest: Promise<void> | null = null
   private requestVersion = 0
+  private routedReelPostId: VibeItemId | null = null
+  private reelRouteIsActive = false
   private resizeObserver: ResizeObserver | null = null
   private surface: VibeSurfaceExpose | null = null
   private target: Element | null = null
@@ -197,7 +199,10 @@ class VibeController implements VibeInstance {
   private applyLayout(layout: VibeLayout): void {
     if (layout === this.state.layout) return
 
-    if (layout === 'masonry') this.state.activeReelPostId = null
+    if (layout === 'masonry') {
+      this.state.activeReelPostId = null
+      this.syncFeedRoute()
+    }
     this.state.reelOrigin = null
     this.state.layout = layout
   }
@@ -233,6 +238,7 @@ class VibeController implements VibeInstance {
 
     this.state.activeReelPostId = null
     this.state.reelOrigin = null
+    this.syncFeedRoute()
   }
 
   private openMasonryReel(postId: VibeItemId): void {
@@ -241,11 +247,49 @@ class VibeController implements VibeInstance {
 
     this.state.activeReelPostId = postId
     this.state.reelOrigin = 'masonry'
+    this.syncReelRoute(postId)
   }
 
   private setActiveReelPost(postId: VibeItemId): void {
     if (this.state.layout !== 'reel' && this.state.reelOrigin !== 'masonry') return
     this.state.activeReelPostId = postId
+    this.syncReelRoute(postId)
+  }
+
+  private syncFeedRoute(): void {
+    const routing = this.options.routing
+    if (!routing || !this.reelRouteIsActive) return
+
+    this.reelRouteIsActive = false
+    this.routedReelPostId = null
+    const location = typeof routing.feed === 'function'
+      ? routing.feed()
+      : routing.feed
+    void routing.router.replace(location)
+  }
+
+  private syncReelRoute(postId: VibeItemId): void {
+    const routing = this.options.routing
+    if (!routing) return
+
+    const index = this.state.items.findIndex((item) => item.postId === postId)
+    const item = this.state.items[index]
+    if (!item) return
+    if (this.reelRouteIsActive && this.routedReelPostId === postId) return
+
+    const location = routing.reel({
+      index,
+      item,
+      loadedCount: this.state.items.length,
+      origin: this.state.reelOrigin ?? 'reel',
+      total: this.state.total,
+    })
+    if (location === null) return
+
+    const method = this.reelRouteIsActive ? 'replace' : 'push'
+    this.reelRouteIsActive = true
+    this.routedReelPostId = postId
+    void routing.router[method](location)
   }
 
   private cancelRequest(): void {

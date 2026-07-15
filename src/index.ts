@@ -18,5 +18,7 @@ export type {
   VibePageLoader,
   VibePageRequest,
   VibePreview,
+  VibeReelRouteContext,
+  VibeRoutingOptions,
   VibeState,
 } from './types'

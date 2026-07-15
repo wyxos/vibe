@@ -1,4 +1,5 @@
 import type { Component } from 'vue'
+import type { RouteLocationRaw, Router } from 'vue-router'
 
 export type VibeCursor = string | number | null
 export type VibeItemId = string | number
@@ -38,6 +39,20 @@ export interface VibeCardRegionProps {
   total: number | null
 }
 
+export interface VibeReelRouteContext {
+  index: number
+  item: VibeItem
+  loadedCount: number
+  origin: 'masonry' | 'reel'
+  total: number | null
+}
+
+export interface VibeRoutingOptions {
+  feed: RouteLocationRaw | (() => RouteLocationRaw)
+  reel: (context: VibeReelRouteContext) => RouteLocationRaw | null
+  router: Router
+}
+
 export interface VibePage {
   items: VibeItem[]
   next: VibeCursor
@@ -63,6 +78,7 @@ export interface CreateVibeOptions {
   infiniteScroll?: boolean
   initialPage?: VibeInitialPage
   loadPage?: VibePageLoader
+  routing?: VibeRoutingOptions
 }
 
 export interface VibeState {

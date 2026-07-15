@@ -99,6 +99,38 @@ and alignment, and receives `item`, `layout`, `mediaSource`, zero-based `index`,
 `VibeCardRegionProps` type for typed Vue props. Interacting with these regions
 does not activate the underlying media.
 
+## Reel URLs with Vue Router
+
+Pass a Vue Router instance when the application should reflect the active reel
+in its URL. The consumer owns the route names and the item-to-location mapping:
+
+```ts
+import { useRouter } from 'vue-router'
+import { createVibe } from '@wyxos/vibe'
+
+const router = useRouter()
+const vibe = createVibe({
+  target: '#gallery',
+  loadPage,
+  routing: {
+    router,
+    feed: { name: 'gallery' },
+    reel: ({ item }) => ({
+      name: 'gallery-file',
+      params: { fileId: String(item.postId) },
+    }),
+  },
+})
+```
+
+Vibe pushes the first reel location, replaces it as the active reel changes,
+and replaces it with `feed` when the masonry-origin reel closes or responsive
+layout returns to masonry. The reel callback also receives the zero-based
+`index`, `loadedCount`, optional remote `total`, and whether the reel originated
+from `masonry` or the base `reel` layout. Return `null` to skip a URL update for
+an item. Vue Router is an optional peer dependency and is only needed when this
+integration is used.
+
 ## Instance lifecycle
 
 ```ts

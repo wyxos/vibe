@@ -11,7 +11,12 @@ const infiniteScroll = ref(true)
       <div class="app-header-navigation">
         <RouterLink class="app-title" to="/">Vibe</RouterLink>
         <nav class="app-navigation" aria-label="Primary navigation">
-          <RouterLink class="app-nav-link" to="/demos">Demos</RouterLink>
+          <RouterLink
+            class="app-nav-link"
+            to="/demos/card-header-and-footer"
+          >
+            Demos
+          </RouterLink>
         </nav>
       </div>
 

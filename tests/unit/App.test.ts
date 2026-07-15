@@ -48,11 +48,20 @@ describe('App', () => {
   })
 
   async function mountApp(path = '/') {
+    const { wrapper } = await mountAppWithRouter(path)
+
+    return wrapper
+  }
+
+  async function mountAppWithRouter(path = '/') {
     const router = createDemoRouter(createMemoryHistory())
     await router.push(path)
     await router.isReady()
 
-    return mount(App, { global: { plugins: [router] } })
+    return {
+      router,
+      wrapper: mount(App, { global: { plugins: [router] } }),
+    }
   }
 
   it('loads the first page and renders the masonry feed by default', async () => {
@@ -60,7 +69,7 @@ describe('App', () => {
 
     expect(wrapper.get('[role="status"]').text()).toBe('Loading media…')
     expect(wrapper.get('.app-header').text()).toContain('Vibe')
-    expect(wrapper.get('a[href="/demos"]').text()).toBe('Demos')
+    expect(wrapper.get('a[href="/demos/card-header-and-footer"]').text()).toBe('Demos')
     await flushPromises()
 
     expect(fakeServer.getFakeMediaPage).toHaveBeenCalledWith(null)
@@ -195,10 +204,14 @@ describe('App', () => {
   })
 
   it('renders the card header and footer variation on the demos route', async () => {
-    const wrapper = await mountApp('/demos')
+    const { router, wrapper } = await mountAppWithRouter('/demos')
     await flushPromises()
 
-    expect(wrapper.get('.demos-aside').text()).toBe('Card header & footer')
+    expect(router.currentRoute.value.fullPath).toBe('/demos/card-header-and-footer')
+    expect(wrapper.get('.demos-aside a[href="/demos/card-header-and-footer"]')
+      .text()).toBe('Card header & footer')
+    expect(wrapper.get('.demos-aside a[href="/demos/reel-url"]')
+      .text()).toBe('Reel URL')
     expect(wrapper.find('.demo-stage-header').exists()).toBe(false)
 
     const infoAction = wrapper.get('[aria-label="Show information for post 10"]')
@@ -209,5 +222,38 @@ describe('App', () => {
     const loveAction = wrapper.get('[aria-label="Love"]')
     await loveAction.trigger('click')
     expect(loveAction.attributes('aria-pressed')).toBe('true')
+  })
+
+  it('updates and restores the URL for a masonry-origin reel', async () => {
+    const { router, wrapper } = await mountAppWithRouter('/demos/reel-url')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/demos/reel-url')
+    await wrapper.get('[data-post-id="10"]').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/demos/reel-url/file/10')
+    expect(wrapper.find('.vibe-reel-overlay').exists()).toBe(true)
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/demos/reel-url')
+    expect(wrapper.find('.vibe-reel-overlay').exists()).toBe(false)
+    expect(wrapper.find('.masonry-feed').exists()).toBe(true)
+  })
+
+  it('reflects the first active item in the URL for a phone reel', async () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(430)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(932)
+    vi.spyOn(window.screen, 'width', 'get').mockReturnValue(430)
+    vi.spyOn(window.screen, 'height', 'get').mockReturnValue(932)
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })))
+
+    const { router, wrapper } = await mountAppWithRouter('/demos/reel-url')
+    await flushPromises()
+
+    expect(wrapper.find('[data-layout-mode="reel"]').exists()).toBe(true)
+    expect(router.currentRoute.value.fullPath).toBe('/demos/reel-url/file/10')
   })
 })
