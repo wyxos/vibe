@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { CSSProperties } from 'vue'
+import { computed, type CSSProperties } from 'vue'
 
+import type { MediaSource } from '../core/feed'
 import {
   mediaErrorLabel,
   mediaErrorStatus,
@@ -8,12 +9,13 @@ import {
 } from '../core/mediaPreview'
 import type { VibeItem } from '../types'
 
-defineProps<{
+const props = defineProps<{
   entering: boolean
   fetchPriority: 'high' | 'low'
   item: VibeItem
   itemStyle?: CSSProperties
   interactive?: boolean
+  mediaSource?: MediaSource
   previewState: MediaPreviewState
 }>()
 
@@ -26,6 +28,18 @@ const emit = defineEmits<{
 function activate(interactive = false): void {
   if (interactive) emit('activate')
 }
+
+const mediaSrc = computed(() => (
+  props.mediaSource === 'original' ? props.item.src : props.item.preview.src
+))
+
+const mediaWidth = computed(() => (
+  props.mediaSource === 'original' ? props.item.width : props.item.preview.width
+))
+
+const mediaHeight = computed(() => (
+  props.mediaSource === 'original' ? props.item.height : props.item.preview.height
+))
 
 function isVideo(src: string): boolean {
   try {
@@ -67,21 +81,21 @@ function isVideo(src: string): boolean {
         data-test="media-error"
         class="media-error"
         role="img"
-        :aria-label="`${mediaErrorStatus(item.preview.src)} ${mediaErrorLabel(item.preview.src)}`"
+        :aria-label="`${mediaErrorStatus(mediaSrc)} ${mediaErrorLabel(mediaSrc)}`"
       >
         <strong class="media-error-code">
-          {{ mediaErrorStatus(item.preview.src) }}
+          {{ mediaErrorStatus(mediaSrc) }}
         </strong>
-        <span>{{ mediaErrorLabel(item.preview.src) }}</span>
+        <span>{{ mediaErrorLabel(mediaSrc) }}</span>
       </div>
 
       <video
-        v-if="isVideo(item.preview.src)"
+        v-if="isVideo(mediaSrc)"
         class="media-preview"
         :class="{ 'media-preview--ready': previewState === 'ready' }"
-        :src="item.preview.src"
-        :width="item.preview.width ?? undefined"
-        :height="item.preview.height ?? undefined"
+        :src="mediaSrc"
+        :width="mediaWidth ?? undefined"
+        :height="mediaHeight ?? undefined"
         autoplay
         loop
         muted
@@ -95,9 +109,9 @@ function isVideo(src: string): boolean {
         v-else
         class="media-preview"
         :class="{ 'media-preview--ready': previewState === 'ready' }"
-        :src="item.preview.src"
-        :width="item.preview.width ?? undefined"
-        :height="item.preview.height ?? undefined"
+        :src="mediaSrc"
+        :width="mediaWidth ?? undefined"
+        :height="mediaHeight ?? undefined"
         :fetchpriority="fetchPriority"
         alt=""
         decoding="async"

@@ -1,6 +1,8 @@
 import type { VibeItem, VibeItemId } from '../types'
 import type { MediaPreviewState } from './mediaPreview'
 
+export type MediaSource = 'preview' | 'original'
+
 export interface FeedRendererProps {
   hasNext: boolean
   infiniteScroll: boolean
@@ -18,6 +20,7 @@ export interface MasonryFeedProps extends FeedRendererProps {
 
 export interface ReelFeedProps extends FeedRendererProps {
   initialPostId?: VibeItemId | null
+  mediaSource?: MediaSource
 }
 
 export const LOAD_MORE_THRESHOLD = 240

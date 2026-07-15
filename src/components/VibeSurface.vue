@@ -5,6 +5,7 @@ import {
   onMounted,
   shallowRef,
   watch,
+  type CSSProperties,
 } from 'vue'
 
 import type { MediaPreviewState } from '../core/mediaPreview'
@@ -18,6 +19,8 @@ const ENTRY_STAGGER_MS = 35
 interface FeedRendererExpose {
   loadIfNearBottom: () => void
 }
+
+type ReelOriginStyle = CSSProperties & Record<`--vibe-reel-origin-${string}`, string>
 
 const props = defineProps<{
   state: VibeRuntimeState
@@ -34,9 +37,12 @@ const masonryRenderer = shallowRef<FeedRendererExpose | null>(null)
 const reelRenderer = shallowRef<FeedRendererExpose | null>(null)
 const reelOverlay = shallowRef<HTMLElement | null>(null)
 const surfaceElement = shallowRef<HTMLElement | null>(null)
+const reelOriginStyle = shallowRef<ReelOriginStyle>({})
+const isReelLeaving = shallowRef(false)
 const enteringPostIds = shallowRef<ReadonlySet<VibeItemId>>(new Set())
 const entryDelays = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
 const mediaPreviewStates = shallowRef<ReadonlyMap<VibeItemId, MediaPreviewState>>(new Map())
+const mediaOriginalStates = shallowRef<ReadonlyMap<VibeItemId, MediaPreviewState>>(new Map())
 let previousPostIds = new Set<VibeItemId>()
 let enterReleaseFrame: number | null = null
 let restoreFocusPostId: VibeItemId | null = null
@@ -63,6 +69,12 @@ function setMediaPreviewState(postId: VibeItemId, state: MediaPreviewState): voi
   mediaPreviewStates.value = new Map(mediaPreviewStates.value).set(postId, state)
 }
 
+function setMediaOriginalState(postId: VibeItemId, state: MediaPreviewState): void {
+  if (mediaOriginalStates.value.get(postId) === state) return
+
+  mediaOriginalStates.value = new Map(mediaOriginalStates.value).set(postId, state)
+}
+
 async function loadIfNearBottom(): Promise<void> {
   await nextTick()
   const renderer = props.state.layout === 'reel' || props.state.reelOrigin === 'masonry'
@@ -73,22 +85,49 @@ async function loadIfNearBottom(): Promise<void> {
 
 function activateMasonryItem(postId: VibeItemId): void {
   restoreFocusPostId = postId
+  reelOriginStyle.value = getReelOriginStyle(postId)
   emit('openReel', postId)
   void nextTick(() => reelOverlay.value?.focus())
+}
+
+function findMasonryCard(postId: VibeItemId): HTMLElement | null {
+  const cards = surfaceElement.value
+    ?.querySelectorAll<HTMLElement>('.masonry-feed [data-post-id]') ?? []
+
+  return Array.from(cards).find((card) => card.dataset.postId === String(postId)) ?? null
+}
+
+function getReelOriginStyle(postId: VibeItemId): ReelOriginStyle {
+  const surface = surfaceElement.value
+  const card = findMasonryCard(postId)
+  if (surface === null || card === null) return {}
+
+  const surfaceRect = surface.getBoundingClientRect()
+  const cardRect = card.getBoundingClientRect()
+
+  return {
+    '--vibe-reel-origin-top': `${Math.max(0, cardRect.top - surfaceRect.top)}px`,
+    '--vibe-reel-origin-right': `${Math.max(0, surfaceRect.right - cardRect.right)}px`,
+    '--vibe-reel-origin-bottom': `${Math.max(0, surfaceRect.bottom - cardRect.bottom)}px`,
+    '--vibe-reel-origin-left': `${Math.max(0, cardRect.left - surfaceRect.left)}px`,
+  }
 }
 
 function closeMasonryReel(): void {
   if (props.state.reelOrigin !== 'masonry') return
 
-  const postId = restoreFocusPostId ?? props.state.activeReelPostId
+  restoreFocusPostId ??= props.state.activeReelPostId
+  isReelLeaving.value = true
   emit('closeReel')
-  void nextTick(() => {
-    if (postId === null) return
+}
 
-    const cards = surfaceElement.value
-      ?.querySelectorAll<HTMLElement>('.masonry-feed [data-post-id]') ?? []
-    Array.from(cards).find((card) => card.dataset.postId === String(postId))?.focus()
-    restoreFocusPostId = null
+function finishReelLeave(): void {
+  const postId = restoreFocusPostId
+  isReelLeaving.value = false
+  restoreFocusPostId = null
+  reelOriginStyle.value = {}
+  void nextTick(() => {
+    if (postId !== null) findMasonryCard(postId)?.focus()
   })
 }
 
@@ -192,37 +231,44 @@ defineExpose({ loadIfNearBottom })
         :items="state.items"
         :next-page-error="Boolean(state.nextPageError)"
         :preview-states="mediaPreviewStates"
-        :suspended="state.reelOrigin === 'masonry'"
+        :suspended="state.reelOrigin === 'masonry' || isReelLeaving"
         @activate="activateMasonryItem"
         @error="setMediaPreviewState($event, 'error')"
         @load-more="emit('loadMore')"
         @ready="setMediaPreviewState($event, 'ready')"
       />
 
-      <section
-        v-if="state.reelOrigin === 'masonry'"
-        ref="reelOverlay"
-        class="vibe-reel-overlay"
-        role="dialog"
-        aria-label="Media viewer"
-        aria-modal="true"
-        tabindex="-1"
+      <Transition
+        name="vibe-reel-viewer"
+        @after-leave="finishReelLeave"
       >
-        <ReelFeed
-          ref="reelRenderer"
-          :has-next="state.next !== null"
-          :infinite-scroll="state.infiniteScroll"
-          :initial-post-id="state.activeReelPostId"
-          :is-loading-more="state.isLoadingMore"
-          :items="state.items"
-          :next-page-error="Boolean(state.nextPageError)"
-          :preview-states="mediaPreviewStates"
-          @active-change="emit('activeReelChange', $event)"
-          @error="setMediaPreviewState($event, 'error')"
-          @load-more="emit('loadMore')"
-          @ready="setMediaPreviewState($event, 'ready')"
-        />
-      </section>
+        <section
+          v-if="state.reelOrigin === 'masonry'"
+          ref="reelOverlay"
+          class="vibe-reel-overlay"
+          role="dialog"
+          aria-label="Media viewer"
+          aria-modal="true"
+          tabindex="-1"
+          :style="reelOriginStyle"
+        >
+          <ReelFeed
+            ref="reelRenderer"
+            :has-next="state.next !== null"
+            :infinite-scroll="state.infiniteScroll"
+            :initial-post-id="state.activeReelPostId"
+            :is-loading-more="state.isLoadingMore"
+            :items="state.items"
+            media-source="original"
+            :next-page-error="Boolean(state.nextPageError)"
+            :preview-states="mediaOriginalStates"
+            @active-change="emit('activeReelChange', $event)"
+            @error="setMediaOriginalState($event, 'error')"
+            @load-more="emit('loadMore')"
+            @ready="setMediaOriginalState($event, 'ready')"
+          />
+        </section>
+      </Transition>
     </template>
   </div>
 </template>

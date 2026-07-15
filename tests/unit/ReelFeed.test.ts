@@ -91,6 +91,22 @@ describe('ReelFeed', () => {
     expect(wrapper.get('[data-post-id="15"]').attributes('style')).toContain('grid-row: 6')
   })
 
+  it('uses previews by default and originals when requested', async () => {
+    const previewWrapper = mount(ReelFeed, { props: props() })
+    const originalWrapper = mount(ReelFeed, {
+      props: { ...props(), mediaSource: 'original' },
+    })
+    await Promise.all([
+      previewWrapper.vm.$nextTick(),
+      originalWrapper.vm.$nextTick(),
+    ])
+
+    expect(previewWrapper.get('[data-post-id="10"] img').attributes('src'))
+      .toBe('https://example.com/10-preview.jpg')
+    expect(originalWrapper.get('[data-post-id="10"] img').attributes('src'))
+      .toBe('https://example.com/10.jpg')
+  })
+
   it('keeps the active post anchored through transient rotation sizes', async () => {
     const wrapper = mount(ReelFeed, { props: props() })
     await wrapper.vm.$nextTick()

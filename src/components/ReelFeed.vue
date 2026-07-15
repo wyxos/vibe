@@ -190,6 +190,7 @@ defineExpose({ activeIndex, activePostId, loadIfNearBottom })
         :fetch-priority="fetchPriority"
         :item="item"
         :item-style="itemStyle(index)"
+        :media-source="mediaSource"
         :preview-state="previewStates.get(item.postId) ?? 'loading'"
         @ready="emit('ready', item.postId)"
         @error="emit('error', item.postId)"
