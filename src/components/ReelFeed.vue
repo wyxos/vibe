@@ -11,6 +11,7 @@ import {
 
 import type { ReelFeedProps } from '../core/feed'
 import { isNearFeedBottom } from '../core/feed'
+import { mediaStateKey } from '../core/mediaAsset'
 import type { VibeItemId } from '../types'
 import GalleryFooter from './GalleryFooter.vue'
 import MediaCard from './MediaCard.vue'
@@ -20,9 +21,10 @@ const VIRTUAL_OVERSCAN = 2
 const props = defineProps<ReelFeedProps>()
 const emit = defineEmits<{
   activeChange: [postId: VibeItemId]
-  error: [postId: VibeItemId]
+  error: [postId: VibeItemId, mediaIndex: number]
   loadMore: []
-  ready: [postId: VibeItemId]
+  mediaChange: [postId: VibeItemId, mediaIndex: number]
+  ready: [postId: VibeItemId, mediaIndex: number]
 }>()
 
 const galleryElement = shallowRef<HTMLElement | null>(null)
@@ -175,6 +177,9 @@ defineExpose({ activeIndex, activePostId, loadIfNearBottom })
     class="gallery-shell reel-feed"
     data-layout-mode="reel"
     :data-active-post-id="activePostId"
+    :data-active-media-index="activePostId === undefined
+      ? undefined
+      : mediaIndices.get(activePostId) ?? 0"
     @scroll.passive="onScroll"
   >
     <section
@@ -195,11 +200,16 @@ defineExpose({ activeIndex, activePostId, loadIfNearBottom })
         :item-style="itemStyle(index)"
         layout="reel"
         :loaded-count="items.length"
+        :media-index="mediaIndices.get(item.postId) ?? 0"
         :media-source="mediaSource"
-        :preview-state="previewStates.get(item.postId) ?? 'loading'"
+        :preview-state="previewStates.get(mediaStateKey(
+          item.postId,
+          mediaIndices.get(item.postId) ?? 0,
+        )) ?? 'loading'"
         :total="total"
-        @ready="emit('ready', item.postId)"
-        @error="emit('error', item.postId)"
+        @media-change="emit('mediaChange', item.postId, $event)"
+        @ready="emit('ready', item.postId, $event)"
+        @error="emit('error', item.postId, $event)"
       />
     </section>
 

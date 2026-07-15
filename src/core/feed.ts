@@ -13,8 +13,9 @@ export interface FeedRendererProps {
   infiniteScroll: boolean
   isLoadingMore: boolean
   items: readonly VibeItem[]
+  mediaIndices: ReadonlyMap<VibeItemId, number>
   nextPageError: boolean
-  previewStates: ReadonlyMap<VibeItemId, MediaPreviewState>
+  previewStates: ReadonlyMap<string, MediaPreviewState>
   total: number | null
 }
 

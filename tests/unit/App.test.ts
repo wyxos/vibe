@@ -204,6 +204,21 @@ describe('App', () => {
   })
 
   it('renders the card header and footer variation on the demos route', async () => {
+    const groupedItem = feedItem(10)
+    groupedItem.items = [{
+      src: 'https://example.com/image-10-a.jpeg',
+      preview: {
+        src: 'https://example.com/image-10-a-preview.jpeg',
+        width: 400,
+        height: 600,
+      },
+      width: 800,
+      height: 1200,
+    }]
+    fakeServer.getFakeMediaPage.mockResolvedValueOnce({
+      items: [groupedItem],
+      meta: { next: null, total: 8 },
+    })
     const { router, wrapper } = await mountAppWithRouter('/demos')
     await flushPromises()
 
@@ -213,10 +228,17 @@ describe('App', () => {
     expect(wrapper.get('.demos-aside a[href="/demos/reel-url"]')
       .text()).toBe('Reel URL')
     expect(wrapper.find('.demo-stage-header').exists()).toBe(false)
+    expect(wrapper.findAll('.demo-card-metadata').map((metadata) => metadata.text()))
+      .toEqual(['1 / 2', '1 / 1'])
+
+    await wrapper.get('[aria-label="Next media for post 10"]').trigger('click')
+    expect(wrapper.findAll('.demo-card-metadata').map((metadata) => metadata.text()))
+      .toEqual(['2 / 2', '1 / 1'])
 
     const infoAction = wrapper.get('[aria-label="Show information for post 10"]')
     await infoAction.trigger('click')
-    expect(wrapper.get('.demo-card-metadata').text()).toBe('1 / 1 · 900 × 1200')
+    expect(wrapper.findAll('.demo-card-metadata').map((metadata) => metadata.text()))
+      .toEqual(['2 / 2', '800 × 1200', '1 / 1'])
     expect(wrapper.find('.vibe-reel-overlay').exists()).toBe(false)
 
     const loveAction = wrapper.get('[aria-label="Love"]')

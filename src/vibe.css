@@ -149,6 +149,10 @@
   outline-offset: -2px;
 }
 
+.media-card-focus-silent:focus {
+  outline: none !important;
+}
+
 .media-card--error {
   background: #121212;
 }
@@ -170,6 +174,37 @@
   background: #171717;
 }
 
+.media-card-media--carousel {
+  touch-action: pan-y;
+}
+
+.media-card-frame {
+  position: absolute;
+  inset: 0;
+}
+
+.media-slide-next-enter-active,
+.media-slide-next-leave-active,
+.media-slide-previous-enter-active,
+.media-slide-previous-leave-active {
+  transition:
+    opacity 220ms ease,
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.media-slide-next-enter-from,
+.media-slide-previous-leave-to {
+  opacity: 0.72;
+  transform: translate3d(100%, 0, 0);
+}
+
+.media-slide-next-leave-to,
+.media-slide-previous-enter-from {
+  opacity: 0.72;
+  transform: translate3d(-100%, 0, 0);
+}
+
 .media-card-header,
 .media-card-footer {
   position: relative;
@@ -189,6 +224,69 @@
   border: 0;
   background: transparent;
   cursor: pointer;
+}
+
+.media-card-activator:focus-visible {
+  outline: 2px solid #f5f5f5;
+  outline-offset: -2px;
+}
+
+.media-carousel-controls {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  right: 0.625rem;
+  left: 0.625rem;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-50%);
+  transition: opacity 160ms ease, visibility 160ms ease;
+}
+
+.media-card:hover .media-carousel-controls,
+.media-card:focus-within:not(.media-card-focus-silent):not(:has(.media-card-focus-silent))
+  .media-carousel-controls,
+.media-carousel-controls--persistent {
+  opacity: 1;
+  visibility: visible;
+}
+
+.media-carousel-control {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 35%);
+  border-radius: 50%;
+  place-items: center;
+  color: #f5f5f5;
+  background: rgb(8 8 8 / 78%);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 160ms ease, opacity 160ms ease, transform 160ms ease;
+}
+
+.media-carousel-control:hover:not(:disabled) {
+  background: rgb(38 38 38 / 94%);
+  transform: scale(1.04);
+}
+
+.media-carousel-control:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.media-carousel-control:disabled {
+  cursor: default;
+  opacity: 0.28;
+}
+
+.media-carousel-control:focus-visible {
+  outline: 2px solid #f5f5f5;
+  outline-offset: 3px;
 }
 
 .media-preview--reel-video {
@@ -392,6 +490,12 @@
   .masonry-item,
   .load-more-button,
   .media-video-control,
+  .media-carousel-control,
+  .media-carousel-controls,
+  .media-slide-next-enter-active,
+  .media-slide-next-leave-active,
+  .media-slide-previous-enter-active,
+  .media-slide-previous-leave-active,
   .media-preview,
   .vibe-reel-viewer-enter-active,
   .vibe-reel-viewer-leave-active,

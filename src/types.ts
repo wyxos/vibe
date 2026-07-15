@@ -35,6 +35,9 @@ export interface VibeCardRegionProps {
   item: VibeItem
   layout: VibeLayout
   loadedCount: number
+  mediaCount: number
+  mediaIndex: number
+  mediaItem: VibeMediaAsset
   mediaSource: VibeMediaSource
   total: number | null
 }

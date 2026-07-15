@@ -198,6 +198,7 @@ body {
 
 .demo-card-header-content,
 .demo-card-reactions {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.375rem;
@@ -211,9 +212,26 @@ body {
   border-bottom: 1px solid #262626;
 }
 
+.demo-card-media-position {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.demo-card-details {
+  position: absolute;
+  left: 0.5rem;
+  max-width: calc(50% - 1rem);
+}
+
 .demo-card-reactions {
   justify-content: center;
   border-top: 1px solid #262626;
+}
+
+.demo-card-post-position {
+  position: absolute;
+  left: 0.5rem;
 }
 
 .demo-card-action {

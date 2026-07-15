@@ -9,6 +9,7 @@ import {
 } from 'vue'
 
 import type { MediaPreviewState } from '../core/mediaPreview'
+import { clampMediaIndex, mediaStateKey } from '../core/mediaAsset'
 import type { VibeRuntimeState } from '../core/runtime'
 import type { VibeCardRegion, VibeItemId } from '../types'
 import MasonryFeed from './MasonryFeed.vue'
@@ -43,11 +44,13 @@ const reelOriginStyle = shallowRef<ReelOriginStyle>({})
 const isReelLeaving = shallowRef(false)
 const enteringPostIds = shallowRef<ReadonlySet<VibeItemId>>(new Set())
 const entryDelays = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
-const mediaPreviewStates = shallowRef<ReadonlyMap<VibeItemId, MediaPreviewState>>(new Map())
-const mediaOriginalStates = shallowRef<ReadonlyMap<VibeItemId, MediaPreviewState>>(new Map())
+const mediaIndices = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
+const mediaPreviewStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
+const mediaOriginalStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
 let previousPostIds = new Set<VibeItemId>()
 let enterReleaseFrame: number | null = null
 let restoreFocusPostId: VibeItemId | null = null
+let restoreFocusVisible = false
 
 function prefersReducedMotion(): boolean {
   return typeof window.matchMedia === 'function'
@@ -65,16 +68,52 @@ function scheduleEnterRelease(): void {
   })
 }
 
-function setMediaPreviewState(postId: VibeItemId, state: MediaPreviewState): void {
-  if (mediaPreviewStates.value.get(postId) === state) return
+function setMediaPreviewState(
+  postId: VibeItemId,
+  mediaIndex: number,
+  state: MediaPreviewState,
+): void {
+  const key = mediaStateKey(postId, mediaIndex)
+  if (mediaPreviewStates.value.get(key) === state) return
 
-  mediaPreviewStates.value = new Map(mediaPreviewStates.value).set(postId, state)
+  mediaPreviewStates.value = new Map(mediaPreviewStates.value).set(key, state)
 }
 
-function setMediaOriginalState(postId: VibeItemId, state: MediaPreviewState): void {
-  if (mediaOriginalStates.value.get(postId) === state) return
+function setMediaOriginalState(
+  postId: VibeItemId,
+  mediaIndex: number,
+  state: MediaPreviewState,
+): void {
+  const key = mediaStateKey(postId, mediaIndex)
+  if (mediaOriginalStates.value.get(key) === state) return
 
-  mediaOriginalStates.value = new Map(mediaOriginalStates.value).set(postId, state)
+  mediaOriginalStates.value = new Map(mediaOriginalStates.value).set(key, state)
+}
+
+function markMediaPreviewError(postId: VibeItemId, mediaIndex: number): void {
+  setMediaPreviewState(postId, mediaIndex, 'error')
+}
+
+function markMediaPreviewReady(postId: VibeItemId, mediaIndex: number): void {
+  setMediaPreviewState(postId, mediaIndex, 'ready')
+}
+
+function markMediaOriginalError(postId: VibeItemId, mediaIndex: number): void {
+  setMediaOriginalState(postId, mediaIndex, 'error')
+}
+
+function markMediaOriginalReady(postId: VibeItemId, mediaIndex: number): void {
+  setMediaOriginalState(postId, mediaIndex, 'ready')
+}
+
+function setMediaIndex(postId: VibeItemId, mediaIndex: number): void {
+  const item = props.state.items.find((candidate) => candidate.postId === postId)
+  if (!item) return
+
+  const nextIndex = clampMediaIndex(item, mediaIndex)
+  if ((mediaIndices.value.get(postId) ?? 0) === nextIndex) return
+
+  mediaIndices.value = new Map(mediaIndices.value).set(postId, nextIndex)
 }
 
 async function loadIfNearBottom(): Promise<void> {
@@ -85,8 +124,12 @@ async function loadIfNearBottom(): Promise<void> {
   renderer?.loadIfNearBottom()
 }
 
-function activateMasonryItem(postId: VibeItemId): void {
+function activateMasonryItem(
+  postId: VibeItemId,
+  input: 'keyboard' | 'pointer',
+): void {
   restoreFocusPostId = postId
+  restoreFocusVisible = input === 'keyboard'
   reelOriginStyle.value = getReelOriginStyle(postId)
   emit('openReel', postId)
   void nextTick(() => reelOverlay.value?.focus())
@@ -99,10 +142,18 @@ function findMasonryCard(postId: VibeItemId): HTMLElement | null {
   return Array.from(cards).find((card) => card.dataset.postId === String(postId)) ?? null
 }
 
-function focusMasonryCard(postId: VibeItemId): void {
+function focusMasonryCard(postId: VibeItemId, showFocusRing: boolean): void {
   const card = findMasonryCard(postId)
   const activator = card?.querySelector<HTMLElement>('.media-card-activator')
   const focusTarget = activator ?? card
+  if (!focusTarget) return
+
+  focusTarget.classList.toggle('media-card-focus-silent', !showFocusRing)
+  if (!showFocusRing) {
+    focusTarget.addEventListener('blur', () => {
+      focusTarget.classList.remove('media-card-focus-silent')
+    }, { once: true })
+  }
   focusTarget?.focus()
 }
 
@@ -132,11 +183,13 @@ function closeMasonryReel(): void {
 
 function finishReelLeave(): void {
   const postId = restoreFocusPostId
+  const showFocusRing = restoreFocusVisible
   isReelLeaving.value = false
   restoreFocusPostId = null
+  restoreFocusVisible = false
   reelOriginStyle.value = {}
   void nextTick(() => {
-    if (postId !== null) focusMasonryCard(postId)
+    if (postId !== null) focusMasonryCard(postId, showFocusRing)
   })
 }
 
@@ -222,14 +275,16 @@ defineExpose({ loadIfNearBottom })
       :infinite-scroll="state.infiniteScroll"
       :is-loading-more="state.isLoadingMore"
       :items="state.items"
+      :media-indices="mediaIndices"
       :initial-post-id="state.activeReelPostId"
       :next-page-error="Boolean(state.nextPageError)"
       :preview-states="mediaPreviewStates"
       :total="state.total"
       @active-change="emit('activeReelChange', $event)"
-      @error="setMediaPreviewState($event, 'error')"
+      @error="markMediaPreviewError"
       @load-more="emit('loadMore')"
-      @ready="setMediaPreviewState($event, 'ready')"
+      @media-change="setMediaIndex"
+      @ready="markMediaPreviewReady"
     />
 
     <template v-else>
@@ -243,14 +298,16 @@ defineExpose({ loadIfNearBottom })
         :infinite-scroll="state.infiniteScroll"
         :is-loading-more="state.isLoadingMore"
         :items="state.items"
+        :media-indices="mediaIndices"
         :next-page-error="Boolean(state.nextPageError)"
         :preview-states="mediaPreviewStates"
         :suspended="state.reelOrigin === 'masonry' || isReelLeaving"
         :total="state.total"
         @activate="activateMasonryItem"
-        @error="setMediaPreviewState($event, 'error')"
+        @error="markMediaPreviewError"
         @load-more="emit('loadMore')"
-        @ready="setMediaPreviewState($event, 'ready')"
+        @media-change="setMediaIndex"
+        @ready="markMediaPreviewReady"
       />
 
       <Transition
@@ -276,14 +333,16 @@ defineExpose({ loadIfNearBottom })
             :initial-post-id="state.activeReelPostId"
             :is-loading-more="state.isLoadingMore"
             :items="state.items"
+            :media-indices="mediaIndices"
             media-source="original"
             :next-page-error="Boolean(state.nextPageError)"
             :preview-states="mediaOriginalStates"
             :total="state.total"
             @active-change="emit('activeReelChange', $event)"
-            @error="setMediaOriginalState($event, 'error')"
+            @error="markMediaOriginalError"
             @load-more="emit('loadMore')"
-            @ready="setMediaOriginalState($event, 'ready')"
+            @media-change="setMediaIndex"
+            @ready="markMediaOriginalReady"
           />
         </section>
       </Transition>

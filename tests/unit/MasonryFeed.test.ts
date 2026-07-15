@@ -18,6 +18,18 @@ function feedItem(postId: number) {
   }
 }
 
+function groupedFeedItem(postId: number) {
+  const base = feedItem(postId)
+
+  return {
+    ...base,
+    items: [
+      { ...base, src: `https://example.com/${postId}-a.jpg` },
+      { ...base, src: `https://example.com/${postId}-b.jpg` },
+    ],
+  }
+}
+
 function props(items = [feedItem(1)]) {
   return {
     enteringPostIds: new Set(items.map((item) => item.postId)),
@@ -26,8 +38,10 @@ function props(items = [feedItem(1)]) {
     infiniteScroll: true,
     isLoadingMore: false,
     items,
+    mediaIndices: new Map(),
     nextPageError: false,
     previewStates: new Map(),
+    total: null,
   }
 }
 
@@ -99,9 +113,38 @@ describe('MasonryFeed', () => {
     expect(card.attributes('role')).toBe('button')
     expect(card.attributes('tabindex')).toBe('0')
 
-    await card.trigger('click')
+    card.element.dispatchEvent(new MouseEvent('click', {
+      bubbles: true,
+      detail: 1,
+    }))
+    await wrapper.vm.$nextTick()
     await card.trigger('keydown', { key: 'Enter' })
 
-    expect(wrapper.emitted('activate')).toEqual([[8], [8]])
+    expect(wrapper.emitted('activate')).toEqual([
+      [8, 'pointer'],
+      [8, 'keyboard'],
+    ])
+  })
+
+  it('cycles grouped media in both directions and loops at the edges', async () => {
+    const item = groupedFeedItem(8)
+    const wrapper = mount(MasonryFeed, { props: props([item]) })
+    await wrapper.vm.$nextTick()
+
+    const next = wrapper.get('[aria-label="Next media for post 8"]')
+    const previous = wrapper.get('[aria-label="Previous media for post 8"]')
+    expect(wrapper.get('.media-carousel-controls').classes())
+      .not.toContain('media-carousel-controls--persistent')
+
+    await next.trigger('click')
+    expect(wrapper.emitted('mediaChange')?.at(-1)).toEqual([8, 1])
+
+    await wrapper.setProps({ mediaIndices: new Map([[8, 2]]) })
+    await next.trigger('click')
+    expect(wrapper.emitted('mediaChange')?.at(-1)).toEqual([8, 0])
+
+    await wrapper.setProps({ mediaIndices: new Map([[8, 0]]) })
+    await previous.trigger('click')
+    expect(wrapper.emitted('mediaChange')?.at(-1)).toEqual([8, 2])
   })
 })

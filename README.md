@@ -95,9 +95,17 @@ The heights are CSS pixels and let Vibe include both regions in masonry before
 virtualized cards mount. In reel layout, they reduce the media area while the
 whole card remains one viewport tall. Each component controls its own content
 and alignment, and receives `item`, `layout`, `mediaSource`, zero-based `index`,
-`loadedCount`, and the optional remote `total`. Import the
+`loadedCount`, the active `mediaItem`, its zero-based `mediaIndex`, its inclusive
+`mediaCount`, and the optional remote `total`. Import the
 `VibeCardRegionProps` type for typed Vue props. Interacting with these regions
 does not activate the underlying media.
+
+When a feed item has entries in `item.items`, Vibe treats the parent media as
+position one and the nested entries as the remaining positions. Masonry cards
+show looping previous/next controls on hover or keyboard focus. Reel layout
+keeps those controls visible and supports native horizontal-wheel or touch-swipe
+navigation through grouped media. Media changes use a directional horizontal
+transition, while vertical reel scrolling continues to move between posts.
 
 ## Reel URLs with Vue Router
 

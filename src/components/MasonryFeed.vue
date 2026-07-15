@@ -9,6 +9,7 @@ import {
 
 import type { MasonryFeedProps } from '../core/feed'
 import { isNearFeedBottom } from '../core/feed'
+import { mediaStateKey } from '../core/mediaAsset'
 import {
   calculateMasonryEntryOffset,
   calculateMasonryLayout,
@@ -26,10 +27,11 @@ const VIRTUAL_OVERSCAN_FACTOR = 1.5
 
 const props = defineProps<MasonryFeedProps>()
 const emit = defineEmits<{
-  activate: [postId: VibeItemId]
-  error: [postId: VibeItemId]
+  activate: [postId: VibeItemId, input: 'keyboard' | 'pointer']
+  error: [postId: VibeItemId, mediaIndex: number]
   loadMore: []
-  ready: [postId: VibeItemId]
+  mediaChange: [postId: VibeItemId, mediaIndex: number]
+  ready: [postId: VibeItemId, mediaIndex: number]
 }>()
 
 const galleryElement = shallowRef<HTMLElement | null>(null)
@@ -217,11 +219,16 @@ defineExpose({ loadIfNearBottom })
         interactive
         layout="masonry"
         :loaded-count="items.length"
-        :preview-state="previewStates.get(item.postId) ?? 'loading'"
+        :media-index="mediaIndices.get(item.postId) ?? 0"
+        :preview-state="previewStates.get(mediaStateKey(
+          item.postId,
+          mediaIndices.get(item.postId) ?? 0,
+        )) ?? 'loading'"
         :total="total"
-        @activate="emit('activate', item.postId)"
-        @ready="emit('ready', item.postId)"
-        @error="emit('error', item.postId)"
+        @activate="emit('activate', item.postId, $event)"
+        @media-change="emit('mediaChange', item.postId, $event)"
+        @ready="emit('ready', item.postId, $event)"
+        @error="emit('error', item.postId, $event)"
       />
     </section>
 

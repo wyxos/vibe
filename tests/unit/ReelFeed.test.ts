@@ -18,14 +18,29 @@ function feedItem(postId: number) {
   }
 }
 
+function mediaAsset(name: string) {
+  return {
+    src: `https://example.com/${name}.jpg`,
+    preview: {
+      src: `https://example.com/${name}-preview.jpg`,
+      width: 450,
+      height: 600,
+    },
+    width: 900,
+    height: 1200,
+  }
+}
+
 function props() {
   return {
     hasNext: false,
     infiniteScroll: true,
     isLoadingMore: false,
     items: Array.from({ length: 10 }, (_, index) => feedItem(index + 10)),
+    mediaIndices: new Map(),
     nextPageError: false,
     previewStates: new Map(),
+    total: null,
   }
 }
 
@@ -105,6 +120,38 @@ describe('ReelFeed', () => {
       .toBe('https://example.com/10-preview.jpg')
     expect(originalWrapper.get('[data-post-id="10"] img').attributes('src'))
       .toBe('https://example.com/10.jpg')
+  })
+
+  it('keeps grouped media horizontal while vertical scrolling advances posts', async () => {
+    const groupedItem = {
+      ...feedItem(10),
+      items: [mediaAsset('10-a'), mediaAsset('10-b')],
+    }
+    const wrapper = mount(ReelFeed, {
+      props: {
+        ...props(),
+        items: [groupedItem, feedItem(11)],
+        mediaIndices: new Map([[10, 1]]),
+      },
+    })
+    await wrapper.vm.$nextTick()
+
+    const gallery = wrapper.get('.gallery-shell')
+    expect(wrapper.get('.reel-track').attributes('style'))
+      .toContain('grid-template-rows: repeat(2, 100cqh)')
+    expect(gallery.attributes('data-active-post-id')).toBe('10')
+    expect(gallery.attributes('data-active-media-index')).toBe('1')
+    expect(wrapper.get('[data-post-id="10"] img').attributes('src'))
+      .toBe('https://example.com/10-a-preview.jpg')
+
+    Object.defineProperty(gallery.element, 'scrollTop', {
+      configurable: true,
+      writable: true,
+      value: 500,
+    })
+    await gallery.trigger('scroll')
+    expect(gallery.attributes('data-active-post-id')).toBe('11')
+    expect(gallery.attributes('data-active-media-index')).toBe('0')
   })
 
   it('keeps the active post anchored through transient rotation sizes', async () => {

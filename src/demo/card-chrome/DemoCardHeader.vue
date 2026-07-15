@@ -1,22 +1,32 @@
 <script setup lang="ts">
 import { Info } from 'lucide-vue-next'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import type { VibeCardRegionProps } from '@/index'
 
 const props = defineProps<VibeCardRegionProps>()
 const showDetails = ref(false)
+const mediaPositionLabel = computed(() => (
+  `${props.mediaIndex + 1} / ${props.mediaCount}`
+))
+const dimensionsLabel = computed(() => (
+  `${props.mediaItem.width ?? '—'} × ${props.mediaItem.height ?? '—'}`
+))
 </script>
 
 <template>
   <div class="demo-card-header-content">
     <span
-      v-if="showDetails"
-      class="demo-card-metadata"
-      role="status"
+      v-if="props.mediaCount > 1"
+      class="demo-card-metadata demo-card-media-position"
     >
-      {{ props.index + 1 }} / {{ props.total ?? props.loadedCount }}
-      · {{ props.item.width ?? '—' }} × {{ props.item.height ?? '—' }}
+      {{ mediaPositionLabel }}
+    </span>
+    <span
+      v-if="showDetails"
+      class="demo-card-metadata demo-card-details"
+    >
+      {{ dimensionsLabel }}
     </span>
 
     <button

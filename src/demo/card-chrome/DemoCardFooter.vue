@@ -4,13 +4,16 @@ import {
   Heart,
   ThumbsUp,
 } from 'lucide-vue-next'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import type { VibeCardRegionProps } from '@/index'
 
-defineProps<VibeCardRegionProps>()
+const props = defineProps<VibeCardRegionProps>()
 
 const activeReaction = ref<string | null>(null)
+const postPositionLabel = computed(() => (
+  `${props.index + 1} / ${props.loadedCount}`
+))
 const reactions = [
   { icon: Heart, label: 'Love', value: 'love' },
   { icon: ThumbsUp, label: 'Like', value: 'like' },
@@ -24,6 +27,10 @@ function toggleReaction(reaction: string): void {
 
 <template>
   <div class="demo-card-reactions" aria-label="Media reactions">
+    <span class="demo-card-metadata demo-card-post-position">
+      {{ postPositionLabel }}
+    </span>
+
     <button
       v-for="reaction in reactions"
       :key="reaction.value"
