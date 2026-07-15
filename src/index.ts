@@ -3,13 +3,17 @@ import './vibe.css'
 export { createVibe } from './core/createVibe'
 export type {
   CreateVibeOptions,
+  VibeCardRegion,
+  VibeCardRegionProps,
   VibeCursor,
   VibeInitialPage,
   VibeInstance,
   VibeItem,
   VibeItemId,
   VibeLayout,
+  VibeLayoutMode,
   VibeMediaAsset,
+  VibeMediaSource,
   VibePage,
   VibePageLoader,
   VibePageRequest,

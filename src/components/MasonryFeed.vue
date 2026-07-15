@@ -47,6 +47,8 @@ const masonryLayout = computed(() => calculateMasonryLayout(
   props.items,
   masonryWidth.value,
   {
+    additionalHeight:
+      (props.cardHeader?.height ?? 0) + (props.cardFooter?.height ?? 0),
     gap: masonryGap.value,
     minColumnWidth: MIN_COLUMN_WIDTH,
   },
@@ -207,10 +209,16 @@ defineExpose({ loadIfNearBottom })
         class="masonry-item"
         :entering="enteringPostIds.has(item.postId)"
         :fetch-priority="fetchPriority"
+        :card-footer="cardFooter"
+        :card-header="cardHeader"
+        :index="index"
         :item="item"
         :item-style="itemStyle(index)"
         interactive
+        layout="masonry"
+        :loaded-count="items.length"
         :preview-state="previewStates.get(item.postId) ?? 'loading'"
+        :total="total"
         @activate="emit('activate', item.postId)"
         @ready="emit('ready', item.postId)"
         @error="emit('error', item.postId)"

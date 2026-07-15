@@ -92,4 +92,18 @@ describe('calculated masonry layout', () => {
       height: 320,
     })
   })
+
+  it('adds deterministic in-flow chrome to each media height', () => {
+    const layout = calculateMasonryLayout(
+      [media(100, 100), media(100, 200)],
+      320,
+      { additionalHeight: 88, gap: 8, minColumnWidth: 320 },
+    )
+
+    expect(layout.items).toEqual([
+      { x: 0, y: 0, width: 320, height: 408 },
+      { x: 0, y: 416, width: 320, height: 728 },
+    ])
+    expect(layout.height).toBe(1144)
+  })
 })

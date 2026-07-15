@@ -21,7 +21,7 @@ import { createVibe } from '@wyxos/vibe'
 
 const vibe = createVibe({
   target: '#gallery',
-  layout: 'masonry',
+  layout: 'responsive',
   loadPage: async ({ cursor, signal }) => {
     const response = await fetch(`/api/media?cursor=${cursor ?? ''}`, {
       signal,
@@ -35,6 +35,9 @@ await vibe.mount()
 ```
 
 The target element must have a usable height. Vibe owns scrolling inside that target.
+In responsive layout, Vibe observes the target and uses reels on phones while
+keeping tablets and desktops in masonry. Use `masonry` or `reel` to force a
+renderer instead.
 
 `loadPage` receives `cursor: null` for the initial request. It returns normalized Vibe items, the next opaque cursor, and an optional total:
 
@@ -64,10 +67,43 @@ await vibe.mount()
 
 Provide both `initialPage` and `loadPage` when preloaded items can continue to another cursor.
 
+## Custom card chrome
+
+Use `cardHeader` and `cardFooter` to render application-owned controls over every
+media card:
+
+```ts
+import MediaInfo from './MediaInfo.vue'
+import MediaReactions from './MediaReactions.vue'
+
+const vibe = createVibe({
+  target: '#gallery',
+  layout: 'responsive',
+  loadPage,
+  cardHeader: {
+    component: MediaInfo,
+    height: 40,
+  },
+  cardFooter: {
+    component: MediaReactions,
+    height: 48,
+  },
+})
+```
+
+The heights are CSS pixels and let Vibe include both regions in masonry before
+virtualized cards mount. In reel layout, they reduce the media area while the
+whole card remains one viewport tall. Each component controls its own content
+and alignment, and receives `item`, `layout`, `mediaSource`, zero-based `index`,
+`loadedCount`, and the optional remote `total`. Import the
+`VibeCardRegionProps` type for typed Vue props. Interacting with these regions
+does not activate the underlying media.
+
 ## Instance lifecycle
 
 ```ts
 vibe.setLayout('reel')
+vibe.setLayout('responsive')
 vibe.setInfiniteScroll(false)
 await vibe.loadNext()
 await vibe.reload()

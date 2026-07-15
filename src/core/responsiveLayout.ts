@@ -1,7 +1,9 @@
+import type { VibeLayout } from '../types'
+
 export const TABLET_SHORT_EDGE = 600
 const UNRELATED_SCREEN_RATIO = 1.5
 
-export interface ResponsiveFeedOptions {
+export interface ResponsiveLayoutOptions {
   hasHover: boolean
   screenHeight: number
   screenWidth: number
@@ -9,13 +11,13 @@ export interface ResponsiveFeedOptions {
   viewportWidth: number
 }
 
-export function shouldForceSingleColumnFeed(
-  options: ResponsiveFeedOptions,
-): boolean {
+export function resolveResponsiveLayout(
+  options: ResponsiveLayoutOptions,
+): VibeLayout {
   const screenShortEdge = Math.min(options.screenWidth, options.screenHeight)
 
   if (screenShortEdge > 0 && screenShortEdge < TABLET_SHORT_EDGE) {
-    return true
+    return 'reel'
   }
 
   const viewportShortEdge = Math.min(
@@ -29,15 +31,17 @@ export function shouldForceSingleColumnFeed(
     && viewportShortEdge > 0
     && viewportShortEdge < TABLET_SHORT_EDGE
     && screenLooksUnrelated
+    ? 'reel'
+    : 'masonry'
 }
 
-export function shouldForceSingleColumnForElement(element: HTMLElement): boolean {
+export function resolveResponsiveLayoutForElement(element: Element): VibeLayout {
   const view = element.ownerDocument.defaultView
   const documentElement = element.ownerDocument.documentElement
   const hasHover = typeof view?.matchMedia === 'function'
     && view.matchMedia('(hover: hover)').matches
 
-  return shouldForceSingleColumnFeed({
+  return resolveResponsiveLayout({
     hasHover,
     screenHeight: view?.screen.height ?? 0,
     screenWidth: view?.screen.width ?? 0,

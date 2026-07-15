@@ -1,7 +1,13 @@
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
 
-import { createVibe, type VibeInstance, type VibeItem } from '@/index'
+import {
+  createVibe,
+  type VibeCardRegionProps,
+  type VibeInstance,
+  type VibeItem,
+} from '@/index'
 
 function item(postId: number): VibeItem {
   return {
@@ -15,6 +21,19 @@ function item(postId: number): VibeItem {
     width: 900,
     height: 1200,
     items: [],
+  }
+}
+
+function videoItem(postId: number): VibeItem {
+  const base = item(postId)
+
+  return {
+    ...base,
+    src: `https://example.com/${postId}.mp4`,
+    preview: {
+      ...base.preview,
+      src: `https://example.com/${postId}-preview.mp4`,
+    },
   }
 }
 
@@ -50,6 +69,16 @@ describe('createVibe', () => {
     expect(() => createVibe({ target })).toThrow(
       'Vibe requires either initialPage or loadPage.',
     )
+  })
+
+  it('requires positive deterministic card region heights', () => {
+    const Region = defineComponent(() => () => h('span'))
+
+    expect(() => createVibe({
+      cardHeader: { component: Region, height: 0 },
+      target,
+      initialPage: { items: [item(1)], next: null },
+    })).toThrow('Vibe cardHeader height must be a positive number.')
   })
 
   it('loads the initial page with a null cursor and renders it', async () => {
@@ -118,6 +147,126 @@ describe('createVibe', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
     await flushPromises()
     expect(target.querySelector('[data-layout-mode="reel"]')).not.toBeNull()
+  })
+
+  it('owns responsive layout selection while allowing forced overrides', async () => {
+    let screenWidth = 430
+    let screenHeight = 932
+    let viewportWidth = 430
+    let viewportHeight = 932
+    vi.spyOn(window.screen, 'width', 'get').mockImplementation(() => screenWidth)
+    vi.spyOn(window.screen, 'height', 'get').mockImplementation(() => screenHeight)
+    vi.spyOn(document.documentElement, 'clientWidth', 'get')
+      .mockImplementation(() => viewportWidth)
+    vi.spyOn(document.documentElement, 'clientHeight', 'get')
+      .mockImplementation(() => viewportHeight)
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })))
+    const instance = track(createVibe({
+      target,
+      layout: 'responsive',
+      initialPage: { items: [item(1)], next: null },
+    }))
+
+    await instance.mount()
+    await flushPromises()
+    expect(instance.getState().layout).toBe('reel')
+    expect(target.querySelector('[data-layout-mode="reel"]')).not.toBeNull()
+
+    instance.setLayout('masonry')
+    await flushPromises()
+    expect(instance.getState().layout).toBe('masonry')
+
+    instance.setLayout('responsive')
+    await flushPromises()
+    expect(instance.getState().layout).toBe('reel')
+
+    screenWidth = 820
+    screenHeight = 1180
+    viewportWidth = 820
+    viewportHeight = 1180
+    window.dispatchEvent(new Event('resize'))
+    await flushPromises()
+    expect(instance.getState().layout).toBe('masonry')
+  })
+
+  it('mounts custom card header and footer components without activating the card', async () => {
+    const CardHeader = defineComponent({
+      props: ['index', 'item', 'layout', 'loadedCount', 'mediaSource', 'total'],
+      setup(props) {
+        return () => h(
+          'button',
+          { 'data-test': 'custom-header', type: 'button' },
+          `${(props as unknown as VibeCardRegionProps).item.postId}`
+          + `:${props.layout}:${props.mediaSource}`
+          + `:${props.index}:${props.loadedCount}:${props.total}`,
+        )
+      },
+    })
+    const CardFooter = defineComponent({
+      props: ['item'],
+      setup(props) {
+        return () => h(
+          'span',
+          { 'data-test': 'custom-footer' },
+          `footer:${(props.item as VibeItem).postId}`,
+        )
+      },
+    })
+    const instance = track(createVibe({
+      cardFooter: { component: CardFooter, height: 52 },
+      cardHeader: { component: CardHeader, height: 40 },
+      target,
+      initialPage: { items: [item(1), item(2)], next: null, total: 8 },
+    }))
+
+    await instance.mount()
+    await flushPromises()
+
+    const headers = target.querySelectorAll<HTMLElement>('[data-test="custom-header"]')
+    const header = headers[0]!
+    expect(header.textContent).toBe('1:masonry:preview:0:2:8')
+    expect(headers[1]?.textContent).toBe('2:masonry:preview:1:2:8')
+    expect(target.querySelector('[data-test="custom-footer"]')?.textContent).toBe('footer:1')
+    expect(header.parentElement?.style.height).toBe('40px')
+    expect(target.querySelector<HTMLElement>('.media-card-footer')?.style.height).toBe('52px')
+
+    header.click()
+    await flushPromises()
+    expect(target.querySelector('.vibe-reel-overlay')).toBeNull()
+
+    target.querySelector<HTMLElement>('[aria-label="Open post 1"]')!.click()
+    await flushPromises()
+    expect(target.querySelector('.vibe-reel-overlay [data-test="custom-header"]')
+      ?.textContent).toBe('1:reel:original:0:2:8')
+  })
+
+  it('toggles reel video playback from the media and custom control', async () => {
+    const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
+    const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+    const instance = track(createVibe({
+      target,
+      layout: 'reel',
+      initialPage: { items: [videoItem(1)], next: null },
+    }))
+
+    await instance.mount()
+    await flushPromises()
+    const video = target.querySelector<HTMLVideoElement>('video')!
+    video.dispatchEvent(new Event('loadedmetadata'))
+    await flushPromises()
+
+    video.click()
+    expect(play).toHaveBeenCalledOnce()
+    video.dispatchEvent(new Event('playing'))
+    await flushPromises()
+
+    const pauseControl = target.querySelector<HTMLElement>('[aria-label="Pause video"]')!
+    expect(pauseControl).not.toBeNull()
+    pauseControl.click()
+    expect(pause).toHaveBeenCalledOnce()
+    video.dispatchEvent(new Event('pause'))
+    await flushPromises()
+    expect(target.querySelector('[aria-label="Play video"]')).not.toBeNull()
   })
 
   it('keeps masonry mounted and restores it after a masonry-origin reel', async () => {

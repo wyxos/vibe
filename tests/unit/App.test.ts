@@ -1,7 +1,9 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createMemoryHistory } from 'vue-router'
 
 import App from '@/App.vue'
+import { createDemoRouter } from '@/router'
 
 const fakeServer = vi.hoisted(() => ({
   getFakeMediaPage: vi.fn(),
@@ -45,11 +47,20 @@ describe('App', () => {
     vi.unstubAllGlobals()
   })
 
+  async function mountApp(path = '/') {
+    const router = createDemoRouter(createMemoryHistory())
+    await router.push(path)
+    await router.isReady()
+
+    return mount(App, { global: { plugins: [router] } })
+  }
+
   it('loads the first page and renders the masonry feed by default', async () => {
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
 
     expect(wrapper.get('[role="status"]').text()).toBe('Loading media…')
     expect(wrapper.get('.app-header').text()).toContain('Vibe')
+    expect(wrapper.get('a[href="/demos"]').text()).toBe('Demos')
     await flushPromises()
 
     expect(fakeServer.getFakeMediaPage).toHaveBeenCalledWith(null)
@@ -66,7 +77,7 @@ describe('App', () => {
     vi.spyOn(window.screen, 'height', 'get').mockReturnValue(932)
     vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })))
 
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await flushPromises()
 
     expect(wrapper.get('[data-layout-mode="reel"]').exists()).toBe(true)
@@ -81,7 +92,7 @@ describe('App', () => {
     vi.spyOn(window.screen, 'height', 'get').mockReturnValue(430)
     vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })))
 
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await flushPromises()
 
     expect(wrapper.get('[data-layout-mode="reel"]').exists()).toBe(true)
@@ -94,7 +105,7 @@ describe('App', () => {
     vi.spyOn(window.screen, 'width', 'get').mockReturnValue(820)
     vi.spyOn(window.screen, 'height', 'get').mockReturnValue(1180)
 
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await flushPromises()
 
     expect(wrapper.get('[data-layout-mode="masonry"]').exists()).toBe(true)
@@ -114,7 +125,7 @@ describe('App', () => {
       meta: { next: null, total: 1 },
     })
 
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await flushPromises()
     await wrapper.get('img').trigger('error')
 
@@ -134,7 +145,7 @@ describe('App', () => {
         meta: { next: null, total: 2 },
       })
 
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await flushPromises()
     const gallery = wrapper.get('.gallery-shell')
     Object.defineProperties(gallery.element, {
@@ -161,7 +172,7 @@ describe('App', () => {
         meta: { next: null, total: 2 },
       })
 
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await flushPromises()
     await wrapper.get('[data-test="infinite-scroll-toggle"]').setValue(false)
 
@@ -177,9 +188,26 @@ describe('App', () => {
   it('renders a load error', async () => {
     fakeServer.getFakeMediaPage.mockRejectedValueOnce(new Error('Fixture failed'))
 
-    const wrapper = mount(App)
+    const wrapper = await mountApp()
     await flushPromises()
 
     expect(wrapper.get('[role="alert"]').text()).toBe('Unable to load media.')
+  })
+
+  it('renders the card header and footer variation on the demos route', async () => {
+    const wrapper = await mountApp('/demos')
+    await flushPromises()
+
+    expect(wrapper.get('.demos-aside').text()).toBe('Card header & footer')
+    expect(wrapper.find('.demo-stage-header').exists()).toBe(false)
+
+    const infoAction = wrapper.get('[aria-label="Show information for post 10"]')
+    await infoAction.trigger('click')
+    expect(wrapper.get('.demo-card-metadata').text()).toBe('1 / 1 · 900 × 1200')
+    expect(wrapper.find('.vibe-reel-overlay').exists()).toBe(false)
+
+    const loveAction = wrapper.get('[aria-label="Love"]')
+    await loveAction.trigger('click')
+    expect(loveAction.attributes('aria-pressed')).toBe('true')
   })
 })

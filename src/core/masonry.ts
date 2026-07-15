@@ -32,6 +32,7 @@ export interface MasonryViewportOptions {
 }
 
 interface MasonryOptions {
+  additionalHeight?: number
   gap: number
   minColumnWidth: number
 }
@@ -92,6 +93,9 @@ export function calculateMasonryLayout(
   }
 
   const gap = Math.max(0, options.gap)
+  const additionalHeight = Number.isFinite(options.additionalHeight)
+    ? Math.max(0, options.additionalHeight ?? 0)
+    : 0
   const minColumnWidth = Math.max(1, options.minColumnWidth)
   const columns = Math.max(
     1,
@@ -102,7 +106,7 @@ export function calculateMasonryLayout(
 
   const items = media.map((item) => {
     const column = shortestColumn(columnHeights)
-    const height = itemWidth * itemAspectRatio(item)
+    const height = itemWidth * itemAspectRatio(item) + additionalHeight
     const position = {
       x: column * (itemWidth + gap),
       y: columnHeights[column],

@@ -6,14 +6,17 @@ import {
 } from 'vue'
 
 import VibeSurface from '../components/VibeSurface.vue'
+import { resolveResponsiveLayoutForElement } from './responsiveLayout'
 import type { VibeRuntimeState } from './runtime'
 import type {
   CreateVibeOptions,
+  VibeCardRegion,
   VibeCursor,
   VibeInstance,
   VibeItem,
   VibeItemId,
   VibeLayout,
+  VibeLayoutMode,
   VibePage,
   VibeState,
 } from '../types'
@@ -22,7 +25,20 @@ interface VibeSurfaceExpose {
   loadIfNearBottom: () => Promise<void>
 }
 
+function validateCardRegion(
+  name: 'cardFooter' | 'cardHeader',
+  region?: VibeCardRegion,
+): void {
+  if (!region) return
+  if (!Number.isFinite(region.height) || region.height <= 0) {
+    throw new TypeError(`Vibe ${name} height must be a positive number.`)
+  }
+}
+
 function validateOptions(options: CreateVibeOptions): void {
+  validateCardRegion('cardHeader', options.cardHeader)
+  validateCardRegion('cardFooter', options.cardFooter)
+
   if (!options.initialPage && !options.loadPage) {
     throw new TypeError('Vibe requires either initialPage or loadPage.')
   }
@@ -66,12 +82,16 @@ class VibeController implements VibeInstance {
   private abortController: AbortController | null = null
   private pendingRequest: Promise<void> | null = null
   private requestVersion = 0
+  private resizeObserver: ResizeObserver | null = null
   private surface: VibeSurfaceExpose | null = null
+  private target: Element | null = null
+  private layoutMode: VibeLayoutMode
   private readonly state: VibeRuntimeState
 
   constructor(private readonly options: CreateVibeOptions) {
     validateOptions(options)
     const initialPage = options.initialPage
+    this.layoutMode = options.layout ?? 'masonry'
 
     this.state = reactive({
       activeReelPostId: null,
@@ -80,7 +100,7 @@ class VibeController implements VibeInstance {
       isLoading: !initialPage,
       isLoadingMore: false,
       items: initialPage ? [...initialPage.items] : [],
-      layout: options.layout ?? 'masonry',
+      layout: this.layoutMode === 'reel' ? 'reel' : 'masonry',
       next: initialPage?.next ?? null,
       nextPageError: null,
       reelOrigin: null,
@@ -92,7 +112,11 @@ class VibeController implements VibeInstance {
     if (this.app) throw new Error('Vibe is already mounted.')
 
     const target = this.resolveTarget()
+    this.target = target
+    this.startResponsiveLayout()
     this.app = createApp(VibeSurface, {
+      cardFooter: this.options.cardFooter,
+      cardHeader: this.options.cardHeader,
       state: this.state,
       onActiveReelChange: (postId: VibeItemId) => this.setActiveReelPost(postId),
       onCloseReel: () => this.closeMasonryReel(),
@@ -106,9 +130,11 @@ class VibeController implements VibeInstance {
 
   destroy(): void {
     this.cancelRequest()
+    this.stopResponsiveLayout()
     this.app?.unmount()
     this.app = null
     this.surface = null
+    this.target = null
   }
 
   getState(): VibeState {
@@ -159,12 +185,47 @@ class VibeController implements VibeInstance {
     }
   }
 
-  setLayout(layout: VibeLayout): void {
+  setLayout(layout: VibeLayoutMode): void {
+    if (layout === this.layoutMode) return
+
+    this.layoutMode = layout
+    this.stopResponsiveLayout()
+    if (layout === 'responsive') this.startResponsiveLayout()
+    else this.applyLayout(layout)
+  }
+
+  private applyLayout(layout: VibeLayout): void {
     if (layout === this.state.layout) return
 
     if (layout === 'masonry') this.state.activeReelPostId = null
     this.state.reelOrigin = null
     this.state.layout = layout
+  }
+
+  private readonly handleResponsiveLayout = (): void => {
+    if (this.layoutMode !== 'responsive' || !this.target) return
+    this.applyLayout(resolveResponsiveLayoutForElement(this.target))
+  }
+
+  private startResponsiveLayout(): void {
+    if (this.layoutMode !== 'responsive' || !this.target) return
+
+    this.handleResponsiveLayout()
+    const view = this.target.ownerDocument.defaultView
+    view?.addEventListener('resize', this.handleResponsiveLayout)
+
+    const ResizeObserverConstructor = view?.ResizeObserver ?? globalThis.ResizeObserver
+    if (typeof ResizeObserverConstructor === 'undefined') return
+
+    this.resizeObserver = new ResizeObserverConstructor(this.handleResponsiveLayout)
+    this.resizeObserver.observe(this.target)
+  }
+
+  private stopResponsiveLayout(): void {
+    this.target?.ownerDocument.defaultView
+      ?.removeEventListener('resize', this.handleResponsiveLayout)
+    this.resizeObserver?.disconnect()
+    this.resizeObserver = null
   }
 
   private closeMasonryReel(): void {

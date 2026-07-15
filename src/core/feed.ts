@@ -1,15 +1,21 @@
-import type { VibeItem, VibeItemId } from '../types'
+import type {
+  VibeCardRegion,
+  VibeItem,
+  VibeItemId,
+  VibeMediaSource,
+} from '../types'
 import type { MediaPreviewState } from './mediaPreview'
 
-export type MediaSource = 'preview' | 'original'
-
 export interface FeedRendererProps {
+  cardFooter?: VibeCardRegion
+  cardHeader?: VibeCardRegion
   hasNext: boolean
   infiniteScroll: boolean
   isLoadingMore: boolean
   items: readonly VibeItem[]
   nextPageError: boolean
   previewStates: ReadonlyMap<VibeItemId, MediaPreviewState>
+  total: number | null
 }
 
 export interface MasonryFeedProps extends FeedRendererProps {
@@ -20,7 +26,7 @@ export interface MasonryFeedProps extends FeedRendererProps {
 
 export interface ReelFeedProps extends FeedRendererProps {
   initialPostId?: VibeItemId | null
-  mediaSource?: MediaSource
+  mediaSource?: VibeMediaSource
 }
 
 export const LOAD_MORE_THRESHOLD = 240

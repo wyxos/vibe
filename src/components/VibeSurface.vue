@@ -10,7 +10,7 @@ import {
 
 import type { MediaPreviewState } from '../core/mediaPreview'
 import type { VibeRuntimeState } from '../core/runtime'
-import type { VibeItemId } from '../types'
+import type { VibeCardRegion, VibeItemId } from '../types'
 import MasonryFeed from './MasonryFeed.vue'
 import ReelFeed from './ReelFeed.vue'
 
@@ -23,6 +23,8 @@ interface FeedRendererExpose {
 type ReelOriginStyle = CSSProperties & Record<`--vibe-reel-origin-${string}`, string>
 
 const props = defineProps<{
+  cardFooter?: VibeCardRegion
+  cardHeader?: VibeCardRegion
   state: VibeRuntimeState
 }>()
 
@@ -97,6 +99,13 @@ function findMasonryCard(postId: VibeItemId): HTMLElement | null {
   return Array.from(cards).find((card) => card.dataset.postId === String(postId)) ?? null
 }
 
+function focusMasonryCard(postId: VibeItemId): void {
+  const card = findMasonryCard(postId)
+  const activator = card?.querySelector<HTMLElement>('.media-card-activator')
+  const focusTarget = activator ?? card
+  focusTarget?.focus()
+}
+
 function getReelOriginStyle(postId: VibeItemId): ReelOriginStyle {
   const surface = surfaceElement.value
   const card = findMasonryCard(postId)
@@ -127,7 +136,7 @@ function finishReelLeave(): void {
   restoreFocusPostId = null
   reelOriginStyle.value = {}
   void nextTick(() => {
-    if (postId !== null) findMasonryCard(postId)?.focus()
+    if (postId !== null) focusMasonryCard(postId)
   })
 }
 
@@ -208,12 +217,15 @@ defineExpose({ loadIfNearBottom })
       v-else-if="state.layout === 'reel'"
       ref="reelRenderer"
       :has-next="state.next !== null"
+      :card-footer="cardFooter"
+      :card-header="cardHeader"
       :infinite-scroll="state.infiniteScroll"
       :is-loading-more="state.isLoadingMore"
       :items="state.items"
       :initial-post-id="state.activeReelPostId"
       :next-page-error="Boolean(state.nextPageError)"
       :preview-states="mediaPreviewStates"
+      :total="state.total"
       @active-change="emit('activeReelChange', $event)"
       @error="setMediaPreviewState($event, 'error')"
       @load-more="emit('loadMore')"
@@ -225,6 +237,8 @@ defineExpose({ loadIfNearBottom })
         ref="masonryRenderer"
         :entering-post-ids="enteringPostIds"
         :entry-delays="entryDelays"
+        :card-footer="cardFooter"
+        :card-header="cardHeader"
         :has-next="state.next !== null"
         :infinite-scroll="state.infiniteScroll"
         :is-loading-more="state.isLoadingMore"
@@ -232,6 +246,7 @@ defineExpose({ loadIfNearBottom })
         :next-page-error="Boolean(state.nextPageError)"
         :preview-states="mediaPreviewStates"
         :suspended="state.reelOrigin === 'masonry' || isReelLeaving"
+        :total="state.total"
         @activate="activateMasonryItem"
         @error="setMediaPreviewState($event, 'error')"
         @load-more="emit('loadMore')"
@@ -254,6 +269,8 @@ defineExpose({ loadIfNearBottom })
         >
           <ReelFeed
             ref="reelRenderer"
+            :card-footer="cardFooter"
+            :card-header="cardHeader"
             :has-next="state.next !== null"
             :infinite-scroll="state.infiniteScroll"
             :initial-post-id="state.activeReelPostId"
@@ -262,6 +279,7 @@ defineExpose({ loadIfNearBottom })
             media-source="original"
             :next-page-error="Boolean(state.nextPageError)"
             :preview-states="mediaOriginalStates"
+            :total="state.total"
             @active-change="emit('activeReelChange', $event)"
             @error="setMediaOriginalState($event, 'error')"
             @load-more="emit('loadMore')"

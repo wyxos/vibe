@@ -1,6 +1,10 @@
+import type { Component } from 'vue'
+
 export type VibeCursor = string | number | null
 export type VibeItemId = string | number
 export type VibeLayout = 'masonry' | 'reel'
+export type VibeLayoutMode = VibeLayout | 'responsive'
+export type VibeMediaSource = 'preview' | 'original'
 
 export interface VibePreview {
   src: string
@@ -18,6 +22,20 @@ export interface VibeMediaAsset {
 export interface VibeItem extends VibeMediaAsset {
   postId: VibeItemId
   items: VibeMediaAsset[]
+}
+
+export interface VibeCardRegion {
+  component: Component
+  height: number
+}
+
+export interface VibeCardRegionProps {
+  index: number
+  item: VibeItem
+  layout: VibeLayout
+  loadedCount: number
+  mediaSource: VibeMediaSource
+  total: number | null
 }
 
 export interface VibePage {
@@ -38,8 +56,10 @@ export type VibePageLoader = (
 export type VibeInitialPage = VibePage
 
 export interface CreateVibeOptions {
+  cardFooter?: VibeCardRegion
+  cardHeader?: VibeCardRegion
   target: Element | string
-  layout?: VibeLayout
+  layout?: VibeLayoutMode
   infiniteScroll?: boolean
   initialPage?: VibeInitialPage
   loadPage?: VibePageLoader
@@ -66,5 +86,5 @@ export interface VibeInstance {
   mount: () => Promise<void>
   reload: () => Promise<void>
   setInfiniteScroll: (enabled: boolean) => void
-  setLayout: (layout: VibeLayout) => void
+  setLayout: (layout: VibeLayoutMode) => void
 }
