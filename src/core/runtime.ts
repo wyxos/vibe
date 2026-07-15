@@ -1,10 +1,12 @@
 import type {
   VibeCursor,
   VibeItem,
+  VibeItemId,
   VibeLayout,
 } from '../types'
 
 export interface VibeRuntimeState {
+  activeReelPostId: VibeItemId | null
   error: unknown | null
   infiniteScroll: boolean
   isLoading: boolean
@@ -13,5 +15,6 @@ export interface VibeRuntimeState {
   layout: VibeLayout
   next: VibeCursor
   nextPageError: unknown | null
+  reelOrigin: 'masonry' | null
   total: number | null
 }

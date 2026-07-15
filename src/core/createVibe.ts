@@ -12,6 +12,7 @@ import type {
   VibeCursor,
   VibeInstance,
   VibeItem,
+  VibeItemId,
   VibeLayout,
   VibePage,
   VibeState,
@@ -73,6 +74,7 @@ class VibeController implements VibeInstance {
     const initialPage = options.initialPage
 
     this.state = reactive({
+      activeReelPostId: null,
       error: null,
       infiniteScroll: options.infiniteScroll ?? true,
       isLoading: !initialPage,
@@ -81,6 +83,7 @@ class VibeController implements VibeInstance {
       layout: options.layout ?? 'masonry',
       next: initialPage?.next ?? null,
       nextPageError: null,
+      reelOrigin: null,
       total: initialPage?.total ?? null,
     })
   }
@@ -91,7 +94,10 @@ class VibeController implements VibeInstance {
     const target = this.resolveTarget()
     this.app = createApp(VibeSurface, {
       state: this.state,
+      onActiveReelChange: (postId: VibeItemId) => this.setActiveReelPost(postId),
+      onCloseReel: () => this.closeMasonryReel(),
       onLoadMore: () => { void this.loadNext() },
+      onOpenReel: (postId: VibeItemId) => this.openMasonryReel(postId),
     })
     this.surface = this.app.mount(target) as unknown as VibeSurfaceExpose
 
@@ -107,6 +113,7 @@ class VibeController implements VibeInstance {
 
   getState(): VibeState {
     return {
+      activeReelPostId: this.state.activeReelPostId,
       error: this.state.error,
       infiniteScroll: this.state.infiniteScroll,
       isLoading: this.state.isLoading,
@@ -115,6 +122,7 @@ class VibeController implements VibeInstance {
       layout: this.state.layout,
       next: this.state.next,
       nextPageError: this.state.nextPageError,
+      reelOrigin: this.state.reelOrigin,
       total: this.state.total,
     }
   }
@@ -152,7 +160,31 @@ class VibeController implements VibeInstance {
   }
 
   setLayout(layout: VibeLayout): void {
+    if (layout === this.state.layout) return
+
+    if (layout === 'masonry') this.state.activeReelPostId = null
+    this.state.reelOrigin = null
     this.state.layout = layout
+  }
+
+  private closeMasonryReel(): void {
+    if (this.state.reelOrigin !== 'masonry') return
+
+    this.state.activeReelPostId = null
+    this.state.reelOrigin = null
+  }
+
+  private openMasonryReel(postId: VibeItemId): void {
+    if (this.state.layout !== 'masonry') return
+    if (!this.state.items.some((item) => item.postId === postId)) return
+
+    this.state.activeReelPostId = postId
+    this.state.reelOrigin = 'masonry'
+  }
+
+  private setActiveReelPost(postId: VibeItemId): void {
+    if (this.state.layout !== 'reel' && this.state.reelOrigin !== 'masonry') return
+    this.state.activeReelPostId = postId
   }
 
   private cancelRequest(): void {

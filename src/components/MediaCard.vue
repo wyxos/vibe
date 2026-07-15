@@ -13,13 +13,19 @@ defineProps<{
   fetchPriority: 'high' | 'low'
   item: VibeItem
   itemStyle?: CSSProperties
+  interactive?: boolean
   previewState: MediaPreviewState
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
+  activate: []
   error: []
   ready: []
 }>()
+
+function activate(interactive = false): void {
+  if (interactive) emit('activate')
+}
 
 function isVideo(src: string): boolean {
   try {
@@ -40,6 +46,11 @@ function isVideo(src: string): boolean {
     }"
     :style="itemStyle"
     :aria-busy="previewState === 'loading'"
+    :role="interactive ? 'button' : undefined"
+    :tabindex="interactive ? 0 : undefined"
+    @click="activate(interactive)"
+    @keydown.enter="activate(interactive)"
+    @keydown.space.prevent="activate(interactive)"
   >
     <div class="media-card-content">
       <div

@@ -46,6 +46,7 @@ export interface CreateVibeOptions {
 }
 
 export interface VibeState {
+  activeReelPostId: VibeItemId | null
   error: unknown | null
   infiniteScroll: boolean
   isLoading: boolean
@@ -54,6 +55,7 @@ export interface VibeState {
   layout: VibeLayout
   next: VibeCursor
   nextPageError: unknown | null
+  reelOrigin: 'masonry' | null
   total: number | null
 }
 

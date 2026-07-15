@@ -9,7 +9,7 @@ import {
   type CSSProperties,
 } from 'vue'
 
-import type { FeedRendererProps } from '../core/feed'
+import type { ReelFeedProps } from '../core/feed'
 import { isNearFeedBottom } from '../core/feed'
 import type { VibeItemId } from '../types'
 import GalleryFooter from './GalleryFooter.vue'
@@ -17,15 +17,19 @@ import MediaCard from './MediaCard.vue'
 
 const VIRTUAL_OVERSCAN = 2
 
-const props = defineProps<FeedRendererProps>()
+const props = defineProps<ReelFeedProps>()
 const emit = defineEmits<{
+  activeChange: [postId: VibeItemId]
   error: [postId: VibeItemId]
   loadMore: []
   ready: [postId: VibeItemId]
 }>()
 
 const galleryElement = shallowRef<HTMLElement | null>(null)
-const activeIndex = shallowRef(0)
+const initialIndex = props.initialPostId === null || props.initialPostId === undefined
+  ? -1
+  : props.items.findIndex((item) => item.postId === props.initialPostId)
+const activeIndex = shallowRef(Math.max(0, initialIndex))
 const isResizing = shallowRef(false)
 let viewportHeight = 0
 let resizeObserver: ResizeObserver | null = null
@@ -144,9 +148,14 @@ watch(
   },
 )
 
+watch(activePostId, (postId) => {
+  if (postId !== undefined) emit('activeChange', postId)
+}, { immediate: true })
+
 onMounted(() => {
   window.addEventListener('resize', beginResize)
   window.addEventListener('orientationchange', beginResize)
+  if (initialIndex >= 0) void nextTick(restoreActiveItem)
 })
 
 onBeforeUnmount(() => {

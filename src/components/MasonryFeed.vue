@@ -26,6 +26,7 @@ const VIRTUAL_OVERSCAN_FACTOR = 1.5
 
 const props = defineProps<MasonryFeedProps>()
 const emit = defineEmits<{
+  activate: [postId: VibeItemId]
   error: [postId: VibeItemId]
   loadMore: []
   ready: [postId: VibeItemId]
@@ -187,7 +188,10 @@ defineExpose({ loadIfNearBottom })
   <main
     ref="galleryElement"
     class="gallery-shell masonry-feed"
+    :class="{ 'masonry-feed--suspended': suspended }"
     data-layout-mode="masonry"
+    :aria-hidden="suspended || undefined"
+    :inert="suspended || undefined"
     @scroll.passive="onScroll"
   >
     <section
@@ -205,7 +209,9 @@ defineExpose({ loadIfNearBottom })
         :fetch-priority="fetchPriority"
         :item="item"
         :item-style="itemStyle(index)"
+        interactive
         :preview-state="previewStates.get(item.postId) ?? 'loading'"
+        @activate="emit('activate', item.postId)"
         @ready="emit('ready', item.postId)"
         @error="emit('error', item.postId)"
       />

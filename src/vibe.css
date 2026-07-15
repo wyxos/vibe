@@ -4,11 +4,26 @@
 }
 
 .vibe-surface {
+  position: relative;
   height: 100%;
   min-height: 0;
   overflow: hidden;
   color-scheme: dark;
   background: #080808;
+}
+
+.vibe-reel-overlay {
+  position: absolute;
+  z-index: 10;
+  inset: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #080808;
+  outline: none;
+}
+
+.vibe-reel-overlay > .reel-feed {
+  height: 100%;
 }
 
 .gallery-shell {
@@ -59,6 +74,11 @@
   transition: opacity 160ms ease;
 }
 
+.masonry-feed--suspended {
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .masonry--ready {
   opacity: 1;
 }
@@ -83,6 +103,15 @@
 
 .media-card {
   background: #171717;
+}
+
+.media-card[role='button'] {
+  cursor: pointer;
+}
+
+.media-card[role='button']:focus-visible {
+  outline: 2px solid #f5f5f5;
+  outline-offset: -2px;
 }
 
 .media-card--error {

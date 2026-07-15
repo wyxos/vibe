@@ -2,6 +2,7 @@
 import {
   nextTick,
   onBeforeUnmount,
+  onMounted,
   shallowRef,
   watch,
 } from 'vue'
@@ -23,15 +24,22 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  activeReelChange: [postId: VibeItemId]
+  closeReel: []
   loadMore: []
+  openReel: [postId: VibeItemId]
 }>()
 
-const feedRenderer = shallowRef<FeedRendererExpose | null>(null)
+const masonryRenderer = shallowRef<FeedRendererExpose | null>(null)
+const reelRenderer = shallowRef<FeedRendererExpose | null>(null)
+const reelOverlay = shallowRef<HTMLElement | null>(null)
+const surfaceElement = shallowRef<HTMLElement | null>(null)
 const enteringPostIds = shallowRef<ReadonlySet<VibeItemId>>(new Set())
 const entryDelays = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
 const mediaPreviewStates = shallowRef<ReadonlyMap<VibeItemId, MediaPreviewState>>(new Map())
 let previousPostIds = new Set<VibeItemId>()
 let enterReleaseFrame: number | null = null
+let restoreFocusPostId: VibeItemId | null = null
 
 function prefersReducedMotion(): boolean {
   return typeof window.matchMedia === 'function'
@@ -57,7 +65,38 @@ function setMediaPreviewState(postId: VibeItemId, state: MediaPreviewState): voi
 
 async function loadIfNearBottom(): Promise<void> {
   await nextTick()
-  feedRenderer.value?.loadIfNearBottom()
+  const renderer = props.state.layout === 'reel' || props.state.reelOrigin === 'masonry'
+    ? reelRenderer.value
+    : masonryRenderer.value
+  renderer?.loadIfNearBottom()
+}
+
+function activateMasonryItem(postId: VibeItemId): void {
+  restoreFocusPostId = postId
+  emit('openReel', postId)
+  void nextTick(() => reelOverlay.value?.focus())
+}
+
+function closeMasonryReel(): void {
+  if (props.state.reelOrigin !== 'masonry') return
+
+  const postId = restoreFocusPostId ?? props.state.activeReelPostId
+  emit('closeReel')
+  void nextTick(() => {
+    if (postId === null) return
+
+    const cards = surfaceElement.value
+      ?.querySelectorAll<HTMLElement>('.masonry-feed [data-post-id]') ?? []
+    Array.from(cards).find((card) => card.dataset.postId === String(postId))?.focus()
+    restoreFocusPostId = null
+  })
+}
+
+function onKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Escape' || props.state.reelOrigin !== 'masonry') return
+
+  event.preventDefault()
+  closeMasonryReel()
 }
 
 watch(
@@ -82,7 +121,10 @@ watch(
   { flush: 'sync' },
 )
 
+onMounted(() => window.addEventListener('keydown', onKeydown))
+
 onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown)
   if (enterReleaseFrame !== null) cancelAnimationFrame(enterReleaseFrame)
 })
 
@@ -90,7 +132,10 @@ defineExpose({ loadIfNearBottom })
 </script>
 
 <template>
-  <div class="vibe-surface">
+  <div
+    ref="surfaceElement"
+    class="vibe-surface"
+  >
     <main
       v-if="state.error"
       class="gallery-shell"
@@ -122,32 +167,62 @@ defineExpose({ loadIfNearBottom })
 
     <ReelFeed
       v-else-if="state.layout === 'reel'"
-      ref="feedRenderer"
+      ref="reelRenderer"
       :has-next="state.next !== null"
       :infinite-scroll="state.infiniteScroll"
       :is-loading-more="state.isLoadingMore"
       :items="state.items"
+      :initial-post-id="state.activeReelPostId"
       :next-page-error="Boolean(state.nextPageError)"
       :preview-states="mediaPreviewStates"
+      @active-change="emit('activeReelChange', $event)"
       @error="setMediaPreviewState($event, 'error')"
       @load-more="emit('loadMore')"
       @ready="setMediaPreviewState($event, 'ready')"
     />
 
-    <MasonryFeed
-      v-else
-      ref="feedRenderer"
-      :entering-post-ids="enteringPostIds"
-      :entry-delays="entryDelays"
-      :has-next="state.next !== null"
-      :infinite-scroll="state.infiniteScroll"
-      :is-loading-more="state.isLoadingMore"
-      :items="state.items"
-      :next-page-error="Boolean(state.nextPageError)"
-      :preview-states="mediaPreviewStates"
-      @error="setMediaPreviewState($event, 'error')"
-      @load-more="emit('loadMore')"
-      @ready="setMediaPreviewState($event, 'ready')"
-    />
+    <template v-else>
+      <MasonryFeed
+        ref="masonryRenderer"
+        :entering-post-ids="enteringPostIds"
+        :entry-delays="entryDelays"
+        :has-next="state.next !== null"
+        :infinite-scroll="state.infiniteScroll"
+        :is-loading-more="state.isLoadingMore"
+        :items="state.items"
+        :next-page-error="Boolean(state.nextPageError)"
+        :preview-states="mediaPreviewStates"
+        :suspended="state.reelOrigin === 'masonry'"
+        @activate="activateMasonryItem"
+        @error="setMediaPreviewState($event, 'error')"
+        @load-more="emit('loadMore')"
+        @ready="setMediaPreviewState($event, 'ready')"
+      />
+
+      <section
+        v-if="state.reelOrigin === 'masonry'"
+        ref="reelOverlay"
+        class="vibe-reel-overlay"
+        role="dialog"
+        aria-label="Media viewer"
+        aria-modal="true"
+        tabindex="-1"
+      >
+        <ReelFeed
+          ref="reelRenderer"
+          :has-next="state.next !== null"
+          :infinite-scroll="state.infiniteScroll"
+          :initial-post-id="state.activeReelPostId"
+          :is-loading-more="state.isLoadingMore"
+          :items="state.items"
+          :next-page-error="Boolean(state.nextPageError)"
+          :preview-states="mediaPreviewStates"
+          @active-change="emit('activeReelChange', $event)"
+          @error="setMediaPreviewState($event, 'error')"
+          @load-more="emit('loadMore')"
+          @ready="setMediaPreviewState($event, 'ready')"
+        />
+      </section>
+    </template>
   </div>
 </template>

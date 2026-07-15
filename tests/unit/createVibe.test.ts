@@ -109,9 +109,53 @@ describe('createVibe', () => {
 
     expect(target.querySelector('[data-layout-mode="reel"]')).not.toBeNull()
     expect(instance.getState()).toMatchObject({
+      activeReelPostId: 1,
       infiniteScroll: true,
       layout: 'reel',
+      reelOrigin: null,
     })
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await flushPromises()
+    expect(target.querySelector('[data-layout-mode="reel"]')).not.toBeNull()
+  })
+
+  it('keeps masonry mounted and restores it after a masonry-origin reel', async () => {
+    const instance = track(createVibe({
+      target,
+      initialPage: { items: [item(1), item(2), item(3)], next: null },
+    }))
+    await instance.mount()
+    await flushPromises()
+
+    const masonry = target.querySelector<HTMLElement>('.masonry-feed')!
+    masonry.scrollTop = 180
+    const clickedCard = target.querySelector<HTMLElement>('[data-post-id="2"]')!
+    clickedCard.click()
+    await flushPromises()
+
+    expect(instance.getState()).toMatchObject({
+      activeReelPostId: 2,
+      layout: 'masonry',
+      reelOrigin: 'masonry',
+    })
+    expect(target.querySelector('.vibe-reel-overlay')).not.toBeNull()
+    expect(target.querySelector('.masonry-feed')).toBe(masonry)
+    expect(masonry.scrollTop).toBe(180)
+    expect(target.querySelector('.reel-feed')?.getAttribute('data-active-post-id')).toBe('2')
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await flushPromises()
+
+    expect(instance.getState()).toMatchObject({
+      activeReelPostId: null,
+      layout: 'masonry',
+      reelOrigin: null,
+    })
+    expect(target.querySelector('.vibe-reel-overlay')).toBeNull()
+    expect(target.querySelector('.masonry-feed')).toBe(masonry)
+    expect(masonry.scrollTop).toBe(180)
+    expect(document.activeElement).toBe(clickedCard)
   })
 
   it('surfaces an initial error and can reload', async () => {

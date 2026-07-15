@@ -90,4 +90,18 @@ describe('MasonryFeed', () => {
     expect((firstCard.element as HTMLElement).style.transform)
       .toBe('translate3d(0, 0px, 0)')
   })
+
+  it('activates an item by pointer or keyboard', async () => {
+    const wrapper = mount(MasonryFeed, { props: props([feedItem(8)]) })
+    await wrapper.vm.$nextTick()
+    const card = wrapper.get('[data-post-id="8"]')
+
+    expect(card.attributes('role')).toBe('button')
+    expect(card.attributes('tabindex')).toBe('0')
+
+    await card.trigger('click')
+    await card.trigger('keydown', { key: 'Enter' })
+
+    expect(wrapper.emitted('activate')).toEqual([[8], [8]])
+  })
 })

@@ -79,6 +79,18 @@ describe('ReelFeed', () => {
     expect(wrapper.get('[data-post-id="15"]').attributes('style')).toContain('grid-row: 6')
   })
 
+  it('starts on a requested post', async () => {
+    const wrapper = mount(ReelFeed, {
+      props: { ...props(), initialPostId: 15 },
+    })
+    await wrapper.vm.$nextTick()
+
+    const gallery = wrapper.get('.gallery-shell')
+    expect(gallery.attributes('data-active-post-id')).toBe('15')
+    expect((gallery.element as HTMLElement).scrollTop).toBe(2500)
+    expect(wrapper.get('[data-post-id="15"]').attributes('style')).toContain('grid-row: 6')
+  })
+
   it('keeps the active post anchored through transient rotation sizes', async () => {
     const wrapper = mount(ReelFeed, { props: props() })
     await wrapper.vm.$nextTick()

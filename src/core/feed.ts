@@ -13,6 +13,11 @@ export interface FeedRendererProps {
 export interface MasonryFeedProps extends FeedRendererProps {
   enteringPostIds: ReadonlySet<VibeItemId>
   entryDelays: ReadonlyMap<VibeItemId, number>
+  suspended?: boolean
+}
+
+export interface ReelFeedProps extends FeedRendererProps {
+  initialPostId?: VibeItemId | null
 }
 
 export const LOAD_MORE_THRESHOLD = 240

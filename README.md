@@ -76,3 +76,8 @@ vibe.destroy()
 ```
 
 Destroying an instance unmounts its Vue tree and aborts its active page request.
+
+In masonry layout, activating a card opens that post in a reel layered over the
+still-mounted masonry feed. Pressing Escape returns to the same masonry scroll
+position. `getState()` reports the viewer session through `reelOrigin` and
+`activeReelPostId`; Escape does not exit a reel configured as the base layout.
