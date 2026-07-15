@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import type { CSSProperties } from 'vue'
 
-import type { FakeMediaItem } from '@/demo/fakeServer'
 import {
   mediaErrorLabel,
   mediaErrorStatus,
   type MediaPreviewState,
-} from '@/demo/mediaPreview'
+} from '../core/mediaPreview'
+import type { VibeItem } from '../types'
 
 defineProps<{
   entering: boolean
   fetchPriority: 'high' | 'low'
-  item: FakeMediaItem
+  item: VibeItem
   itemStyle?: CSSProperties
   previewState: MediaPreviewState
 }>()
@@ -41,9 +41,7 @@ function isVideo(src: string): boolean {
     :style="itemStyle"
     :aria-busy="previewState === 'loading'"
   >
-    <div
-      class="media-card-content"
-    >
+    <div class="media-card-content">
       <div
         v-if="previewState === 'loading'"
         data-test="media-loading"

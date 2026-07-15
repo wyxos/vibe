@@ -5,7 +5,7 @@ import {
   calculateMasonryLayout,
   calculateVisibleMasonryIndices,
   type MasonryMediaDimensions,
-} from '@/demo/masonry'
+} from '@/core/masonry'
 
 function media(width: number | null, height: number | null): MasonryMediaDimensions {
   return {

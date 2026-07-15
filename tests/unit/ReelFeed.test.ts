@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import ReelFeed from '@/demo/ReelFeed.vue'
+import ReelFeed from '@/components/ReelFeed.vue'
 
 function feedItem(postId: number) {
   return {

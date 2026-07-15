@@ -37,13 +37,9 @@ try {
     'package/lib/index.cjs',
     'package/lib/index.d.ts',
     'package/lib/style.css',
-    'package/lib/components/Layout.vue.d.ts',
-    'package/lib/components/ListCard.vue.d.ts',
-    'package/lib/components/ListSurface.vue.d.ts',
-    'package/lib/components/FullscreenSurface.vue.d.ts',
-    'package/lib/components/viewer.d.ts',
-    'package/lib/components/viewer-core/useViewer.d.ts',
-    'package/lib/components/viewer-core/useDataSource.d.ts',
+    'package/lib/types.d.ts',
+    'package/lib/core/createVibe.d.ts',
+    'package/lib/components/VibeSurface.vue.d.ts',
   ]
 
   const forbiddenPatterns = [

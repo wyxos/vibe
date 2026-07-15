@@ -9,18 +9,19 @@ import {
   type CSSProperties,
 } from 'vue'
 
-import type { FeedRendererProps } from '@/demo/feed'
-import { isNearFeedBottom } from '@/demo/feed'
-import GalleryFooter from '@/demo/GalleryFooter.vue'
-import MediaCard from '@/demo/MediaCard.vue'
+import type { FeedRendererProps } from '../core/feed'
+import { isNearFeedBottom } from '../core/feed'
+import type { VibeItemId } from '../types'
+import GalleryFooter from './GalleryFooter.vue'
+import MediaCard from './MediaCard.vue'
 
 const VIRTUAL_OVERSCAN = 2
 
 const props = defineProps<FeedRendererProps>()
 const emit = defineEmits<{
-  error: [postId: number]
+  error: [postId: VibeItemId]
   loadMore: []
-  ready: [postId: number]
+  ready: [postId: VibeItemId]
 }>()
 
 const galleryElement = shallowRef<HTMLElement | null>(null)

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   mediaErrorLabel,
   mediaErrorStatus,
-} from '@/demo/mediaPreview'
+} from '@/core/mediaPreview'
 
 describe('media preview errors', () => {
   it.each([

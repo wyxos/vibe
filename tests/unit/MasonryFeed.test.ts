@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import MasonryFeed from '@/demo/MasonryFeed.vue'
+import MasonryFeed from '@/components/MasonryFeed.vue'
 
 function feedItem(postId: number) {
   return {

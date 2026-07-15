@@ -9,6 +9,12 @@
     "outDir": "./lib",
     "stripInternal": true
   },
-  "include": ["src/env.d.ts", "src/index.ts", "src/components/**/*.ts", "src/components/**/*.vue"],
+  "include": [
+    "src/env.d.ts",
+    "src/index.ts",
+    "src/types.ts",
+    "src/core/**/*.ts",
+    "src/components/**/*.vue"
+  ],
   "exclude": ["src/App.vue", "src/main.ts", "src/style.css"]
 }

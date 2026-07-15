@@ -1,26 +1,16 @@
+import type {
+  VibeCursor,
+  VibeItem,
+  VibeMediaAsset,
+  VibePreview,
+} from '@/types'
+
 const FIXTURE_PAGE_COUNT = 10
 const PREVIEW_MAX_WIDTH = 450
 const DEFAULT_RESPONSE_DELAY_MS = 1000
 
-export type FakeMediaCursor = string | number | null | undefined
-
-export interface FakeMediaPreview {
-  src: string
-  width: number | null
-  height: number | null
-}
-
-export interface FakeMediaAsset {
-  src: string
-  preview: FakeMediaPreview
-  width: number | null
-  height: number | null
-}
-
-export interface FakeMediaItem extends FakeMediaAsset {
-  postId: number
-  items: FakeMediaAsset[]
-}
+export type FakeMediaCursor = VibeCursor | undefined
+export type FakeMediaItem = VibeItem
 
 export interface FakeMediaPage {
   items: FakeMediaItem[]
@@ -86,7 +76,7 @@ function previewUrl(src: string): string {
 function previewDimensions(
   width: number | null,
   height: number | null,
-): Pick<FakeMediaPreview, 'width' | 'height'> {
+): Pick<VibePreview, 'width' | 'height'> {
   if (width === null || height === null) {
     return { width: null, height: null }
   }
@@ -99,7 +89,7 @@ function previewDimensions(
   }
 }
 
-function normalizeItem(item: FixtureItem): FakeMediaAsset {
+function normalizeItem(item: FixtureItem): VibeMediaAsset {
   const width = sourceDimension(item.width)
   const height = sourceDimension(item.height)
 

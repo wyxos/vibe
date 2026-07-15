@@ -7,15 +7,16 @@ import {
   type CSSProperties,
 } from 'vue'
 
-import type { MasonryFeedProps } from '@/demo/feed'
-import { isNearFeedBottom } from '@/demo/feed'
-import GalleryFooter from '@/demo/GalleryFooter.vue'
+import type { MasonryFeedProps } from '../core/feed'
+import { isNearFeedBottom } from '../core/feed'
 import {
   calculateMasonryEntryOffset,
   calculateMasonryLayout,
   calculateVisibleMasonryIndices,
-} from '@/demo/masonry'
-import MediaCard from '@/demo/MediaCard.vue'
+} from '../core/masonry'
+import type { VibeItemId } from '../types'
+import GalleryFooter from './GalleryFooter.vue'
+import MediaCard from './MediaCard.vue'
 
 const MIN_COLUMN_WIDTH = 240
 const MIN_GAP = 6
@@ -25,9 +26,9 @@ const VIRTUAL_OVERSCAN_FACTOR = 1.5
 
 const props = defineProps<MasonryFeedProps>()
 const emit = defineEmits<{
-  error: [postId: number]
+  error: [postId: VibeItemId]
   loadMore: []
-  ready: [postId: number]
+  ready: [postId: VibeItemId]
 }>()
 
 const galleryElement = shallowRef<HTMLElement | null>(null)

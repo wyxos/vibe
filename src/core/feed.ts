@@ -1,18 +1,18 @@
-import type { FakeMediaItem } from '@/demo/fakeServer'
-import type { MediaPreviewState } from '@/demo/mediaPreview'
+import type { VibeItem, VibeItemId } from '../types'
+import type { MediaPreviewState } from './mediaPreview'
 
 export interface FeedRendererProps {
   hasNext: boolean
   infiniteScroll: boolean
   isLoadingMore: boolean
-  items: readonly FakeMediaItem[]
+  items: readonly VibeItem[]
   nextPageError: boolean
-  previewStates: ReadonlyMap<number, MediaPreviewState>
+  previewStates: ReadonlyMap<VibeItemId, MediaPreviewState>
 }
 
 export interface MasonryFeedProps extends FeedRendererProps {
-  enteringPostIds: ReadonlySet<number>
-  entryDelays: ReadonlyMap<number, number>
+  enteringPostIds: ReadonlySet<VibeItemId>
+  entryDelays: ReadonlyMap<VibeItemId, number>
 }
 
 export const LOAD_MORE_THRESHOLD = 240
