@@ -28,6 +28,7 @@ import type {
   VibeLayout,
   VibeMediaSource,
 } from '../types'
+import CardRegion from './CardRegion.vue'
 
 const props = defineProps<{
   cardFooter?: VibeCardRegion
@@ -186,10 +187,6 @@ function onMediaTouchEnd(event: TouchEvent): void {
   changeMedia(normalizedMediaIndex.value + Math.sign(deltaX))
 }
 
-function regionStyle(region: VibeCardRegion): CSSProperties {
-  return { height: `${region.height}px` }
-}
-
 function isVideo(src: string): boolean {
   try {
     return /\.(mp4|webm|mov)$/i.test(new URL(src).pathname)
@@ -246,26 +243,18 @@ onBeforeUnmount(() => {
     @keydown.space.prevent="activate(interactive && !usesSeparateActivator, 'keyboard')"
   >
     <div class="media-card-content">
-      <div
+      <CardRegion
         v-if="cardHeader"
-        class="media-card-header"
-        :style="regionStyle(cardHeader)"
-        @click.stop
-        @keydown.stop
-      >
-        <component
-          :is="cardHeader.component"
-          :index="index"
-          :item="item"
-          :layout="layout"
-          :loaded-count="loadedCount"
-          :media-count="mediaItems.length"
-          :media-index="normalizedMediaIndex"
-          :media-item="mediaItem"
-          :media-source="mediaSource ?? 'preview'"
-          :total="total"
-        />
-      </div>
+        :index="index"
+        :item="item"
+        :layout="layout"
+        :loaded-count="loadedCount"
+        :media-index="normalizedMediaIndex"
+        :media-source="mediaSource"
+        placement="header"
+        :region="cardHeader"
+        :total="total"
+      />
 
       <div
         class="media-card-media"
@@ -392,26 +381,18 @@ onBeforeUnmount(() => {
         />
       </div>
 
-      <div
+      <CardRegion
         v-if="cardFooter"
-        class="media-card-footer"
-        :style="regionStyle(cardFooter)"
-        @click.stop
-        @keydown.stop
-      >
-        <component
-          :is="cardFooter.component"
-          :index="index"
-          :item="item"
-          :layout="layout"
-          :loaded-count="loadedCount"
-          :media-count="mediaItems.length"
-          :media-index="normalizedMediaIndex"
-          :media-item="mediaItem"
-          :media-source="mediaSource ?? 'preview'"
-          :total="total"
-        />
-      </div>
+        :index="index"
+        :item="item"
+        :layout="layout"
+        :loaded-count="loadedCount"
+        :media-index="normalizedMediaIndex"
+        :media-source="mediaSource"
+        placement="footer"
+        :region="cardFooter"
+        :total="total"
+      />
     </div>
   </article>
 </template>

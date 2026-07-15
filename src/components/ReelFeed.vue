@@ -13,6 +13,7 @@ import type { ReelFeedProps } from '../core/feed'
 import { isNearFeedBottom } from '../core/feed'
 import { mediaStateKey } from '../core/mediaAsset'
 import type { VibeItemId } from '../types'
+import CardRegion from './CardRegion.vue'
 import GalleryFooter from './GalleryFooter.vue'
 import MediaCard from './MediaCard.vue'
 
@@ -54,6 +55,11 @@ const visibleItems = computed(() => {
 })
 
 const activePostId = computed(() => props.items[activeIndex.value]?.postId)
+const activeItem = computed(() => props.items[activeIndex.value])
+const activeMediaIndex = computed(() => {
+  const postId = activePostId.value
+  return postId === undefined ? 0 : props.mediaIndices.get(postId) ?? 0
+})
 
 function itemStyle(index: number): CSSProperties {
   return { gridRow: `${index + 1}` }
@@ -173,52 +179,82 @@ defineExpose({ activeIndex, activePostId, loadIfNearBottom })
 
 <template>
   <main
-    ref="galleryElement"
-    class="gallery-shell reel-feed"
+    class="reel-shell"
+    :class="{
+      'reel-shell--has-footer': Boolean(cardFooter),
+      'reel-shell--has-header': Boolean(cardHeader),
+    }"
     data-layout-mode="reel"
-    :data-active-post-id="activePostId"
-    :data-active-media-index="activePostId === undefined
-      ? undefined
-      : mediaIndices.get(activePostId) ?? 0"
-    @scroll.passive="onScroll"
   >
-    <section
-      class="reel-track"
-      :style="trackStyle"
-      aria-label="Media gallery"
-    >
-      <MediaCard
-        v-for="({ fetchPriority, item, index }) in visibleItems"
-        :key="item.postId"
-        class="reel-item"
-        :card-footer="cardFooter"
-        :card-header="cardHeader"
-        :entering="false"
-        :fetch-priority="fetchPriority"
-        :index="index"
-        :item="item"
-        :item-style="itemStyle(index)"
-        layout="reel"
-        :loaded-count="items.length"
-        :media-index="mediaIndices.get(item.postId) ?? 0"
-        :media-source="mediaSource"
-        :preview-state="previewStates.get(mediaStateKey(
-          item.postId,
-          mediaIndices.get(item.postId) ?? 0,
-        )) ?? 'loading'"
-        :total="total"
-        @media-change="emit('mediaChange', item.postId, $event)"
-        @ready="emit('ready', item.postId, $event)"
-        @error="emit('error', item.postId, $event)"
-      />
-    </section>
+    <CardRegion
+      v-if="cardHeader && activeItem"
+      :index="activeIndex"
+      :item="activeItem"
+      layout="reel"
+      :loaded-count="items.length"
+      :media-index="activeMediaIndex"
+      :media-source="mediaSource"
+      placement="header"
+      :region="cardHeader"
+      :total="total"
+    />
 
-    <GalleryFooter
-      :has-error="nextPageError"
-      :has-next="hasNext"
-      :infinite-scroll="infiniteScroll"
-      :is-loading="isLoadingMore"
-      @load-more="emit('loadMore')"
+    <div
+      ref="galleryElement"
+      class="gallery-shell reel-feed"
+      :data-active-post-id="activePostId"
+      :data-active-media-index="activeMediaIndex"
+      @scroll.passive="onScroll"
+    >
+      <section
+        class="reel-track"
+        :style="trackStyle"
+        aria-label="Media gallery"
+      >
+        <MediaCard
+          v-for="({ fetchPriority, item, index }) in visibleItems"
+          :key="item.postId"
+          class="reel-item"
+          :entering="false"
+          :fetch-priority="fetchPriority"
+          :index="index"
+          :item="item"
+          :item-style="itemStyle(index)"
+          layout="reel"
+          :loaded-count="items.length"
+          :media-index="mediaIndices.get(item.postId) ?? 0"
+          :media-source="mediaSource"
+          :preview-state="previewStates.get(mediaStateKey(
+            item.postId,
+            mediaIndices.get(item.postId) ?? 0,
+          )) ?? 'loading'"
+          :total="total"
+          @media-change="emit('mediaChange', item.postId, $event)"
+          @ready="emit('ready', item.postId, $event)"
+          @error="emit('error', item.postId, $event)"
+        />
+      </section>
+
+      <GalleryFooter
+        :has-error="nextPageError"
+        :has-next="hasNext"
+        :infinite-scroll="infiniteScroll"
+        :is-loading="isLoadingMore"
+        @load-more="emit('loadMore')"
+      />
+    </div>
+
+    <CardRegion
+      v-if="cardFooter && activeItem"
+      :index="activeIndex"
+      :item="activeItem"
+      layout="reel"
+      :loaded-count="items.length"
+      :media-index="activeMediaIndex"
+      :media-source="mediaSource"
+      placement="footer"
+      :region="cardFooter"
+      :total="total"
     />
   </main>
 </template>

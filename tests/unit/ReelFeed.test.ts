@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h, markRaw } from 'vue'
 
 import ReelFeed from '@/components/ReelFeed.vue'
 
@@ -120,6 +121,56 @@ describe('ReelFeed', () => {
       .toBe('https://example.com/10-preview.jpg')
     expect(originalWrapper.get('[data-post-id="10"] img').attributes('src'))
       .toBe('https://example.com/10.jpg')
+  })
+
+  it('keeps one header and footer stationary while active context changes', async () => {
+    const Region = markRaw(defineComponent({
+      props: ['index', 'item', 'mediaIndex'],
+      setup(regionProps) {
+        return () => h(
+          'span',
+          `${regionProps.index}:${regionProps.item.postId}:${regionProps.mediaIndex}`,
+        )
+      },
+    }))
+    const groupedSecondItem = {
+      ...feedItem(11),
+      items: [mediaAsset('11-a'), mediaAsset('11-b')],
+    }
+    const wrapper = mount(ReelFeed, {
+      props: {
+        ...props(),
+        cardFooter: { component: Region, height: 48 },
+        cardHeader: { component: Region, height: 40 },
+        items: [feedItem(10), groupedSecondItem],
+      },
+    })
+    await wrapper.vm.$nextTick()
+
+    const header = wrapper.get('.media-card-header')
+    const footer = wrapper.get('.media-card-footer')
+    const headerElement = header.element
+    const footerElement = footer.element
+    const gallery = wrapper.get('.reel-feed')
+    expect(wrapper.findAll('.media-card-header')).toHaveLength(1)
+    expect(wrapper.findAll('.media-card-footer')).toHaveLength(1)
+    expect(gallery.find('.media-card-header').exists()).toBe(false)
+    expect(gallery.find('.media-card-footer').exists()).toBe(false)
+    expect(header.text()).toBe('0:10:0')
+
+    Object.defineProperty(gallery.element, 'scrollTop', {
+      configurable: true,
+      writable: true,
+      value: 500,
+    })
+    await gallery.trigger('scroll')
+
+    expect(wrapper.get('.media-card-header').element).toBe(headerElement)
+    expect(wrapper.get('.media-card-footer').element).toBe(footerElement)
+    expect(wrapper.get('.media-card-header').text()).toBe('1:11:0')
+
+    await wrapper.setProps({ mediaIndices: new Map([[11, 2]]) })
+    expect(wrapper.get('.media-card-header').text()).toBe('1:11:2')
   })
 
   it('keeps grouped media horizontal while vertical scrolling advances posts', async () => {

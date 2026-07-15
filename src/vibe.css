@@ -23,7 +23,7 @@
   outline: none;
 }
 
-.vibe-reel-overlay > .reel-feed {
+.vibe-reel-overlay > .reel-shell {
   height: 100%;
 }
 
@@ -35,8 +35,8 @@
   will-change: clip-path, opacity;
 }
 
-.vibe-reel-viewer-enter-active > .reel-feed,
-.vibe-reel-viewer-leave-active > .reel-feed {
+.vibe-reel-viewer-enter-active > .reel-shell,
+.vibe-reel-viewer-leave-active > .reel-shell {
   transition:
     opacity 240ms ease,
     transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -55,8 +55,8 @@
   );
 }
 
-.vibe-reel-viewer-enter-from > .reel-feed,
-.vibe-reel-viewer-leave-to > .reel-feed {
+.vibe-reel-viewer-enter-from > .reel-shell,
+.vibe-reel-viewer-leave-to > .reel-shell {
   opacity: 0.68;
   transform: scale(0.985);
 }
@@ -327,11 +327,39 @@
 
 .reel-feed {
   container-type: size;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
   padding: 0;
   scroll-snap-type: y mandatory;
   scrollbar-color: auto;
   scrollbar-gutter: auto;
   scrollbar-width: none;
+}
+
+.reel-shell {
+  --gallery-padding: clamp(0.375rem, 1vw, 0.875rem);
+
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: var(--gallery-padding);
+  overflow: hidden;
+  background: #080808;
+}
+
+.reel-shell > .media-card-region {
+  width: 100%;
+}
+
+.reel-shell > .media-card-header {
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.reel-shell > .media-card-footer {
+  border-radius: 0 0 0.5rem 0.5rem;
 }
 
 .reel-feed::-webkit-scrollbar {
@@ -354,7 +382,7 @@
   width: 100%;
   height: 100%;
   min-width: 0;
-  padding: var(--gallery-padding);
+  padding: 0;
   background: #080808;
   scroll-snap-align: start;
   scroll-snap-stop: always;
@@ -364,6 +392,16 @@
   overflow: hidden;
   border-radius: 0.5rem;
   background: #171717;
+}
+
+.reel-shell--has-header .reel-item .media-card-content {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.reel-shell--has-footer .reel-item .media-card-content {
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
 }
 
 .reel-item .media-preview {
@@ -499,8 +537,8 @@
   .media-preview,
   .vibe-reel-viewer-enter-active,
   .vibe-reel-viewer-leave-active,
-  .vibe-reel-viewer-enter-active > .reel-feed,
-  .vibe-reel-viewer-leave-active > .reel-feed {
+  .vibe-reel-viewer-enter-active > .reel-shell,
+  .vibe-reel-viewer-leave-active > .reel-shell {
     transition: none;
   }
 

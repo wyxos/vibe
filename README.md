@@ -69,8 +69,8 @@ Provide both `initialPage` and `loadPage` when preloaded items can continue to a
 
 ## Custom card chrome
 
-Use `cardHeader` and `cardFooter` to render application-owned controls over every
-media card:
+Use `cardHeader` and `cardFooter` to render application-owned regions above and
+below media:
 
 ```ts
 import MediaInfo from './MediaInfo.vue'
@@ -92,9 +92,9 @@ const vibe = createVibe({
 ```
 
 The heights are CSS pixels and let Vibe include both regions in masonry before
-virtualized cards mount. In reel layout, they reduce the media area while the
-whole card remains one viewport tall. Each component controls its own content
-and alignment, and receives `item`, `layout`, `mediaSource`, zero-based `index`,
+virtualized cards mount. In reel layout, one header and footer remain stationary
+while only the media viewport scrolls between posts. Each component controls its
+own content and alignment, and receives `item`, `layout`, `mediaSource`, zero-based `index`,
 `loadedCount`, the active `mediaItem`, its zero-based `mediaIndex`, its inclusive
 `mediaCount`, and the optional remote `total`. Import the
 `VibeCardRegionProps` type for typed Vue props. Interacting with these regions
