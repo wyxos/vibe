@@ -95,10 +95,6 @@ const volumeStyle = computed<CSSProperties>(() => ({
         <Play v-else :size="18" fill="currentColor" />
       </button>
 
-      <output class="media-control-time" aria-live="off">
-        {{ formatTime(safeCurrentTime) }} / {{ formatTime(safeDuration) }}
-      </output>
-
       <div class="media-controls-audio">
         <button
           type="button"
@@ -124,6 +120,10 @@ const volumeStyle = computed<CSSProperties>(() => ({
           @input="emit('volumeChange', inputValue($event))"
         >
       </div>
+
+      <output class="media-control-time" aria-live="off">
+        {{ formatTime(safeCurrentTime) }} / {{ formatTime(safeDuration) }}
+      </output>
     </div>
   </div>
 </template>

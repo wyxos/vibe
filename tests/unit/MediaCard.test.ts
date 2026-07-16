@@ -150,6 +150,13 @@ describe('MediaCard', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.get('.media-controls').classes()).toContain('media-controls--reel')
+    expect([...wrapper.get('.media-controls-row').element.children].map((element) => (
+      element.className
+    ))).toEqual([
+      'media-control-button media-control-playback',
+      'media-controls-audio',
+      'media-control-time',
+    ])
     expect(wrapper.get('.media-control-time').text()).toBe('0:05 / 2:05')
 
     await wrapper.get('[aria-label="Seek video"]').setValue('61')
