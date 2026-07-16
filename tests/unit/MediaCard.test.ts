@@ -16,6 +16,17 @@ function mediaAsset(name: string) {
   }
 }
 
+function videoAsset(name: string) {
+  return {
+    ...mediaAsset(name),
+    src: `https://example.com/${name}.mp4`,
+    preview: {
+      ...mediaAsset(name).preview,
+      src: `https://example.com/${name}-preview.mp4`,
+    },
+  }
+}
+
 function props() {
   return {
     entering: false,
@@ -114,5 +125,58 @@ describe('MediaCard', () => {
     await wrapper.get('[aria-label="Previous media for post 10"]').trigger('click')
     expect(wrapper.get('.media-card-media').attributes('data-media-direction')).toBe('previous')
     expect(wrapper.emitted('mediaChange')).toEqual([[1], [0]])
+  })
+
+  it('controls video playback, seeking, volume, mute, and time display', async () => {
+    const wrapper = mount(MediaCard, {
+      props: {
+        ...props(),
+        item: {
+          postId: 11,
+          ...videoAsset('11'),
+          items: [],
+        },
+      },
+    })
+    const video = wrapper.get('video').element as HTMLVideoElement
+    const play = vi.spyOn(video, 'play').mockResolvedValue()
+    const pause = vi.spyOn(video, 'pause').mockImplementation(() => undefined)
+    Object.defineProperty(video, 'duration', { configurable: true, value: 125 })
+    video.currentTime = 5
+    video.volume = 0.8
+    video.muted = false
+
+    video.dispatchEvent(new Event('loadedmetadata'))
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get('.media-controls').classes()).toContain('media-controls--reel')
+    expect(wrapper.get('.media-control-time').text()).toBe('0:05 / 2:05')
+
+    await wrapper.get('[aria-label="Seek video"]').setValue('61')
+    expect(video.currentTime).toBe(61)
+
+    await wrapper.get('[aria-label="Video volume"]').setValue('0.4')
+    expect(video.volume).toBe(0.4)
+    expect(video.muted).toBe(false)
+
+    await wrapper.get('[aria-label="Mute video"]').trigger('click')
+    expect(video.muted).toBe(true)
+    await wrapper.get('[aria-label="Unmute video"]').trigger('click')
+    expect(video.muted).toBe(false)
+
+    await wrapper.get('[aria-label="Play video"]').trigger('click')
+    expect(play).toHaveBeenCalledOnce()
+    video.dispatchEvent(new Event('playing'))
+    await wrapper.vm.$nextTick()
+    await wrapper.get('[aria-label="Pause video"]').trigger('click')
+    expect(pause).toHaveBeenCalledOnce()
+
+    await wrapper.setProps({ layout: 'masonry' })
+    expect(wrapper.get('.media-controls').classes()).toContain('media-controls--masonry')
+    expect(wrapper.find('[aria-label="Seek video"]').exists()).toBe(true)
+    expect(wrapper.find('.media-controls-row').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="Play video"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="Video volume"]').exists()).toBe(false)
+    expect(wrapper.find('.media-control-time').exists()).toBe(false)
   })
 })

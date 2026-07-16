@@ -2,8 +2,6 @@
 import {
   ChevronLeft,
   ChevronRight,
-  Pause,
-  Play,
 } from 'lucide-vue-next'
 import {
   computed,
@@ -29,6 +27,7 @@ import type {
   VibeMediaSource,
 } from '../types'
 import CardRegion from './CardRegion.vue'
+import MediaControls from './MediaControls.vue'
 
 const props = defineProps<{
   cardFooter?: VibeCardRegion
@@ -90,7 +89,12 @@ const mediaHeight = computed(() => (
   props.mediaSource === 'original' ? mediaItem.value.height : mediaItem.value.preview.height
 ))
 const videoElement = shallowRef<HTMLVideoElement | null>(null)
+const videoCurrentTime = shallowRef(0)
+const videoDuration = shallowRef(0)
+const videoIsMuted = shallowRef(true)
 const videoIsPlaying = shallowRef(false)
+const videoVolume = shallowRef(1)
+let lastAudibleVolume = 1
 
 const usesSeparateActivator = computed(() => (
   props.interactive && Boolean(props.cardHeader || props.cardFooter)
@@ -192,7 +196,7 @@ function onVideoClick(event: MouseEvent): void {
 }
 
 async function toggleVideoPlayback(): Promise<void> {
-  if (props.layout !== 'reel' || !videoElement.value) return
+  if (!videoElement.value) return
 
   if (videoIsPlaying.value) {
     videoElement.value.pause()
@@ -204,6 +208,54 @@ async function toggleVideoPlayback(): Promise<void> {
   } catch {
     videoIsPlaying.value = false
   }
+}
+
+function finiteMediaValue(value: number): number {
+  return Number.isFinite(value) ? Math.max(0, value) : 0
+}
+
+function syncVideoState(event?: Event): void {
+  const video = (event?.currentTarget as HTMLVideoElement | null) ?? videoElement.value
+  if (!video) return
+
+  videoCurrentTime.value = finiteMediaValue(video.currentTime)
+  videoDuration.value = finiteMediaValue(video.duration)
+  videoIsMuted.value = video.muted
+  videoVolume.value = video.volume
+  if (video.volume > 0) lastAudibleVolume = video.volume
+}
+
+function onVideoLoadedMetadata(event: Event): void {
+  syncVideoState(event)
+  emit('ready', normalizedMediaIndex.value)
+}
+
+function seekVideo(time: number): void {
+  const video = videoElement.value
+  if (!video || !Number.isFinite(time)) return
+
+  video.currentTime = Math.min(finiteMediaValue(video.duration), Math.max(0, time))
+  videoCurrentTime.value = video.currentTime
+}
+
+function setVideoVolume(volume: number): void {
+  const video = videoElement.value
+  if (!video || !Number.isFinite(volume)) return
+
+  const nextVolume = Math.min(1, Math.max(0, volume))
+  video.volume = nextVolume
+  video.muted = nextVolume === 0
+  if (nextVolume > 0) lastAudibleVolume = nextVolume
+  syncVideoState()
+}
+
+function toggleVideoMute(): void {
+  const video = videoElement.value
+  if (!video) return
+
+  if (video.muted && video.volume === 0) video.volume = lastAudibleVolume
+  video.muted = !video.muted
+  syncVideoState()
 }
 
 onBeforeUnmount(() => {
@@ -291,10 +343,13 @@ onBeforeUnmount(() => {
               :height="mediaHeight ?? undefined"
               autoplay
               loop
-              muted
+              :muted="videoIsMuted"
               playsinline
               :preload="fetchPriority === 'high' ? 'auto' : 'metadata'"
-              @loadedmetadata="$emit('ready', normalizedMediaIndex)"
+              @loadedmetadata="onVideoLoadedMetadata"
+              @durationchange="syncVideoState"
+              @timeupdate="syncVideoState"
+              @volumechange="syncVideoState"
               @playing="videoIsPlaying = true"
               @pause="videoIsPlaying = false"
               @click="onVideoClick"
@@ -318,18 +373,19 @@ onBeforeUnmount(() => {
           </div>
         </Transition>
 
-        <button
-          v-if="mediaIsVideo && layout === 'reel' && previewState === 'ready'"
-          type="button"
-          class="media-video-control"
-          :aria-label="videoIsPlaying ? 'Pause video' : 'Play video'"
-          :title="videoIsPlaying ? 'Pause video' : 'Play video'"
-          @click.stop="toggleVideoPlayback"
-          @keydown.stop
-        >
-          <Pause v-if="videoIsPlaying" :size="18" />
-          <Play v-else :size="18" />
-        </button>
+        <MediaControls
+          v-if="mediaIsVideo && previewState === 'ready'"
+          :current-time="videoCurrentTime"
+          :duration="videoDuration"
+          :layout="layout"
+          :muted="videoIsMuted"
+          :playing="videoIsPlaying"
+          :volume="videoVolume"
+          @seek="seekVideo"
+          @toggle-mute="toggleVideoMute"
+          @toggle-playback="toggleVideoPlayback"
+          @volume-change="setVideoVolume"
+        />
 
         <div
           v-if="mediaItems.length > 1"
