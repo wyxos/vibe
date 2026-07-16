@@ -68,12 +68,14 @@ describe('App', () => {
     const wrapper = await mountApp()
 
     expect(wrapper.get('[role="status"]').text()).toBe('Loading media…')
+    expect(wrapper.get('[data-test="vibe-lifecycle"]').text()).toBe('Masonry·Loading')
     expect(wrapper.get('.app-header').text()).toContain('Vibe')
     expect(wrapper.get('a[href="/demos/card-header-and-footer"]').text()).toBe('Demos')
     await flushPromises()
 
     expect(fakeServer.getFakeMediaPage).toHaveBeenCalledWith(null)
     expect(wrapper.get('[data-layout-mode="masonry"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="vibe-lifecycle"]').text()).toBe('Masonry·Loaded')
     expect(wrapper.findAll('.masonry-item')).toHaveLength(1)
     expect(wrapper.get('img').attributes('src'))
       .toBe('https://example.com/image-10-preview.jpeg')
@@ -201,6 +203,7 @@ describe('App', () => {
     await flushPromises()
 
     expect(wrapper.get('[role="alert"]').text()).toBe('Unable to load media.')
+    expect(wrapper.get('[data-test="vibe-lifecycle"]').text()).toBe('Masonry·Error')
   })
 
   it('renders the card header and footer variation on the demos route', async () => {

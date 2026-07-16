@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
 
+import type { VibeState } from '@/index'
+
 defineProps<{
   infiniteScroll: boolean
+}>()
+
+const emit = defineEmits<{
+  vibeStateChange: [state: VibeState]
 }>()
 </script>
 
@@ -27,6 +33,7 @@ defineProps<{
       <component
         :is="Component"
         :infinite-scroll="infiniteScroll"
+        @vibe-state-change="emit('vibeStateChange', $event)"
       />
     </RouterView>
   </main>

@@ -7,10 +7,18 @@ import {
 } from 'vue'
 
 import { getFakeMediaPage } from '@/demo/fakeServer'
-import { createVibe, type VibeInstance } from '@/index'
+import {
+  createVibe,
+  type VibeInstance,
+  type VibeState,
+} from '@/index'
 
 const props = defineProps<{
   infiniteScroll: boolean
+}>()
+
+const emit = defineEmits<{
+  vibeStateChange: [state: VibeState]
 }>()
 
 const vibeTarget = shallowRef<HTMLElement | null>(null)
@@ -28,6 +36,7 @@ onMounted(async () => {
     target,
     layout: 'responsive',
     infiniteScroll: props.infiniteScroll,
+    onStateChange: (state) => emit('vibeStateChange', state),
     loadPage: async ({ cursor }) => {
       const page = await getFakeMediaPage(cursor)
 

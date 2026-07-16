@@ -139,6 +139,29 @@ from `masonry` or the base `reel` layout. Return `null` to skip a URL update for
 an item. Vue Router is an optional peer dependency and is only needed when this
 integration is used.
 
+## Feed state
+
+Use `onStateChange` to render request and layout state outside Vibe, such as an
+application-header lifecycle indicator:
+
+```ts
+const vibe = createVibe({
+  target: '#gallery',
+  loadPage,
+  onStateChange: (state) => {
+    renderFeedState({
+      layout: state.layout,
+      lifecycle: state.lifecycle,
+    })
+  },
+})
+```
+
+The callback receives an initial snapshot when the instance is created and a
+new snapshot whenever its public state changes. The typed `lifecycle` value is
+`loading`, `loaded`, or `error`; it covers initial and pagination requests.
+Individual media preview errors do not mark the feed request as failed.
+
 ## Instance lifecycle
 
 ```ts

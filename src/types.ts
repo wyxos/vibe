@@ -5,6 +5,7 @@ export type VibeCursor = string | number | null
 export type VibeItemId = string | number
 export type VibeLayout = 'masonry' | 'reel'
 export type VibeLayoutMode = VibeLayout | 'responsive'
+export type VibeLifecycle = 'error' | 'loaded' | 'loading'
 export type VibeMediaSource = 'preview' | 'original'
 
 export interface VibePreview {
@@ -81,6 +82,7 @@ export interface CreateVibeOptions {
   infiniteScroll?: boolean
   initialPage?: VibeInitialPage
   loadPage?: VibePageLoader
+  onStateChange?: (state: VibeState) => void
   routing?: VibeRoutingOptions
 }
 
@@ -92,6 +94,7 @@ export interface VibeState {
   isLoadingMore: boolean
   items: readonly VibeItem[]
   layout: VibeLayout
+  lifecycle: VibeLifecycle
   next: VibeCursor
   nextPageError: unknown | null
   reelOrigin: 'masonry' | null

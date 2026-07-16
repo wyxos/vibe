@@ -2,7 +2,9 @@ import {
   createApp,
   nextTick,
   reactive,
+  watch,
   type App,
+  type WatchHandle,
 } from 'vue'
 
 import VibeSurface from '../components/VibeSurface.vue'
@@ -17,6 +19,7 @@ import type {
   VibeItemId,
   VibeLayout,
   VibeLayoutMode,
+  VibeLifecycle,
   VibePage,
   VibeState,
 } from '../types'
@@ -77,6 +80,12 @@ function appendUniqueItems(current: VibeItem[], incoming: VibeItem[]): VibeItem[
   ]
 }
 
+function resolveLifecycle(state: VibeRuntimeState): VibeLifecycle {
+  if (state.isLoading || state.isLoadingMore) return 'loading'
+  if (state.error || state.nextPageError) return 'error'
+  return 'loaded'
+}
+
 class VibeController implements VibeInstance {
   private app: App<Element> | null = null
   private abortController: AbortController | null = null
@@ -86,6 +95,7 @@ class VibeController implements VibeInstance {
   private reelRouteIsActive = false
   private resizeObserver: ResizeObserver | null = null
   private surface: VibeSurfaceExpose | null = null
+  private stopStateWatcher: WatchHandle | null = null
   private target: Element | null = null
   private layoutMode: VibeLayoutMode
   private lastLoadedCursor: VibeCursor = null
@@ -109,11 +119,13 @@ class VibeController implements VibeInstance {
       reelOrigin: null,
       total: initialPage?.total ?? null,
     })
+    this.startStateNotifications()
   }
 
   async mount(): Promise<void> {
     if (this.app) throw new Error('Vibe is already mounted.')
 
+    this.startStateNotifications()
     const target = this.resolveTarget()
     this.target = target
     this.startResponsiveLayout()
@@ -136,6 +148,8 @@ class VibeController implements VibeInstance {
   destroy(): void {
     this.cancelRequest()
     this.stopResponsiveLayout()
+    this.stopStateWatcher?.()
+    this.stopStateWatcher = null
     this.app?.unmount()
     this.app = null
     this.surface = null
@@ -151,6 +165,7 @@ class VibeController implements VibeInstance {
       isLoadingMore: this.state.isLoadingMore,
       items: [...this.state.items],
       layout: this.state.layout,
+      lifecycle: resolveLifecycle(this.state),
       next: this.state.next,
       nextPageError: this.state.nextPageError,
       reelOrigin: this.state.reelOrigin,
@@ -367,6 +382,18 @@ class VibeController implements VibeInstance {
     return request.finally(() => {
       if (this.pendingRequest === request) this.pendingRequest = null
     })
+  }
+
+  private startStateNotifications(): void {
+    const onStateChange = this.options.onStateChange
+    if (!onStateChange || this.stopStateWatcher) return
+
+    onStateChange(this.getState())
+    this.stopStateWatcher = watch(
+      this.state,
+      () => onStateChange(this.getState()),
+      { deep: true, flush: 'post' },
+    )
   }
 }
 

@@ -8,10 +8,18 @@ import {
 import { RouterView, useRouter } from 'vue-router'
 
 import { getFakeMediaPage } from '@/demo/fakeServer'
-import { createVibe, type VibeInstance } from '@/index'
+import {
+  createVibe,
+  type VibeInstance,
+  type VibeState,
+} from '@/index'
 
 const props = defineProps<{
   infiniteScroll: boolean
+}>()
+
+const emit = defineEmits<{
+  vibeStateChange: [state: VibeState]
 }>()
 
 const router = useRouter()
@@ -30,6 +38,7 @@ onMounted(async () => {
     target,
     layout: 'responsive',
     infiniteScroll: props.infiniteScroll,
+    onStateChange: (state) => emit('vibeStateChange', state),
     routing: {
       router,
       feed: { name: 'demo-reel-url' },

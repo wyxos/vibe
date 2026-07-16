@@ -43,7 +43,8 @@ body {
 }
 
 .app-header-navigation,
-.app-navigation {
+.app-navigation,
+.app-header-actions {
   display: flex;
   align-items: center;
 }
@@ -54,6 +55,59 @@ body {
 
 .app-navigation {
   gap: 0.25rem;
+}
+
+.app-header-actions {
+  gap: clamp(0.75rem, 1.5vw, 1.25rem);
+}
+
+.vibe-lifecycle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+  padding: 0.3125rem 0.5rem;
+  border: 1px solid #333333;
+  border-radius: 999px;
+  color: #b8b8b8;
+  background: #171717;
+  font: 600 0.6875rem/1 system-ui, sans-serif;
+  white-space: nowrap;
+}
+
+.vibe-lifecycle-indicator {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #fbbf24;
+}
+
+.vibe-lifecycle--loading .vibe-lifecycle-indicator {
+  animation: vibe-lifecycle-pulse 1.2s ease-in-out infinite;
+}
+
+.vibe-lifecycle--loaded .vibe-lifecycle-indicator {
+  background: #4ade80;
+}
+
+.vibe-lifecycle--error {
+  border-color: rgb(248 113 113 / 45%);
+  color: #fecaca;
+}
+
+.vibe-lifecycle--error .vibe-lifecycle-indicator {
+  background: #f87171;
+}
+
+.vibe-lifecycle-separator {
+  color: #666666;
+}
+
+@keyframes vibe-lifecycle-pulse {
+  50% {
+    opacity: 0.35;
+  }
 }
 
 .app-title {
@@ -272,8 +326,10 @@ body {
   .toggle-track,
   .toggle-thumb,
   .app-nav-link,
-  .demo-card-action {
+  .demo-card-action,
+  .vibe-lifecycle-indicator {
     transition: none;
+    animation: none;
   }
 }
 
@@ -315,6 +371,15 @@ body {
   }
 
   .toggle-control > span:first-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .vibe-lifecycle-layout,
+  .vibe-lifecycle-separator {
     position: absolute;
     width: 1px;
     height: 1px;

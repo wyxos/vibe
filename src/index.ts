@@ -12,6 +12,7 @@ export type {
   VibeItemId,
   VibeLayout,
   VibeLayoutMode,
+  VibeLifecycle,
   VibeMediaAsset,
   VibeMediaSource,
   VibePage,
