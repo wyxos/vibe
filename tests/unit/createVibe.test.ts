@@ -147,6 +147,24 @@ describe('createVibe', () => {
     expect(instance.getState().next).toBeNull()
   })
 
+  it('checks the terminal cursor again from the end-of-feed CTA', async () => {
+    const loadPage = vi.fn()
+      .mockResolvedValueOnce({ items: [item(1)], next: 'cursor-2' })
+      .mockResolvedValueOnce({ items: [item(2)], next: null })
+      .mockResolvedValueOnce({ items: [item(2), item(3)], next: 'cursor-3' })
+    const instance = track(createVibe({ target, loadPage }))
+    await instance.mount()
+    await instance.loadNext()
+    await flushPromises()
+    expect(target.textContent).toContain("You've reached the end.")
+    target.querySelector<HTMLElement>('[data-test="retry-end"]')!.click()
+    await flushPromises()
+    expect(loadPage).toHaveBeenCalledTimes(3)
+    expect(loadPage.mock.calls[2]?.[0].cursor).toBe('cursor-2')
+    expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1, 2, 3])
+    expect(instance.getState().next).toBe('cursor-3')
+  })
+
   it('supports static initial data and runtime layout changes', async () => {
     const instance = track(createVibe({
       target,
@@ -156,6 +174,7 @@ describe('createVibe', () => {
     await instance.mount()
 
     expect(target.querySelector('[data-layout-mode="masonry"]')).not.toBeNull()
+    expect(target.querySelector('[data-test="retry-end"]')).toBeNull()
     expect(instance.getState().infiniteScroll).toBe(false)
 
     instance.setLayout('reel')

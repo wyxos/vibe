@@ -34,6 +34,7 @@ function mediaAsset(name: string) {
 
 function props() {
   return {
+    canRetryEnd: false,
     hasNext: false,
     infiniteScroll: true,
     isLoadingMore: false,
@@ -203,6 +204,16 @@ describe('ReelFeed', () => {
     await gallery.trigger('scroll')
     expect(gallery.attributes('data-active-post-id')).toBe('11')
     expect(gallery.attributes('data-active-media-index')).toBe('0')
+  })
+
+  it('offers a terminal retry when the loader can check for more', async () => {
+    const wrapper = mount(ReelFeed, {
+      props: { ...props(), canRetryEnd: true },
+    })
+
+    expect(wrapper.get('.end-feed').text()).toContain("You've reached the end.")
+    await wrapper.get('[data-test="retry-end"]').trigger('click')
+    expect(wrapper.emitted('retryEnd')).toEqual([[]])
   })
 
   it('keeps the active post anchored through transient rotation sizes', async () => {

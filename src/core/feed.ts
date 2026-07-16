@@ -7,6 +7,7 @@ import type {
 import type { MediaPreviewState } from './mediaPreview'
 
 export interface FeedRendererProps {
+  canRetryEnd: boolean
   cardFooter?: VibeCardRegion
   cardHeader?: VibeCardRegion
   hasNext: boolean

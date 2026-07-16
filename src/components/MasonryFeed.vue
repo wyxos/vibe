@@ -32,6 +32,7 @@ const emit = defineEmits<{
   loadMore: []
   mediaChange: [postId: VibeItemId, mediaIndex: number]
   ready: [postId: VibeItemId, mediaIndex: number]
+  retryEnd: []
 }>()
 
 const galleryElement = shallowRef<HTMLElement | null>(null)
@@ -233,11 +234,13 @@ defineExpose({ loadIfNearBottom })
     </section>
 
     <GalleryFooter
+      :can-retry-end="canRetryEnd"
       :has-error="nextPageError"
       :has-next="hasNext"
       :infinite-scroll="infiniteScroll"
       :is-loading="isLoadingMore"
       @load-more="emit('loadMore')"
+      @retry-end="emit('retryEnd')"
     />
   </main>
 </template>

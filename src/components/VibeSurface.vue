@@ -25,6 +25,7 @@ interface FeedRendererExpose {
 type ReelOriginStyle = CSSProperties & Record<`--vibe-reel-origin-${string}`, string>
 
 const props = defineProps<{
+  canRetryEnd: boolean
   cardFooter?: VibeCardRegion
   cardHeader?: VibeCardRegion
   state: VibeRuntimeState
@@ -35,6 +36,7 @@ const emit = defineEmits<{
   closeReel: []
   loadMore: []
   openReel: [postId: VibeItemId]
+  retryEnd: []
 }>()
 
 const masonryRenderer = shallowRef<FeedRendererExpose | null>(null)
@@ -292,6 +294,7 @@ defineExpose({ loadIfNearBottom })
     <ReelFeed
       v-else-if="state.layout === 'reel'"
       ref="reelRenderer"
+      :can-retry-end="canRetryEnd"
       :has-next="state.next !== null"
       :card-footer="cardFooter"
       :card-header="cardHeader"
@@ -308,11 +311,13 @@ defineExpose({ loadIfNearBottom })
       @load-more="emit('loadMore')"
       @media-change="setMediaIndex"
       @ready="markMediaPreviewReady"
+      @retry-end="emit('retryEnd')"
     />
 
     <template v-else>
       <MasonryFeed
         ref="masonryRenderer"
+        :can-retry-end="canRetryEnd"
         :entering-post-ids="enteringPostIds"
         :entry-delays="entryDelays"
         :card-footer="cardFooter"
@@ -331,6 +336,7 @@ defineExpose({ loadIfNearBottom })
         @load-more="emit('loadMore')"
         @media-change="setMediaIndex"
         @ready="markMediaPreviewReady"
+        @retry-end="emit('retryEnd')"
       />
 
       <Transition
@@ -349,6 +355,7 @@ defineExpose({ loadIfNearBottom })
         >
           <ReelFeed
             ref="reelRenderer"
+            :can-retry-end="canRetryEnd"
             :card-footer="cardFooter"
             :card-header="cardHeader"
             :has-next="state.next !== null"
@@ -366,6 +373,7 @@ defineExpose({ loadIfNearBottom })
             @load-more="emit('loadMore')"
             @media-change="setMediaIndex"
             @ready="markMediaOriginalReady"
+            @retry-end="emit('retryEnd')"
           />
         </section>
       </Transition>

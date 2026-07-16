@@ -32,6 +32,7 @@ function groupedFeedItem(postId: number) {
 
 function props(items = [feedItem(1)]) {
   return {
+    canRetryEnd: false,
     enteringPostIds: new Set(items.map((item) => item.postId)),
     entryDelays: new Map(items.map((item, index) => [item.postId, index * 35])),
     hasNext: false,
@@ -146,5 +147,15 @@ describe('MasonryFeed', () => {
     await wrapper.setProps({ mediaIndices: new Map([[8, 0]]) })
     await previous.trigger('click')
     expect(wrapper.emitted('mediaChange')?.at(-1)).toEqual([8, 2])
+  })
+
+  it('offers a terminal retry when the loader can check for more', async () => {
+    const wrapper = mount(MasonryFeed, {
+      props: { ...props(), canRetryEnd: true },
+    })
+
+    expect(wrapper.get('.end-feed').text()).toContain("You've reached the end.")
+    await wrapper.get('[data-test="retry-end"]').trigger('click')
+    expect(wrapper.emitted('retryEnd')).toEqual([[]])
   })
 })

@@ -88,6 +88,7 @@ class VibeController implements VibeInstance {
   private surface: VibeSurfaceExpose | null = null
   private target: Element | null = null
   private layoutMode: VibeLayoutMode
+  private lastLoadedCursor: VibeCursor = null
   private readonly state: VibeRuntimeState
 
   constructor(private readonly options: CreateVibeOptions) {
@@ -117,6 +118,7 @@ class VibeController implements VibeInstance {
     this.target = target
     this.startResponsiveLayout()
     this.app = createApp(VibeSurface, {
+      canRetryEnd: Boolean(this.options.loadPage),
       cardFooter: this.options.cardFooter,
       cardHeader: this.options.cardHeader,
       state: this.state,
@@ -124,6 +126,7 @@ class VibeController implements VibeInstance {
       onCloseReel: () => this.closeMasonryReel(),
       onLoadMore: () => { void this.loadNext() },
       onOpenReel: (postId: VibeItemId) => this.openMasonryReel(postId),
+      onRetryEnd: () => { void this.retryEnd() },
     })
     this.surface = this.app.mount(target) as unknown as VibeSurfaceExpose
 
@@ -177,6 +180,15 @@ class VibeController implements VibeInstance {
     this.state.nextPageError = null
     this.state.total = null
     return this.startRequest(null, false)
+  }
+
+  private async retryEnd(): Promise<void> {
+    if (this.pendingRequest) return this.pendingRequest
+    if (this.state.next !== null || !this.options.loadPage) return
+
+    this.state.isLoadingMore = true
+    this.state.nextPageError = null
+    return this.startRequest(this.lastLoadedCursor, true)
   }
 
   setInfiniteScroll(enabled: boolean): void {
@@ -319,6 +331,7 @@ class VibeController implements VibeInstance {
       this.state.items = append
         ? appendUniqueItems(this.state.items, page.items)
         : [...page.items]
+      this.lastLoadedCursor = cursor
       this.state.next = page.next
       if (page.total !== undefined) this.state.total = page.total
     } catch (error: unknown) {
