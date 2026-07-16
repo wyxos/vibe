@@ -1,0 +1,267 @@
+import type {
+  VibeAutofillOptions,
+  VibeAutofillSessionSnapshot,
+  VibeAutofillState,
+  VibeCursor,
+  VibeFrontendAutofillOptions,
+  VibeItem,
+  VibePage,
+  VibePageLoader,
+} from '../types'
+import type { VibeRuntimeState } from './runtime'
+
+export const DEFAULT_MAX_ADDITIONAL_PAGES = 10
+
+export interface FrontendAutofillProgress {
+  missing: number
+  next: VibeCursor
+  received: number
+  requests: number
+}
+
+export interface FrontendAutofillResult extends FrontendAutofillProgress {
+  items: VibeItem[]
+  lastCursor: VibeCursor
+  status: 'complete' | 'exhausted'
+  total?: number
+}
+
+interface CollectFrontendAutofillOptions {
+  existingItems: readonly VibeItem[]
+  initialCursor: VibeCursor
+  loadPage: VibePageLoader
+  maximumRequests?: number
+  onProgress: (progress: FrontendAutofillProgress) => void
+  options: VibeFrontendAutofillOptions
+  receivedOffset?: number
+  requestOffset?: number
+  signal: AbortSignal
+}
+
+function cursorKey(cursor: VibeCursor): string {
+  return `${typeof cursor}:${String(cursor)}`
+}
+
+function positiveInteger(value: number, name: string): void {
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new TypeError(`Vibe ${name} must be a positive integer.`)
+  }
+}
+
+export function validateAutofillOptions(options?: VibeAutofillOptions): void {
+  if (!options) return
+
+  positiveInteger(options.pageSize, 'autofill pageSize')
+
+  if (options.strategy === 'frontend') {
+    const maximum = options.maxAdditionalPages
+    if (maximum !== undefined && (!Number.isInteger(maximum) || maximum < 0)) {
+      throw new TypeError(
+        'Vibe autofill maxAdditionalPages must be a non-negative integer.',
+      )
+    }
+    return
+  }
+
+  if (!options.feedKey.trim()) {
+    throw new TypeError('Vibe backend autofill requires a feedKey.')
+  }
+
+  const initialSession = options.initialSession
+  if (!initialSession) return
+
+  if (initialSession.feedKey !== options.feedKey) {
+    throw new TypeError(
+      'Vibe backend autofill initialSession feedKey must match autofill feedKey.',
+    )
+  }
+  if (initialSession.pageSize !== options.pageSize) {
+    throw new TypeError(
+      'Vibe backend autofill initialSession pageSize must match autofill pageSize.',
+    )
+  }
+}
+
+export function validatePage(page: VibePage): VibePage {
+  if (!page || typeof page !== 'object' || !Array.isArray(page.items)) {
+    throw new TypeError('Vibe loadPage must resolve to a page with an items array.')
+  }
+
+  if (page.next !== null && typeof page.next !== 'string' && typeof page.next !== 'number') {
+    throw new TypeError('Vibe page next must be a string, number, or null.')
+  }
+
+  if (page.total !== undefined && (!Number.isFinite(page.total) || page.total < 0)) {
+    throw new TypeError('Vibe page total must be a non-negative number when provided.')
+  }
+
+  return page
+}
+
+export function appendUniqueItems(
+  current: readonly VibeItem[],
+  incoming: readonly VibeItem[],
+): VibeItem[] {
+  const postIds = new Set(current.map((item) => item.postId))
+
+  return [
+    ...current,
+    ...incoming.filter((item) => {
+      if (postIds.has(item.postId)) return false
+      postIds.add(item.postId)
+      return true
+    }),
+  ]
+}
+
+export function createAutofillState(
+  options?: VibeAutofillOptions,
+  initialSession?: VibeAutofillSessionSnapshot,
+  useConfiguredSession = true,
+): VibeAutofillState {
+  if (!options) {
+    return {
+      cycleId: null,
+      enabled: false,
+      error: null,
+      feedKey: null,
+      missing: 0,
+      pageSize: null,
+      received: 0,
+      requests: 0,
+      sequence: 0,
+      sessionId: null,
+      status: 'idle',
+      strategy: null,
+    }
+  }
+
+  const session = options.strategy === 'backend'
+    ? initialSession ?? (useConfiguredSession ? options.initialSession : undefined)
+    : undefined
+  const received = session?.received ?? 0
+
+  return {
+    cycleId: session?.cycleId ?? null,
+    enabled: true,
+    error: session?.error ?? null,
+    feedKey: options.strategy === 'backend' ? options.feedKey : null,
+    missing: Math.max(0, options.pageSize - received),
+    pageSize: options.pageSize,
+    received,
+    requests: session?.requests ?? 0,
+    sequence: session?.sequence ?? 0,
+    sessionId: session?.sessionId ?? null,
+    status: session ? session.status : 'idle',
+    strategy: options.strategy,
+  }
+}
+
+export function isAutofillActive(state: VibeAutofillState): boolean {
+  return ['cancelling', 'filling', 'restoring', 'waiting'].includes(state.status)
+}
+
+export async function cancelAutofill(
+  options: VibeAutofillOptions | undefined,
+  state: VibeRuntimeState,
+  cancelRequest: () => void,
+): Promise<void> {
+  const autofill = state.autofill
+  if (!isAutofillActive(autofill) || !autofill.cycleId) return
+
+  const context = {
+    cycleId: autofill.cycleId,
+    feedKey: autofill.feedKey ?? '',
+    sessionId: autofill.sessionId,
+  }
+  cancelRequest()
+  autofill.status = 'cancelling'
+
+  try {
+    if (options?.strategy === 'backend') await options.onCancel(context)
+    autofill.error = null
+    autofill.status = 'cancelled'
+  } catch (error: unknown) {
+    autofill.error = error
+    autofill.status = 'error'
+    throw error
+  }
+}
+
+export function isMatchingBackendSession(
+  options: VibeAutofillOptions | undefined,
+  update: Pick<VibeAutofillSessionSnapshot, 'feedKey' | 'sessionId'>,
+  state: VibeAutofillState,
+): boolean {
+  return options?.strategy === 'backend'
+    && update.feedKey === options.feedKey
+    && update.sessionId === state.sessionId
+}
+
+export async function collectFrontendAutofill({
+  existingItems,
+  initialCursor,
+  loadPage,
+  maximumRequests: configuredMaximumRequests,
+  onProgress,
+  options,
+  receivedOffset = 0,
+  requestOffset = 0,
+  signal,
+}: CollectFrontendAutofillOptions): Promise<FrontendAutofillResult> {
+  const items: VibeItem[] = []
+  const knownItems = [...existingItems]
+  const seenCursors = new Set<string>()
+  const maximumRequests = configuredMaximumRequests ?? 1 + (
+    options.maxAdditionalPages ?? DEFAULT_MAX_ADDITIONAL_PAGES
+  )
+  let cursor = initialCursor
+  let next: VibeCursor = initialCursor
+  let requests = 0
+  let total: number | undefined
+
+  while (requests < maximumRequests) {
+    const key = cursorKey(cursor)
+    if (seenCursors.has(key)) {
+      throw new Error('Vibe autofill received a repeated cursor.')
+    }
+    seenCursors.add(key)
+
+    const page = validatePage(await loadPage({ cursor, signal }))
+    requests += 1
+    const combined = appendUniqueItems(knownItems, page.items)
+    const additions = combined.slice(knownItems.length)
+    knownItems.push(...additions)
+    items.push(...additions)
+    next = page.next
+    if (page.total !== undefined) total = page.total
+
+    const progress = {
+      missing: Math.max(0, options.pageSize - receivedOffset - items.length),
+      next,
+      received: receivedOffset + items.length,
+      requests: requestOffset + requests,
+    }
+    onProgress(progress)
+
+    if (progress.missing === 0) {
+      return { ...progress, items, lastCursor: cursor, status: 'complete', total }
+    }
+    if (next === null) {
+      return { ...progress, items, lastCursor: cursor, status: 'exhausted', total }
+    }
+
+    cursor = next
+  }
+
+  return {
+    items,
+    lastCursor: cursor,
+    missing: Math.max(0, options.pageSize - receivedOffset - items.length),
+    next,
+    received: receivedOffset + items.length,
+    requests: requestOffset + requests,
+    status: 'exhausted',
+    total,
+  }
+}

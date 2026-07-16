@@ -8,76 +8,39 @@ import {
 } from 'vue'
 
 import VibeSurface from '../components/VibeSurface.vue'
+import {
+  appendUniqueItems,
+  cancelAutofill,
+  collectFrontendAutofill,
+  createAutofillState,
+  isAutofillActive,
+  validatePage,
+} from './autofill'
+import {
+  applyBackendAutofillUpdate,
+  restoreBackendAutofillSession,
+  startBackendAutofill,
+} from './backendAutofill'
 import { resolveResponsiveLayoutForElement } from './responsiveLayout'
+import { autofillInitialPage } from './initialAutofill'
+import { validateOptions } from './options'
+import { VibeRouteSync } from './vibeRouting'
 import type { VibeRuntimeState } from './runtime'
 import type {
   CreateVibeOptions,
-  VibeCardRegion,
+  VibeAutofillSessionSnapshot,
+  VibeBackendAutofillUpdate,
   VibeCursor,
   VibeInstance,
-  VibeItem,
   VibeItemId,
   VibeLayout,
   VibeLayoutMode,
   VibeLifecycle,
-  VibePage,
   VibeState,
 } from '../types'
 
 interface VibeSurfaceExpose {
   loadIfNearBottom: () => Promise<void>
-}
-
-function validateCardRegion(
-  name: 'cardFooter' | 'cardHeader',
-  region?: VibeCardRegion,
-): void {
-  if (!region) return
-  if (!Number.isFinite(region.height) || region.height <= 0) {
-    throw new TypeError(`Vibe ${name} height must be a positive number.`)
-  }
-}
-
-function validateOptions(options: CreateVibeOptions): void {
-  validateCardRegion('cardHeader', options.cardHeader)
-  validateCardRegion('cardFooter', options.cardFooter)
-
-  if (!options.initialPage && !options.loadPage) {
-    throw new TypeError('Vibe requires either initialPage or loadPage.')
-  }
-
-  if (options.initialPage?.next !== null && !options.loadPage) {
-    throw new TypeError('Vibe requires loadPage when initialPage has a next cursor.')
-  }
-}
-
-function validatePage(page: VibePage): VibePage {
-  if (!page || typeof page !== 'object' || !Array.isArray(page.items)) {
-    throw new TypeError('Vibe loadPage must resolve to a page with an items array.')
-  }
-
-  if (page.next !== null && typeof page.next !== 'string' && typeof page.next !== 'number') {
-    throw new TypeError('Vibe page next must be a string, number, or null.')
-  }
-
-  if (page.total !== undefined && (!Number.isFinite(page.total) || page.total < 0)) {
-    throw new TypeError('Vibe page total must be a non-negative number when provided.')
-  }
-
-  return page
-}
-
-function appendUniqueItems(current: VibeItem[], incoming: VibeItem[]): VibeItem[] {
-  const postIds = new Set(current.map((item) => item.postId))
-
-  return [
-    ...current,
-    ...incoming.filter((item) => {
-      if (postIds.has(item.postId)) return false
-      postIds.add(item.postId)
-      return true
-    }),
-  ]
 }
 
 function resolveLifecycle(state: VibeRuntimeState): VibeLifecycle {
@@ -88,12 +51,12 @@ function resolveLifecycle(state: VibeRuntimeState): VibeLifecycle {
 
 class VibeController implements VibeInstance {
   private app: App<Element> | null = null
+  private autofillCycle = 0
   private abortController: AbortController | null = null
   private pendingRequest: Promise<void> | null = null
   private requestVersion = 0
-  private routedReelPostId: VibeItemId | null = null
-  private reelRouteIsActive = false
   private resizeObserver: ResizeObserver | null = null
+  private readonly routing: VibeRouteSync
   private surface: VibeSurfaceExpose | null = null
   private stopStateWatcher: WatchHandle | null = null
   private target: Element | null = null
@@ -108,17 +71,19 @@ class VibeController implements VibeInstance {
 
     this.state = reactive({
       activeReelPostId: null,
+      autofill: createAutofillState(options.autofill),
       error: null,
       infiniteScroll: options.infiniteScroll ?? true,
       isLoading: !initialPage,
       isLoadingMore: false,
-      items: initialPage ? [...initialPage.items] : [],
+      items: initialPage ? appendUniqueItems([], initialPage.items) : [],
       layout: this.layoutMode === 'reel' ? 'reel' : 'masonry',
       next: initialPage?.next ?? null,
       nextPageError: null,
       reelOrigin: null,
       total: initialPage?.total ?? null,
     })
+    this.routing = new VibeRouteSync(options.routing, this.state)
     this.startStateNotifications()
   }
 
@@ -143,6 +108,9 @@ class VibeController implements VibeInstance {
     this.surface = this.app.mount(target) as unknown as VibeSurfaceExpose
 
     if (!this.options.initialPage) await this.reload()
+    else if (this.options.autofill && this.state.autofill.status === 'idle') {
+      await this.startInitialAutofill()
+    }
   }
 
   destroy(): void {
@@ -159,6 +127,7 @@ class VibeController implements VibeInstance {
   getState(): VibeState {
     return {
       activeReelPostId: this.state.activeReelPostId,
+      autofill: { ...this.state.autofill },
       error: this.state.error,
       infiniteScroll: this.state.infiniteScroll,
       isLoading: this.state.isLoading,
@@ -173,8 +142,29 @@ class VibeController implements VibeInstance {
     }
   }
 
+  applyAutofillUpdate(update: VibeBackendAutofillUpdate): boolean {
+    return applyBackendAutofillUpdate(this.options.autofill, this.state, update)
+  }
+
+  async cancelAutofill(): Promise<void> {
+    await cancelAutofill(
+      this.options.autofill,
+      this.state,
+      () => this.cancelRequest(),
+    )
+  }
+
+  restoreAutofillSession(snapshot: VibeAutofillSessionSnapshot): boolean {
+    return restoreBackendAutofillSession(
+      this.options.autofill,
+      this.state,
+      snapshot,
+    )
+  }
+
   async loadNext(): Promise<void> {
     if (this.pendingRequest) return this.pendingRequest
+    if (isAutofillActive(this.state.autofill)) return
     if (this.state.next === null || !this.options.loadPage) return
 
     this.state.isLoadingMore = true
@@ -187,7 +177,9 @@ class VibeController implements VibeInstance {
       throw new Error('Vibe cannot reload without loadPage.')
     }
 
+    if (isAutofillActive(this.state.autofill)) await this.cancelAutofill()
     this.cancelRequest()
+    this.state.autofill = createAutofillState(this.options.autofill, undefined, false)
     this.state.error = null
     this.state.isLoading = true
     this.state.items = []
@@ -199,6 +191,7 @@ class VibeController implements VibeInstance {
 
   private async retryEnd(): Promise<void> {
     if (this.pendingRequest) return this.pendingRequest
+    if (isAutofillActive(this.state.autofill)) return
     if (this.state.next !== null || !this.options.loadPage) return
 
     this.state.isLoadingMore = true
@@ -228,7 +221,7 @@ class VibeController implements VibeInstance {
 
     if (layout === 'masonry') {
       this.state.activeReelPostId = null
-      this.syncFeedRoute()
+      this.routing.syncFeed()
     }
     this.state.reelOrigin = null
     this.state.layout = layout
@@ -265,7 +258,7 @@ class VibeController implements VibeInstance {
 
     this.state.activeReelPostId = null
     this.state.reelOrigin = null
-    this.syncFeedRoute()
+    this.routing.syncFeed()
   }
 
   private openMasonryReel(postId: VibeItemId): void {
@@ -274,49 +267,13 @@ class VibeController implements VibeInstance {
 
     this.state.activeReelPostId = postId
     this.state.reelOrigin = 'masonry'
-    this.syncReelRoute(postId)
+    this.routing.syncReel(postId)
   }
 
   private setActiveReelPost(postId: VibeItemId): void {
     if (this.state.layout !== 'reel' && this.state.reelOrigin !== 'masonry') return
     this.state.activeReelPostId = postId
-    this.syncReelRoute(postId)
-  }
-
-  private syncFeedRoute(): void {
-    const routing = this.options.routing
-    if (!routing || !this.reelRouteIsActive) return
-
-    this.reelRouteIsActive = false
-    this.routedReelPostId = null
-    const location = typeof routing.feed === 'function'
-      ? routing.feed()
-      : routing.feed
-    void routing.router.replace(location)
-  }
-
-  private syncReelRoute(postId: VibeItemId): void {
-    const routing = this.options.routing
-    if (!routing) return
-
-    const index = this.state.items.findIndex((item) => item.postId === postId)
-    const item = this.state.items[index]
-    if (!item) return
-    if (this.reelRouteIsActive && this.routedReelPostId === postId) return
-
-    const location = routing.reel({
-      index,
-      item,
-      loadedCount: this.state.items.length,
-      origin: this.state.reelOrigin ?? 'reel',
-      total: this.state.total,
-    })
-    if (location === null) return
-
-    const method = this.reelRouteIsActive ? 'replace' : 'push'
-    this.reelRouteIsActive = true
-    this.routedReelPostId = postId
-    void routing.router[method](location)
+    this.routing.syncReel(postId)
   }
 
   private cancelRequest(): void {
@@ -334,26 +291,88 @@ class VibeController implements VibeInstance {
 
     const requestVersion = ++this.requestVersion
     const abortController = new AbortController()
+    const autofillOptions = this.options.autofill
+    const cycleId = autofillOptions ? this.beginAutofillCycle() : null
+    let pageCommitted = false
     this.abortController = abortController
 
     try {
-      const page = validatePage(await loadPage({
-        cursor,
-        signal: abortController.signal,
-      }))
+      if (autofillOptions?.strategy === 'frontend') {
+        const result = await collectFrontendAutofill({
+          existingItems: append ? this.state.items : [],
+          initialCursor: cursor,
+          loadPage,
+          onProgress: (progress) => {
+            if (requestVersion !== this.requestVersion) return
+            Object.assign(this.state.autofill, progress, { status: 'filling' })
+          },
+          options: autofillOptions,
+          signal: abortController.signal,
+        })
+        if (requestVersion !== this.requestVersion) return
+
+        this.state.items = append
+          ? appendUniqueItems(this.state.items, result.items)
+          : [...result.items]
+        this.lastLoadedCursor = result.lastCursor
+        this.state.next = result.next
+        if (result.total !== undefined) this.state.total = result.total
+        Object.assign(this.state.autofill, {
+          missing: result.missing,
+          received: result.received,
+          requests: result.requests,
+          status: result.status,
+        })
+        return
+      }
+
+      const page = validatePage(await loadPage({ cursor, signal: abortController.signal }))
       if (requestVersion !== this.requestVersion) return
 
-      this.state.items = append
-        ? appendUniqueItems(this.state.items, page.items)
-        : [...page.items]
+      const currentItems = append ? this.state.items : []
+      const items = appendUniqueItems(currentItems, page.items)
+      const received = items.length - currentItems.length
+      this.state.items = items
       this.lastLoadedCursor = cursor
       this.state.next = page.next
       if (page.total !== undefined) this.state.total = page.total
+      pageCommitted = true
+
+      if (autofillOptions?.strategy === 'backend' && cycleId) {
+        Object.assign(this.state.autofill, {
+          missing: Math.max(0, autofillOptions.pageSize - received),
+          received,
+          requests: 1,
+        })
+
+        if (received >= autofillOptions.pageSize) {
+          this.state.autofill.status = 'complete'
+          return
+        }
+
+        await startBackendAutofill(autofillOptions, this.state, {
+          cycleId,
+          feedKey: autofillOptions.feedKey,
+          items: items.slice(currentItems.length),
+          missing: autofillOptions.pageSize - received,
+          next: page.next,
+          pageSize: autofillOptions.pageSize,
+          received,
+          signal: abortController.signal,
+          total: this.state.total,
+        }, () => requestVersion === this.requestVersion)
+      }
     } catch (error: unknown) {
       if (abortController.signal.aborted || requestVersion !== this.requestVersion) return
 
-      if (append) this.state.nextPageError = error
-      else this.state.error = error
+      if (autofillOptions) {
+        this.state.autofill.error = error
+        this.state.autofill.status = 'error'
+      }
+      if (!pageCommitted) {
+        if (append) this.state.nextPageError = error
+        else this.state.error = error
+      }
     } finally {
       if (requestVersion === this.requestVersion) {
         this.abortController = null
@@ -361,6 +380,19 @@ class VibeController implements VibeInstance {
         this.state.isLoadingMore = false
       }
     }
+  }
+
+  private beginAutofillCycle(): string {
+    const options = this.options.autofill
+    if (!options) return ''
+
+    const cycleId = `vibe-autofill-${Date.now().toString(36)}-${++this.autofillCycle}`
+    this.state.autofill = {
+      ...createAutofillState(options, undefined, false),
+      cycleId,
+      status: 'filling',
+    }
+    return cycleId
   }
 
   private resolveTarget(): Element {
@@ -382,6 +414,35 @@ class VibeController implements VibeInstance {
     return request.finally(() => {
       if (this.pendingRequest === request) this.pendingRequest = null
     })
+  }
+
+  private startInitialAutofill(): Promise<void> {
+    const requestVersion = ++this.requestVersion
+    const abortController = new AbortController()
+    const cycleId = this.beginAutofillCycle()
+    this.abortController = abortController
+    this.state.isLoadingMore = true
+
+    const request = autofillInitialPage({
+      cycleId,
+      isCurrent: () => requestVersion === this.requestVersion,
+      onLastCursor: (cursor) => { this.lastLoadedCursor = cursor },
+      options: this.options,
+      signal: abortController.signal,
+      state: this.state,
+    }).catch((error: unknown) => {
+      if (abortController.signal.aborted || requestVersion !== this.requestVersion) return
+      this.state.autofill.error = error
+      this.state.autofill.status = 'error'
+      this.state.nextPageError = error
+    }).finally(() => {
+      if (requestVersion !== this.requestVersion) return
+      this.abortController = null
+      this.state.isLoadingMore = false
+      if (this.pendingRequest === request) this.pendingRequest = null
+    })
+    this.pendingRequest = request
+    return request
   }
 
   private startStateNotifications(): void {

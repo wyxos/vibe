@@ -17,6 +17,17 @@ const layoutLabel = computed(() => (
   vibeState.value?.layout === 'reel' ? 'Reel' : 'Masonry'
 ))
 
+const autofillLabel = computed(() => {
+  const status = vibeState.value?.autofill.status ?? 'idle'
+  return status.charAt(0).toUpperCase() + status.slice(1)
+})
+
+const autofillProgress = computed(() => {
+  const autofill = vibeState.value?.autofill
+  if (!autofill?.pageSize) return ''
+  return `${autofill.received} / ${autofill.pageSize}`
+})
+
 function updateVibeState(state: VibeState): void {
   vibeState.value = state
 }
@@ -37,9 +48,12 @@ function updateVibeState(state: VibeState): void {
         </nav>
       </div>
 
-      <div class="app-header-actions">
+      <div
+        class="app-header-actions"
+        :class="{ 'app-header-actions--autofill': vibeState?.autofill.enabled }"
+      >
         <output
-          class="vibe-lifecycle"
+          class="vibe-lifecycle vibe-lifecycle--feed"
           :class="`vibe-lifecycle--${lifecycle}`"
           data-test="vibe-lifecycle"
           aria-live="polite"
@@ -49,6 +63,21 @@ function updateVibeState(state: VibeState): void {
           <span class="vibe-lifecycle-layout">{{ layoutLabel }}</span>
           <span class="vibe-lifecycle-separator" aria-hidden="true">·</span>
           <span>{{ lifecycleLabel }}</span>
+        </output>
+
+        <output
+          v-if="vibeState?.autofill.enabled"
+          class="vibe-lifecycle vibe-autofill-lifecycle"
+          :class="`vibe-autofill-lifecycle--${vibeState.autofill.status}`"
+          data-test="autofill-lifecycle"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <span class="vibe-lifecycle-indicator" aria-hidden="true" />
+          <span class="vibe-autofill-prefix">Autofill</span>
+          <span class="vibe-lifecycle-separator" aria-hidden="true">·</span>
+          <span>{{ autofillLabel }}</span>
+          <span class="vibe-autofill-progress">{{ autofillProgress }}</span>
         </output>
 
         <label class="toggle-control">

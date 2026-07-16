@@ -28,6 +28,13 @@ function feedItem(postId: number) {
 
 describe('App', () => {
   beforeEach(() => {
+    const storage = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      clear: () => storage.clear(),
+      getItem: (key: string) => storage.get(key) ?? null,
+      removeItem: (key: string) => storage.delete(key),
+      setItem: (key: string, value: string) => storage.set(key, value),
+    })
     vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
       callback(0)
       return 1
@@ -43,6 +50,7 @@ describe('App', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
   })
@@ -280,5 +288,142 @@ describe('App', () => {
 
     expect(wrapper.find('[data-layout-mode="reel"]').exists()).toBe(true)
     expect(router.currentRoute.value.fullPath).toBe('/demos/reel-url/file/10')
+  })
+
+  it('demonstrates frontend autofill until the page target is reached', async () => {
+    fakeServer.getFakeMediaPage
+      .mockResolvedValueOnce({
+        items: Array.from({ length: 45 }, (_, index) => feedItem(index + 1)),
+        meta: { next: 'cursor-2', total: 100 },
+      })
+      .mockResolvedValueOnce({
+        items: Array.from({ length: 38 }, (_, index) => feedItem(index + 46)),
+        meta: { next: 'cursor-3', total: 100 },
+      })
+
+    const wrapper = await mountApp('/demos/autofill/frontend')
+    await flushPromises()
+
+    expect(fakeServer.getFakeMediaPage).toHaveBeenCalledTimes(2)
+    expect(wrapper.get('[data-test="autofill-lifecycle"]').text())
+      .toBe('Autofill·Complete83 / 60')
+  })
+
+  it('allows a waiting backend autofill job to be cancelled', async () => {
+    fakeServer.getFakeMediaPage.mockResolvedValueOnce({
+      items: Array.from({ length: 45 }, (_, index) => feedItem(index + 1)),
+      meta: { next: 'cursor-2', total: 100 },
+    })
+
+    const wrapper = await mountApp('/demos/autofill/backend')
+    await flushPromises()
+    expect(wrapper.get('[data-test="autofill-lifecycle"]').text())
+      .toBe('Autofill·Waiting45 / 60')
+
+    await wrapper.get('[data-test="cancel-autofill"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="autofill-lifecycle"]').text())
+      .toBe('Autofill·Cancelled45 / 60')
+    expect(wrapper.get('[data-test="cancel-autofill"]').attributes('disabled'))
+      .toBeDefined()
+    wrapper.unmount()
+  })
+
+  it('updates backend autofill only after each endpoint call completes', async () => {
+    vi.useFakeTimers()
+    fakeServer.getFakeMediaPage
+      .mockResolvedValueOnce({
+        items: Array.from({ length: 45 }, (_, index) => feedItem(index + 1)),
+        meta: { next: 'cursor-2', total: 100 },
+      })
+      .mockResolvedValueOnce({
+        items: Array.from({ length: 38 }, (_, index) => feedItem(index + 46)),
+        meta: { next: 'cursor-3', total: 100 },
+      })
+
+    const wrapper = await mountApp('/demos/autofill/backend')
+    await flushPromises()
+
+    expect(fakeServer.getFakeMediaPage).toHaveBeenCalledOnce()
+    expect(wrapper.get('[data-test="autofill-lifecycle"]').text())
+      .toBe('Autofill·Waiting45 / 60')
+
+    await vi.advanceTimersByTimeAsync(250)
+    await flushPromises()
+
+    expect(fakeServer.getFakeMediaPage).toHaveBeenCalledTimes(2)
+    expect(wrapper.get('[data-test="autofill-lifecycle"]').text())
+      .toBe('Autofill·Complete83 / 60')
+    wrapper.unmount()
+  })
+
+  it('starts the normal backend demo fresh on every mount', async () => {
+    vi.useFakeTimers()
+    fakeServer.getFakeMediaPage.mockResolvedValue({
+      items: Array.from({ length: 45 }, (_, index) => feedItem(index + 1)),
+      meta: { next: 'cursor-2', total: 100 },
+    })
+
+    const first = await mountApp('/demos/autofill/backend')
+    await flushPromises()
+    expect(first.get('[data-test="autofill-lifecycle"]').text())
+      .toBe('Autofill·Waiting45 / 60')
+    first.unmount()
+
+    const fresh = await mountApp('/demos/autofill/backend')
+    await flushPromises()
+
+    expect(fakeServer.getFakeMediaPage).toHaveBeenCalledTimes(2)
+    expect(fakeServer.getFakeMediaPage.mock.calls.map(([cursor]) => cursor))
+      .toEqual([null, null])
+    expect(fresh.findAll('.masonry-item').length).toBeGreaterThan(0)
+    expect(fresh.get('[data-test="autofill-lifecycle"]').text())
+      .toBe('Autofill·Waiting45 / 60')
+    fresh.unmount()
+  })
+
+  it('replays the fixed backend refresh scenario through pages two and three', async () => {
+    vi.useFakeTimers()
+    const page2 = {
+      items: Array.from({ length: 38 }, (_, index) => feedItem(index + 46)),
+      meta: { next: 'cursor-3', total: 131 },
+    }
+    let resolvePage2!: (page: typeof page2) => void
+    fakeServer.getFakeMediaPage
+      .mockResolvedValueOnce({
+        items: Array.from({ length: 45 }, (_, index) => feedItem(index + 1)),
+        meta: { next: 'cursor-2', total: 131 },
+      })
+      .mockImplementationOnce(() => new Promise((resolve) => {
+        resolvePage2 = resolve
+      }))
+      .mockResolvedValueOnce({
+        items: Array.from({ length: 48 }, (_, index) => feedItem(index + 84)),
+        meta: { next: 'cursor-4', total: 131 },
+      })
+
+    const wrapper = await mountApp('/demos/autofill/backend-refresh')
+    await flushPromises()
+
+    expect(fakeServer.getFakeMediaPage.mock.calls.map(([cursor]) => cursor))
+      .toEqual([null, 'cursor-2'])
+    expect(wrapper.findAll('.masonry-item').length).toBeGreaterThan(0)
+    expect(wrapper.get('[data-test="autofill-lifecycle"]').text())
+      .toBe('Autofill·Waiting0 / 45')
+
+    resolvePage2(page2)
+    await flushPromises()
+    expect(wrapper.get('[data-test="autofill-lifecycle"]').text())
+      .toBe('Autofill·Waiting38 / 45')
+
+    await vi.advanceTimersByTimeAsync(250)
+    await flushPromises()
+
+    expect(fakeServer.getFakeMediaPage.mock.calls.map(([cursor]) => cursor))
+      .toEqual([null, 'cursor-2', 'cursor-3'])
+    expect(wrapper.get('[data-test="autofill-lifecycle"]').text())
+      .toBe('Autofill·Complete86 / 45')
+    wrapper.unmount()
   })
 })

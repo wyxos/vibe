@@ -5,6 +5,9 @@ import {
 } from 'vue-router'
 
 import DemosPage from './pages/DemosPage.vue'
+import AutofillBackendDemoPage from './pages/AutofillBackendDemoPage.vue'
+import AutofillBackendRefreshDemoPage from './pages/AutofillBackendRefreshDemoPage.vue'
+import AutofillFrontendDemoPage from './pages/AutofillFrontendDemoPage.vue'
 import CardHeaderFooterDemoPage from './pages/CardHeaderFooterDemoPage.vue'
 import FeedDemoPage from './pages/FeedDemoPage.vue'
 import ReelUrlDemoPage from './pages/ReelUrlDemoPage.vue'
@@ -39,6 +42,21 @@ export function createDemoRouter(
                 component: EmptyRouteView,
               },
             ],
+          },
+          {
+            path: 'autofill/frontend',
+            name: 'demo-autofill-frontend',
+            component: AutofillFrontendDemoPage,
+          },
+          {
+            path: 'autofill/backend',
+            name: 'demo-autofill-backend',
+            component: AutofillBackendDemoPage,
+          },
+          {
+            path: 'autofill/backend-refresh',
+            name: 'demo-autofill-backend-refresh',
+            component: AutofillBackendRefreshDemoPage,
           },
         ],
       },

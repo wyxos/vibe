@@ -139,6 +139,125 @@ from `masonry` or the base `reel` layout. Return `null` to skip a URL update for
 an item. Vue Router is an optional peer dependency and is only needed when this
 integration is used.
 
+## Autofill
+
+Autofill targets a number of new top-level cards after grouping and
+deduplication. `autofill.pageSize` is the minimum card target for one Vibe load
+cycle, not the server's own response size. For example, a server may return up
+to 30 cards per request while Vibe is configured with `pageSize: 40`; Vibe then
+follows cursors until the cycle contains at least 40 cards.
+
+### Frontend autofill
+
+Frontend autofill follows cursors and commits the collected batch once the
+target is reached or the source is exhausted. Restore committed items with
+`initialPage`; its `next` value must follow the last restored item:
+
+```ts
+const restoredPage = await feedCache.read() // VibePage | null
+
+const vibe = createVibe({
+  target: '#gallery',
+  initialPage: restoredPage ?? undefined,
+  loadPage,
+  autofill: {
+    strategy: 'frontend',
+    pageSize: 40,
+    maxAdditionalPages: 10,
+  },
+  onStateChange(state) {
+    void feedCache.write({
+      items: [...state.items],
+      next: state.next,
+      total: state.total ?? undefined,
+    })
+  },
+})
+
+await vibe.mount()
+```
+
+There is no frontend session snapshot. With 25 restored cards and
+`pageSize: 40`, Vibe continues from `initialPage.next` until the load cycle has
+at least 40 unique cards. Without `initialPage`, Vibe starts at cursor `null`.
+
+### Backend autofill
+
+Backend autofill lets the consuming application enqueue and cancel durable
+work. A restoration endpoint should return the currently committed page and,
+when work remains active, its persisted session:
+
+```ts
+interface BackendRestoration {
+  initialPage?: VibePage
+  session?: VibeAutofillSessionSnapshot
+}
+
+const restoration: BackendRestoration = await getBackendRestoration()
+
+const vibe = createVibe({
+  target: '#gallery',
+  initialPage: restoration.initialPage,
+  loadPage,
+  autofill: {
+    strategy: 'backend',
+    pageSize: 40,
+    feedKey: 'latest-images',
+    initialSession: restoration.session,
+    async onUnderfilled(context) {
+      const { signal, ...payload } = context
+      return await startBackendAutofill(payload, { signal })
+    },
+    onCancel: cancelBackendAutofill,
+  },
+})
+
+const unsubscribe = subscribeToAutofillUpdates((update) => {
+  vibe.applyAutofillUpdate(update)
+})
+
+await vibe.mount()
+```
+
+Subscribe before mounting so a fast Reverb, WebSocket, or polling update is not
+missed. A waiting update reports sequenced progress without items. A `complete`
+or `exhausted` update supplies the entire buffered batch and appends it once:
+
+```ts
+vibe.applyAutofillUpdate({
+  feedKey: 'latest-images',
+  sessionId: 'job-456',
+  sequence: 2,
+  requests: 2,
+  received: 48,
+  status: 'complete',
+  items: completedBatch,
+  next: 'cursor-after-completed-batch',
+  total: 500,
+})
+
+await vibe.cancelAutofill()
+unsubscribe()
+vibe.destroy()
+```
+
+Load-time restoration should provide both `initialPage` and
+`autofill.initialSession`; this renders committed items immediately and avoids
+starting a duplicate backend job. The snapshot `feedKey` and `pageSize` must
+match the configured backend autofill options. Use
+`vibe.restoreAutofillSession(snapshot)` only when a session becomes available
+after construction; it restores autofill lifecycle state, not a complete
+visible page.
+
+`state.autofill` exposes the strategy, lifecycle status, target, received and
+missing counts, request count, session identity, sequence, and error. Backend
+results are appended only when an update is `complete` or `exhausted`; stale,
+duplicate, mismatched-feed, and post-cancellation updates are ignored.
+Terminal backend updates must include `next`, using `null` when the source is
+exhausted. Vibe resumes ordinary pagination from that terminal cursor after
+autofill completes. A terminal update without `next` is rejected so an older
+cursor cannot be requested again.
+
 ## Feed state
 
 Use `onStateChange` to render request and layout state outside Vibe, such as an

@@ -100,6 +100,40 @@ body {
   background: #f87171;
 }
 
+.vibe-autofill-lifecycle--complete .vibe-lifecycle-indicator {
+  background: #4ade80;
+}
+
+.vibe-autofill-lifecycle--cancelled .vibe-lifecycle-indicator,
+.vibe-autofill-lifecycle--idle .vibe-lifecycle-indicator {
+  background: #737373;
+}
+
+.vibe-autofill-lifecycle--error,
+.vibe-autofill-lifecycle--exhausted {
+  border-color: rgb(248 113 113 / 45%);
+  color: #fecaca;
+}
+
+.vibe-autofill-lifecycle--error .vibe-lifecycle-indicator,
+.vibe-autofill-lifecycle--exhausted .vibe-lifecycle-indicator {
+  background: #f87171;
+}
+
+.vibe-autofill-lifecycle--cancelling .vibe-lifecycle-indicator,
+.vibe-autofill-lifecycle--filling .vibe-lifecycle-indicator,
+.vibe-autofill-lifecycle--restoring .vibe-lifecycle-indicator,
+.vibe-autofill-lifecycle--waiting .vibe-lifecycle-indicator {
+  animation: vibe-lifecycle-pulse 1.2s ease-in-out infinite;
+}
+
+.vibe-autofill-progress {
+  padding-left: 0.375rem;
+  border-left: 1px solid #404040;
+  color: #f5f5f5;
+  font-variant-numeric: tabular-nums;
+}
+
 .vibe-lifecycle-separator {
   color: #666666;
 }
@@ -250,6 +284,82 @@ body {
   min-height: 0;
 }
 
+.autofill-demo-stage {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.autofill-demo-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: 0;
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid #262626;
+  background: #0d0d0d;
+}
+
+.autofill-demo-note {
+  overflow: hidden;
+  color: #a3a3a3;
+  font: 500 0.75rem/1.3 system-ui, sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autofill-demo-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+}
+
+.autofill-demo-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 2rem;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid #404040;
+  border-radius: 0.375rem;
+  color: #d4d4d4;
+  background: #171717;
+  cursor: pointer;
+  font: 600 0.75rem/1 system-ui, sans-serif;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+
+.autofill-demo-action:hover:not(:disabled) {
+  border-color: #737373;
+  color: #f5f5f5;
+  background: #262626;
+}
+
+.autofill-demo-action--cancel:hover:not(:disabled) {
+  border-color: #f87171;
+  color: #fecaca;
+}
+
+.autofill-demo-action:disabled {
+  color: #525252;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.autofill-demo-action:focus-visible {
+  outline: 2px solid #a3a3a3;
+  outline-offset: 2px;
+}
+
+.autofill-demo-vibe {
+  min-height: 0;
+}
+
 .demo-card-header-content,
 .demo-card-reactions {
   position: relative;
@@ -327,6 +437,7 @@ body {
   .toggle-thumb,
   .app-nav-link,
   .demo-card-action,
+  .autofill-demo-action,
   .vibe-lifecycle-indicator {
     transition: none;
     animation: none;
@@ -334,6 +445,10 @@ body {
 }
 
 @media (max-width: 48rem) {
+  .app-header-actions--autofill .vibe-lifecycle--feed {
+    display: none;
+  }
+
   .demos-page {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
@@ -379,11 +494,24 @@ body {
   }
 
   .vibe-lifecycle-layout,
-  .vibe-lifecycle-separator {
+  .vibe-lifecycle-separator,
+  .vibe-autofill-prefix {
     position: absolute;
     width: 1px;
     height: 1px;
     overflow: hidden;
     clip-path: inset(50%);
+  }
+
+  .autofill-demo-note {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .autofill-demo-controls {
+    justify-content: flex-end;
   }
 }

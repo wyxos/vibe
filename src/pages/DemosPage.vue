@@ -27,6 +27,24 @@ const emit = defineEmits<{
       >
         Reel URL
       </RouterLink>
+      <RouterLink
+        class="demos-aside-link"
+        to="/demos/autofill/frontend"
+      >
+        Frontend autofill
+      </RouterLink>
+      <RouterLink
+        class="demos-aside-link"
+        to="/demos/autofill/backend"
+      >
+        Backend autofill
+      </RouterLink>
+      <RouterLink
+        class="demos-aside-link"
+        to="/demos/autofill/backend-refresh"
+      >
+        Backend refresh
+      </RouterLink>
     </aside>
 
     <RouterView v-slot="{ Component }">

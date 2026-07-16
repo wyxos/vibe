@@ -1,4 +1,5 @@
 import type {
+  VibeAutofillState,
   VibeCursor,
   VibeItem,
   VibeItemId,
@@ -7,6 +8,7 @@ import type {
 
 export interface VibeRuntimeState {
   activeReelPostId: VibeItemId | null
+  autofill: VibeAutofillState
   error: unknown | null
   infiniteScroll: boolean
   isLoading: boolean

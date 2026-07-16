@@ -50,7 +50,9 @@ const entryDelays = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
 const mediaIndices = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
 const mediaPreviewStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
 const mediaOriginalStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
-let previousPostIds = new Set<VibeItemId>()
+let previousPostIds = new Set<VibeItemId>(
+  props.state.items.map((item) => item.postId),
+)
 let enterReleaseFrame: number | null = null
 let restoreFocusPostId: VibeItemId | null = null
 let restoreFocusVisible = false

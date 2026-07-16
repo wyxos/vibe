@@ -7,6 +7,17 @@ export type VibeLayout = 'masonry' | 'reel'
 export type VibeLayoutMode = VibeLayout | 'responsive'
 export type VibeLifecycle = 'error' | 'loaded' | 'loading'
 export type VibeMediaSource = 'preview' | 'original'
+export type VibeAutofillStrategy = 'backend' | 'frontend'
+export type VibeAutofillStatus =
+  | 'cancelled'
+  | 'cancelling'
+  | 'complete'
+  | 'error'
+  | 'exhausted'
+  | 'filling'
+  | 'idle'
+  | 'restoring'
+  | 'waiting'
 
 export interface VibePreview {
   src: string
@@ -74,7 +85,103 @@ export type VibePageLoader = (
 
 export type VibeInitialPage = VibePage
 
+export interface VibeAutofillState {
+  cycleId: string | null
+  enabled: boolean
+  error: unknown | null
+  feedKey: string | null
+  missing: number
+  pageSize: number | null
+  received: number
+  requests: number
+  sequence: number
+  sessionId: string | null
+  status: VibeAutofillStatus
+  strategy: VibeAutofillStrategy | null
+}
+
+export interface VibeFrontendAutofillOptions {
+  maxAdditionalPages?: number
+  pageSize: number
+  strategy: 'frontend'
+}
+
+export interface VibeBackendAutofillStartContext {
+  cycleId: string
+  feedKey: string
+  items: readonly VibeItem[]
+  missing: number
+  next: VibeCursor
+  pageSize: number
+  received: number
+  signal: AbortSignal
+  total: number | null
+}
+
+export interface VibeBackendAutofillSession {
+  received?: number
+  sequence?: number
+  sessionId: string
+}
+
+export interface VibeBackendAutofillCancelContext {
+  cycleId: string
+  feedKey: string
+  sessionId: string | null
+}
+
+type VibeBackendAutofillUpdateStatus = Extract<
+  VibeAutofillStatus,
+  'cancelled' | 'complete' | 'error' | 'exhausted' | 'waiting'
+>
+
+interface VibeBackendAutofillUpdateBase {
+  error?: unknown
+  feedKey: string
+  items?: VibeItem[]
+  received: number
+  requests?: number
+  sequence: number
+  sessionId: string
+  total?: number
+}
+
+export type VibeBackendAutofillUpdate = VibeBackendAutofillUpdateBase & (
+  | {
+    next: VibeCursor
+    status: Extract<VibeBackendAutofillUpdateStatus, 'complete' | 'exhausted'>
+  }
+  | {
+    next?: VibeCursor
+    status: Exclude<VibeBackendAutofillUpdateStatus, 'complete' | 'exhausted'>
+  }
+)
+
+export type VibeAutofillSessionSnapshot = VibeBackendAutofillUpdate & {
+  cycleId: string
+  pageSize: number
+  requests?: number
+}
+
+export interface VibeBackendAutofillOptions {
+  feedKey: string
+  initialSession?: VibeAutofillSessionSnapshot
+  onCancel: (
+    context: VibeBackendAutofillCancelContext,
+  ) => Promise<void> | void
+  onUnderfilled: (
+    context: VibeBackendAutofillStartContext,
+  ) => Promise<VibeBackendAutofillSession> | VibeBackendAutofillSession
+  pageSize: number
+  strategy: 'backend'
+}
+
+export type VibeAutofillOptions =
+  | VibeBackendAutofillOptions
+  | VibeFrontendAutofillOptions
+
 export interface CreateVibeOptions {
+  autofill?: VibeAutofillOptions
   cardFooter?: VibeCardRegion
   cardHeader?: VibeCardRegion
   target: Element | string
@@ -88,6 +195,7 @@ export interface CreateVibeOptions {
 
 export interface VibeState {
   activeReelPostId: VibeItemId | null
+  autofill: VibeAutofillState
   error: unknown | null
   infiniteScroll: boolean
   isLoading: boolean
@@ -102,11 +210,14 @@ export interface VibeState {
 }
 
 export interface VibeInstance {
+  applyAutofillUpdate: (update: VibeBackendAutofillUpdate) => boolean
+  cancelAutofill: () => Promise<void>
   destroy: () => void
   getState: () => VibeState
   loadNext: () => Promise<void>
   mount: () => Promise<void>
   reload: () => Promise<void>
+  restoreAutofillSession: (snapshot: VibeAutofillSessionSnapshot) => boolean
   setInfiniteScroll: (enabled: boolean) => void
   setLayout: (layout: VibeLayoutMode) => void
 }
