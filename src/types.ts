@@ -8,6 +8,7 @@ export type VibeLayoutMode = VibeLayout | 'responsive'
 export type VibeLifecycle = 'error' | 'loaded' | 'loading'
 export type VibeMediaSource = 'preview' | 'original'
 export type VibeAutofillStrategy = 'backend' | 'frontend'
+export type VibeFillStrategy = 'backend' | 'frontend'
 export type VibeAutofillStatus =
   | 'cancelled'
   | 'cancelling'
@@ -18,6 +19,20 @@ export type VibeAutofillStatus =
   | 'idle'
   | 'restoring'
   | 'waiting'
+export type VibeFillStatus =
+  | 'cancelled'
+  | 'cancelling'
+  | 'complete'
+  | 'error'
+  | 'exhausted'
+  | 'filling'
+  | 'idle'
+  | 'restoring'
+  | 'waiting'
+
+export type VibeFillTarget =
+  | { pages: number }
+  | { until: 'end' }
 
 export interface VibePreview {
   src: string
@@ -180,10 +195,101 @@ export type VibeAutofillOptions =
   | VibeBackendAutofillOptions
   | VibeFrontendAutofillOptions
 
+export interface VibeFillState {
+  completedPages: number
+  cycleId: string | null
+  enabled: boolean
+  error: unknown | null
+  feedKey: string | null
+  received: number
+  sequence: number
+  sessionId: string | null
+  status: VibeFillStatus
+  strategy: VibeFillStrategy | null
+  target: VibeFillTarget | null
+}
+
+export interface VibeFrontendFillOptions {
+  strategy: 'frontend'
+}
+
+export interface VibeBackendFillStartContext {
+  cycleId: string
+  feedKey: string
+  items: readonly VibeItem[]
+  next: VibeCursor
+  signal: AbortSignal
+  target: VibeFillTarget
+  total: number | null
+}
+
+export interface VibeBackendFillSession {
+  completedPages?: number
+  received?: number
+  sequence?: number
+  sessionId: string
+}
+
+export interface VibeBackendFillCancelContext {
+  cycleId: string
+  feedKey: string
+  sessionId: string | null
+}
+
+type VibeBackendFillUpdateStatus = Extract<
+  VibeFillStatus,
+  'cancelled' | 'complete' | 'error' | 'exhausted' | 'waiting'
+>
+
+interface VibeBackendFillUpdateBase {
+  completedPages: number
+  error?: unknown
+  feedKey: string
+  received: number
+  sequence: number
+  sessionId: string
+  total?: number
+}
+
+export type VibeBackendFillUpdate = VibeBackendFillUpdateBase & (
+  | {
+    items: VibeItem[]
+    lastCursor: VibeCursor
+    next: VibeCursor
+    status: Extract<VibeBackendFillUpdateStatus, 'complete' | 'exhausted'>
+  }
+  | {
+    items?: never
+    lastCursor?: never
+    next?: never
+    status: Exclude<VibeBackendFillUpdateStatus, 'complete' | 'exhausted'>
+  }
+)
+
+export type VibeFillSessionSnapshot = VibeBackendFillUpdate & {
+  cycleId: string
+  target: VibeFillTarget
+}
+
+export interface VibeBackendFillOptions {
+  feedKey: string
+  initialSession?: VibeFillSessionSnapshot
+  onCancel: (
+    context: VibeBackendFillCancelContext,
+  ) => Promise<void> | void
+  onStart: (
+    context: VibeBackendFillStartContext,
+  ) => Promise<VibeBackendFillSession> | VibeBackendFillSession
+  strategy: 'backend'
+}
+
+export type VibeFillOptions = VibeBackendFillOptions | VibeFrontendFillOptions
+
 export interface CreateVibeOptions {
   autofill?: VibeAutofillOptions
   cardFooter?: VibeCardRegion
   cardHeader?: VibeCardRegion
+  fill?: VibeFillOptions
   target: Element | string
   layout?: VibeLayoutMode
   infiniteScroll?: boolean
@@ -197,6 +303,7 @@ export interface VibeState {
   activeReelPostId: VibeItemId | null
   autofill: VibeAutofillState
   error: unknown | null
+  fill: VibeFillState
   infiniteScroll: boolean
   isLoading: boolean
   isLoadingMore: boolean
@@ -211,13 +318,17 @@ export interface VibeState {
 
 export interface VibeInstance {
   applyAutofillUpdate: (update: VibeBackendAutofillUpdate) => boolean
+  applyFillUpdate: (update: VibeBackendFillUpdate) => boolean
   cancelAutofill: () => Promise<void>
+  cancelFill: () => Promise<void>
   destroy: () => void
+  fill: (target: VibeFillTarget) => Promise<void>
   getState: () => VibeState
   loadNext: () => Promise<void>
   mount: () => Promise<void>
   reload: () => Promise<void>
   restoreAutofillSession: (snapshot: VibeAutofillSessionSnapshot) => boolean
+  restoreFillSession: (snapshot: VibeFillSessionSnapshot) => boolean
   setInfiniteScroll: (enabled: boolean) => void
   setLayout: (layout: VibeLayoutMode) => void
 }

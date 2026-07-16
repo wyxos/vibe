@@ -28,6 +28,19 @@ const autofillProgress = computed(() => {
   return `${autofill.received} / ${autofill.pageSize}`
 })
 
+const fillLabel = computed(() => {
+  const status = vibeState.value?.fill.status ?? 'idle'
+  return status.charAt(0).toUpperCase() + status.slice(1)
+})
+
+const fillProgress = computed(() => {
+  const fill = vibeState.value?.fill
+  if (!fill?.target) return ''
+  return 'pages' in fill.target
+    ? `${fill.completedPages} / ${fill.target.pages} pages`
+    : `${fill.completedPages} pages`
+})
+
 function updateVibeState(state: VibeState): void {
   vibeState.value = state
 }
@@ -50,7 +63,9 @@ function updateVibeState(state: VibeState): void {
 
       <div
         class="app-header-actions"
-        :class="{ 'app-header-actions--autofill': vibeState?.autofill.enabled }"
+        :class="{
+          'app-header-actions--operation': vibeState?.autofill.enabled || vibeState?.fill.enabled,
+        }"
       >
         <output
           class="vibe-lifecycle vibe-lifecycle--feed"
@@ -63,6 +78,23 @@ function updateVibeState(state: VibeState): void {
           <span class="vibe-lifecycle-layout">{{ layoutLabel }}</span>
           <span class="vibe-lifecycle-separator" aria-hidden="true">·</span>
           <span>{{ lifecycleLabel }}</span>
+        </output>
+
+        <output
+          v-if="vibeState?.fill.enabled"
+          class="vibe-lifecycle vibe-fill-lifecycle"
+          :class="`vibe-fill-lifecycle--${vibeState.fill.status}`"
+          data-test="fill-lifecycle"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <span class="vibe-lifecycle-indicator" aria-hidden="true" />
+          <span class="vibe-fill-prefix">Fill</span>
+          <span class="vibe-lifecycle-separator" aria-hidden="true">·</span>
+          <span>{{ fillLabel }}</span>
+          <span v-if="fillProgress" class="vibe-operation-progress">
+            {{ fillProgress }}
+          </span>
         </output>
 
         <output

@@ -1,8 +1,8 @@
 import {
-  appendUniqueItems,
   createAutofillState,
   isMatchingBackendSession,
 } from './autofill'
+import { appendUniqueItems } from './page'
 import type { VibeRuntimeState } from './runtime'
 import type {
   VibeAutofillOptions,

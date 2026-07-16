@@ -100,34 +100,52 @@ body {
   background: #f87171;
 }
 
-.vibe-autofill-lifecycle--complete .vibe-lifecycle-indicator {
+.vibe-autofill-lifecycle--complete .vibe-lifecycle-indicator,
+.vibe-fill-lifecycle--complete .vibe-lifecycle-indicator {
   background: #4ade80;
 }
 
 .vibe-autofill-lifecycle--cancelled .vibe-lifecycle-indicator,
-.vibe-autofill-lifecycle--idle .vibe-lifecycle-indicator {
+.vibe-autofill-lifecycle--idle .vibe-lifecycle-indicator,
+.vibe-fill-lifecycle--cancelled .vibe-lifecycle-indicator,
+.vibe-fill-lifecycle--idle .vibe-lifecycle-indicator {
   background: #737373;
 }
 
 .vibe-autofill-lifecycle--error,
-.vibe-autofill-lifecycle--exhausted {
+.vibe-autofill-lifecycle--exhausted,
+.vibe-fill-lifecycle--error,
+.vibe-fill-lifecycle--exhausted {
   border-color: rgb(248 113 113 / 45%);
   color: #fecaca;
 }
 
 .vibe-autofill-lifecycle--error .vibe-lifecycle-indicator,
-.vibe-autofill-lifecycle--exhausted .vibe-lifecycle-indicator {
+.vibe-autofill-lifecycle--exhausted .vibe-lifecycle-indicator,
+.vibe-fill-lifecycle--error .vibe-lifecycle-indicator,
+.vibe-fill-lifecycle--exhausted .vibe-lifecycle-indicator {
   background: #f87171;
 }
 
 .vibe-autofill-lifecycle--cancelling .vibe-lifecycle-indicator,
 .vibe-autofill-lifecycle--filling .vibe-lifecycle-indicator,
 .vibe-autofill-lifecycle--restoring .vibe-lifecycle-indicator,
-.vibe-autofill-lifecycle--waiting .vibe-lifecycle-indicator {
+.vibe-autofill-lifecycle--waiting .vibe-lifecycle-indicator,
+.vibe-fill-lifecycle--cancelling .vibe-lifecycle-indicator,
+.vibe-fill-lifecycle--filling .vibe-lifecycle-indicator,
+.vibe-fill-lifecycle--restoring .vibe-lifecycle-indicator,
+.vibe-fill-lifecycle--waiting .vibe-lifecycle-indicator {
   animation: vibe-lifecycle-pulse 1.2s ease-in-out infinite;
 }
 
 .vibe-autofill-progress {
+  padding-left: 0.375rem;
+  border-left: 1px solid #404040;
+  color: #f5f5f5;
+  font-variant-numeric: tabular-nums;
+}
+
+.vibe-operation-progress {
   padding-left: 0.375rem;
   border-left: 1px solid #404040;
   color: #f5f5f5;
@@ -284,7 +302,8 @@ body {
   min-height: 0;
 }
 
-.autofill-demo-stage {
+.autofill-demo-stage,
+.fill-demo-stage {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
@@ -292,7 +311,8 @@ body {
   overflow: hidden;
 }
 
-.autofill-demo-controls {
+.autofill-demo-controls,
+.fill-demo-controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -303,7 +323,8 @@ body {
   background: #0d0d0d;
 }
 
-.autofill-demo-note {
+.autofill-demo-note,
+.fill-demo-note {
   overflow: hidden;
   color: #a3a3a3;
   font: 500 0.75rem/1.3 system-ui, sans-serif;
@@ -311,14 +332,21 @@ body {
   white-space: nowrap;
 }
 
-.autofill-demo-actions {
+.autofill-demo-actions,
+.fill-demo-actions,
+.fill-demo-page-field {
   display: flex;
   align-items: center;
+}
+
+.autofill-demo-actions,
+.fill-demo-actions {
   gap: 0.5rem;
   flex: 0 0 auto;
 }
 
-.autofill-demo-action {
+.autofill-demo-action,
+.fill-demo-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -334,31 +362,55 @@ body {
   transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
 }
 
-.autofill-demo-action:hover:not(:disabled) {
+.autofill-demo-action:hover:not(:disabled),
+.fill-demo-action:hover:not(:disabled) {
   border-color: #737373;
   color: #f5f5f5;
   background: #262626;
 }
 
-.autofill-demo-action--cancel:hover:not(:disabled) {
+.autofill-demo-action--cancel:hover:not(:disabled),
+.fill-demo-action--cancel:hover:not(:disabled) {
   border-color: #f87171;
   color: #fecaca;
 }
 
-.autofill-demo-action:disabled {
+.autofill-demo-action:disabled,
+.fill-demo-action:disabled {
   color: #525252;
   cursor: not-allowed;
   opacity: 0.7;
 }
 
-.autofill-demo-action:focus-visible {
+.autofill-demo-action:focus-visible,
+.fill-demo-action:focus-visible,
+.fill-demo-page-field input:focus-visible {
   outline: 2px solid #a3a3a3;
   outline-offset: 2px;
 }
 
-.autofill-demo-vibe {
+.autofill-demo-vibe,
+.fill-demo-vibe {
   min-height: 0;
 }
+
+.fill-demo-page-field {
+  gap: 0.375rem;
+  color: #a3a3a3;
+  font: 600 0.75rem/1 system-ui, sans-serif;
+}
+
+.fill-demo-page-field input {
+  width: 3.25rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.375rem;
+  border: 1px solid #404040;
+  border-radius: 0.375rem;
+  color: #f5f5f5;
+  background: #171717;
+  font: 600 0.75rem/1 system-ui, sans-serif;
+}
+
 
 .demo-card-header-content,
 .demo-card-reactions {
@@ -438,6 +490,7 @@ body {
   .app-nav-link,
   .demo-card-action,
   .autofill-demo-action,
+  .fill-demo-action,
   .vibe-lifecycle-indicator {
     transition: none;
     animation: none;
@@ -445,7 +498,7 @@ body {
 }
 
 @media (max-width: 48rem) {
-  .app-header-actions--autofill .vibe-lifecycle--feed {
+  .app-header-actions--operation .vibe-lifecycle--feed {
     display: none;
   }
 
@@ -503,12 +556,39 @@ body {
     clip-path: inset(50%);
   }
 
+  .vibe-fill-prefix {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
   .autofill-demo-note {
     position: absolute;
     width: 1px;
     height: 1px;
     overflow: hidden;
     clip-path: inset(50%);
+  }
+
+  .fill-demo-note,
+  .fill-demo-page-field > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .fill-demo-controls {
+    justify-content: flex-end;
+  }
+
+  .fill-demo-action {
+    width: 2rem;
+    padding: 0;
+    font-size: 0;
   }
 
   .autofill-demo-controls {

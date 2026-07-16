@@ -1,9 +1,9 @@
 import {
   DEFAULT_MAX_ADDITIONAL_PAGES,
-  appendUniqueItems,
   collectFrontendAutofill,
 } from './autofill'
 import { startBackendAutofill } from './backendAutofill'
+import { appendUniqueItems } from './page'
 import type { VibeRuntimeState } from './runtime'
 import type {
   CreateVibeOptions,

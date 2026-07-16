@@ -258,6 +258,115 @@ exhausted. Vibe resumes ordinary pagination from that terminal cursor after
 autofill completes. A terminal update without `next` is rejected so an older
 cursor cannot be requested again.
 
+## Manual fill
+
+Manual fill is separate from autofill. It starts only when the consumer calls
+`vibe.fill()` and targets additional page requests rather than an item count:
+
+```ts
+await vibe.fill({ pages: 3 })
+await vibe.fill({ until: 'end' })
+```
+
+`{ pages: 3 }` follows three cursors from the currently loaded page. It becomes
+`exhausted` if the source ends before all three requests complete. `{ until:
+'end' }` continues until a response returns `next: null`; reaching that end is
+a successful `complete` result. Duplicate post IDs are still removed, but they
+do not change how page requests are counted.
+
+### Frontend fill
+
+```ts
+const restoredPage = await feedCache.read()
+
+const vibe = createVibe({
+  target: '#gallery',
+  initialPage: restoredPage ?? undefined,
+  loadPage,
+  fill: { strategy: 'frontend' },
+  onStateChange(state) {
+    renderFillState(state.fill)
+    void feedCache.write({
+      items: [...state.items],
+      next: state.next,
+      total: state.total ?? undefined,
+    })
+  },
+})
+
+await vibe.mount()
+await vibe.fill({ pages: 3 })
+// or: await vibe.fill({ until: 'end' })
+```
+
+Frontend fill invokes `loadPage` in the browser, exposes progress through
+`state.fill`, and appends one buffered batch when the requested pages or end is
+reached. `await vibe.cancelFill()` aborts the active request and discards the
+uncommitted batch. A restored `initialPage.next` is the cursor from which the
+next manual fill starts.
+
+### Backend fill
+
+```ts
+interface FillRestoration {
+  initialPage?: VibePage
+  session?: VibeFillSessionSnapshot
+}
+
+const restoration: FillRestoration = await getFillRestoration()
+
+const vibe = createVibe({
+  target: '#gallery',
+  initialPage: restoration.initialPage,
+  loadPage,
+  fill: {
+    strategy: 'backend',
+    feedKey: 'latest-images',
+    initialSession: restoration.session,
+    async onStart(context) {
+      const { signal, ...payload } = context
+      return await startBackendFill(payload, { signal })
+    },
+    onCancel: cancelBackendFill,
+  },
+})
+
+const unsubscribe = subscribeToFillUpdates((update) => {
+  vibe.applyFillUpdate(update)
+})
+
+await vibe.mount()
+await vibe.fill({ pages: 3 })
+```
+
+The backend callback should enqueue durable work and return a `sessionId`
+without waiting for every page. Each completed endpoint call can emit a
+sequenced `waiting` update containing `completedPages` and `received`. The
+terminal update supplies the entire buffered batch and its cursor boundary:
+
+```ts
+vibe.applyFillUpdate({
+  feedKey: 'latest-images',
+  sessionId: 'fill-job-456',
+  sequence: 3,
+  completedPages: 3,
+  received: 86,
+  status: 'complete',
+  items: completedBatch,
+  lastCursor: 'cursor-used-for-page-3',
+  next: 'cursor-after-page-3',
+  total: 500,
+})
+```
+
+For load-time restoration, provide both the committed `initialPage` and the
+persisted `fill.initialSession`. Subscribe to backend events before mounting.
+Use `vibe.restoreFillSession(snapshot)` when a session arrives after
+construction. `state.fill` exposes the strategy, target, status, completed page
+count, received unique-card count, session identity, sequence, and error.
+Ordinary pagination resumes from the terminal `next` cursor. Stale,
+mismatched-feed, invalid-terminal, and post-cancellation updates are ignored.
+
 ## Feed state
 
 Use `onStateChange` to render request and layout state outside Vibe, such as an

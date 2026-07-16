@@ -45,6 +45,18 @@ const emit = defineEmits<{
       >
         Backend refresh
       </RouterLink>
+      <RouterLink
+        class="demos-aside-link"
+        to="/demos/fill/frontend"
+      >
+        Frontend fill
+      </RouterLink>
+      <RouterLink
+        class="demos-aside-link"
+        to="/demos/fill/backend"
+      >
+        Backend fill
+      </RouterLink>
     </aside>
 
     <RouterView v-slot="{ Component }">

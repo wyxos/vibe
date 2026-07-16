@@ -10,6 +10,8 @@ import AutofillBackendRefreshDemoPage from './pages/AutofillBackendRefreshDemoPa
 import AutofillFrontendDemoPage from './pages/AutofillFrontendDemoPage.vue'
 import CardHeaderFooterDemoPage from './pages/CardHeaderFooterDemoPage.vue'
 import FeedDemoPage from './pages/FeedDemoPage.vue'
+import FillBackendDemoPage from './pages/FillBackendDemoPage.vue'
+import FillFrontendDemoPage from './pages/FillFrontendDemoPage.vue'
 import ReelUrlDemoPage from './pages/ReelUrlDemoPage.vue'
 
 const EmptyRouteView = { render: () => null }
@@ -57,6 +59,16 @@ export function createDemoRouter(
             path: 'autofill/backend-refresh',
             name: 'demo-autofill-backend-refresh',
             component: AutofillBackendRefreshDemoPage,
+          },
+          {
+            path: 'fill/frontend',
+            name: 'demo-fill-frontend',
+            component: FillFrontendDemoPage,
+          },
+          {
+            path: 'fill/backend',
+            name: 'demo-fill-backend',
+            component: FillBackendDemoPage,
           },
         ],
       },

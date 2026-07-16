@@ -9,12 +9,10 @@ import {
 
 import VibeSurface from '../components/VibeSurface.vue'
 import {
-  appendUniqueItems,
   cancelAutofill,
   collectFrontendAutofill,
   createAutofillState,
   isAutofillActive,
-  validatePage,
 } from './autofill'
 import {
   applyBackendAutofillUpdate,
@@ -23,30 +21,29 @@ import {
 } from './backendAutofill'
 import { resolveResponsiveLayoutForElement } from './responsiveLayout'
 import { autofillInitialPage } from './initialAutofill'
+import { createFillState } from './fill'
+import { VibeFillController } from './fillController'
 import { validateOptions } from './options'
+import { appendUniqueItems, validatePage } from './page'
 import { VibeRouteSync } from './vibeRouting'
-import type { VibeRuntimeState } from './runtime'
+import { snapshotState, type VibeRuntimeState } from './runtime'
 import type {
   CreateVibeOptions,
   VibeAutofillSessionSnapshot,
   VibeBackendAutofillUpdate,
+  VibeBackendFillUpdate,
   VibeCursor,
+  VibeFillSessionSnapshot,
+  VibeFillTarget,
   VibeInstance,
   VibeItemId,
   VibeLayout,
   VibeLayoutMode,
-  VibeLifecycle,
   VibeState,
 } from '../types'
 
 interface VibeSurfaceExpose {
   loadIfNearBottom: () => Promise<void>
-}
-
-function resolveLifecycle(state: VibeRuntimeState): VibeLifecycle {
-  if (state.isLoading || state.isLoadingMore) return 'loading'
-  if (state.error || state.nextPageError) return 'error'
-  return 'loaded'
 }
 
 class VibeController implements VibeInstance {
@@ -57,6 +54,7 @@ class VibeController implements VibeInstance {
   private requestVersion = 0
   private resizeObserver: ResizeObserver | null = null
   private readonly routing: VibeRouteSync
+  private readonly fillController: VibeFillController
   private surface: VibeSurfaceExpose | null = null
   private stopStateWatcher: WatchHandle | null = null
   private target: Element | null = null
@@ -73,6 +71,7 @@ class VibeController implements VibeInstance {
       activeReelPostId: null,
       autofill: createAutofillState(options.autofill),
       error: null,
+      fill: createFillState(options.fill),
       infiniteScroll: options.infiniteScroll ?? true,
       isLoading: !initialPage,
       isLoadingMore: false,
@@ -82,6 +81,12 @@ class VibeController implements VibeInstance {
       nextPageError: null,
       reelOrigin: null,
       total: initialPage?.total ?? null,
+    })
+    this.fillController = new VibeFillController({
+      fill: options.fill,
+      loadPage: options.loadPage,
+      onLastCursor: (cursor) => { this.lastLoadedCursor = cursor },
+      state: this.state,
     })
     this.routing = new VibeRouteSync(options.routing, this.state)
     this.startStateNotifications()
@@ -108,12 +113,14 @@ class VibeController implements VibeInstance {
     this.surface = this.app.mount(target) as unknown as VibeSurfaceExpose
 
     if (!this.options.initialPage) await this.reload()
-    else if (this.options.autofill && this.state.autofill.status === 'idle') {
+    else if (this.options.autofill && this.state.autofill.status === 'idle'
+      && !this.fillController.isActive()) {
       await this.startInitialAutofill()
     }
   }
 
   destroy(): void {
+    this.fillController.destroy()
     this.cancelRequest()
     this.stopResponsiveLayout()
     this.stopStateWatcher?.()
@@ -125,21 +132,7 @@ class VibeController implements VibeInstance {
   }
 
   getState(): VibeState {
-    return {
-      activeReelPostId: this.state.activeReelPostId,
-      autofill: { ...this.state.autofill },
-      error: this.state.error,
-      infiniteScroll: this.state.infiniteScroll,
-      isLoading: this.state.isLoading,
-      isLoadingMore: this.state.isLoadingMore,
-      items: [...this.state.items],
-      layout: this.state.layout,
-      lifecycle: resolveLifecycle(this.state),
-      next: this.state.next,
-      nextPageError: this.state.nextPageError,
-      reelOrigin: this.state.reelOrigin,
-      total: this.state.total,
-    }
+    return snapshotState(this.state)
   }
 
   applyAutofillUpdate(update: VibeBackendAutofillUpdate): boolean {
@@ -154,6 +147,21 @@ class VibeController implements VibeInstance {
     )
   }
 
+  applyFillUpdate(update: VibeBackendFillUpdate): boolean {
+    return this.fillController.applyUpdate(update)
+  }
+
+  cancelFill(): Promise<void> {
+    return this.fillController.cancel()
+  }
+
+  async fill(target: VibeFillTarget): Promise<void> {
+    if (this.pendingRequest || isAutofillActive(this.state.autofill)) {
+      throw new Error('Vibe cannot fill while another page operation is active.')
+    }
+    await this.fillController.start(target)
+  }
+
   restoreAutofillSession(snapshot: VibeAutofillSessionSnapshot): boolean {
     return restoreBackendAutofillSession(
       this.options.autofill,
@@ -162,9 +170,13 @@ class VibeController implements VibeInstance {
     )
   }
 
+  restoreFillSession(snapshot: VibeFillSessionSnapshot): boolean {
+    return this.fillController.restoreSession(snapshot)
+  }
+
   async loadNext(): Promise<void> {
     if (this.pendingRequest) return this.pendingRequest
-    if (isAutofillActive(this.state.autofill)) return
+    if (isAutofillActive(this.state.autofill) || this.fillController.isActive()) return
     if (this.state.next === null || !this.options.loadPage) return
 
     this.state.isLoadingMore = true
@@ -178,8 +190,10 @@ class VibeController implements VibeInstance {
     }
 
     if (isAutofillActive(this.state.autofill)) await this.cancelAutofill()
+    if (this.fillController.isActive()) await this.cancelFill()
     this.cancelRequest()
     this.state.autofill = createAutofillState(this.options.autofill, undefined, false)
+    this.fillController.reset()
     this.state.error = null
     this.state.isLoading = true
     this.state.items = []
@@ -191,7 +205,7 @@ class VibeController implements VibeInstance {
 
   private async retryEnd(): Promise<void> {
     if (this.pendingRequest) return this.pendingRequest
-    if (isAutofillActive(this.state.autofill)) return
+    if (isAutofillActive(this.state.autofill) || this.fillController.isActive()) return
     if (this.state.next !== null || !this.options.loadPage) return
 
     this.state.isLoadingMore = true

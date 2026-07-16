@@ -1,0 +1,33 @@
+import type { VibeItem, VibePage } from '../types'
+
+export function validatePage(page: VibePage): VibePage {
+  if (!page || typeof page !== 'object' || !Array.isArray(page.items)) {
+    throw new TypeError('Vibe loadPage must resolve to a page with an items array.')
+  }
+
+  if (page.next !== null && typeof page.next !== 'string' && typeof page.next !== 'number') {
+    throw new TypeError('Vibe page next must be a string, number, or null.')
+  }
+
+  if (page.total !== undefined && (!Number.isFinite(page.total) || page.total < 0)) {
+    throw new TypeError('Vibe page total must be a non-negative number when provided.')
+  }
+
+  return page
+}
+
+export function appendUniqueItems(
+  current: readonly VibeItem[],
+  incoming: readonly VibeItem[],
+): VibeItem[] {
+  const postIds = new Set(current.map((item) => item.postId))
+
+  return [
+    ...current,
+    ...incoming.filter((item) => {
+      if (postIds.has(item.postId)) return false
+      postIds.add(item.postId)
+      return true
+    }),
+  ]
+}
