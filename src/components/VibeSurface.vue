@@ -18,6 +18,7 @@ import ReelFeed from './ReelFeed.vue'
 const ENTRY_STAGGER_MS = 35
 
 interface FeedRendererExpose {
+  changeActiveMedia?: (direction: -1 | 1) => boolean
   loadIfNearBottom: () => void
 }
 
@@ -194,10 +195,32 @@ function finishReelLeave(): void {
 }
 
 function onKeydown(event: KeyboardEvent): void {
-  if (event.key !== 'Escape' || props.state.reelOrigin !== 'masonry') return
+  if (event.key === 'Escape' && props.state.reelOrigin === 'masonry') {
+    event.preventDefault()
+    closeMasonryReel()
+    return
+  }
 
-  event.preventDefault()
-  closeMasonryReel()
+  if (
+    event.defaultPrevented
+    || event.altKey
+    || event.ctrlKey
+    || event.metaKey
+    || event.shiftKey
+    || isReelLeaving.value
+    || (props.state.layout !== 'reel' && props.state.reelOrigin !== 'masonry')
+  ) return
+
+  const target = event.target
+  if (
+    target instanceof HTMLElement
+    && (target.isContentEditable || ['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName))
+  ) return
+
+  const direction = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0
+  if (direction !== 0 && reelRenderer.value?.changeActiveMedia?.(direction)) {
+    event.preventDefault()
+  }
 }
 
 watch(

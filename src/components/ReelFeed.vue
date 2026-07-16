@@ -11,7 +11,7 @@ import {
 
 import type { ReelFeedProps } from '../core/feed'
 import { isNearFeedBottom } from '../core/feed'
-import { mediaStateKey } from '../core/mediaAsset'
+import { mediaAssets, mediaStateKey } from '../core/mediaAsset'
 import type { VibeItemId } from '../types'
 import CardRegion from './CardRegion.vue'
 import GalleryFooter from './GalleryFooter.vue'
@@ -135,6 +135,18 @@ function loadIfNearBottom(): void {
   if (element && isNearFeedBottom(element)) emit('loadMore')
 }
 
+function changeActiveMedia(direction: -1 | 1): boolean {
+  const item = activeItem.value
+  if (!item) return false
+
+  const mediaCount = mediaAssets(item).length
+  if (mediaCount <= 1) return false
+
+  const nextIndex = (activeMediaIndex.value + direction + mediaCount) % mediaCount
+  emit('mediaChange', item.postId, nextIndex)
+  return true
+}
+
 watch(galleryElement, (element) => {
   resizeObserver?.disconnect()
   resizeObserver = null
@@ -174,7 +186,7 @@ onBeforeUnmount(() => {
   if (resizeReleaseTimer !== null) clearTimeout(resizeReleaseTimer)
 })
 
-defineExpose({ activeIndex, activePostId, loadIfNearBottom })
+defineExpose({ activeIndex, activePostId, changeActiveMedia, loadIfNearBottom })
 </script>
 
 <template>

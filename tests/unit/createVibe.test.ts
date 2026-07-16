@@ -324,6 +324,20 @@ describe('createVibe', () => {
     )!.click()
     await flushPromises()
     expect(reel.dataset.activeMediaIndex).toBe('2')
+
+    window.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      cancelable: true,
+    }))
+    await flushPromises()
+    expect(reel.dataset.activeMediaIndex).toBe('0')
+
+    window.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowLeft',
+      cancelable: true,
+    }))
+    await flushPromises()
+    expect(reel.dataset.activeMediaIndex).toBe('2')
   })
 
   it('toggles reel video playback from the media and custom control', async () => {

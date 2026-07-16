@@ -47,13 +47,12 @@ const props = defineProps<{
   total: number | null
 }>()
 
-const MEDIA_GESTURE_LOCK_MS = 280
 const MEDIA_SWIPE_THRESHOLD = 40
 const MEDIA_WHEEL_RESET_MS = 160
 const MEDIA_WHEEL_THRESHOLD = 24
-let gestureLockTimer: ReturnType<typeof setTimeout> | null = null
 let wheelResetTimer: ReturnType<typeof setTimeout> | null = null
 let wheelDeltaX = 0
+let wheelGestureConsumed = false
 let touchStartX: number | null = null
 let touchStartY: number | null = null
 const mediaDirection = shallowRef<'next' | 'previous'>('next')
@@ -113,28 +112,22 @@ function changeMedia(index: number, event?: MouseEvent): void {
   }
 }
 
-function lockMediaGesture(): void {
-  if (gestureLockTimer !== null) clearTimeout(gestureLockTimer)
-  gestureLockTimer = setTimeout(() => {
-    gestureLockTimer = null
-  }, MEDIA_GESTURE_LOCK_MS)
-}
-
 function normalizeWheelDelta(delta: number, deltaMode: number, pageSize: number): number {
   if (deltaMode === 1) return delta * 16
   if (deltaMode === 2) return delta * pageSize
   return delta
 }
 
-function resetWheelAccumulator(): void {
+function resetWheelGesture(): void {
   wheelDeltaX = 0
+  wheelGestureConsumed = false
   if (wheelResetTimer !== null) clearTimeout(wheelResetTimer)
   wheelResetTimer = null
 }
 
 function scheduleWheelReset(): void {
   if (wheelResetTimer !== null) clearTimeout(wheelResetTimer)
-  wheelResetTimer = setTimeout(resetWheelAccumulator, MEDIA_WHEEL_RESET_MS)
+  wheelResetTimer = setTimeout(resetWheelGesture, MEDIA_WHEEL_RESET_MS)
 }
 
 function onMediaWheel(event: WheelEvent): void {
@@ -143,26 +136,19 @@ function onMediaWheel(event: WheelEvent): void {
   const target = event.currentTarget as HTMLElement | null
   const pageSize = target?.clientWidth || 1
   const deltaX = normalizeWheelDelta(event.deltaX, event.deltaMode, pageSize)
-  const deltaY = normalizeWheelDelta(event.deltaY, event.deltaMode, pageSize)
-  if (deltaX === 0 || Math.abs(deltaX) <= Math.abs(deltaY)) {
-    resetWheelAccumulator()
-    return
-  }
+  if (deltaX === 0) return
 
   event.preventDefault()
-  if (gestureLockTimer !== null) {
-    resetWheelAccumulator()
-    return
-  }
+  scheduleWheelReset()
+  if (wheelGestureConsumed) return
 
   wheelDeltaX += deltaX
-  scheduleWheelReset()
   if (Math.abs(wheelDeltaX) < MEDIA_WHEEL_THRESHOLD) return
 
   const direction = Math.sign(wheelDeltaX)
-  resetWheelAccumulator()
+  wheelDeltaX = 0
+  wheelGestureConsumed = true
   changeMedia(normalizedMediaIndex.value + direction)
-  lockMediaGesture()
 }
 
 function onMediaTouchStart(event: TouchEvent): void {
@@ -220,8 +206,7 @@ async function toggleVideoPlayback(): Promise<void> {
 }
 
 onBeforeUnmount(() => {
-  if (gestureLockTimer !== null) clearTimeout(gestureLockTimer)
-  resetWheelAccumulator()
+  resetWheelGesture()
 })
 </script>
 

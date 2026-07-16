@@ -36,10 +36,12 @@ function props() {
 
 describe('MediaCard', () => {
   afterEach(() => {
+    vi.useRealTimers()
     vi.restoreAllMocks()
   })
 
-  it('accumulates native line-based deltaX without treating deltaY as horizontal', async () => {
+  it('handles repeated horizontal wheel gestures without using deltaY as a fallback', async () => {
+    vi.useFakeTimers()
     const wrapper = mount(MediaCard, { props: props() })
     const media = wrapper.get('.media-card-media')
 
@@ -53,25 +55,34 @@ describe('MediaCard', () => {
     }))
     expect(wrapper.emitted('mediaChange')).toBeUndefined()
 
-    const firstHorizontal = new WheelEvent('wheel', {
-      bubbles: true,
-      cancelable: true,
-      deltaMode: 1,
-      deltaX: 1,
-    })
-    media.element.dispatchEvent(firstHorizontal)
-    expect(firstHorizontal.defaultPrevented).toBe(true)
+    function dispatchHorizontal(deltaY = 0): WheelEvent {
+      const event = new WheelEvent('wheel', {
+        bubbles: true,
+        cancelable: true,
+        deltaMode: 1,
+        deltaX: 1,
+        deltaY,
+      })
+      media.element.dispatchEvent(event)
+      return event
+    }
+
+    expect(dispatchHorizontal(3).defaultPrevented).toBe(true)
     expect(wrapper.emitted('mediaChange')).toBeUndefined()
-
-    media.element.dispatchEvent(new WheelEvent('wheel', {
-      bubbles: true,
-      cancelable: true,
-      deltaMode: 1,
-      deltaX: 1,
-    }))
+    dispatchHorizontal(3)
     await wrapper.vm.$nextTick()
-
     expect(wrapper.emitted('mediaChange')).toEqual([[1]])
+
+    dispatchHorizontal()
+    dispatchHorizontal()
+    expect(wrapper.emitted('mediaChange')).toEqual([[1]])
+
+    await wrapper.setProps({ mediaIndex: 1 })
+    vi.advanceTimersByTime(160)
+    dispatchHorizontal()
+    dispatchHorizontal()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.emitted('mediaChange')).toEqual([[1], [2]])
   })
 
   it('tracks the direction used by the grouped-media slide transition', async () => {
