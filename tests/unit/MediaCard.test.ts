@@ -85,6 +85,23 @@ describe('MediaCard', () => {
     expect(wrapper.emitted('mediaChange')).toEqual([[1], [2]])
   })
 
+  it('cycles grouped media with a horizontal wheel gesture in masonry', async () => {
+    const wrapper = mount(MediaCard, {
+      props: { ...props(), layout: 'masonry' },
+    })
+    const event = new WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      deltaX: 100,
+    })
+
+    wrapper.get('.media-card-media').element.dispatchEvent(event)
+    await wrapper.vm.$nextTick()
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(wrapper.emitted('mediaChange')).toEqual([[1]])
+  })
+
   it('tracks the direction used by the grouped-media slide transition', async () => {
     const wrapper = mount(MediaCard, { props: props() })
 

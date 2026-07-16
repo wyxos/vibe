@@ -131,7 +131,8 @@ function scheduleWheelReset(): void {
 }
 
 function onMediaWheel(event: WheelEvent): void {
-  if (props.layout !== 'reel' || mediaItems.value.length <= 1) return
+  const mediaCount = mediaItems.value.length
+  if (mediaCount <= 1) return
 
   const target = event.currentTarget as HTMLElement | null
   const pageSize = target?.clientWidth || 1
