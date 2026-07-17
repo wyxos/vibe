@@ -5,9 +5,17 @@ import type {
   VibeFillState,
   VibeFillTarget,
   VibeCursor,
+  VibeFrontendFillOptions,
   VibeItem,
   VibePageLoader,
 } from '../types'
+import {
+  getRequestDelayMs,
+  getRequestDelaySnapshot,
+  validateRequestDelayOptions,
+  waitForRequestDelay,
+  type RequestDelaySnapshot,
+} from './requestDelay'
 
 export interface FrontendFillProgress {
   completedPages: number
@@ -26,7 +34,9 @@ interface CollectFrontendFillOptions {
   existingItems: readonly VibeItem[]
   initialCursor: VibeCursor
   loadPage: VibePageLoader
+  onDelayChange: (snapshot: RequestDelaySnapshot) => void
   onProgress: (progress: FrontendFillProgress) => void
+  options: VibeFrontendFillOptions
   signal: AbortSignal
   target: VibeFillTarget
 }
@@ -54,7 +64,11 @@ export function validateFillTarget(target: VibeFillTarget): VibeFillTarget {
 }
 
 export function validateFillOptions(options?: VibeFillOptions): void {
-  if (!options || options.strategy === 'frontend') return
+  if (!options) return
+  if (options.strategy === 'frontend') {
+    validateRequestDelayOptions(options, 'frontend fill')
+    return
+  }
   if (!options.feedKey.trim()) {
     throw new TypeError('Vibe backend fill requires a feedKey.')
   }
@@ -78,10 +92,12 @@ export function createFillState(
     ? options.initialSession
     : undefined
   const session = initialSession ?? configured
+  const delay = getRequestDelaySnapshot(session?.nextRequestAt)
 
   return {
     completedPages: session?.completedPages ?? 0,
     cycleId: session?.cycleId ?? null,
+    ...delay,
     enabled: Boolean(options),
     error: session?.error ?? null,
     feedKey: options?.strategy === 'backend' ? options.feedKey : null,
@@ -102,7 +118,9 @@ export async function collectFrontendFill({
   existingItems,
   initialCursor,
   loadPage,
+  onDelayChange,
   onProgress,
+  options,
   signal,
   target,
 }: CollectFrontendFillOptions): Promise<FrontendFillResult> {
@@ -119,6 +137,12 @@ export async function collectFrontendFill({
     const key = cursorKey(cursor)
     if (seenCursors.has(key)) throw new Error('Vibe fill received a repeated cursor.')
     seenCursors.add(key)
+
+    await waitForRequestDelay({
+      delayMs: getRequestDelayMs(completedPages, options),
+      onChange: onDelayChange,
+      signal,
+    })
 
     const page = validatePage(await loadPage({ cursor, signal }))
     completedPages += 1

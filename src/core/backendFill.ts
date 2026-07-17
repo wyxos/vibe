@@ -1,5 +1,6 @@
 import { createFillState } from './fill'
 import { appendUniqueItems } from './page'
+import { getRequestDelaySnapshot } from './requestDelay'
 import type { VibeRuntimeState } from './runtime'
 import type {
   VibeBackendFillOptions,
@@ -23,6 +24,7 @@ export async function startBackendFill(
   }
 
   Object.assign(state.fill, {
+    ...getRequestDelaySnapshot(session.nextRequestAt),
     completedPages: session.completedPages ?? 0,
     received: session.received ?? 0,
     sequence: session.sequence ?? 0,
@@ -93,6 +95,9 @@ export function applyBackendFillUpdate(
 
   applyTerminalUpdate(state, update, onLastCursor)
   Object.assign(state.fill, {
+    ...getRequestDelaySnapshot(
+      update.status === 'waiting' ? update.nextRequestAt : null,
+    ),
     completedPages: update.completedPages,
     error: update.error ?? null,
     received: update.received,

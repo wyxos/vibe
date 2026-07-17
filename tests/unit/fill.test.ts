@@ -58,6 +58,7 @@ describe('Vibe fill', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     instances.splice(0).forEach((instance) => instance.destroy())
     target.remove()
     vi.restoreAllMocks()
@@ -74,7 +75,7 @@ describe('Vibe fill', () => {
       .mockResolvedValueOnce({ items: [item(2)], next: 'three' })
       .mockResolvedValueOnce({ items: [item(3)], next: 'four' })
     const instance = track(createVibe({
-      fill: { strategy: 'frontend' },
+      fill: { strategy: 'frontend', delayStepMs: 0 },
       initialPage: { items: [item(1)], next: 'two' },
       loadPage,
       target,
@@ -104,7 +105,7 @@ describe('Vibe fill', () => {
         resolveSecond = resolve
       }))
     const instance = track(createVibe({
-      fill: { strategy: 'frontend' },
+      fill: { strategy: 'frontend', delayStepMs: 0 },
       initialPage: { items: [item(1)], next: 'two' },
       loadPage,
       target,
@@ -122,12 +123,43 @@ describe('Vibe fill', () => {
     expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1, 2, 3])
   })
 
+  it('waits progressively between frontend fill requests', async () => {
+    vi.useFakeTimers()
+    const loadPage = vi.fn()
+      .mockResolvedValueOnce({ items: [item(2)], next: 'three' })
+      .mockResolvedValueOnce({ items: [item(3)], next: 'four' })
+    const instance = track(createVibe({
+      fill: { strategy: 'frontend' },
+      initialPage: { items: [item(1)], next: 'two' },
+      loadPage,
+      target,
+    }))
+    await instance.mount()
+
+    const filling = instance.fill({ pages: 2 })
+    await flushPromises()
+    expect(loadPage).toHaveBeenCalledOnce()
+    expect(instance.getState().fill.delayRemainingMs).toBe(2_000)
+
+    await vi.advanceTimersByTimeAsync(1_999)
+    expect(loadPage).toHaveBeenCalledOnce()
+    await vi.advanceTimersByTimeAsync(1)
+    await filling
+
+    expect(loadPage).toHaveBeenCalledTimes(2)
+    expect(instance.getState().fill).toMatchObject({
+      delayRemainingMs: null,
+      nextRequestAt: null,
+      status: 'complete',
+    })
+  })
+
   it('fills frontend pages until the source reaches its end', async () => {
     const loadPage = vi.fn()
       .mockResolvedValueOnce({ items: [item(2)], next: 'three' })
       .mockResolvedValueOnce({ items: [item(3)], next: null })
     const instance = track(createVibe({
-      fill: { strategy: 'frontend' },
+      fill: { strategy: 'frontend', delayStepMs: 0 },
       initialPage: { items: [item(1)], next: 'two' },
       loadPage,
       target,
@@ -147,7 +179,7 @@ describe('Vibe fill', () => {
 
   it('marks a page-count fill exhausted when the source ends early', async () => {
     const instance = track(createVibe({
-      fill: { strategy: 'frontend' },
+      fill: { strategy: 'frontend', delayStepMs: 0 },
       initialPage: { items: [item(1)], next: 'two' },
       loadPage: vi.fn().mockResolvedValue({ items: [item(2)], next: null }),
       target,
@@ -174,7 +206,7 @@ describe('Vibe fill', () => {
         })
       ))
     const instance = track(createVibe({
-      fill: { strategy: 'frontend' },
+      fill: { strategy: 'frontend', delayStepMs: 0 },
       initialPage: { items: [item(1)], next: 'two' },
       loadPage,
       target,
@@ -227,6 +259,40 @@ describe('Vibe fill', () => {
     expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1, 2, 3])
     expect(instance.getState().next).toBe('four')
     expect(instance.getState().fill.status).toBe('complete')
+  })
+
+  it('derives a backend fill countdown from waiting updates', async () => {
+    vi.useFakeTimers()
+    const instance = track(createVibe({
+      fill: {
+        strategy: 'backend',
+        feedKey: 'gallery',
+        onCancel: vi.fn(),
+        onStart: vi.fn().mockResolvedValue({ sessionId: 'session-1' }),
+      },
+      initialPage: { items: [item(1)], next: 'two' },
+      loadPage: vi.fn(),
+      target,
+    }))
+    await instance.mount()
+    await instance.fill({ pages: 2 })
+
+    expect(instance.applyFillUpdate({
+      completedPages: 1,
+      feedKey: 'gallery',
+      nextRequestAt: Date.now() + 2_000,
+      received: 1,
+      sequence: 1,
+      sessionId: 'session-1',
+      status: 'waiting',
+    })).toBe(true)
+    expect(instance.getState().fill.delayRemainingMs).toBe(2_000)
+
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(instance.getState().fill.delayRemainingMs).toBe(1_000)
+
+    expect(instance.applyFillUpdate(terminalUpdate({ sequence: 2 }))).toBe(true)
+    expect(instance.getState().fill.delayRemainingMs).toBeNull()
   })
 
   it('rejects stale or incomplete backend terminal updates', async () => {
@@ -328,13 +394,13 @@ describe('Vibe fill', () => {
 
   it('validates fill targets and frontend loader requirements', async () => {
     expect(() => createVibe({
-      fill: { strategy: 'frontend' },
+      fill: { strategy: 'frontend', delayStepMs: 0 },
       initialPage: { items: [], next: null },
       target,
     })).toThrow('Vibe frontend fill requires loadPage.')
 
     const instance = track(createVibe({
-      fill: { strategy: 'frontend' },
+      fill: { strategy: 'frontend', delayStepMs: 0 },
       initialPage: { items: [], next: null },
       loadPage: vi.fn(),
       target,

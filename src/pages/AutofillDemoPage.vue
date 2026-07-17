@@ -188,10 +188,10 @@ onBeforeUnmount(() => {
         </template>
         <template v-else>
           {{ strategy === 'backend'
-            ? 'The backend accumulates each completed fixture response.'
-            : 'Fixture pages are accumulated and committed as one completed batch.' }}
+            ? 'The simulated backend owns the increasing request delay; Vibe mirrors its countdown.'
+            : 'Vibe paces fixture requests and commits them as one completed batch.' }}
           Page 1 has 45 cards · page 2 has 38 · target
-          {{ AUTOFILL_DEMO_TARGET_SIZE }}.
+          {{ AUTOFILL_DEMO_TARGET_SIZE }} · delays increase 0s, 2s, 4s up to 10s.
         </template>
       </span>
 

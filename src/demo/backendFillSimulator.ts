@@ -1,4 +1,5 @@
 import { loadFillDemoPage } from './fillPage'
+import { getRequestDelayMs } from '@/core/requestDelay'
 import type {
   VibeBackendFillCancelContext,
   VibeBackendFillSession,
@@ -16,6 +17,7 @@ interface BackendFillJob {
   items: VibeItem[]
   lastCursor: VibeCursor
   next: VibeCursor
+  nextRequestAt: number | null
   received: number
   sequence: number
   sessionId: string
@@ -60,6 +62,7 @@ export class BackendFillSimulator {
       items: [],
       lastCursor: context.next,
       next: context.next,
+      nextRequestAt: Date.now(),
       received: 0,
       sequence: 0,
       sessionId: `demo-${context.cycleId}`,
@@ -67,7 +70,10 @@ export class BackendFillSimulator {
       total: context.total,
     }
     this.schedule()
-    return { sessionId: this.job.sessionId }
+    return {
+      nextRequestAt: this.job.nextRequestAt,
+      sessionId: this.job.sessionId,
+    }
   }
 
   cancel(context: VibeBackendFillCancelContext): void {
@@ -80,6 +86,7 @@ export class BackendFillSimulator {
     this.emit({
       completedPages: job.completedPages,
       feedKey: job.feedKey,
+      nextRequestAt: null,
       received: job.received,
       sequence: job.sequence,
       sessionId: job.sessionId,
@@ -105,7 +112,8 @@ export class BackendFillSimulator {
   }
 
   private schedule(): void {
-    this.timer = setTimeout(() => { void this.processNextPage() }, 250)
+    const delay = Math.max(0, (this.job?.nextRequestAt ?? Date.now()) - Date.now())
+    this.timer = setTimeout(() => { void this.processNextPage() }, delay)
   }
 
   private clearTimer(): void {
@@ -133,12 +141,14 @@ export class BackendFillSimulator {
 
       const status = terminalStatus(job)
       if (status) {
+        job.nextRequestAt = null
         this.emit({
           completedPages: job.completedPages,
           feedKey: job.feedKey,
           items: job.items,
           lastCursor: job.lastCursor,
           next: job.next,
+          nextRequestAt: null,
           received: job.received,
           sequence: job.sequence,
           sessionId: job.sessionId,
@@ -148,9 +158,11 @@ export class BackendFillSimulator {
         return
       }
 
+      job.nextRequestAt = Date.now() + getRequestDelayMs(job.completedPages)
       this.emit({
         completedPages: job.completedPages,
         feedKey: job.feedKey,
+        nextRequestAt: job.nextRequestAt,
         received: job.received,
         sequence: job.sequence,
         sessionId: job.sessionId,
@@ -165,6 +177,7 @@ export class BackendFillSimulator {
         completedPages: job.completedPages,
         error,
         feedKey: job.feedKey,
+        nextRequestAt: null,
         received: job.received,
         sequence: job.sequence,
         sessionId: job.sessionId,

@@ -121,8 +121,8 @@ onBeforeUnmount(() => {
     <div class="fill-demo-controls">
       <span class="fill-demo-note">
         {{ strategy === 'backend'
-          ? 'A simulated backend job follows the feed cursor and emits progress after each response.'
-          : 'Vibe follows the feed cursor in the browser and commits the collected pages as one batch.' }}
+          ? 'The simulated backend owns the 0s, 2s, 4s request schedule and emits each completed response.'
+          : 'Vibe follows the cursor with 0s, 2s, 4s delays and commits one completed batch.' }}
       </span>
 
       <div class="fill-demo-actions">

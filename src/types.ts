@@ -102,10 +102,12 @@ export type VibeInitialPage = VibePage
 
 export interface VibeAutofillState {
   cycleId: string | null
+  delayRemainingMs: number | null
   enabled: boolean
   error: unknown | null
   feedKey: string | null
   missing: number
+  nextRequestAt: number | null
   pageSize: number | null
   received: number
   requests: number
@@ -115,7 +117,12 @@ export interface VibeAutofillState {
   strategy: VibeAutofillStrategy | null
 }
 
-export interface VibeFrontendAutofillOptions {
+export interface VibeRequestDelayOptions {
+  delayMaxMs?: number
+  delayStepMs?: number
+}
+
+export interface VibeFrontendAutofillOptions extends VibeRequestDelayOptions {
   maxAdditionalPages?: number
   pageSize: number
   strategy: 'frontend'
@@ -134,6 +141,7 @@ export interface VibeBackendAutofillStartContext {
 }
 
 export interface VibeBackendAutofillSession {
+  nextRequestAt?: number | null
   received?: number
   sequence?: number
   sessionId: string
@@ -154,6 +162,7 @@ interface VibeBackendAutofillUpdateBase {
   error?: unknown
   feedKey: string
   items?: VibeItem[]
+  nextRequestAt?: number | null
   received: number
   requests?: number
   sequence: number
@@ -198,9 +207,11 @@ export type VibeAutofillOptions =
 export interface VibeFillState {
   completedPages: number
   cycleId: string | null
+  delayRemainingMs: number | null
   enabled: boolean
   error: unknown | null
   feedKey: string | null
+  nextRequestAt: number | null
   received: number
   sequence: number
   sessionId: string | null
@@ -209,7 +220,7 @@ export interface VibeFillState {
   target: VibeFillTarget | null
 }
 
-export interface VibeFrontendFillOptions {
+export interface VibeFrontendFillOptions extends VibeRequestDelayOptions {
   strategy: 'frontend'
 }
 
@@ -225,6 +236,7 @@ export interface VibeBackendFillStartContext {
 
 export interface VibeBackendFillSession {
   completedPages?: number
+  nextRequestAt?: number | null
   received?: number
   sequence?: number
   sessionId: string
@@ -245,6 +257,7 @@ interface VibeBackendFillUpdateBase {
   completedPages: number
   error?: unknown
   feedKey: string
+  nextRequestAt?: number | null
   received: number
   sequence: number
   sessionId: string

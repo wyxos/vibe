@@ -164,6 +164,8 @@ const vibe = createVibe({
     strategy: 'frontend',
     pageSize: 40,
     maxAdditionalPages: 10,
+    delayStepMs: 2_000,
+    delayMaxMs: 10_000,
   },
   onStateChange(state) {
     void feedCache.write({
@@ -180,6 +182,13 @@ await vibe.mount()
 There is no frontend session snapshot. With 25 restored cards and
 `pageSize: 40`, Vibe continues from `initialPage.next` until the load cycle has
 at least 40 unique cards. Without `initialPage`, Vibe starts at cursor `null`.
+
+The first request is immediate. Each subsequent request waits
+`min(completedRequests * delayStepMs, delayMaxMs)`, so the defaults produce
+0s, 2s, 4s, 6s, 8s, then 10s between requests. Set both values to `0` when a
+frontend source should run without pacing. During a wait,
+`state.autofill.delayRemainingMs` counts down and `nextRequestAt` contains the
+absolute browser timestamp.
 
 ### Backend autofill
 
@@ -223,6 +232,11 @@ Subscribe before mounting so a fast Reverb, WebSocket, or polling update is not
 missed. A waiting update reports sequenced progress without items. A `complete`
 or `exhausted` update supplies the entire buffered batch and appends it once:
 
+The backend owns its delay policy and job scheduling. Return or emit the
+absolute `nextRequestAt` timestamp for a waiting job; Vibe derives the live
+`delayRemainingMs` countdown locally. Persist the timestamp in session
+snapshots so a refreshed client can resume the same countdown.
+
 ```ts
 vibe.applyAutofillUpdate({
   feedKey: 'latest-images',
@@ -230,6 +244,7 @@ vibe.applyAutofillUpdate({
   sequence: 2,
   requests: 2,
   received: 48,
+  nextRequestAt: null,
   status: 'complete',
   items: completedBatch,
   next: 'cursor-after-completed-batch',
@@ -250,7 +265,7 @@ after construction; it restores autofill lifecycle state, not a complete
 visible page.
 
 `state.autofill` exposes the strategy, lifecycle status, target, received and
-missing counts, request count, session identity, sequence, and error. Backend
+missing counts, request count, countdown, session identity, sequence, and error. Backend
 results are appended only when an update is `complete` or `exhausted`; stale,
 duplicate, mismatched-feed, and post-cancellation updates are ignored.
 Terminal backend updates must include `next`, using `null` when the source is
@@ -283,7 +298,11 @@ const vibe = createVibe({
   target: '#gallery',
   initialPage: restoredPage ?? undefined,
   loadPage,
-  fill: { strategy: 'frontend' },
+  fill: {
+    strategy: 'frontend',
+    delayStepMs: 2_000,
+    delayMaxMs: 10_000,
+  },
   onStateChange(state) {
     renderFillState(state.fill)
     void feedCache.write({
@@ -303,7 +322,9 @@ Frontend fill invokes `loadPage` in the browser, exposes progress through
 `state.fill`, and appends one buffered batch when the requested pages or end is
 reached. `await vibe.cancelFill()` aborts the active request and discards the
 uncommitted batch. A restored `initialPage.next` is the cursor from which the
-next manual fill starts.
+next manual fill starts. The first fill request is immediate; subsequent
+requests use the same capped incremental delay and expose
+`state.fill.delayRemainingMs` plus `state.fill.nextRequestAt`.
 
 ### Backend fill
 
@@ -342,7 +363,10 @@ await vibe.fill({ pages: 3 })
 The backend callback should enqueue durable work and return a `sessionId`
 without waiting for every page. Each completed endpoint call can emit a
 sequenced `waiting` update containing `completedPages` and `received`. The
-terminal update supplies the entire buffered batch and its cursor boundary:
+backend remains responsible for delaying and dispatching each job. Include its
+absolute `nextRequestAt` in the returned session and waiting updates so Vibe can
+render the countdown. The terminal update supplies the entire buffered batch
+and its cursor boundary:
 
 ```ts
 vibe.applyFillUpdate({
@@ -351,6 +375,7 @@ vibe.applyFillUpdate({
   sequence: 3,
   completedPages: 3,
   received: 86,
+  nextRequestAt: null,
   status: 'complete',
   items: completedBatch,
   lastCursor: 'cursor-used-for-page-3',
@@ -363,7 +388,7 @@ For load-time restoration, provide both the committed `initialPage` and the
 persisted `fill.initialSession`. Subscribe to backend events before mounting.
 Use `vibe.restoreFillSession(snapshot)` when a session arrives after
 construction. `state.fill` exposes the strategy, target, status, completed page
-count, received unique-card count, session identity, sequence, and error.
+count, received unique-card count, countdown, session identity, sequence, and error.
 Ordinary pagination resumes from the terminal `next` cursor. Stale,
 mismatched-feed, invalid-terminal, and post-cancellation updates are ignored.
 

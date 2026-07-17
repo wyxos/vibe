@@ -66,6 +66,9 @@ export async function autofillInitialPage({
     initialCursor: state.next,
     loadPage: options.loadPage,
     maximumRequests: autofill.maxAdditionalPages ?? DEFAULT_MAX_ADDITIONAL_PAGES,
+    onDelayChange: (delay) => {
+      if (isCurrent()) Object.assign(state.autofill, delay)
+    },
     onProgress: (progress) => {
       if (isCurrent()) Object.assign(state.autofill, progress, { status: 'filling' })
     },

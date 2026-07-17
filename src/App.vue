@@ -28,6 +28,15 @@ const autofillProgress = computed(() => {
   return `${autofill.received} / ${autofill.pageSize}`
 })
 
+function delayLabel(milliseconds: number | null | undefined): string {
+  if (milliseconds == null) return ''
+  return `Next in ${Math.max(1, Math.ceil(milliseconds / 1_000))}s`
+}
+
+const autofillDelay = computed(() => (
+  delayLabel(vibeState.value?.autofill.delayRemainingMs)
+))
+
 const fillLabel = computed(() => {
   const status = vibeState.value?.fill.status ?? 'idle'
   return status.charAt(0).toUpperCase() + status.slice(1)
@@ -40,6 +49,10 @@ const fillProgress = computed(() => {
     ? `${fill.completedPages} / ${fill.target.pages} pages`
     : `${fill.completedPages} pages`
 })
+
+const fillDelay = computed(() => (
+  delayLabel(vibeState.value?.fill.delayRemainingMs)
+))
 
 function updateVibeState(state: VibeState): void {
   vibeState.value = state
@@ -95,6 +108,13 @@ function updateVibeState(state: VibeState): void {
           <span v-if="fillProgress" class="vibe-operation-progress">
             {{ fillProgress }}
           </span>
+          <span
+            v-if="fillDelay"
+            class="vibe-operation-delay"
+            data-test="fill-delay"
+          >
+            {{ fillDelay }}
+          </span>
         </output>
 
         <output
@@ -110,6 +130,13 @@ function updateVibeState(state: VibeState): void {
           <span class="vibe-lifecycle-separator" aria-hidden="true">·</span>
           <span>{{ autofillLabel }}</span>
           <span class="vibe-autofill-progress">{{ autofillProgress }}</span>
+          <span
+            v-if="autofillDelay"
+            class="vibe-operation-delay"
+            data-test="autofill-delay"
+          >
+            {{ autofillDelay }}
+          </span>
         </output>
 
         <label class="toggle-control">

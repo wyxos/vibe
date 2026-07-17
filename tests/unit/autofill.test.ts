@@ -56,6 +56,7 @@ describe('Vibe autofill', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     instances.splice(0).forEach((instance) => instance.destroy())
     target.remove()
     vi.restoreAllMocks()
@@ -72,7 +73,7 @@ describe('Vibe autofill', () => {
       .mockResolvedValueOnce({ items: [item(1), item(2)], next: 'two', total: 8 })
       .mockResolvedValueOnce({ items: [item(2), item(3), item(4)], next: 'three' })
     const instance = track(createVibe({
-      autofill: { strategy: 'frontend', pageSize: 4 },
+      autofill: { strategy: 'frontend', pageSize: 4, delayStepMs: 0 },
       loadPage,
       target,
     }))
@@ -115,7 +116,7 @@ describe('Vibe autofill', () => {
       next: 'three',
     })
     const instance = track(createVibe({
-      autofill: { strategy: 'frontend', pageSize: 3 },
+      autofill: { strategy: 'frontend', pageSize: 3, delayStepMs: 0 },
       initialPage: { items: [item(1)], next: 'two' },
       loadPage,
       target,
@@ -144,7 +145,7 @@ describe('Vibe autofill', () => {
         })
       ))
     const instance = track(createVibe({
-      autofill: { strategy: 'frontend', pageSize: 3 },
+      autofill: { strategy: 'frontend', pageSize: 3, delayStepMs: 0 },
       loadPage,
       target,
     }))
@@ -158,6 +159,29 @@ describe('Vibe autofill', () => {
 
     expect(instance.getState().items).toHaveLength(0)
     expect(instance.getState().autofill.status).toBe('cancelled')
+  })
+
+  it('waits progressively between frontend autofill requests', async () => {
+    vi.useFakeTimers()
+    const loadPage = vi.fn()
+      .mockResolvedValueOnce({ items: [item(1)], next: 'two' })
+      .mockResolvedValueOnce({ items: [item(2)], next: null })
+    const instance = track(createVibe({
+      autofill: { strategy: 'frontend', pageSize: 2 },
+      loadPage, target,
+    }))
+    const mounting = instance.mount()
+    await flushPromises()
+    expect(loadPage).toHaveBeenCalledOnce()
+    expect(instance.getState().autofill.delayRemainingMs).toBe(2_000)
+    await vi.advanceTimersByTimeAsync(1_999)
+    expect(loadPage).toHaveBeenCalledOnce()
+    await vi.advanceTimersByTimeAsync(1)
+    await mounting
+    expect(loadPage).toHaveBeenCalledTimes(2)
+    expect(instance.getState().autofill).toMatchObject({
+      delayRemainingMs: null, nextRequestAt: null, status: 'complete',
+    })
   })
 
   it('waits for and atomically applies a backend autofill result', async () => {
@@ -217,6 +241,38 @@ describe('Vibe autofill', () => {
       sessionId: 'session-1',
       status: 'waiting',
     })).toBe(false)
+  })
+
+  it('derives a backend countdown from the server-planned request time', async () => {
+    vi.useFakeTimers()
+    const instance = track(createVibe({
+      autofill: {
+        strategy: 'backend',
+        feedKey: 'gallery',
+        onCancel: vi.fn(),
+        onUnderfilled: vi.fn().mockResolvedValue({
+          nextRequestAt: Date.now() + 2_000, sessionId: 'session-1',
+        }),
+        pageSize: 2,
+      },
+      loadPage: vi.fn().mockResolvedValue({ items: [item(1)], next: 'two' }),
+      target,
+    }))
+    await instance.mount()
+    expect(instance.getState().autofill.delayRemainingMs).toBe(2_000)
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(instance.getState().autofill.delayRemainingMs).toBe(1_000)
+    expect(instance.applyAutofillUpdate({
+      feedKey: 'gallery',
+      items: [item(2)],
+      next: null,
+      nextRequestAt: null,
+      received: 2,
+      sequence: 1,
+      sessionId: 'session-1',
+      status: 'complete',
+    })).toBe(true)
+    expect(instance.getState().autofill.delayRemainingMs).toBeNull()
   })
 
   it('animates only appended items when backend autofill completes for a preloaded page', async () => {

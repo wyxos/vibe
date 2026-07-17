@@ -291,6 +291,7 @@ describe('App', () => {
   })
 
   it('demonstrates frontend autofill until the page target is reached', async () => {
+    vi.useFakeTimers()
     fakeServer.getFakeMediaPage
       .mockResolvedValueOnce({
         items: Array.from({ length: 45 }, (_, index) => feedItem(index + 1)),
@@ -302,6 +303,12 @@ describe('App', () => {
       })
 
     const wrapper = await mountApp('/demos/autofill/frontend')
+    await flushPromises()
+
+    expect(fakeServer.getFakeMediaPage).toHaveBeenCalledOnce()
+    expect(wrapper.get('[data-test="autofill-delay"]').text()).toBe('Next in 2s')
+
+    await vi.advanceTimersByTimeAsync(2_000)
     await flushPromises()
 
     expect(fakeServer.getFakeMediaPage).toHaveBeenCalledTimes(2)
@@ -318,7 +325,8 @@ describe('App', () => {
     const wrapper = await mountApp('/demos/autofill/backend')
     await flushPromises()
     expect(wrapper.get('[data-test="autofill-lifecycle"]').text())
-      .toBe('Autofill·Waiting45 / 60')
+      .toBe('Autofill·Waiting45 / 60Next in 2s')
+    expect(wrapper.get('[data-test="autofill-delay"]').text()).toBe('Next in 2s')
 
     await wrapper.get('[data-test="cancel-autofill"]').trigger('click')
     await flushPromises()
@@ -347,9 +355,11 @@ describe('App', () => {
 
     expect(fakeServer.getFakeMediaPage).toHaveBeenCalledOnce()
     expect(wrapper.get('[data-test="autofill-lifecycle"]').text())
-      .toBe('Autofill·Waiting45 / 60')
+      .toBe('Autofill·Waiting45 / 60Next in 2s')
 
-    await vi.advanceTimersByTimeAsync(250)
+    await vi.advanceTimersByTimeAsync(1_999)
+    expect(fakeServer.getFakeMediaPage).toHaveBeenCalledOnce()
+    await vi.advanceTimersByTimeAsync(1)
     await flushPromises()
 
     expect(fakeServer.getFakeMediaPage).toHaveBeenCalledTimes(2)
@@ -368,7 +378,7 @@ describe('App', () => {
     const first = await mountApp('/demos/autofill/backend')
     await flushPromises()
     expect(first.get('[data-test="autofill-lifecycle"]').text())
-      .toBe('Autofill·Waiting45 / 60')
+      .toBe('Autofill·Waiting45 / 60Next in 2s')
     first.unmount()
 
     const fresh = await mountApp('/demos/autofill/backend')
@@ -379,7 +389,7 @@ describe('App', () => {
       .toEqual([null, null])
     expect(fresh.findAll('.masonry-item').length).toBeGreaterThan(0)
     expect(fresh.get('[data-test="autofill-lifecycle"]').text())
-      .toBe('Autofill·Waiting45 / 60')
+      .toBe('Autofill·Waiting45 / 60Next in 2s')
     fresh.unmount()
   })
 
@@ -415,9 +425,11 @@ describe('App', () => {
     resolvePage2(page2)
     await flushPromises()
     expect(wrapper.get('[data-test="autofill-lifecycle"]').text())
-      .toBe('Autofill·Waiting38 / 45')
+      .toBe('Autofill·Waiting38 / 45Next in 2s')
 
-    await vi.advanceTimersByTimeAsync(250)
+    await vi.advanceTimersByTimeAsync(1_999)
+    expect(fakeServer.getFakeMediaPage).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(1)
     await flushPromises()
 
     expect(fakeServer.getFakeMediaPage.mock.calls.map(([cursor]) => cursor))

@@ -152,6 +152,15 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.vibe-operation-delay {
+  min-width: 4.75rem;
+  padding-left: 0.375rem;
+  border-left: 1px solid #404040;
+  color: #fbbf24;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .vibe-lifecycle-separator {
   color: #666666;
 }

@@ -10,11 +10,13 @@ import {
   validateFillTarget,
 } from './fill'
 import { appendUniqueItems } from './page'
+import { RequestDelayCountdown } from './requestDelay'
 import type { VibeRuntimeState } from './runtime'
 import type {
   VibeBackendFillUpdate,
   VibeCursor,
   VibeFillOptions,
+  VibeFrontendFillOptions,
   VibeFillSessionSnapshot,
   VibeFillTarget,
   VibePageLoader,
@@ -30,30 +32,40 @@ interface FillControllerOptions {
 export class VibeFillController {
   private abortController: AbortController | null = null
   private cycle = 0
+  private readonly delayCountdown: RequestDelayCountdown
   private requestVersion = 0
 
-  constructor(private readonly options: FillControllerOptions) {}
+  constructor(private readonly options: FillControllerOptions) {
+    this.delayCountdown = new RequestDelayCountdown((delay) => {
+      Object.assign(this.options.state.fill, delay)
+    })
+    this.syncBackendCountdown()
+  }
 
   isActive(): boolean {
     return isFillActive(this.options.state.fill)
   }
 
   applyUpdate(update: VibeBackendFillUpdate): boolean {
-    return applyBackendFillUpdate(
+    const applied = applyBackendFillUpdate(
       this.options.fill,
       this.options.state,
       update,
       this.options.onLastCursor,
     )
+    if (applied) this.syncBackendCountdown()
+    return applied
   }
 
   restoreSession(snapshot: VibeFillSessionSnapshot): boolean {
-    return restoreBackendFillSession(
+    const restored = restoreBackendFillSession(
       this.options.fill,
       this.options.state,
       snapshot,
       this.options.onLastCursor,
     )
+    if (restored) this.syncBackendCountdown()
+    return restored
   }
 
   async start(targetValue: VibeFillTarget): Promise<void> {
@@ -81,7 +93,7 @@ export class VibeFillController {
 
     try {
       if (fillOptions.strategy === 'frontend') {
-        await this.startFrontend(target, controller, requestVersion)
+        await this.startFrontend(fillOptions, target, controller, requestVersion)
       } else {
         await startBackendFill(fillOptions, this.options.state, {
           cycleId,
@@ -92,6 +104,7 @@ export class VibeFillController {
           target,
           total: this.options.state.total,
         }, () => this.isCurrent(requestVersion))
+        this.syncBackendCountdown()
       }
     } catch (error: unknown) {
       if (controller.signal.aborted || !this.isCurrent(requestVersion)) return
@@ -116,6 +129,7 @@ export class VibeFillController {
       sessionId: state.fill.sessionId,
     }
     state.fill.status = 'cancelling'
+    this.delayCountdown.clear()
     this.abortController?.abort()
     this.requestVersion += 1
     this.abortController = null
@@ -134,11 +148,13 @@ export class VibeFillController {
 
   reset(): void {
     this.abortLocalRequest()
+    this.delayCountdown.clear()
     this.options.state.fill = createFillState(this.options.fill, undefined, false)
   }
 
   destroy(): void {
     this.abortLocalRequest()
+    this.delayCountdown.clear()
   }
 
   private abortLocalRequest(): void {
@@ -154,6 +170,7 @@ export class VibeFillController {
   }
 
   private async startFrontend(
+    options: VibeFrontendFillOptions,
     target: VibeFillTarget,
     controller: AbortController,
     requestVersion: number,
@@ -167,9 +184,13 @@ export class VibeFillController {
       existingItems: state.items,
       initialCursor: state.next,
       loadPage,
+      onDelayChange: (delay) => {
+        if (this.isCurrent(requestVersion)) Object.assign(state.fill, delay)
+      },
       onProgress: (progress) => {
         if (this.isCurrent(requestVersion)) Object.assign(state.fill, progress)
       },
+      options,
       signal: controller.signal,
       target,
     })
@@ -184,5 +205,14 @@ export class VibeFillController {
       received: result.received,
       status: result.status,
     })
+  }
+
+  private syncBackendCountdown(): void {
+    const fill = this.options.state.fill
+    this.delayCountdown.sync(
+      fill.strategy === 'backend' && fill.status === 'waiting'
+        ? fill.nextRequestAt
+        : null,
+    )
   }
 }

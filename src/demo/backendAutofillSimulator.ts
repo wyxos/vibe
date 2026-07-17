@@ -1,4 +1,5 @@
 import { loadAutofillDemoPage } from './autofillPage'
+import { getRequestDelayMs } from '@/core/requestDelay'
 import type {
   VibeAutofillSessionSnapshot,
   VibeBackendAutofillCancelContext,
@@ -11,7 +12,7 @@ import type {
 } from '@/types'
 
 const CHANNEL_NAME = 'vibe-demo-backend-autofill'
-const STORAGE_KEY = 'vibe-demo-backend-autofill-v3'
+const STORAGE_KEY = 'vibe-demo-backend-autofill-v4'
 
 interface StoredBackendJob {
   cycleId: string
@@ -19,6 +20,7 @@ interface StoredBackendJob {
   feed: VibePage
   feedKey: string
   initialReceived: number
+  nextRequestAt: number | null
   pageSize: number
   received: number
   requests: number
@@ -100,6 +102,7 @@ export class BackendAutofillSimulator {
 
     this.requestController?.abort()
     job.sequence += 1
+    job.nextRequestAt = null
     job.status = 'cancelled'
     this.write(job, true)
   }
@@ -156,6 +159,7 @@ export class BackendAutofillSimulator {
     this.write(job, false)
 
     return {
+      nextRequestAt: job.nextRequestAt,
       received: job.received,
       sequence: job.sequence,
       sessionId: job.sessionId,
@@ -179,6 +183,7 @@ export class BackendAutofillSimulator {
       },
       feedKey: context.feedKey,
       initialReceived: context.received,
+      nextRequestAt: Date.now() + getRequestDelayMs(requests),
       pageSize: context.pageSize,
       received: context.received,
       requests,
@@ -233,12 +238,16 @@ export class BackendAutofillSimulator {
       current.status = current.received >= current.pageSize
         ? 'complete'
         : page.next === null ? 'exhausted' : 'waiting'
+      current.nextRequestAt = current.status === 'waiting'
+        ? Date.now() + getRequestDelayMs(current.requests)
+        : null
       this.write(current, true)
     } catch (error: unknown) {
       if (requestController.signal.aborted) return
       const current = this.read()
       if (!current || current.status !== 'waiting') return
       current.errorMessage = error instanceof Error ? error.message : 'Autofill failed'
+      current.nextRequestAt = null
       current.sequence += 1
       current.status = 'error'
       this.write(current, true)
@@ -266,8 +275,10 @@ export class BackendAutofillSimulator {
     if (this.completing) return
     const job = this.read()
     if (!job || job.status !== 'waiting') return
+    if (job.nextRequestAt !== null && Date.now() < job.nextRequestAt) return
     if (job.sourceCursor === null) {
       job.sequence += 1
+      job.nextRequestAt = null
       job.status = 'exhausted'
       this.write(job, true)
       return
@@ -280,6 +291,7 @@ export class BackendAutofillSimulator {
     const update = {
       error: job.errorMessage ? new Error(job.errorMessage) : undefined,
       feedKey: job.feedKey,
+      nextRequestAt: job.nextRequestAt,
       received: job.received,
       requests: job.requests,
       sequence: job.sequence,

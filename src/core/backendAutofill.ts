@@ -3,6 +3,7 @@ import {
   isMatchingBackendSession,
 } from './autofill'
 import { appendUniqueItems } from './page'
+import { getRequestDelaySnapshot } from './requestDelay'
 import type { VibeRuntimeState } from './runtime'
 import type {
   VibeAutofillOptions,
@@ -26,6 +27,7 @@ export async function startBackendAutofill(
 
   const sessionReceived = Math.max(context.received, session.received ?? context.received)
   Object.assign(state.autofill, {
+    ...getRequestDelaySnapshot(session.nextRequestAt),
     missing: Math.max(0, options.pageSize - sessionReceived),
     received: sessionReceived,
     sequence: session.sequence ?? 0,
@@ -62,6 +64,12 @@ export function applyBackendAutofillUpdate(
   }
 
   applyTerminalItems(state, update)
+  Object.assign(
+    autofill,
+    getRequestDelaySnapshot(
+      update.status === 'waiting' ? update.nextRequestAt : null,
+    ),
+  )
   autofill.error = update.error ?? null
   autofill.missing = Math.max(0, (autofill.pageSize ?? 0) - update.received)
   autofill.received = update.received

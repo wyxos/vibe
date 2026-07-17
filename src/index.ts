@@ -42,6 +42,7 @@ export type {
   VibePageLoader,
   VibePageRequest,
   VibePreview,
+  VibeRequestDelayOptions,
   VibeReelRouteContext,
   VibeRoutingOptions,
   VibeState,

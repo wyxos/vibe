@@ -61,6 +61,7 @@ describe('fill demos', () => {
   }
 
   it('lets frontend fill request an editable number of pages', async () => {
+    vi.useFakeTimers()
     fakeServer.getFakeMediaPage
       .mockResolvedValueOnce(page(1, 'two'))
       .mockResolvedValueOnce(page(2, 'three'))
@@ -71,6 +72,13 @@ describe('fill demos', () => {
       .toBe('Frontend fill')
     await wrapper.get('[data-test="fill-page-count"]').setValue(2)
     await wrapper.get('[data-test="fill-pages"]').trigger('click')
+    await flushPromises()
+
+    expect(fakeServer.getFakeMediaPage.mock.calls.map(([cursor]) => cursor))
+      .toEqual([null, 'two'])
+    expect(wrapper.get('[data-test="fill-delay"]').text()).toBe('Next in 2s')
+
+    await vi.advanceTimersByTimeAsync(2_000)
     await flushPromises()
 
     expect(fakeServer.getFakeMediaPage.mock.calls.map(([cursor]) => cursor))
@@ -111,13 +119,16 @@ describe('fill demos', () => {
     expect(wrapper.get('[data-test="fill-lifecycle"]').text())
       .toBe('Fill·Waiting0 / 2 pages')
 
-    await vi.advanceTimersByTimeAsync(250)
+    await vi.advanceTimersByTimeAsync(0)
     await flushPromises()
     expect(wrapper.get('[data-test="fill-lifecycle"]').text())
-      .toBe('Fill·Waiting1 / 2 pages')
+      .toBe('Fill·Waiting1 / 2 pagesNext in 2s')
+    expect(wrapper.get('[data-test="fill-delay"]').text()).toBe('Next in 2s')
     expect(wrapper.findAll('.masonry-item')).toHaveLength(1)
 
-    await vi.advanceTimersByTimeAsync(250)
+    await vi.advanceTimersByTimeAsync(1_999)
+    expect(fakeServer.getFakeMediaPage).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(1)
     await flushPromises()
     expect(wrapper.get('[data-test="fill-lifecycle"]').text())
       .toBe('Fill·Complete2 / 2 pages')

@@ -9,6 +9,13 @@ import type {
 } from '../types'
 import type { VibeRuntimeState } from './runtime'
 import { appendUniqueItems, validatePage } from './page'
+import {
+  getRequestDelayMs,
+  getRequestDelaySnapshot,
+  validateRequestDelayOptions,
+  waitForRequestDelay,
+  type RequestDelaySnapshot,
+} from './requestDelay'
 
 export const DEFAULT_MAX_ADDITIONAL_PAGES = 10
 
@@ -31,6 +38,7 @@ interface CollectFrontendAutofillOptions {
   initialCursor: VibeCursor
   loadPage: VibePageLoader
   maximumRequests?: number
+  onDelayChange: (snapshot: RequestDelaySnapshot) => void
   onProgress: (progress: FrontendAutofillProgress) => void
   options: VibeFrontendAutofillOptions
   receivedOffset?: number
@@ -54,6 +62,7 @@ export function validateAutofillOptions(options?: VibeAutofillOptions): void {
   positiveInteger(options.pageSize, 'autofill pageSize')
 
   if (options.strategy === 'frontend') {
+    validateRequestDelayOptions(options, 'frontend autofill')
     const maximum = options.maxAdditionalPages
     if (maximum !== undefined && (!Number.isInteger(maximum) || maximum < 0)) {
       throw new TypeError(
@@ -90,10 +99,12 @@ export function createAutofillState(
   if (!options) {
     return {
       cycleId: null,
+      delayRemainingMs: null,
       enabled: false,
       error: null,
       feedKey: null,
       missing: 0,
+      nextRequestAt: null,
       pageSize: null,
       received: 0,
       requests: 0,
@@ -108,9 +119,11 @@ export function createAutofillState(
     ? initialSession ?? (useConfiguredSession ? options.initialSession : undefined)
     : undefined
   const received = session?.received ?? 0
+  const delay = getRequestDelaySnapshot(session?.nextRequestAt)
 
   return {
     cycleId: session?.cycleId ?? null,
+    ...delay,
     enabled: true,
     error: session?.error ?? null,
     feedKey: options.strategy === 'backend' ? options.feedKey : null,
@@ -171,6 +184,7 @@ export async function collectFrontendAutofill({
   initialCursor,
   loadPage,
   maximumRequests: configuredMaximumRequests,
+  onDelayChange,
   onProgress,
   options,
   receivedOffset = 0,
@@ -194,6 +208,12 @@ export async function collectFrontendAutofill({
       throw new Error('Vibe autofill received a repeated cursor.')
     }
     seenCursors.add(key)
+
+    await waitForRequestDelay({
+      delayMs: getRequestDelayMs(requestOffset + requests, options),
+      onChange: onDelayChange,
+      signal,
+    })
 
     const page = validatePage(await loadPage({ cursor, signal }))
     requests += 1
