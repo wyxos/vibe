@@ -1,4 +1,5 @@
 import type {
+  VibeAutoScrollState,
   VibeAutofillState,
   VibeCursor,
   VibeFillState,
@@ -10,6 +11,7 @@ import type {
 
 export interface VibeRuntimeState {
   activeReelPostId: VibeItemId | null
+  autoScroll: VibeAutoScrollState
   autofill: VibeAutofillState
   error: unknown | null
   fill: VibeFillState
@@ -27,6 +29,7 @@ export interface VibeRuntimeState {
 export function snapshotState(state: VibeRuntimeState): VibeState {
   return {
     activeReelPostId: state.activeReelPostId,
+    autoScroll: { ...state.autoScroll },
     autofill: { ...state.autofill },
     error: state.error,
     fill: {

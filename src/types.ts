@@ -34,6 +34,21 @@ export type VibeFillTarget =
   | { pages: number }
   | { until: 'end' }
 
+export interface VibeAutoScrollOptions {
+  enabled?: boolean
+  maxSpeedPxPerSecond?: number
+  minSpeedPxPerSecond?: number
+  speedPxPerSecond?: number
+}
+
+export interface VibeAutoScrollState {
+  enabled: boolean
+  maxSpeedPxPerSecond: number
+  minSpeedPxPerSecond: number
+  paused: boolean
+  speedPxPerSecond: number
+}
+
 export interface VibePreview {
   src: string
   width: number | null
@@ -299,6 +314,7 @@ export interface VibeBackendFillOptions {
 export type VibeFillOptions = VibeBackendFillOptions | VibeFrontendFillOptions
 
 export interface CreateVibeOptions {
+  autoScroll?: VibeAutoScrollOptions
   autofill?: VibeAutofillOptions
   cardFooter?: VibeCardRegion
   cardHeader?: VibeCardRegion
@@ -314,6 +330,7 @@ export interface CreateVibeOptions {
 
 export interface VibeState {
   activeReelPostId: VibeItemId | null
+  autoScroll: VibeAutoScrollState
   autofill: VibeAutofillState
   error: unknown | null
   fill: VibeFillState
@@ -339,9 +356,13 @@ export interface VibeInstance {
   getState: () => VibeState
   loadNext: () => Promise<void>
   mount: () => Promise<void>
+  pauseAutoScroll: () => void
   reload: () => Promise<void>
+  resumeAutoScroll: () => void
   restoreAutofillSession: (snapshot: VibeAutofillSessionSnapshot) => boolean
   restoreFillSession: (snapshot: VibeFillSessionSnapshot) => boolean
+  setAutoScroll: (enabled: boolean, speedPxPerSecond?: number) => void
+  setAutoScrollSpeed: (speedPxPerSecond: number) => void
   setInfiniteScroll: (enabled: boolean) => void
   setLayout: (layout: VibeLayoutMode) => void
 }

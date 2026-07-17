@@ -1,4 +1,5 @@
 import { validateAutofillOptions } from './autofill'
+import { validateAutoScrollOptions } from './autoScroll'
 import { validateFillOptions } from './fill'
 import type { CreateVibeOptions, VibeCardRegion } from '../types'
 
@@ -13,6 +14,7 @@ function validateCardRegion(
 }
 
 export function validateOptions(options: CreateVibeOptions): void {
+  validateAutoScrollOptions(options.autoScroll)
   validateCardRegion('cardHeader', options.cardHeader)
   validateCardRegion('cardFooter', options.cardFooter)
   validateAutofillOptions(options.autofill)
@@ -34,4 +36,15 @@ export function validateOptions(options: CreateVibeOptions): void {
     && !options.initialPage) {
     throw new TypeError('Vibe backend fill restoration requires initialPage.')
   }
+}
+
+export function resolveVibeTarget(target: CreateVibeOptions['target']): Element {
+  if (typeof target !== 'string') return target
+  if (typeof document === 'undefined') {
+    throw new Error('Vibe cannot resolve a selector without a document.')
+  }
+
+  const element = document.querySelector(target)
+  if (!element) throw new Error(`Vibe target not found: ${target}`)
+  return element
 }

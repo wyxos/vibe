@@ -61,6 +61,66 @@ body {
   gap: clamp(0.75rem, 1.5vw, 1.25rem);
 }
 
+.auto-scroll-controls,
+.auto-scroll-speed {
+  display: flex;
+  align-items: center;
+}
+
+.auto-scroll-controls {
+  gap: 0.375rem;
+}
+
+.auto-scroll-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 2rem;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid #404040;
+  border-radius: 0.375rem;
+  color: #d4d4d4;
+  background: #171717;
+  cursor: pointer;
+  font: 600 0.75rem/1 system-ui, sans-serif;
+}
+
+.auto-scroll-action:hover:not(:disabled) {
+  border-color: #737373;
+  color: #f5f5f5;
+  background: #262626;
+}
+
+.auto-scroll-action:disabled {
+  color: #525252;
+  cursor: not-allowed;
+}
+
+.auto-scroll-action:focus-visible,
+.auto-scroll-speed input:focus-visible {
+  outline: 2px solid #a3a3a3;
+  outline-offset: 2px;
+}
+
+.auto-scroll-speed {
+  gap: 0.5rem;
+  margin-left: 0.25rem;
+  color: #a3a3a3;
+  font: 600 0.6875rem/1 system-ui, sans-serif;
+}
+
+.auto-scroll-speed input {
+  width: clamp(5rem, 9vw, 8rem);
+  accent-color: #f5f5f5;
+}
+
+.auto-scroll-speed output {
+  min-width: 3.75rem;
+  color: #f5f5f5;
+  font-variant-numeric: tabular-nums;
+}
+
 .vibe-lifecycle {
   display: inline-flex;
   align-items: center;
@@ -496,6 +556,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .toggle-track,
   .toggle-thumb,
+  .auto-scroll-action,
   .app-nav-link,
   .demo-card-action,
   .autofill-demo-action,
@@ -507,6 +568,10 @@ body {
 }
 
 @media (max-width: 48rem) {
+  .app-header-actions--auto-scroll .vibe-lifecycle--feed {
+    display: none;
+  }
+
   .app-header-actions--operation .vibe-lifecycle--feed {
     display: none;
   }
@@ -553,6 +618,33 @@ body {
     height: 1px;
     overflow: hidden;
     clip-path: inset(50%);
+  }
+
+  .app-header-actions--auto-scroll {
+    gap: 0.5rem;
+  }
+
+  .auto-scroll-action {
+    width: 2rem;
+    padding: 0;
+  }
+
+  .auto-scroll-action span,
+  .auto-scroll-speed > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .auto-scroll-speed {
+    gap: 0.25rem;
+    margin-left: 0;
+  }
+
+  .auto-scroll-speed input {
+    width: 4.5rem;
   }
 
   .vibe-lifecycle-layout,

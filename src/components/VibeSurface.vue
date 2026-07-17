@@ -19,6 +19,7 @@ const ENTRY_STAGGER_MS = 35
 
 interface FeedRendererExpose {
   changeActiveMedia?: (direction: -1 | 1) => boolean
+  getScrollElement?: () => HTMLElement | null
   loadIfNearBottom: () => void
 }
 
@@ -127,6 +128,11 @@ async function loadIfNearBottom(): Promise<void> {
     ? reelRenderer.value
     : masonryRenderer.value
   renderer?.loadIfNearBottom()
+}
+
+function getAutoScrollElement(): HTMLElement | null {
+  if (props.state.layout !== 'masonry' || props.state.reelOrigin === 'masonry') return null
+  return masonryRenderer.value?.getScrollElement?.() ?? null
 }
 
 function activateMasonryItem(
@@ -256,7 +262,7 @@ onBeforeUnmount(() => {
   if (enterReleaseFrame !== null) cancelAnimationFrame(enterReleaseFrame)
 })
 
-defineExpose({ loadIfNearBottom })
+defineExpose({ getAutoScrollElement, loadIfNearBottom })
 </script>
 
 <template>

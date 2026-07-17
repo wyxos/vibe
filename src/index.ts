@@ -3,6 +3,8 @@ import './vibe.css'
 export { createVibe } from './core/createVibe'
 export type {
   CreateVibeOptions,
+  VibeAutoScrollOptions,
+  VibeAutoScrollState,
   VibeAutofillOptions,
   VibeAutofillSessionSnapshot,
   VibeAutofillState,

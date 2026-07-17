@@ -392,6 +392,42 @@ count, received unique-card count, countdown, session identity, sequence, and er
 Ordinary pagination resumes from the terminal `next` cursor. Stale,
 mismatched-feed, invalid-terminal, and post-cancellation updates are ignored.
 
+## Auto scroll
+
+Auto scroll advances the masonry gallery smoothly in pixels per second. It is
+disabled by default and can be configured when the instance is created:
+
+```ts
+const vibe = createVibe({
+  target: '#gallery',
+  layout: 'masonry',
+  loadPage,
+  autoScroll: {
+    speedPxPerSecond: 80,
+    minSpeedPxPerSecond: 20,
+    maxSpeedPxPerSecond: 240,
+  },
+})
+
+await vibe.mount()
+vibe.setAutoScroll(true, 120)
+vibe.pauseAutoScroll()
+vibe.resumeAutoScroll()
+vibe.setAutoScrollSpeed(160)
+vibe.setAutoScroll(false)
+```
+
+The default speed is 80 px/s within a default 20–240 px/s range. Consumer
+values outside the configured range are clamped. `state.autoScroll` exposes the
+effective speed, bounds, and `enabled` / `paused` flags. The controller uses the
+gallery's animation frames rather than repeated smooth-scroll commands, so
+movement remains continuous and responds immediately to speed changes.
+
+Auto scroll waits while reel layout or a masonry-origin reel viewer is active.
+It resumes without a position jump when masonry becomes active again. Infinite
+scroll continues to work normally because the gallery remains the only scroll
+owner.
+
 ## Feed state
 
 Use `onStateChange` to render request and layout state outside Vibe, such as an
@@ -421,6 +457,10 @@ Individual media preview errors do not mark the feed request as failed.
 vibe.setLayout('reel')
 vibe.setLayout('responsive')
 vibe.setInfiniteScroll(false)
+vibe.setAutoScroll(true, 80)
+vibe.pauseAutoScroll()
+vibe.resumeAutoScroll()
+vibe.setAutoScroll(false)
 await vibe.loadNext()
 await vibe.reload()
 vibe.getState()

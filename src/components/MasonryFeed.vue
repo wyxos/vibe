@@ -150,6 +150,10 @@ function loadIfNearBottom(): void {
   if (element && isNearFeedBottom(element)) emit('loadMore')
 }
 
+function getScrollElement(): HTMLElement | null {
+  return galleryElement.value
+}
+
 watch(masonryElement, (element) => {
   masonryResizeObserver?.disconnect()
   masonryResizeObserver = null
@@ -189,7 +193,7 @@ onBeforeUnmount(() => {
   if (resizeFrame !== null) cancelAnimationFrame(resizeFrame)
 })
 
-defineExpose({ loadIfNearBottom })
+defineExpose({ getScrollElement, loadIfNearBottom })
 </script>
 
 <template>

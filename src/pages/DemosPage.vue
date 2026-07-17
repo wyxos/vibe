@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
 
-import type { VibeState } from '@/index'
+import type { VibeInstance, VibeState } from '@/index'
 
 defineProps<{
   infiniteScroll: boolean
 }>()
 
 const emit = defineEmits<{
+  vibeInstanceChange: [instance: VibeInstance | null]
   vibeStateChange: [state: VibeState]
 }>()
 </script>
@@ -15,6 +16,12 @@ const emit = defineEmits<{
 <template>
   <main class="demos-page">
     <aside class="demos-aside" aria-label="Demos">
+      <RouterLink
+        class="demos-aside-link"
+        to="/demos/auto-scroll"
+      >
+        Auto scroll
+      </RouterLink>
       <RouterLink
         class="demos-aside-link"
         to="/demos/card-header-and-footer"
@@ -63,6 +70,7 @@ const emit = defineEmits<{
       <component
         :is="Component"
         :infinite-scroll="infiniteScroll"
+        @vibe-instance-change="emit('vibeInstanceChange', $event)"
         @vibe-state-change="emit('vibeStateChange', $event)"
       />
     </RouterView>

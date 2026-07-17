@@ -31,6 +31,11 @@ export interface ReelFeedProps extends FeedRendererProps {
   mediaSource?: VibeMediaSource
 }
 
+export interface VibeSurfaceExpose {
+  getAutoScrollElement: () => HTMLElement | null
+  loadIfNearBottom: () => Promise<void>
+}
+
 export const LOAD_MORE_THRESHOLD = 240
 
 export function isNearFeedBottom(element: HTMLElement): boolean {

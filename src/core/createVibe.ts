@@ -14,6 +14,7 @@ import {
   createAutofillState,
   isAutofillActive,
 } from './autofill'
+import { createAutoScrollState, VibeAutoScrollController } from './autoScroll'
 import {
   applyBackendAutofillUpdate,
   restoreBackendAutofillSession,
@@ -23,7 +24,8 @@ import { resolveResponsiveLayoutForElement } from './responsiveLayout'
 import { autofillInitialPage } from './initialAutofill'
 import { createFillState } from './fill'
 import { VibeFillController } from './fillController'
-import { validateOptions } from './options'
+import type { VibeSurfaceExpose } from './feed'
+import { resolveVibeTarget, validateOptions } from './options'
 import { appendUniqueItems, validatePage } from './page'
 import { RequestDelayCountdown } from './requestDelay'
 import { VibeRouteSync } from './vibeRouting'
@@ -43,12 +45,9 @@ import type {
   VibeState,
 } from '../types'
 
-interface VibeSurfaceExpose {
-  loadIfNearBottom: () => Promise<void>
-}
-
 class VibeController implements VibeInstance {
   private app: App<Element> | null = null
+  private readonly autoScroll: VibeAutoScrollController
   private readonly autofillDelayCountdown: RequestDelayCountdown
   private autofillCycle = 0
   private abortController: AbortController | null = null
@@ -71,6 +70,7 @@ class VibeController implements VibeInstance {
 
     this.state = reactive({
       activeReelPostId: null,
+      autoScroll: createAutoScrollState(options.autoScroll),
       autofill: createAutofillState(options.autofill),
       error: null,
       fill: createFillState(options.fill),
@@ -83,6 +83,10 @@ class VibeController implements VibeInstance {
       nextPageError: null,
       reelOrigin: null,
       total: initialPage?.total ?? null,
+    })
+    this.autoScroll = new VibeAutoScrollController({
+      getScrollElement: () => this.surface?.getAutoScrollElement() ?? null,
+      state: this.state.autoScroll,
     })
     this.autofillDelayCountdown = new RequestDelayCountdown(
       (delay) => Object.assign(this.state.autofill, delay),
@@ -102,7 +106,7 @@ class VibeController implements VibeInstance {
     if (this.app) throw new Error('Vibe is already mounted.')
 
     this.startStateNotifications()
-    const target = this.resolveTarget()
+    const target = resolveVibeTarget(this.options.target)
     this.target = target
     this.startResponsiveLayout()
     this.app = createApp(VibeSurface, {
@@ -117,6 +121,7 @@ class VibeController implements VibeInstance {
       onRetryEnd: () => { void this.retryEnd() },
     })
     this.surface = this.app.mount(target) as unknown as VibeSurfaceExpose
+    this.autoScroll.mount()
 
     if (!this.options.initialPage) await this.reload()
     else if (this.options.autofill && this.state.autofill.status === 'idle'
@@ -126,6 +131,7 @@ class VibeController implements VibeInstance {
   }
 
   destroy(): void {
+    this.autoScroll.destroy()
     this.fillController.destroy()
     this.cancelRequest()
     this.stopResponsiveLayout()
@@ -139,6 +145,15 @@ class VibeController implements VibeInstance {
 
   getState(): VibeState {
     return snapshotState(this.state)
+  }
+
+  pauseAutoScroll(): void { this.autoScroll.setPaused(true) }
+  resumeAutoScroll(): void { this.autoScroll.setPaused(false) }
+  setAutoScroll(enabled: boolean, speedPxPerSecond?: number): void {
+    this.autoScroll.setEnabled(enabled, speedPxPerSecond)
+  }
+  setAutoScrollSpeed(speedPxPerSecond: number): void {
+    this.autoScroll.setSpeed(speedPxPerSecond)
   }
 
   applyAutofillUpdate(update: VibeBackendAutofillUpdate): boolean {
@@ -417,18 +432,6 @@ class VibeController implements VibeInstance {
       status: 'filling',
     }
     return cycleId
-  }
-
-  private resolveTarget(): Element {
-    if (typeof this.options.target !== 'string') return this.options.target
-    if (typeof document === 'undefined') {
-      throw new Error('Vibe cannot resolve a selector without a document.')
-    }
-
-    const target = document.querySelector(this.options.target)
-    if (!target) throw new Error(`Vibe target not found: ${this.options.target}`)
-
-    return target
   }
 
   private syncAutofillCountdown(): void {

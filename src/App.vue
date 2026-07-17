@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { Pause, Play, Square } from 'lucide-vue-next'
 import { computed, ref, shallowRef } from 'vue'
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
 
-import type { VibeState } from '@/index'
+import type { VibeInstance, VibeState } from '@/index'
 
+const route = useRoute()
 const infiniteScroll = ref(true)
+const demoVibe = shallowRef<VibeInstance | null>(null)
 const vibeState = shallowRef<VibeState | null>(null)
 
 const lifecycle = computed(() => vibeState.value?.lifecycle ?? 'loading')
@@ -54,8 +57,35 @@ const fillDelay = computed(() => (
   delayLabel(vibeState.value?.fill.delayRemainingMs)
 ))
 
+const isAutoScrollDemo = computed(() => route.name === 'demo-auto-scroll')
+const autoScroll = computed(() => vibeState.value?.autoScroll ?? null)
+
+function toggleAutoScroll(): void {
+  const state = autoScroll.value
+  if (!state) return
+  demoVibe.value?.setAutoScroll(!state.enabled, state.speedPxPerSecond)
+}
+
+function toggleAutoScrollPause(): void {
+  const state = autoScroll.value
+  if (!state?.enabled) return
+  if (state.paused) demoVibe.value?.resumeAutoScroll()
+  else demoVibe.value?.pauseAutoScroll()
+}
+
+function updateAutoScrollSpeed(event: Event): void {
+  const input = event.currentTarget
+  if (input instanceof HTMLInputElement) {
+    demoVibe.value?.setAutoScrollSpeed(Number(input.value))
+  }
+}
+
 function updateVibeState(state: VibeState): void {
   vibeState.value = state
+}
+
+function updateVibeInstance(instance: VibeInstance | null): void {
+  demoVibe.value = instance
 }
 </script>
 
@@ -77,6 +107,7 @@ function updateVibeState(state: VibeState): void {
       <div
         class="app-header-actions"
         :class="{
+          'app-header-actions--auto-scroll': isAutoScrollDemo,
           'app-header-actions--operation': vibeState?.autofill.enabled || vibeState?.fill.enabled,
         }"
       >
@@ -92,6 +123,50 @@ function updateVibeState(state: VibeState): void {
           <span class="vibe-lifecycle-separator" aria-hidden="true">·</span>
           <span>{{ lifecycleLabel }}</span>
         </output>
+
+        <div
+          v-if="isAutoScrollDemo"
+          class="auto-scroll-controls"
+          data-test="auto-scroll-controls"
+        >
+          <button
+            class="auto-scroll-action"
+            type="button"
+            :disabled="!autoScroll || !demoVibe"
+            :aria-label="autoScroll?.enabled ? 'Stop auto scroll' : 'Start auto scroll'"
+            @click="toggleAutoScroll"
+          >
+            <Square v-if="autoScroll?.enabled" :size="14" aria-hidden="true" />
+            <Play v-else :size="14" aria-hidden="true" />
+            <span>{{ autoScroll?.enabled ? 'Stop' : 'Start' }}</span>
+          </button>
+
+          <button
+            class="auto-scroll-action"
+            type="button"
+            :disabled="!autoScroll?.enabled || !demoVibe"
+            :aria-label="autoScroll?.paused ? 'Resume auto scroll' : 'Pause auto scroll'"
+            @click="toggleAutoScrollPause"
+          >
+            <Play v-if="autoScroll?.paused" :size="14" aria-hidden="true" />
+            <Pause v-else :size="14" aria-hidden="true" />
+            <span>{{ autoScroll?.paused ? 'Resume' : 'Pause' }}</span>
+          </button>
+
+          <label class="auto-scroll-speed">
+            <span>Speed</span>
+            <input
+              data-test="auto-scroll-speed"
+              type="range"
+              :disabled="!autoScroll || !demoVibe"
+              :min="autoScroll?.minSpeedPxPerSecond ?? 20"
+              :max="autoScroll?.maxSpeedPxPerSecond ?? 240"
+              :value="autoScroll?.speedPxPerSecond ?? 80"
+              @input="updateAutoScrollSpeed"
+            >
+            <output>{{ autoScroll?.speedPxPerSecond ?? 80 }} px/s</output>
+          </label>
+        </div>
 
         <output
           v-if="vibeState?.fill.enabled"
@@ -158,6 +233,7 @@ function updateVibeState(state: VibeState): void {
       <component
         :is="Component"
         :infinite-scroll="infiniteScroll"
+        @vibe-instance-change="updateVibeInstance"
         @vibe-state-change="updateVibeState"
       />
     </RouterView>

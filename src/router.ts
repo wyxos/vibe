@@ -5,6 +5,7 @@ import {
 } from 'vue-router'
 
 import DemosPage from './pages/DemosPage.vue'
+import AutoScrollDemoPage from './pages/AutoScrollDemoPage.vue'
 import AutofillBackendDemoPage from './pages/AutofillBackendDemoPage.vue'
 import AutofillBackendRefreshDemoPage from './pages/AutofillBackendRefreshDemoPage.vue'
 import AutofillFrontendDemoPage from './pages/AutofillFrontendDemoPage.vue'
@@ -44,6 +45,11 @@ export function createDemoRouter(
                 component: EmptyRouteView,
               },
             ],
+          },
+          {
+            path: 'auto-scroll',
+            name: 'demo-auto-scroll',
+            component: AutoScrollDemoPage,
           },
           {
             path: 'autofill/frontend',
