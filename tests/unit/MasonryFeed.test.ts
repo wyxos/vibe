@@ -46,12 +46,32 @@ function props(items = [feedItem(1)]) {
   }
 }
 
+function dispatchPointerEvent(
+  element: Element,
+  type: string,
+  { clientY, pointerId }: { clientY: number, pointerId: number },
+) {
+  const event = new Event(type, { bubbles: true, cancelable: true })
+  Object.defineProperties(event, {
+    clientY: { value: clientY },
+    pointerId: { value: pointerId },
+  })
+  element.dispatchEvent(event)
+}
+
 describe('MasonryFeed', () => {
+  let galleryScrollHeight = 2000
+
   beforeEach(() => {
+    galleryScrollHeight = 2000
     vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1))
     vi.stubGlobal('cancelAnimationFrame', vi.fn())
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(500)
     vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(500)
+    vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get')
+      .mockImplementation(function (this: HTMLElement) {
+        return this.classList.contains('gallery-shell') ? galleryScrollHeight : 500
+      })
   })
 
   afterEach(() => {
@@ -79,6 +99,71 @@ describe('MasonryFeed', () => {
 
     expect(wrapper.find('[data-post-id="1"]').exists()).toBe(false)
     expect(wrapper.findAll('.masonry-item').length).toBeLessThan(100)
+  })
+
+  it('renders a fixed overlay thumb from native scroll geometry', async () => {
+    const wrapper = mount(MasonryFeed, { props: props([feedItem(1), feedItem(2)]) })
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+
+    const scrollbar = wrapper.get('.gallery-scrollbar')
+    const thumb = wrapper.get('.gallery-scrollbar-thumb')
+    const gallery = wrapper.get('.gallery-shell')
+    expect(scrollbar.classes()).toContain('gallery-scrollbar--visible')
+    expect(thumb.attributes('role')).toBe('scrollbar')
+    expect(thumb.attributes('aria-controls')).toBe(gallery.attributes('id'))
+    expect((thumb.element as HTMLElement).style.height).toBe('125px')
+
+    gallery.element.scrollTop = 750
+    await gallery.trigger('scroll')
+
+    expect((thumb.element as HTMLElement).style.transform)
+      .toBe('translate3d(0, 187.5px, 0)')
+    expect(scrollbar.classes()).toContain('gallery-scrollbar--interacting')
+  })
+
+  it('supports keyboard and pointer thumb scrolling', async () => {
+    const wrapper = mount(MasonryFeed, { props: props([feedItem(1), feedItem(2)]) })
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+    const gallery = wrapper.get('.gallery-shell')
+    const thumb = wrapper.get('.gallery-scrollbar-thumb')
+
+    await thumb.trigger('keydown', { key: 'PageDown' })
+    expect(gallery.element.scrollTop).toBe(500)
+
+    dispatchPointerEvent(thumb.element, 'pointerdown', { clientY: 100, pointerId: 7 })
+    dispatchPointerEvent(thumb.element, 'pointermove', { clientY: 200, pointerId: 7 })
+    await wrapper.vm.$nextTick()
+    expect(gallery.element.scrollTop).toBe(900)
+    expect(wrapper.get('.gallery-scrollbar').classes())
+      .toContain('gallery-scrollbar--dragging')
+
+    dispatchPointerEvent(thumb.element, 'pointerup', { clientY: 200, pointerId: 7 })
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('.gallery-scrollbar').classes())
+      .not.toContain('gallery-scrollbar--dragging')
+  })
+
+  it('updates thumb size after append and removes it from suspended focus order', async () => {
+    const initialItems = [feedItem(1), feedItem(2)]
+    const wrapper = mount(MasonryFeed, { props: props(initialItems) })
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+    const thumb = wrapper.get('.gallery-scrollbar-thumb')
+    expect((thumb.element as HTMLElement).style.height).toBe('125px')
+
+    galleryScrollHeight = 4000
+    await wrapper.setProps({
+      items: Array.from({ length: 12 }, (_, index) => feedItem(index + 1)),
+      suspended: true,
+    })
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+
+    expect((thumb.element as HTMLElement).style.height).toBe('62.5px')
+    expect(thumb.attributes('tabindex')).toBe('-1')
+    expect(wrapper.get('.gallery-scrollbar').attributes('aria-hidden')).toBe('true')
   })
 
   it('stagger-rises entering items from below the masonry', async () => {

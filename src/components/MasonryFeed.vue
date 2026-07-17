@@ -3,6 +3,7 @@ import {
   computed,
   onBeforeUnmount,
   shallowRef,
+  useId,
   watch,
   type CSSProperties,
 } from 'vue'
@@ -16,6 +17,7 @@ import {
   calculateVisibleMasonryIndices,
 } from '../core/masonry'
 import type { VibeItemId } from '../types'
+import GalleryScrollbar from './GalleryScrollbar.vue'
 import GalleryFooter from './GalleryFooter.vue'
 import MediaCard from './MediaCard.vue'
 
@@ -36,6 +38,7 @@ const emit = defineEmits<{
 }>()
 
 const galleryElement = shallowRef<HTMLElement | null>(null)
+const galleryId = `vibe-masonry-${useId()}`
 const masonryElement = shallowRef<HTMLElement | null>(null)
 const masonryWidth = shallowRef(0)
 const masonryGap = shallowRef(MIN_GAP)
@@ -190,57 +193,67 @@ defineExpose({ loadIfNearBottom })
 </script>
 
 <template>
-  <main
-    ref="galleryElement"
-    class="gallery-shell masonry-feed"
-    :class="{ 'masonry-feed--suspended': suspended }"
-    data-layout-mode="masonry"
-    :aria-hidden="suspended || undefined"
-    :inert="suspended || undefined"
-    @scroll.passive="onScroll"
-  >
-    <section
-      ref="masonryElement"
-      class="masonry"
-      :class="{ 'masonry--ready': masonryWidth > 0 }"
-      :style="masonryStyle"
-      aria-label="Media gallery"
+  <div class="masonry-feed-shell">
+    <main
+      :id="galleryId"
+      ref="galleryElement"
+      class="gallery-shell masonry-feed"
+      :class="{ 'masonry-feed--suspended': suspended }"
+      data-layout-mode="masonry"
+      :aria-hidden="suspended || undefined"
+      :inert="suspended || undefined"
+      @scroll.passive="onScroll"
     >
-      <MediaCard
-        v-for="({ fetchPriority, item, index }) in visibleItems"
-        :key="item.postId"
-        class="masonry-item"
-        :entering="enteringPostIds.has(item.postId)"
-        :fetch-priority="fetchPriority"
-        :card-footer="cardFooter"
-        :card-header="cardHeader"
-        :index="index"
-        :item="item"
-        :item-style="itemStyle(index)"
-        interactive
-        layout="masonry"
-        :loaded-count="items.length"
-        :media-index="mediaIndices.get(item.postId) ?? 0"
-        :preview-state="previewStates.get(mediaStateKey(
-          item.postId,
-          mediaIndices.get(item.postId) ?? 0,
-        )) ?? 'loading'"
-        :total="total"
-        @activate="emit('activate', item.postId, $event)"
-        @media-change="emit('mediaChange', item.postId, $event)"
-        @ready="emit('ready', item.postId, $event)"
-        @error="emit('error', item.postId, $event)"
-      />
-    </section>
+      <section
+        ref="masonryElement"
+        class="masonry"
+        :class="{ 'masonry--ready': masonryWidth > 0 }"
+        :style="masonryStyle"
+        aria-label="Media gallery"
+      >
+        <MediaCard
+          v-for="({ fetchPriority, item, index }) in visibleItems"
+          :key="item.postId"
+          class="masonry-item"
+          :entering="enteringPostIds.has(item.postId)"
+          :fetch-priority="fetchPriority"
+          :card-footer="cardFooter"
+          :card-header="cardHeader"
+          :index="index"
+          :item="item"
+          :item-style="itemStyle(index)"
+          interactive
+          layout="masonry"
+          :loaded-count="items.length"
+          :media-index="mediaIndices.get(item.postId) ?? 0"
+          :preview-state="previewStates.get(mediaStateKey(
+            item.postId,
+            mediaIndices.get(item.postId) ?? 0,
+          )) ?? 'loading'"
+          :total="total"
+          @activate="emit('activate', item.postId, $event)"
+          @media-change="emit('mediaChange', item.postId, $event)"
+          @ready="emit('ready', item.postId, $event)"
+          @error="emit('error', item.postId, $event)"
+        />
+      </section>
 
-    <GalleryFooter
-      :can-retry-end="canRetryEnd"
-      :has-error="nextPageError"
-      :has-next="hasNext"
-      :infinite-scroll="infiniteScroll"
-      :is-loading="isLoadingMore"
-      @load-more="emit('loadMore')"
-      @retry-end="emit('retryEnd')"
+      <GalleryFooter
+        :can-retry-end="canRetryEnd"
+        :has-error="nextPageError"
+        :has-next="hasNext"
+        :infinite-scroll="infiniteScroll"
+        :is-loading="isLoadingMore"
+        @load-more="emit('loadMore')"
+        @retry-end="emit('retryEnd')"
+      />
+    </main>
+
+    <GalleryScrollbar
+      :content-size="masonryLayout.height"
+      :controls-id="galleryId"
+      :scroll-element="galleryElement"
+      :suspended="suspended"
     />
-  </main>
+  </div>
 </template>
