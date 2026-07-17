@@ -57,6 +57,13 @@ describe('auto scroll demo', () => {
       .toContain('80 px/s')
     expect(wrapper.get('[data-test="auto-scroll-speed"]').attributes())
       .toMatchObject({ min: '20', max: '240', value: '80' })
+    expect(wrapper.get('[aria-label="Lock loading more"]').attributes('aria-pressed'))
+      .toBe('false')
+
+    await wrapper.get('[aria-label="Lock loading more"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[aria-label="Unlock loading more"]').attributes('aria-pressed'))
+      .toBe('true')
 
     await wrapper.get('[data-test="auto-scroll-speed"]').setValue(120)
     expect(wrapper.get('[data-test="auto-scroll-controls"]').text())

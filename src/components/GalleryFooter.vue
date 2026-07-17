@@ -5,6 +5,7 @@ const props = defineProps<{
   hasNext: boolean
   infiniteScroll: boolean
   isLoading: boolean
+  loadMoreLocked: boolean
 }>()
 
 const emit = defineEmits<{
@@ -13,6 +14,7 @@ const emit = defineEmits<{
 }>()
 
 function onAction(): void {
+  if (props.loadMoreLocked) return
   if (props.hasNext) emit('loadMore')
   else emit('retryEnd')
 }
@@ -32,13 +34,14 @@ function onAction(): void {
     </p>
 
     <button
-      v-else-if="hasError || (hasNext && !infiniteScroll)"
+      v-else-if="hasError || (hasNext && (!infiniteScroll || loadMoreLocked))"
       data-test="load-more"
       class="load-more-button"
       type="button"
+      :disabled="loadMoreLocked"
       @click="onAction"
     >
-      {{ hasError ? 'Try again' : 'Load more' }}
+      {{ hasError ? 'Try again' : loadMoreLocked ? 'Loading paused' : 'Load more' }}
     </button>
 
     <span
@@ -61,6 +64,7 @@ function onAction(): void {
         data-test="retry-end"
         class="load-more-button"
         type="button"
+        :disabled="loadMoreLocked"
         @click="$emit('retryEnd')"
       >
         Check for more

@@ -340,6 +340,7 @@ export interface VibeState {
   items: readonly VibeItem[]
   layout: VibeLayout
   lifecycle: VibeLifecycle
+  loadMoreLocked: boolean
   next: VibeCursor
   nextPageError: unknown | null
   reelOrigin: 'masonry' | null
@@ -365,4 +366,5 @@ export interface VibeInstance {
   setAutoScrollSpeed: (speedPxPerSecond: number) => void
   setInfiniteScroll: (enabled: boolean) => void
   setLayout: (layout: VibeLayoutMode) => void
+  setLoadMoreLocked: (locked: boolean) => void
 }

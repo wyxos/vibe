@@ -721,13 +721,20 @@
   transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
 
-.load-more-button:hover {
+.load-more-button:not(:disabled):hover {
   border-color: #737373;
   background: #262626;
 }
 
-.load-more-button:active {
+.load-more-button:not(:disabled):active {
   transform: translateY(1px);
+}
+
+.load-more-button:disabled {
+  border-color: #262626;
+  color: #737373;
+  background: #171717;
+  cursor: not-allowed;
 }
 
 .load-more-button:focus-visible {

@@ -20,6 +20,7 @@ export interface VibeRuntimeState {
   isLoadingMore: boolean
   items: VibeItem[]
   layout: VibeLayout
+  loadMoreLocked: boolean
   next: VibeCursor
   nextPageError: unknown | null
   reelOrigin: 'masonry' | null
@@ -44,6 +45,7 @@ export function snapshotState(state: VibeRuntimeState): VibeState {
     lifecycle: state.isLoading || state.isLoadingMore
       ? 'loading'
       : state.error || state.nextPageError ? 'error' : 'loaded',
+    loadMoreLocked: state.loadMoreLocked,
     next: state.next,
     nextPageError: state.nextPageError,
     reelOrigin: state.reelOrigin,

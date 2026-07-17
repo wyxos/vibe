@@ -428,6 +428,28 @@ It resumes without a position jump when masonry becomes active again. Infinite
 scroll continues to work normally because the gallery remains the only scroll
 owner.
 
+## Load-more lock
+
+Pause ordinary forward pagination without disabling the feed or cancelling a request
+that is already running:
+
+```ts
+vibe.setLoadMoreLocked(true)
+
+// Existing items remain interactive. Later, allow pagination again.
+vibe.setLoadMoreLocked(false)
+```
+
+While locked, Vibe ignores `loadNext()`, infinite-scroll boundary triggers, the
+load-more action, and the end-of-feed retry. `reload()`, initial loading, autofill,
+and explicit `fill()` operations keep their own lifecycles. If infinite scroll is
+enabled when the instance is unlocked, Vibe immediately checks the current bottom
+boundary so the consumer does not need to nudge the scroll position.
+
+Read `state.loadMoreLocked` through `getState()` or `onStateChange` when application
+chrome needs to reflect the gate. The built-in pagination action is disabled and
+shown as `Loading paused` while the gate is active.
+
 ## Feed state
 
 Use `onStateChange` to render request and layout state outside Vibe, such as an
@@ -457,6 +479,8 @@ Individual media preview errors do not mark the feed request as failed.
 vibe.setLayout('reel')
 vibe.setLayout('responsive')
 vibe.setInfiniteScroll(false)
+vibe.setLoadMoreLocked(true)
+vibe.setLoadMoreLocked(false)
 vibe.setAutoScroll(true, 80)
 vibe.pauseAutoScroll()
 vibe.resumeAutoScroll()

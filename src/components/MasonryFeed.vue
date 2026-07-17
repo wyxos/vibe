@@ -142,12 +142,14 @@ function onScroll(event: Event): void {
   if (!element) return
 
   galleryScrollTop.value = element.scrollTop
-  if (props.infiniteScroll && isNearFeedBottom(element)) emit('loadMore')
+  if (!props.loadMoreLocked && props.infiniteScroll && isNearFeedBottom(element)) {
+    emit('loadMore')
+  }
 }
 
 function loadIfNearBottom(): void {
   const element = galleryElement.value
-  if (element && isNearFeedBottom(element)) emit('loadMore')
+  if (!props.loadMoreLocked && element && isNearFeedBottom(element)) emit('loadMore')
 }
 
 function getScrollElement(): HTMLElement | null {
@@ -248,6 +250,7 @@ defineExpose({ getScrollElement, loadIfNearBottom })
         :has-next="hasNext"
         :infinite-scroll="infiniteScroll"
         :is-loading="isLoadingMore"
+        :load-more-locked="loadMoreLocked"
         @load-more="emit('loadMore')"
         @retry-end="emit('retryEnd')"
       />

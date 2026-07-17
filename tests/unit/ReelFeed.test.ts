@@ -39,6 +39,7 @@ function props() {
     infiniteScroll: true,
     isLoadingMore: false,
     items: Array.from({ length: 10 }, (_, index) => feedItem(index + 10)),
+    loadMoreLocked: false,
     mediaIndices: new Map(),
     nextPageError: false,
     previewStates: new Map(),
@@ -214,6 +215,21 @@ describe('ReelFeed', () => {
     expect(wrapper.get('.end-feed').text()).toContain("You've reached the end.")
     await wrapper.get('[data-test="retry-end"]').trigger('click')
     expect(wrapper.emitted('retryEnd')).toEqual([[]])
+  })
+
+  it('keeps the terminal retry disabled while loading more is locked', async () => {
+    const wrapper = mount(ReelFeed, {
+      props: {
+        ...props(),
+        canRetryEnd: true,
+        loadMoreLocked: true,
+      },
+    })
+    const retry = wrapper.get('[data-test="retry-end"]')
+
+    expect(retry.attributes()).toHaveProperty('disabled')
+    await retry.trigger('click')
+    expect(wrapper.emitted('retryEnd')).toBeUndefined()
   })
 
   it('keeps the active post anchored through transient rotation sizes', async () => {

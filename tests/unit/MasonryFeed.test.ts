@@ -39,6 +39,7 @@ function props(items = [feedItem(1)]) {
     infiniteScroll: true,
     isLoadingMore: false,
     items,
+    loadMoreLocked: false,
     mediaIndices: new Map(),
     nextPageError: false,
     previewStates: new Map(),
@@ -242,5 +243,30 @@ describe('MasonryFeed', () => {
     expect(wrapper.get('.end-feed').text()).toContain("You've reached the end.")
     await wrapper.get('[data-test="retry-end"]').trigger('click')
     expect(wrapper.emitted('retryEnd')).toEqual([[]])
+  })
+
+  it('disables manual and infinite pagination while loading more is locked', async () => {
+    const wrapper = mount(MasonryFeed, {
+      props: {
+        ...props(),
+        hasNext: true,
+        loadMoreLocked: true,
+      },
+    })
+    const gallery = wrapper.get('.gallery-shell')
+    gallery.element.scrollTop = 1800
+
+    await gallery.trigger('scroll')
+    expect(wrapper.emitted('loadMore')).toBeUndefined()
+
+    const button = wrapper.get('[data-test="load-more"]')
+    expect(button.text()).toBe('Loading paused')
+    expect(button.attributes()).toHaveProperty('disabled')
+    await button.trigger('click')
+    expect(wrapper.emitted('loadMore')).toBeUndefined()
+
+    await wrapper.setProps({ infiniteScroll: false, loadMoreLocked: false })
+    await wrapper.get('[data-test="load-more"]').trigger('click')
+    expect(wrapper.emitted('loadMore')).toEqual([[]])
   })
 })

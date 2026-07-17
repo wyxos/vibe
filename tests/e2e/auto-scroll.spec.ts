@@ -26,3 +26,25 @@ test('auto scroll starts, pauses, resumes, and stops the masonry gallery', async
   await page.waitForTimeout(350)
   expect(await scrollTop()).toBe(stopped)
 })
+
+test('loading more can be locked at the feed boundary and resumed', async ({ page }) => {
+  await page.setViewportSize({ width: 430, height: 932 })
+  await page.goto('/demos/auto-scroll')
+  const gallery = page.locator('.masonry-feed')
+  await expect(gallery).toBeVisible()
+  expect(await page.locator('.app-header').evaluate((element) => (
+    element.scrollWidth <= element.clientWidth
+  ))).toBe(true)
+
+  await page.getByRole('button', { name: 'Lock loading more' }).click()
+  await expect(page.getByRole('button', { name: 'Unlock loading more' }))
+    .toHaveAttribute('aria-pressed', 'true')
+  await gallery.evaluate((element) => { element.scrollTop = element.scrollHeight })
+
+  const paused = page.getByRole('button', { name: 'Loading paused' })
+  await expect(paused).toBeVisible()
+  await expect(paused).toBeDisabled()
+
+  await page.getByRole('button', { name: 'Unlock loading more' }).click()
+  await expect(paused).toBeHidden()
+})

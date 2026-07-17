@@ -81,7 +81,9 @@ function onScroll(event: Event): void {
   if (!element) return
 
   if (!isResizing.value) activeIndex.value = nearestIndex(element)
-  if (props.infiniteScroll && isNearFeedBottom(element)) emit('loadMore')
+  if (!props.loadMoreLocked && props.infiniteScroll && isNearFeedBottom(element)) {
+    emit('loadMore')
+  }
 }
 
 function restoreActiveItem(): void {
@@ -133,7 +135,7 @@ function setResizeState(resizing: boolean): void {
 
 function loadIfNearBottom(): void {
   const element = galleryElement.value
-  if (element && isNearFeedBottom(element)) emit('loadMore')
+  if (!props.loadMoreLocked && element && isNearFeedBottom(element)) emit('loadMore')
 }
 
 function changeActiveMedia(direction: -1 | 1): boolean {
@@ -254,6 +256,7 @@ defineExpose({ activeIndex, activePostId, changeActiveMedia, loadIfNearBottom })
         :has-next="hasNext"
         :infinite-scroll="infiniteScroll"
         :is-loading="isLoadingMore"
+        :load-more-locked="loadMoreLocked"
         @load-more="emit('loadMore')"
         @retry-end="emit('retryEnd')"
       />

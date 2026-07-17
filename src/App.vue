@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Pause, Play, Square } from 'lucide-vue-next'
+import { Lock, LockOpen, Pause, Play, Square } from 'lucide-vue-next'
 import { computed, ref, shallowRef } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 
@@ -71,6 +71,11 @@ function toggleAutoScrollPause(): void {
   if (!state?.enabled) return
   if (state.paused) demoVibe.value?.resumeAutoScroll()
   else demoVibe.value?.pauseAutoScroll()
+}
+
+function toggleLoadMoreLock(): void {
+  if (!demoVibe.value) return
+  demoVibe.value.setLoadMoreLocked(!vibeState.value?.loadMoreLocked)
 }
 
 function updateAutoScrollSpeed(event: Event): void {
@@ -151,6 +156,21 @@ function updateVibeInstance(instance: VibeInstance | null): void {
             <Play v-if="autoScroll?.paused" :size="14" aria-hidden="true" />
             <Pause v-else :size="14" aria-hidden="true" />
             <span>{{ autoScroll?.paused ? 'Resume' : 'Pause' }}</span>
+          </button>
+
+          <button
+            class="auto-scroll-action"
+            type="button"
+            :disabled="!demoVibe"
+            :aria-label="vibeState?.loadMoreLocked
+              ? 'Unlock loading more'
+              : 'Lock loading more'"
+            :aria-pressed="vibeState?.loadMoreLocked ?? false"
+            @click="toggleLoadMoreLock"
+          >
+            <LockOpen v-if="vibeState?.loadMoreLocked" :size="14" aria-hidden="true" />
+            <Lock v-else :size="14" aria-hidden="true" />
+            <span>{{ vibeState?.loadMoreLocked ? 'Unlock loading' : 'Lock loading' }}</span>
           </button>
 
           <label class="auto-scroll-speed">

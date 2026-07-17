@@ -14,7 +14,7 @@ import {
   createAutofillState,
   isAutofillActive,
 } from './autofill'
-import { createAutoScrollState, VibeAutoScrollController } from './autoScroll'
+import { VibeAutoScrollController } from './autoScroll'
 import {
   applyBackendAutofillUpdate,
   restoreBackendAutofillSession,
@@ -22,9 +22,9 @@ import {
 } from './backendAutofill'
 import { resolveResponsiveLayoutForElement } from './responsiveLayout'
 import { autofillInitialPage } from './initialAutofill'
-import { createFillState } from './fill'
 import { VibeFillController } from './fillController'
 import type { VibeSurfaceExpose } from './feed'
+import { createInitialRuntimeState } from './initialRuntimeState'
 import { resolveVibeTarget, validateOptions } from './options'
 import { appendUniqueItems, validatePage } from './page'
 import { RequestDelayCountdown } from './requestDelay'
@@ -65,25 +65,8 @@ class VibeController implements VibeInstance {
 
   constructor(private readonly options: CreateVibeOptions) {
     validateOptions(options)
-    const initialPage = options.initialPage
     this.layoutMode = options.layout ?? 'masonry'
-
-    this.state = reactive({
-      activeReelPostId: null,
-      autoScroll: createAutoScrollState(options.autoScroll),
-      autofill: createAutofillState(options.autofill),
-      error: null,
-      fill: createFillState(options.fill),
-      infiniteScroll: options.infiniteScroll ?? true,
-      isLoading: !initialPage,
-      isLoadingMore: false,
-      items: initialPage ? appendUniqueItems([], initialPage.items) : [],
-      layout: this.layoutMode === 'reel' ? 'reel' : 'masonry',
-      next: initialPage?.next ?? null,
-      nextPageError: null,
-      reelOrigin: null,
-      total: initialPage?.total ?? null,
-    })
+    this.state = reactive(createInitialRuntimeState(options, this.layoutMode))
     this.autoScroll = new VibeAutoScrollController({
       getScrollElement: () => this.surface?.getAutoScrollElement() ?? null,
       state: this.state.autoScroll,
@@ -193,6 +176,7 @@ class VibeController implements VibeInstance {
 
   async loadNext(): Promise<void> {
     if (this.pendingRequest) return this.pendingRequest
+    if (this.state.loadMoreLocked) return
     if (isAutofillActive(this.state.autofill) || this.fillController.isActive()) return
     if (this.state.next === null || !this.options.loadPage) return
 
@@ -222,6 +206,7 @@ class VibeController implements VibeInstance {
 
   private async retryEnd(): Promise<void> {
     if (this.pendingRequest) return this.pendingRequest
+    if (this.state.loadMoreLocked) return
     if (isAutofillActive(this.state.autofill) || this.fillController.isActive()) return
     if (this.state.next !== null || !this.options.loadPage) return
 
@@ -232,8 +217,15 @@ class VibeController implements VibeInstance {
 
   setInfiniteScroll(enabled: boolean): void {
     this.state.infiniteScroll = enabled
-
     if (enabled) {
+      void nextTick(() => this.surface?.loadIfNearBottom())
+    }
+  }
+
+  setLoadMoreLocked(locked: boolean): void {
+    if (this.state.loadMoreLocked === locked) return
+    this.state.loadMoreLocked = locked
+    if (!locked && this.state.infiniteScroll) {
       void nextTick(() => this.surface?.loadIfNearBottom())
     }
   }
