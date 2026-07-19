@@ -49,6 +49,18 @@ export interface VibeAutoScrollState {
   speedPxPerSecond: number
 }
 
+export interface VibeReelAutoAdvanceOptions {
+  enabled?: boolean
+  includePostItems?: boolean
+  intervalMs?: number
+}
+
+export interface VibeReelAutoAdvanceState {
+  enabled: boolean
+  includePostItems: boolean
+  intervalMs: number
+}
+
 export interface VibePreview {
   src: string
   width: number | null
@@ -325,6 +337,7 @@ export interface CreateVibeOptions {
   initialPage?: VibeInitialPage
   loadPage?: VibePageLoader
   onStateChange?: (state: VibeState) => void
+  reelAutoAdvance?: VibeReelAutoAdvanceOptions
   routing?: VibeRoutingOptions
 }
 
@@ -343,6 +356,7 @@ export interface VibeState {
   loadMoreLocked: boolean
   next: VibeCursor
   nextPageError: unknown | null
+  reelAutoAdvance: VibeReelAutoAdvanceState
   reelOrigin: 'masonry' | null
   total: number | null
 }
@@ -367,4 +381,7 @@ export interface VibeInstance {
   setInfiniteScroll: (enabled: boolean) => void
   setLayout: (layout: VibeLayoutMode) => void
   setLoadMoreLocked: (locked: boolean) => void
+  setReelAutoAdvance: (
+    update: boolean | VibeReelAutoAdvanceOptions,
+  ) => void
 }

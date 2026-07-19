@@ -39,6 +39,10 @@ In responsive layout, Vibe observes the target and uses reels on phones while
 keeping tablets and desktops in masonry. Use `masonry` or `reel` to force a
 renderer instead.
 
+Phone reels load `preview.src`. Reels on tablets and desktops load the full
+`src`, including a reel forced with `layout: 'reel'` and a reel opened from a
+masonry card.
+
 `loadPage` receives `cursor: null` for the initial request. It returns normalized Vibe items, the next opaque cursor, and an optional total:
 
 ```ts
@@ -428,6 +432,45 @@ It resumes without a position jump when masonry becomes active again. Infinite
 scroll continues to work normally because the gallery remains the only scroll
 owner.
 
+## Reel auto advance
+
+Reel auto advance renders a countdown progress strip at the bottom of an active
+reel and moves to the next post when the configured interval expires:
+
+```ts
+const vibe = createVibe({
+  target: '#gallery',
+  layout: 'reel',
+  loadPage,
+  reelAutoAdvance: {
+    enabled: true,
+    intervalMs: 5_000,
+    includePostItems: false,
+  },
+})
+
+await vibe.mount()
+vibe.setReelAutoAdvance(false)
+vibe.setReelAutoAdvance({
+  enabled: true,
+  intervalMs: 8_000,
+  includePostItems: true,
+})
+```
+
+The default interval is five seconds and grouped post items are excluded by
+default. When `includePostItems` is enabled, Vibe counts through the parent media
+and then each item in its `items` array before moving vertically to the next post.
+Still images use the countdown. Audio and video stop looping while auto advance
+is enabled and advance from their playback `ended` event instead, so pausing the
+media also pauses progression. Manual vertical or horizontal navigation restarts
+the countdown for the newly active image. The feature is inactive in masonry and
+becomes visible in either a base reel layout or a reel opened from masonry.
+
+`state.reelAutoAdvance` exposes `enabled`, `intervalMs`, and `includePostItems`.
+At the loaded boundary, normal pagination is requested when another cursor is
+available; the load-more lock continues to prevent that request when active.
+
 ## Load-more lock
 
 Pause ordinary forward pagination without disabling the feed or cancelling a request
@@ -481,6 +524,8 @@ vibe.setLayout('responsive')
 vibe.setInfiniteScroll(false)
 vibe.setLoadMoreLocked(true)
 vibe.setLoadMoreLocked(false)
+vibe.setReelAutoAdvance(true)
+vibe.setReelAutoAdvance({ includePostItems: true, intervalMs: 8_000 })
 vibe.setAutoScroll(true, 80)
 vibe.pauseAutoScroll()
 vibe.resumeAutoScroll()

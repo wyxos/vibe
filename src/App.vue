@@ -58,7 +58,9 @@ const fillDelay = computed(() => (
 ))
 
 const isAutoScrollDemo = computed(() => route.name === 'demo-auto-scroll')
+const isReelAutoAdvanceDemo = computed(() => route.name === 'demo-reel-auto-advance')
 const autoScroll = computed(() => vibeState.value?.autoScroll ?? null)
+const reelAutoAdvance = computed(() => vibeState.value?.reelAutoAdvance ?? null)
 
 function toggleAutoScroll(): void {
   const state = autoScroll.value
@@ -76,6 +78,19 @@ function toggleAutoScrollPause(): void {
 function toggleLoadMoreLock(): void {
   if (!demoVibe.value) return
   demoVibe.value.setLoadMoreLocked(!vibeState.value?.loadMoreLocked)
+}
+
+function toggleReelAutoAdvance(): void {
+  const state = reelAutoAdvance.value
+  if (!state) return
+  demoVibe.value?.setReelAutoAdvance(!state.enabled)
+}
+
+function updateReelPostItems(event: Event): void {
+  const input = event.currentTarget
+  if (input instanceof HTMLInputElement) {
+    demoVibe.value?.setReelAutoAdvance({ includePostItems: input.checked })
+  }
 }
 
 function updateAutoScrollSpeed(event: Event): void {
@@ -113,6 +128,7 @@ function updateVibeInstance(instance: VibeInstance | null): void {
         class="app-header-actions"
         :class="{
           'app-header-actions--auto-scroll': isAutoScrollDemo,
+          'app-header-actions--reel-auto-advance': isReelAutoAdvanceDemo,
           'app-header-actions--operation': vibeState?.autofill.enabled || vibeState?.fill.enabled,
         }"
       >
@@ -185,6 +201,41 @@ function updateVibeInstance(instance: VibeInstance | null): void {
               @input="updateAutoScrollSpeed"
             >
             <output>{{ autoScroll?.speedPxPerSecond ?? 80 }} px/s</output>
+          </label>
+        </div>
+
+        <div
+          v-if="isReelAutoAdvanceDemo"
+          class="auto-scroll-controls"
+          data-test="reel-auto-advance-controls"
+        >
+          <button
+            class="auto-scroll-action"
+            type="button"
+            :disabled="!reelAutoAdvance || !demoVibe"
+            :aria-label="reelAutoAdvance?.enabled
+              ? 'Stop reel auto advance'
+              : 'Start reel auto advance'"
+            @click="toggleReelAutoAdvance"
+          >
+            <Square v-if="reelAutoAdvance?.enabled" :size="14" aria-hidden="true" />
+            <Play v-else :size="14" aria-hidden="true" />
+            <span>{{ reelAutoAdvance?.enabled ? 'Stop' : 'Start' }}</span>
+          </button>
+
+          <label class="toggle-control">
+            <span>Include post items</span>
+            <input
+              data-test="reel-auto-advance-items"
+              class="toggle-input"
+              type="checkbox"
+              :checked="reelAutoAdvance?.includePostItems ?? false"
+              :disabled="!reelAutoAdvance || !demoVibe"
+              @change="updateReelPostItems"
+            >
+            <span class="toggle-track" aria-hidden="true">
+              <span class="toggle-thumb" />
+            </span>
           </label>
         </div>
 

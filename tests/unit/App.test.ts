@@ -102,6 +102,8 @@ describe('App', () => {
     expect(wrapper.get('[data-layout-mode="reel"]').exists()).toBe(true)
     expect(wrapper.get('.reel-track').exists()).toBe(true)
     expect(wrapper.find('.masonry').exists()).toBe(false)
+    expect(wrapper.get('img').attributes('src'))
+      .toBe('https://example.com/image-10-preview.jpeg')
   })
 
   it('keeps a phone in reel mode in landscape', async () => {
@@ -116,6 +118,8 @@ describe('App', () => {
 
     expect(wrapper.get('[data-layout-mode="reel"]').exists()).toBe(true)
     expect(wrapper.find('.masonry').exists()).toBe(false)
+    expect(wrapper.get('img').attributes('src'))
+      .toBe('https://example.com/image-10-preview.jpeg')
   })
 
   it('keeps a touch tablet in masonry mode', async () => {

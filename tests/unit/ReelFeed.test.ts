@@ -32,6 +32,17 @@ function mediaAsset(name: string) {
   }
 }
 
+function timedMediaItem(postId: number, extension: 'mp3' | 'mp4') {
+  return {
+    ...feedItem(postId),
+    src: `https://example.com/${postId}.${extension}`,
+    preview: {
+      ...feedItem(postId).preview,
+      src: `https://example.com/${postId}-preview.${extension}`,
+    },
+  }
+}
+
 function props() {
   return {
     canRetryEnd: false,
@@ -43,6 +54,11 @@ function props() {
     mediaIndices: new Map(),
     nextPageError: false,
     previewStates: new Map(),
+    reelAutoAdvance: {
+      enabled: false,
+      includePostItems: false,
+      intervalMs: 5_000,
+    },
     total: null,
   }
 }
@@ -261,5 +277,95 @@ describe('ReelFeed', () => {
     expect((gallery.element as HTMLElement).scrollTop).toBe(600)
     expect(gallery.attributes('data-active-post-id')).toBe('12')
     expect(wrapper.get('[data-post-id="12"]').attributes('style')).toContain('grid-row: 3')
+  })
+
+  it('advances vertically after the countdown and excludes post items by default', async () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })))
+    const groupedItem = {
+      ...feedItem(10),
+      items: [mediaAsset('10-a'), mediaAsset('10-b')],
+    }
+    const wrapper = mount(ReelFeed, {
+      props: {
+        ...props(),
+        items: [groupedItem, feedItem(11)],
+        previewStates: new Map([['10:0', 'ready']]),
+        reelAutoAdvance: {
+          enabled: true,
+          includePostItems: false,
+          intervalMs: 2_000,
+        },
+      },
+    })
+    await wrapper.vm.$nextTick()
+
+    const countdown = wrapper.get('[data-test="reel-auto-advance"]')
+    expect(countdown.attributes('aria-label')).toBe('Auto advance to the next post in 2s')
+    await countdown.get('.reel-auto-advance-progress').trigger('animationend')
+
+    expect(wrapper.get('.gallery-shell').attributes('data-active-post-id')).toBe('11')
+    expect(wrapper.emitted('mediaChange')).toBeUndefined()
+  })
+
+  it.each([
+    ['audio', 'mp3'],
+    ['video', 'mp4'],
+  ] as const)('waits for active %s completion instead of the countdown', async (_, extension) => {
+    const wrapper = mount(ReelFeed, {
+      props: {
+        ...props(),
+        items: [timedMediaItem(10, extension), feedItem(11)],
+        previewStates: new Map([['10:0', 'ready']]),
+        reelAutoAdvance: {
+          enabled: true,
+          includePostItems: false,
+          intervalMs: 2_000,
+        },
+      },
+    })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-test="reel-auto-advance"]').exists()).toBe(false)
+    const media = wrapper.get('[data-post-id="10"] video')
+    expect(media.attributes('loop')).toBeUndefined()
+    await media.trigger('ended')
+
+    expect(wrapper.get('.gallery-shell').attributes('data-active-post-id')).toBe('11')
+  })
+
+  it('counts through grouped post items before advancing vertically when included', async () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })))
+    const groupedItem = {
+      ...feedItem(10),
+      items: [mediaAsset('10-a'), mediaAsset('10-b')],
+    }
+    const wrapper = mount(ReelFeed, {
+      props: {
+        ...props(),
+        items: [groupedItem, feedItem(11)],
+        previewStates: new Map([
+          ['10:0', 'ready'],
+          ['10:1', 'ready'],
+          ['10:2', 'ready'],
+        ]),
+        reelAutoAdvance: {
+          enabled: true,
+          includePostItems: true,
+          intervalMs: 2_000,
+        },
+      },
+    })
+    await wrapper.vm.$nextTick()
+
+    await wrapper.get('.reel-auto-advance-progress').trigger('animationend')
+    expect(wrapper.emitted('mediaChange')?.at(-1)).toEqual([10, 1])
+
+    await wrapper.setProps({ mediaIndices: new Map([[10, 1]]) })
+    await wrapper.get('.reel-auto-advance-progress').trigger('animationend')
+    expect(wrapper.emitted('mediaChange')?.at(-1)).toEqual([10, 2])
+
+    await wrapper.setProps({ mediaIndices: new Map([[10, 2]]) })
+    await wrapper.get('.reel-auto-advance-progress').trigger('animationend')
+    expect(wrapper.get('.gallery-shell').attributes('data-active-post-id')).toBe('11')
   })
 })

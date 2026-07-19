@@ -6,6 +6,7 @@ import type {
   VibeItem,
   VibeItemId,
   VibeLayout,
+  VibeReelAutoAdvanceState,
   VibeState,
 } from '../types'
 
@@ -23,6 +24,8 @@ export interface VibeRuntimeState {
   loadMoreLocked: boolean
   next: VibeCursor
   nextPageError: unknown | null
+  reelAutoAdvance: VibeReelAutoAdvanceState
+  reelMediaSource: 'original' | 'preview'
   reelOrigin: 'masonry' | null
   total: number | null
 }
@@ -48,6 +51,7 @@ export function snapshotState(state: VibeRuntimeState): VibeState {
     loadMoreLocked: state.loadMoreLocked,
     next: state.next,
     nextPageError: state.nextPageError,
+    reelAutoAdvance: { ...state.reelAutoAdvance },
     reelOrigin: state.reelOrigin,
     total: state.total,
   }

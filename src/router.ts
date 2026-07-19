@@ -14,6 +14,7 @@ import FeedDemoPage from './pages/FeedDemoPage.vue'
 import FillBackendDemoPage from './pages/FillBackendDemoPage.vue'
 import FillFrontendDemoPage from './pages/FillFrontendDemoPage.vue'
 import ReelUrlDemoPage from './pages/ReelUrlDemoPage.vue'
+import ReelAutoAdvanceDemoPage from './pages/ReelAutoAdvanceDemoPage.vue'
 
 const EmptyRouteView = { render: () => null }
 
@@ -50,6 +51,11 @@ export function createDemoRouter(
             path: 'auto-scroll',
             name: 'demo-auto-scroll',
             component: AutoScrollDemoPage,
+          },
+          {
+            path: 'reel-auto-advance',
+            name: 'demo-reel-auto-advance',
+            component: ReelAutoAdvanceDemoPage,
           },
           {
             path: 'autofill/frontend',

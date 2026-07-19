@@ -20,6 +20,7 @@ import {
   mediaErrorStatus,
   type MediaPreviewState,
 } from '../core/mediaPreview'
+import { isTimedMediaSource } from '../core/mediaType'
 import type {
   VibeCardRegion,
   VibeItem,
@@ -30,6 +31,7 @@ import CardRegion from './CardRegion.vue'
 import MediaControls from './MediaControls.vue'
 
 const props = defineProps<{
+  advanceOnMediaEnd?: boolean
   cardFooter?: VibeCardRegion
   cardHeader?: VibeCardRegion
   entering: boolean
@@ -58,6 +60,7 @@ const mediaDirection = shallowRef<'next' | 'previous'>('next')
 
 const emit = defineEmits<{
   activate: [input: 'keyboard' | 'pointer']
+  ended: [mediaIndex: number]
   error: [mediaIndex: number]
   mediaChange: [mediaIndex: number]
   ready: [mediaIndex: number]
@@ -178,15 +181,7 @@ function onMediaTouchEnd(event: TouchEvent): void {
   changeMedia(normalizedMediaIndex.value + Math.sign(deltaX))
 }
 
-function isVideo(src: string): boolean {
-  try {
-    return /\.(mp4|webm|mov)$/i.test(new URL(src).pathname)
-  } catch {
-    return /\.(mp4|webm|mov)(?:$|\?)/i.test(src)
-  }
-}
-
-const mediaIsVideo = computed(() => isVideo(mediaSrc.value))
+const mediaIsTimed = computed(() => isTimedMediaSource(mediaSrc.value))
 
 function onVideoClick(event: MouseEvent): void {
   if (props.layout !== 'reel') return
@@ -228,6 +223,11 @@ function syncVideoState(event?: Event): void {
 function onVideoLoadedMetadata(event: Event): void {
   syncVideoState(event)
   emit('ready', normalizedMediaIndex.value)
+}
+
+function onMediaEnded(): void {
+  videoIsPlaying.value = false
+  emit('ended', normalizedMediaIndex.value)
 }
 
 function seekVideo(time: number): void {
@@ -331,7 +331,7 @@ onBeforeUnmount(() => {
             </div>
 
             <video
-              v-if="mediaIsVideo"
+              v-if="mediaIsTimed"
               ref="videoElement"
               class="media-preview"
               :class="{
@@ -342,7 +342,7 @@ onBeforeUnmount(() => {
               :width="mediaWidth ?? undefined"
               :height="mediaHeight ?? undefined"
               autoplay
-              loop
+              :loop="!advanceOnMediaEnd"
               :muted="videoIsMuted"
               playsinline
               :preload="fetchPriority === 'high' ? 'auto' : 'metadata'"
@@ -352,6 +352,7 @@ onBeforeUnmount(() => {
               @volumechange="syncVideoState"
               @playing="videoIsPlaying = true"
               @pause="videoIsPlaying = false"
+              @ended="onMediaEnded"
               @click="onVideoClick"
               @error="$emit('error', normalizedMediaIndex)"
             />
@@ -374,7 +375,7 @@ onBeforeUnmount(() => {
         </Transition>
 
         <MediaControls
-          v-if="mediaIsVideo && previewState === 'ready'"
+          v-if="mediaIsTimed && previewState === 'ready'"
           :current-time="videoCurrentTime"
           :duration="videoDuration"
           :layout="layout"

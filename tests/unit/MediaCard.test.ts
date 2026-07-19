@@ -186,4 +186,26 @@ describe('MediaCard', () => {
     expect(wrapper.find('[aria-label="Video volume"]').exists()).toBe(false)
     expect(wrapper.find('.media-control-time').exists()).toBe(false)
   })
+
+  it('stops looping and reports completion when media drives auto advance', async () => {
+    const wrapper = mount(MediaCard, {
+      props: {
+        ...props(),
+        advanceOnMediaEnd: true,
+        item: {
+          postId: 11,
+          ...videoAsset('11'),
+          items: [],
+        },
+      },
+    })
+    const video = wrapper.get('video')
+
+    expect(video.attributes('loop')).toBeUndefined()
+    await video.trigger('ended')
+    expect(wrapper.emitted('ended')).toEqual([[0]])
+
+    await wrapper.setProps({ advanceOnMediaEnd: false })
+    expect(wrapper.get('video').attributes()).toHaveProperty('loop')
+  })
 })

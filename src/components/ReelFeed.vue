@@ -11,11 +11,13 @@ import {
 
 import type { ReelFeedProps } from '../core/feed'
 import { isNearFeedBottom } from '../core/feed'
-import { mediaAssets, mediaStateKey } from '../core/mediaAsset'
+import { mediaAssetAt, mediaAssets, mediaStateKey } from '../core/mediaAsset'
+import { isTimedMediaSource } from '../core/mediaType'
 import type { VibeItemId } from '../types'
 import CardRegion from './CardRegion.vue'
 import GalleryFooter from './GalleryFooter.vue'
 import MediaCard from './MediaCard.vue'
+import ReelAutoAdvanceProgress from './ReelAutoAdvanceProgress.vue'
 
 const VIRTUAL_OVERSCAN = 2
 
@@ -61,6 +63,47 @@ const activeMediaIndex = computed(() => {
   const postId = activePostId.value
   return postId === undefined ? 0 : props.mediaIndices.get(postId) ?? 0
 })
+const activePreviewState = computed(() => {
+  const postId = activePostId.value
+  if (postId === undefined) return 'loading'
+  return props.previewStates.get(mediaStateKey(postId, activeMediaIndex.value)) ?? 'loading'
+})
+const activeMediaSrc = computed(() => {
+  const item = activeItem.value
+  if (!item) return ''
+
+  const media = mediaAssetAt(item, activeMediaIndex.value)
+  return props.mediaSource === 'original' ? media.src : media.preview.src
+})
+const activeMediaWaitsForEnd = computed(() => (
+  activePreviewState.value === 'ready'
+  && isTimedMediaSource(activeMediaSrc.value)
+))
+const autoAdvanceKey = computed(() => [
+  activePostId.value,
+  activeMediaIndex.value,
+  props.items.length,
+  props.loadMoreLocked,
+  props.reelAutoAdvance.enabled,
+  props.reelAutoAdvance.includePostItems,
+  props.reelAutoAdvance.intervalMs,
+].join(':'))
+const autoAdvanceLabel = computed(() => {
+  const item = activeItem.value
+  const hasNextPostItem = Boolean(
+    item
+    && props.reelAutoAdvance.includePostItems
+    && activeMediaIndex.value < mediaAssets(item).length - 1,
+  )
+  const seconds = props.reelAutoAdvance.intervalMs / 1_000
+  return `Auto advance to the next ${hasNextPostItem ? 'post item' : 'post'} in ${seconds}s`
+})
+const showAutoAdvance = computed(() => (
+  props.reelAutoAdvance.enabled
+  && activeItem.value !== undefined
+  && activePreviewState.value !== 'loading'
+  && !activeMediaWaitsForEnd.value
+))
 
 function itemStyle(index: number): CSSProperties {
   return { gridRow: `${index + 1}` }
@@ -150,6 +193,63 @@ function changeActiveMedia(direction: -1 | 1): boolean {
   return true
 }
 
+function prefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function advanceToPost(index: number): void {
+  const element = galleryElement.value
+  if (!element) return
+
+  const top = index * (viewportHeight || element.clientHeight)
+  if (!prefersReducedMotion() && typeof element.scrollTo === 'function') {
+    element.scrollTo({ behavior: 'smooth', top })
+    return
+  }
+
+  element.scrollTop = top
+  activeIndex.value = index
+}
+
+function onAutoAdvanceComplete(): void {
+  if (!props.reelAutoAdvance.enabled) return
+  const item = activeItem.value
+  if (!item) return
+
+  if (
+    props.reelAutoAdvance.includePostItems
+    && activeMediaIndex.value < mediaAssets(item).length - 1
+  ) {
+    emit('mediaChange', item.postId, activeMediaIndex.value + 1)
+    return
+  }
+
+  const nextIndex = activeIndex.value + 1
+  const nextItem = props.items[nextIndex]
+  if (!nextItem) {
+    if (props.hasNext && !props.loadMoreLocked) emit('loadMore')
+    return
+  }
+
+  if (
+    props.reelAutoAdvance.includePostItems
+    && (props.mediaIndices.get(nextItem.postId) ?? 0) !== 0
+  ) emit('mediaChange', nextItem.postId, 0)
+  advanceToPost(nextIndex)
+}
+
+function onMediaEnded(postId: VibeItemId, mediaIndex: number): void {
+  if (
+    !props.reelAutoAdvance.enabled
+    || postId !== activePostId.value
+    || mediaIndex !== activeMediaIndex.value
+    || !activeMediaWaitsForEnd.value
+  ) return
+
+  onAutoAdvanceComplete()
+}
+
 watch(galleryElement, (element) => {
   resizeObserver?.disconnect()
   resizeObserver = null
@@ -229,6 +329,7 @@ defineExpose({ activeIndex, activePostId, changeActiveMedia, loadIfNearBottom })
         <MediaCard
           v-for="({ fetchPriority, item, index }) in visibleItems"
           :key="item.postId"
+          :advance-on-media-end="props.reelAutoAdvance.enabled && index === activeIndex"
           class="reel-item"
           :entering="false"
           :fetch-priority="fetchPriority"
@@ -245,6 +346,7 @@ defineExpose({ activeIndex, activePostId, changeActiveMedia, loadIfNearBottom })
           )) ?? 'loading'"
           :total="total"
           @media-change="emit('mediaChange', item.postId, $event)"
+          @ended="onMediaEnded(item.postId, $event)"
           @ready="emit('ready', item.postId, $event)"
           @error="emit('error', item.postId, $event)"
         />
@@ -273,6 +375,14 @@ defineExpose({ activeIndex, activePostId, changeActiveMedia, loadIfNearBottom })
       placement="footer"
       :region="cardFooter"
       :total="total"
+    />
+
+    <ReelAutoAdvanceProgress
+      v-if="showAutoAdvance"
+      :key="autoAdvanceKey"
+      :duration-ms="reelAutoAdvance.intervalMs"
+      :label="autoAdvanceLabel"
+      @complete="onAutoAdvanceComplete"
     />
   </main>
 </template>

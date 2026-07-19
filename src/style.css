@@ -572,6 +572,10 @@ body {
     display: none;
   }
 
+  .app-header-actions--reel-auto-advance .vibe-lifecycle--feed {
+    display: none;
+  }
+
   .app-header-actions--operation .vibe-lifecycle--feed {
     display: none;
   }

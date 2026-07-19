@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  computed,
   nextTick,
   onBeforeUnmount,
   onMounted,
@@ -51,6 +52,9 @@ const entryDelays = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
 const mediaIndices = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
 const mediaPreviewStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
 const mediaOriginalStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
+const reelMediaStates = computed(() => props.state.reelMediaSource === 'original'
+  ? mediaOriginalStates.value
+  : mediaPreviewStates.value)
 let previousPostIds = new Set<VibeItemId>(
   props.state.items.map((item) => item.postId),
 )
@@ -110,6 +114,22 @@ function markMediaOriginalError(postId: VibeItemId, mediaIndex: number): void {
 
 function markMediaOriginalReady(postId: VibeItemId, mediaIndex: number): void {
   setMediaOriginalState(postId, mediaIndex, 'ready')
+}
+
+function markReelMediaError(postId: VibeItemId, mediaIndex: number): void {
+  if (props.state.reelMediaSource === 'original') {
+    markMediaOriginalError(postId, mediaIndex)
+    return
+  }
+  markMediaPreviewError(postId, mediaIndex)
+}
+
+function markReelMediaReady(postId: VibeItemId, mediaIndex: number): void {
+  if (props.state.reelMediaSource === 'original') {
+    markMediaOriginalReady(postId, mediaIndex)
+    return
+  }
+  markMediaPreviewReady(postId, mediaIndex)
 }
 
 function setMediaIndex(postId: VibeItemId, mediaIndex: number): void {
@@ -310,16 +330,18 @@ defineExpose({ getAutoScrollElement, loadIfNearBottom })
       :is-loading-more="state.isLoadingMore"
       :items="state.items"
       :load-more-locked="state.loadMoreLocked"
+      :media-source="state.reelMediaSource"
       :media-indices="mediaIndices"
       :initial-post-id="state.activeReelPostId"
       :next-page-error="Boolean(state.nextPageError)"
-      :preview-states="mediaPreviewStates"
+      :preview-states="reelMediaStates"
+      :reel-auto-advance="state.reelAutoAdvance"
       :total="state.total"
       @active-change="emit('activeReelChange', $event)"
-      @error="markMediaPreviewError"
+      @error="markReelMediaError"
       @load-more="emit('loadMore')"
       @media-change="setMediaIndex"
-      @ready="markMediaPreviewReady"
+      @ready="markReelMediaReady"
       @retry-end="emit('retryEnd')"
     />
 
@@ -378,6 +400,7 @@ defineExpose({ getAutoScrollElement, loadIfNearBottom })
             media-source="original"
             :next-page-error="Boolean(state.nextPageError)"
             :preview-states="mediaOriginalStates"
+            :reel-auto-advance="state.reelAutoAdvance"
             :total="state.total"
             @active-change="emit('activeReelChange', $event)"
             @error="markMediaOriginalError"

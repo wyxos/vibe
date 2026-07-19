@@ -1,6 +1,7 @@
 import { validateAutofillOptions } from './autofill'
 import { validateAutoScrollOptions } from './autoScroll'
 import { validateFillOptions } from './fill'
+import { validateReelAutoAdvanceOptions } from './reelAutoAdvance'
 import type { CreateVibeOptions, VibeCardRegion } from '../types'
 
 function validateCardRegion(
@@ -19,6 +20,7 @@ export function validateOptions(options: CreateVibeOptions): void {
   validateCardRegion('cardFooter', options.cardFooter)
   validateAutofillOptions(options.autofill)
   validateFillOptions(options.fill)
+  validateReelAutoAdvanceOptions(options.reelAutoAdvance)
 
   if (!options.initialPage && !options.loadPage) {
     throw new TypeError('Vibe requires either initialPage or loadPage.')

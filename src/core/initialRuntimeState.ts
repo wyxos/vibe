@@ -3,6 +3,7 @@ import { createAutofillState } from './autofill'
 import { createAutoScrollState } from './autoScroll'
 import { createFillState } from './fill'
 import { appendUniqueItems } from './page'
+import { createReelAutoAdvanceState } from './reelAutoAdvance'
 import type { VibeRuntimeState } from './runtime'
 
 export function createInitialRuntimeState(
@@ -25,6 +26,8 @@ export function createInitialRuntimeState(
     loadMoreLocked: false,
     next: initialPage?.next ?? null,
     nextPageError: null,
+    reelAutoAdvance: createReelAutoAdvanceState(options.reelAutoAdvance),
+    reelMediaSource: 'original',
     reelOrigin: null,
     total: initialPage?.total ?? null,
   }

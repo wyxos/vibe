@@ -3,6 +3,7 @@ import type {
   VibeItem,
   VibeItemId,
   VibeMediaSource,
+  VibeReelAutoAdvanceState,
 } from '../types'
 import type { MediaPreviewState } from './mediaPreview'
 
@@ -30,6 +31,7 @@ export interface MasonryFeedProps extends FeedRendererProps {
 export interface ReelFeedProps extends FeedRendererProps {
   initialPostId?: VibeItemId | null
   mediaSource?: VibeMediaSource
+  reelAutoAdvance: VibeReelAutoAdvanceState
 }
 
 export interface VibeSurfaceExpose {

@@ -28,6 +28,7 @@ import { createInitialRuntimeState } from './initialRuntimeState'
 import { resolveVibeTarget, validateOptions } from './options'
 import { appendUniqueItems, validatePage } from './page'
 import { RequestDelayCountdown } from './requestDelay'
+import { updateReelAutoAdvanceState } from './reelAutoAdvance'
 import { VibeRouteSync } from './vibeRouting'
 import { snapshotState, type VibeRuntimeState } from './runtime'
 import type {
@@ -42,6 +43,7 @@ import type {
   VibeItemId,
   VibeLayout,
   VibeLayoutMode,
+  VibeReelAutoAdvanceOptions,
   VibeState,
 } from '../types'
 
@@ -230,12 +232,15 @@ class VibeController implements VibeInstance {
     }
   }
 
+  setReelAutoAdvance(update: boolean | VibeReelAutoAdvanceOptions): void {
+    updateReelAutoAdvanceState(this.state.reelAutoAdvance, update)
+  }
+
   setLayout(layout: VibeLayoutMode): void {
     if (layout === this.layoutMode) return
 
     this.layoutMode = layout
-    this.stopResponsiveLayout()
-    if (layout === 'responsive') this.startResponsiveLayout()
+    if (layout === 'responsive') this.handleResponsiveLayout()
     else this.applyLayout(layout)
   }
 
@@ -251,12 +256,15 @@ class VibeController implements VibeInstance {
   }
 
   private readonly handleResponsiveLayout = (): void => {
-    if (this.layoutMode !== 'responsive' || !this.target) return
-    this.applyLayout(resolveResponsiveLayoutForElement(this.target))
+    if (!this.target) return
+
+    const responsiveLayout = resolveResponsiveLayoutForElement(this.target)
+    this.state.reelMediaSource = responsiveLayout === 'reel' ? 'preview' : 'original'
+    if (this.layoutMode === 'responsive') this.applyLayout(responsiveLayout)
   }
 
   private startResponsiveLayout(): void {
-    if (this.layoutMode !== 'responsive' || !this.target) return
+    if (!this.target) return
 
     this.handleResponsiveLayout()
     const view = this.target.ownerDocument.defaultView

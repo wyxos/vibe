@@ -24,6 +24,12 @@ const emit = defineEmits<{
       </RouterLink>
       <RouterLink
         class="demos-aside-link"
+        to="/demos/reel-auto-advance"
+      >
+        Reel auto advance
+      </RouterLink>
+      <RouterLink
+        class="demos-aside-link"
         to="/demos/card-header-and-footer"
       >
         Card header &amp; footer
