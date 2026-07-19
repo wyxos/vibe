@@ -48,6 +48,10 @@ export type {
   VibeReelRouteContext,
   VibeReelAutoAdvanceOptions,
   VibeReelAutoAdvanceState,
+  VibeReelInfoSheetOptions,
+  VibeReelInfoSheetProps,
+  VibeReelInfoSheetState,
+  VibeReelOrigin,
   VibeRoutingOptions,
   VibeState,
 } from './types'

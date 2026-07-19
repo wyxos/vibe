@@ -7,6 +7,7 @@ import type {
   VibeItemId,
   VibeLayout,
   VibeReelAutoAdvanceState,
+  VibeReelInfoSheetState,
   VibeState,
 } from '../types'
 
@@ -25,6 +26,8 @@ export interface VibeRuntimeState {
   next: VibeCursor
   nextPageError: unknown | null
   reelAutoAdvance: VibeReelAutoAdvanceState
+  reelInfoSheet: VibeReelInfoSheetState
+  reelInfoSheetOverlay: boolean
   reelMediaSource: 'original' | 'preview'
   reelOrigin: 'masonry' | null
   total: number | null
@@ -52,6 +55,7 @@ export function snapshotState(state: VibeRuntimeState): VibeState {
     next: state.next,
     nextPageError: state.nextPageError,
     reelAutoAdvance: { ...state.reelAutoAdvance },
+    reelInfoSheet: { ...state.reelInfoSheet },
     reelOrigin: state.reelOrigin,
     total: state.total,
   }

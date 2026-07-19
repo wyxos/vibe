@@ -12,9 +12,13 @@ import {
 import type { MediaPreviewState } from '../core/mediaPreview'
 import { clampMediaIndex, mediaStateKey } from '../core/mediaAsset'
 import type { VibeRuntimeState } from '../core/runtime'
-import type { VibeCardRegion, VibeItemId } from '../types'
+import type {
+  VibeCardRegion,
+  VibeItemId,
+  VibeReelInfoSheetOptions,
+} from '../types'
 import MasonryFeed from './MasonryFeed.vue'
-import ReelFeed from './ReelFeed.vue'
+import ReelLayout from './ReelLayout.vue'
 
 const ENTRY_STAGGER_MS = 35
 
@@ -30,6 +34,7 @@ const props = defineProps<{
   canRetryEnd: boolean
   cardFooter?: VibeCardRegion
   cardHeader?: VibeCardRegion
+  reelInfoSheet?: VibeReelInfoSheetOptions
   state: VibeRuntimeState
 }>()
 
@@ -38,6 +43,7 @@ const emit = defineEmits<{
   closeReel: []
   loadMore: []
   openReel: [postId: VibeItemId]
+  reelInfoSheetChange: [enabled: boolean]
   retryEnd: []
 }>()
 
@@ -185,7 +191,7 @@ function focusMasonryCard(postId: VibeItemId, showFocusRing: boolean): void {
       focusTarget.classList.remove('media-card-focus-silent')
     }, { once: true })
   }
-  focusTarget?.focus()
+  focusTarget?.focus({ preventScroll: true })
 }
 
 function getReelOriginStyle(postId: VibeItemId): ReelOriginStyle {
@@ -225,6 +231,15 @@ function finishReelLeave(): void {
 }
 
 function onKeydown(event: KeyboardEvent): void {
+  const reelActive = props.state.layout === 'reel'
+    || props.state.reelOrigin === 'masonry'
+
+  if (event.key === 'Escape' && reelActive && props.state.reelInfoSheet.enabled) {
+    event.preventDefault()
+    emit('reelInfoSheetChange', false)
+    return
+  }
+
   if (event.key === 'Escape' && props.state.reelOrigin === 'masonry') {
     event.preventDefault()
     closeMasonryReel()
@@ -319,7 +334,7 @@ defineExpose({ getAutoScrollElement, loadIfNearBottom })
       </p>
     </main>
 
-    <ReelFeed
+    <ReelLayout
       v-else-if="state.layout === 'reel'"
       ref="reelRenderer"
       :can-retry-end="canRetryEnd"
@@ -333,11 +348,16 @@ defineExpose({ getAutoScrollElement, loadIfNearBottom })
       :media-source="state.reelMediaSource"
       :media-indices="mediaIndices"
       :initial-post-id="state.activeReelPostId"
+      :info-sheet="reelInfoSheet"
+      :info-sheet-enabled="state.reelInfoSheet.enabled"
+      :info-sheet-overlay="state.reelInfoSheetOverlay"
       :next-page-error="Boolean(state.nextPageError)"
+      origin="reel"
       :preview-states="reelMediaStates"
       :reel-auto-advance="state.reelAutoAdvance"
       :total="state.total"
       @active-change="emit('activeReelChange', $event)"
+      @close-info-sheet="emit('reelInfoSheetChange', false)"
       @error="markReelMediaError"
       @load-more="emit('loadMore')"
       @media-change="setMediaIndex"
@@ -385,7 +405,7 @@ defineExpose({ getAutoScrollElement, loadIfNearBottom })
           tabindex="-1"
           :style="reelOriginStyle"
         >
-          <ReelFeed
+          <ReelLayout
             ref="reelRenderer"
             :can-retry-end="canRetryEnd"
             :card-footer="cardFooter"
@@ -393,16 +413,21 @@ defineExpose({ getAutoScrollElement, loadIfNearBottom })
             :has-next="state.next !== null"
             :infinite-scroll="state.infiniteScroll"
             :initial-post-id="state.activeReelPostId"
+            :info-sheet="reelInfoSheet"
+            :info-sheet-enabled="state.reelInfoSheet.enabled"
+            :info-sheet-overlay="state.reelInfoSheetOverlay"
             :is-loading-more="state.isLoadingMore"
             :items="state.items"
             :load-more-locked="state.loadMoreLocked"
             :media-indices="mediaIndices"
             media-source="original"
             :next-page-error="Boolean(state.nextPageError)"
+            origin="masonry"
             :preview-states="mediaOriginalStates"
             :reel-auto-advance="state.reelAutoAdvance"
             :total="state.total"
             @active-change="emit('activeReelChange', $event)"
+            @close-info-sheet="emit('reelInfoSheetChange', false)"
             @error="markMediaOriginalError"
             @load-more="emit('loadMore')"
             @media-change="setMediaIndex"

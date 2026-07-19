@@ -471,6 +471,64 @@ becomes visible in either a base reel layout or a reel opened from masonry.
 At the loaded boundary, normal pagination is requested when another cursor is
 available; the load-more lock continues to prevent that request when active.
 
+## Reel information sheet
+
+Provide an application-owned Vue component when a reel should offer a
+customizable information sheet. The component is fixed for the lifetime of the
+Vibe instance, while its open state can be initialized and changed at runtime:
+
+```ts
+import ReelInformationSheet from './ReelInformationSheet.vue'
+
+const vibe = createVibe({
+  target: '#gallery',
+  layout: 'responsive',
+  loadPage,
+  reelInfoSheet: {
+    component: ReelInformationSheet,
+    enabled: false,
+  },
+})
+
+await vibe.mount()
+vibe.setReelInfoSheet(true)
+vibe.setReelInfoSheet(false)
+```
+
+Import `VibeReelInfoSheetProps` to type the consumer component. It receives the
+active `item`, zero-based post and media indexes, the active media item and
+source, inclusive media count, loaded and optional total counts, `layout:
+'reel'`, whether the reel originated from `reel` or `masonry`, and a `close()`
+callback. The component owns its visible controls and content:
+
+```vue
+<script setup lang="ts">
+import type { VibeReelInfoSheetProps } from '@wyxos/vibe'
+
+defineProps<VibeReelInfoSheetProps>()
+</script>
+
+<template>
+  <aside>
+    <button type="button" @click="close">Close</button>
+    <h2>Post {{ item.postId }}</h2>
+  </aside>
+</template>
+```
+
+Phones render the sheet as a full-width modal overlay and make the reel inert
+until it closes. Tablets through 1024px render a full-width non-overlay sheet
+below the reel. Larger layouts render it beside the reel at 25% width, changing
+to 40% at a 1920px viewport. Non-phone sheets stay mounted while vertical reel
+swipes update their active context. All presentations animate open and closed
+and honor reduced-motion preferences.
+
+`state.reelInfoSheet.enabled` reports the requested open state. Enabling without
+a configured component throws an error; disabling is always safe. Escape closes
+an open sheet first, then a second Escape closes a masonry-origin reel. The
+underlying masonry renderer stays mounted, so closing either surface preserves
+its scroll, media selections, and focus target.
+
 ## Load-more lock
 
 Pause ordinary forward pagination without disabling the feed or cancelling a request
@@ -526,6 +584,8 @@ vibe.setLoadMoreLocked(true)
 vibe.setLoadMoreLocked(false)
 vibe.setReelAutoAdvance(true)
 vibe.setReelAutoAdvance({ includePostItems: true, intervalMs: 8_000 })
+vibe.setReelInfoSheet(true)
+vibe.setReelInfoSheet(false)
 vibe.setAutoScroll(true, 80)
 vibe.pauseAutoScroll()
 vibe.resumeAutoScroll()

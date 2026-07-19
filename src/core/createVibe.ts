@@ -1,11 +1,4 @@
-import {
-  createApp,
-  nextTick,
-  reactive,
-  watch,
-  type App,
-  type WatchHandle,
-} from 'vue'
+import { createApp, nextTick, reactive, watch, type App, type WatchHandle } from 'vue'
 
 import VibeSurface from '../components/VibeSurface.vue'
 import {
@@ -20,7 +13,7 @@ import {
   restoreBackendAutofillSession,
   startBackendAutofill,
 } from './backendAutofill'
-import { resolveResponsiveLayoutForElement } from './responsiveLayout'
+import { resolvePhoneModeForElement, resolveResponsiveLayoutForElement } from './responsiveLayout'
 import { autofillInitialPage } from './initialAutofill'
 import { VibeFillController } from './fillController'
 import type { VibeSurfaceExpose } from './feed'
@@ -29,6 +22,7 @@ import { resolveVibeTarget, validateOptions } from './options'
 import { appendUniqueItems, validatePage } from './page'
 import { RequestDelayCountdown } from './requestDelay'
 import { updateReelAutoAdvanceState } from './reelAutoAdvance'
+import { setReelInfoSheetEnabled } from './reelInfoSheet'
 import { VibeRouteSync } from './vibeRouting'
 import { snapshotState, type VibeRuntimeState } from './runtime'
 import type {
@@ -98,11 +92,13 @@ class VibeController implements VibeInstance {
       canRetryEnd: Boolean(this.options.loadPage),
       cardFooter: this.options.cardFooter,
       cardHeader: this.options.cardHeader,
+      reelInfoSheet: this.options.reelInfoSheet,
       state: this.state,
       onActiveReelChange: (postId: VibeItemId) => this.setActiveReelPost(postId),
       onCloseReel: () => this.closeMasonryReel(),
       onLoadMore: () => { void this.loadNext() },
       onOpenReel: (postId: VibeItemId) => this.openMasonryReel(postId),
+      onReelInfoSheetChange: (enabled: boolean) => this.setReelInfoSheet(enabled),
       onRetryEnd: () => { void this.retryEnd() },
     })
     this.surface = this.app.mount(target) as unknown as VibeSurfaceExpose
@@ -236,6 +232,10 @@ class VibeController implements VibeInstance {
     updateReelAutoAdvanceState(this.state.reelAutoAdvance, update)
   }
 
+  setReelInfoSheet(enabled: boolean): void {
+    setReelInfoSheetEnabled(this.state.reelInfoSheet, this.options.reelInfoSheet, enabled)
+  }
+
   setLayout(layout: VibeLayoutMode): void {
     if (layout === this.layoutMode) return
 
@@ -259,6 +259,7 @@ class VibeController implements VibeInstance {
     if (!this.target) return
 
     const responsiveLayout = resolveResponsiveLayoutForElement(this.target)
+    this.state.reelInfoSheetOverlay = resolvePhoneModeForElement(this.target)
     this.state.reelMediaSource = responsiveLayout === 'reel' ? 'preview' : 'original'
     if (this.layoutMode === 'responsive') this.applyLayout(responsiveLayout)
   }
@@ -306,7 +307,6 @@ class VibeController implements VibeInstance {
     this.state.activeReelPostId = postId
     this.routing.syncReel(postId)
   }
-
   private cancelRequest(): void {
     this.autofillDelayCountdown.clear()
     this.requestVersion += 1

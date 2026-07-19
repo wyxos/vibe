@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Lock, LockOpen, Pause, Play, Square } from 'lucide-vue-next'
+import { Info, Lock, LockOpen, Pause, Play, Square, X } from 'lucide-vue-next'
 import { computed, ref, shallowRef } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 
@@ -59,8 +59,10 @@ const fillDelay = computed(() => (
 
 const isAutoScrollDemo = computed(() => route.name === 'demo-auto-scroll')
 const isReelAutoAdvanceDemo = computed(() => route.name === 'demo-reel-auto-advance')
+const isReelInfoSheetDemo = computed(() => route.name === 'demo-reel-info-sheet')
 const autoScroll = computed(() => vibeState.value?.autoScroll ?? null)
 const reelAutoAdvance = computed(() => vibeState.value?.reelAutoAdvance ?? null)
+const reelInfoSheet = computed(() => vibeState.value?.reelInfoSheet ?? null)
 
 function toggleAutoScroll(): void {
   const state = autoScroll.value
@@ -84,6 +86,12 @@ function toggleReelAutoAdvance(): void {
   const state = reelAutoAdvance.value
   if (!state) return
   demoVibe.value?.setReelAutoAdvance(!state.enabled)
+}
+
+function toggleReelInfoSheet(): void {
+  const state = reelInfoSheet.value
+  if (!state) return
+  demoVibe.value?.setReelInfoSheet(!state.enabled)
 }
 
 function updateReelPostItems(event: Event): void {
@@ -129,6 +137,7 @@ function updateVibeInstance(instance: VibeInstance | null): void {
         :class="{
           'app-header-actions--auto-scroll': isAutoScrollDemo,
           'app-header-actions--reel-auto-advance': isReelAutoAdvanceDemo,
+          'app-header-actions--reel-info-sheet': isReelInfoSheetDemo,
           'app-header-actions--operation': vibeState?.autofill.enabled || vibeState?.fill.enabled,
         }"
       >
@@ -237,6 +246,26 @@ function updateVibeInstance(instance: VibeInstance | null): void {
               <span class="toggle-thumb" />
             </span>
           </label>
+        </div>
+
+        <div
+          v-if="isReelInfoSheetDemo"
+          class="auto-scroll-controls"
+          data-test="reel-info-sheet-controls"
+        >
+          <button
+            class="auto-scroll-action"
+            type="button"
+            :disabled="!reelInfoSheet || !demoVibe || vibeState?.activeReelPostId == null"
+            :aria-label="reelInfoSheet?.enabled
+              ? 'Close reel information sheet'
+              : 'Open reel information sheet'"
+            @click="toggleReelInfoSheet"
+          >
+            <X v-if="reelInfoSheet?.enabled" :size="14" aria-hidden="true" />
+            <Info v-else :size="14" aria-hidden="true" />
+            <span>{{ reelInfoSheet?.enabled ? 'Close info' : 'Open info' }}</span>
+          </button>
         </div>
 
         <output

@@ -61,6 +61,17 @@ export interface VibeReelAutoAdvanceState {
   intervalMs: number
 }
 
+export type VibeReelOrigin = 'masonry' | 'reel'
+
+export interface VibeReelInfoSheetOptions {
+  component: Component
+  enabled?: boolean
+}
+
+export interface VibeReelInfoSheetState {
+  enabled: boolean
+}
+
 export interface VibePreview {
   src: string
   width: number | null
@@ -96,11 +107,17 @@ export interface VibeCardRegionProps {
   total: number | null
 }
 
+export interface VibeReelInfoSheetProps extends VibeCardRegionProps {
+  close: () => void
+  layout: 'reel'
+  origin: VibeReelOrigin
+}
+
 export interface VibeReelRouteContext {
   index: number
   item: VibeItem
   loadedCount: number
-  origin: 'masonry' | 'reel'
+  origin: VibeReelOrigin
   total: number | null
 }
 
@@ -338,6 +355,7 @@ export interface CreateVibeOptions {
   loadPage?: VibePageLoader
   onStateChange?: (state: VibeState) => void
   reelAutoAdvance?: VibeReelAutoAdvanceOptions
+  reelInfoSheet?: VibeReelInfoSheetOptions
   routing?: VibeRoutingOptions
 }
 
@@ -357,6 +375,7 @@ export interface VibeState {
   next: VibeCursor
   nextPageError: unknown | null
   reelAutoAdvance: VibeReelAutoAdvanceState
+  reelInfoSheet: VibeReelInfoSheetState
   reelOrigin: 'masonry' | null
   total: number | null
 }
@@ -384,4 +403,5 @@ export interface VibeInstance {
   setReelAutoAdvance: (
     update: boolean | VibeReelAutoAdvanceOptions,
   ) => void
+  setReelInfoSheet: (enabled: boolean) => void
 }

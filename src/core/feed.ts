@@ -4,6 +4,8 @@ import type {
   VibeItemId,
   VibeMediaSource,
   VibeReelAutoAdvanceState,
+  VibeReelInfoSheetOptions,
+  VibeReelOrigin,
 } from '../types'
 import type { MediaPreviewState } from './mediaPreview'
 
@@ -32,6 +34,13 @@ export interface ReelFeedProps extends FeedRendererProps {
   initialPostId?: VibeItemId | null
   mediaSource?: VibeMediaSource
   reelAutoAdvance: VibeReelAutoAdvanceState
+}
+
+export interface ReelLayoutProps extends ReelFeedProps {
+  infoSheet?: VibeReelInfoSheetOptions
+  infoSheetEnabled: boolean
+  infoSheetOverlay: boolean
+  origin: VibeReelOrigin
 }
 
 export interface VibeSurfaceExpose {
