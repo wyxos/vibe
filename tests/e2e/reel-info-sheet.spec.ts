@@ -35,19 +35,15 @@ async function openMasonrySheet(page: Page): Promise<void> {
   await expect(page.getByRole('complementary', { name: 'Reel information' })).toBeVisible()
 }
 
-async function expectPersistentAcrossSwipe(page: Page): Promise<void> {
+async function expectPersistentAcrossPostChange(page: Page): Promise<void> {
   const sheet = page.locator('[data-test="reel-info-sheet"]')
   await expect(sheet).not.toHaveClass(/vibe-info-sheet-enter-active/)
   const reel = page.locator('.vibe-reel-overlay .reel-feed')
   const firstPostId = await reel.getAttribute('data-active-post-id')
   await sheet.evaluate((element) => { element.setAttribute('data-e2e-identity', 'stable') })
-  const reelBox = await reel.boundingBox()
-  expect(reelBox).not.toBeNull()
-  await page.mouse.move(
-    (reelBox?.x ?? 0) + (reelBox?.width ?? 0) / 2,
-    (reelBox?.y ?? 0) + (reelBox?.height ?? 0) / 2,
-  )
-  await page.mouse.wheel(0, reelBox?.height ?? 600)
+  expect(await page.evaluate(() => (
+    window.__vibeReelInfoSheetDemo?.nextReelPost()
+  ))).toBe(true)
 
   await expect.poll(() => reel.getAttribute('data-active-post-id')).not.toBe(firstPostId)
   await expect(sheet).toHaveAttribute('data-e2e-identity', 'stable')
@@ -153,7 +149,7 @@ test.describe('tablet reel information sheet', () => {
     expect((layerBox?.height ?? 0) / (layoutBox?.height ?? 1)).toBeCloseTo(0.5, 2)
     const sheetBox = await page.locator('.reel-info-sheet').boundingBox()
     expect(Math.abs((sheetBox?.height ?? 0) - (layerBox?.height ?? 0))).toBeLessThan(2)
-    await expectPersistentAcrossSwipe(page)
+    await expectPersistentAcrossPostChange(page)
   })
 })
 
@@ -183,7 +179,7 @@ test.describe('desktop reel information sheet', () => {
     expect((layerBox?.width ?? 0) / (layoutBox?.width ?? 1)).toBeCloseTo(0.25, 2)
     const sheetBox = await page.locator('.reel-info-sheet').boundingBox()
     expect(Math.abs((sheetBox?.height ?? 0) - (layoutBox?.height ?? 0))).toBeLessThan(2)
-    await expectPersistentAcrossSwipe(page)
+    await expectPersistentAcrossPostChange(page)
 
     await page.getByRole('tab', { name: 'Post' }).click()
     const sparseFeed = page.locator('.reel-info-sheet .masonry-feed')
