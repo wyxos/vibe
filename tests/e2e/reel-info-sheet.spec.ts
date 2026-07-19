@@ -166,12 +166,18 @@ test.describe('desktop reel information sheet', () => {
       element.getBoundingClientRect().height >= Number.parseFloat(element.style.height)
     ))).toBe(true)
 
-    await page.getByRole('button', { name: 'Close reel information', exact: true }).click()
-    await expect(page.locator('[data-test="reel-info-sheet"]')).toBeHidden()
     await page.keyboard.press('Escape')
     await expect(page.locator('.vibe-reel-overlay')).toBeHidden()
     await expect(masonry).toHaveAttribute('data-e2e-identity', 'stable')
     expect(await masonry.evaluate((element) => element.scrollTop)).toBe(originalScrollTop)
+
+    await page.locator('.demo-vibe-host .masonry-item').first().click()
+    await expect(page.locator('.vibe-reel-overlay')).toBeVisible()
+    await expect(page.locator('[data-test="reel-info-sheet"]')).toBeVisible()
+    await page.getByRole('button', { name: 'Close reel information', exact: true }).click()
+    await expect(page.locator('[data-test="reel-info-sheet"]')).toBeHidden()
+    await page.keyboard.press('Escape')
+    await expect(page.locator('.vibe-reel-overlay')).toBeHidden()
   })
 })
 

@@ -159,7 +159,7 @@ describe('reel information sheet', () => {
     expect(target.querySelector('.reel-layout-main')?.hasAttribute('inert')).toBe(true)
   })
 
-  it('closes the sheet before its masonry reel and preserves masonry state', async () => {
+  it('closes a masonry reel while preserving the sheet state for the next reel', async () => {
     const instance = track(createVibe({
       target,
       initialPage: { items: [item(1), item(2), item(3)], next: null },
@@ -179,13 +179,16 @@ describe('reel information sheet', () => {
     expect(target.querySelector('[data-test="consumer-sheet"]')).not.toBeNull()
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
     await flushPromises()
-    expect(instance.getState().reelInfoSheet.enabled).toBe(false)
-    expect(target.querySelector('.vibe-reel-overlay')).not.toBeNull()
-
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
-    await flushPromises()
+    expect(instance.getState().reelInfoSheet.enabled).toBe(true)
     expect(target.querySelector('.vibe-reel-overlay')).toBeNull()
     expect(target.querySelector('.masonry-feed')).toBe(masonry)
     expect(masonry.scrollTop).toBe(180)
+
+    target.querySelector<HTMLElement>('[data-post-id="3"]')?.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, detail: 1 }),
+    )
+    await flushPromises()
+    expect(target.querySelector('.vibe-reel-overlay')).not.toBeNull()
+    expect(target.querySelector('[data-test="consumer-sheet"]')).not.toBeNull()
   })
 })

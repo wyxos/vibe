@@ -524,10 +524,12 @@ swipes update their active context. All presentations animate open and closed
 and honor reduced-motion preferences.
 
 `state.reelInfoSheet.enabled` reports the requested open state. Enabling without
-a configured component throws an error; disabling is always safe. Escape closes
-an open sheet first, then a second Escape closes a masonry-origin reel. The
-underlying masonry renderer stays mounted, so closing either surface preserves
-its scroll, media selections, and focus target.
+a configured component throws an error; disabling is always safe. In a base
+reel, Escape closes an open sheet. In a masonry-origin reel, Escape closes the
+viewer without disabling the sheet, so it is open again when another masonry
+card opens a reel. The consumer close control or `setReelInfoSheet(false)`
+explicitly disables it. The underlying masonry renderer stays mounted, so
+closing either surface preserves its scroll, media selections, and focus target.
 
 ## Load-more lock
 
