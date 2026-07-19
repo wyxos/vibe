@@ -390,7 +390,11 @@ export interface VibeInstance {
   getState: () => VibeState
   loadNext: () => Promise<void>
   mount: () => Promise<void>
+  nextReelMediaItem: () => boolean
+  nextReelPost: () => boolean
   pauseAutoScroll: () => void
+  previousReelMediaItem: () => boolean
+  previousReelPost: () => boolean
   reload: () => Promise<void>
   resumeAutoScroll: () => void
   restoreAutofillSession: (snapshot: VibeAutofillSessionSnapshot) => boolean

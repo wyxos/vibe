@@ -471,6 +471,35 @@ becomes visible in either a base reel layout or a reel opened from masonry.
 At the loaded boundary, normal pagination is requested when another cursor is
 available; the load-more lock continues to prevent that request when active.
 
+## Reel runtime controls
+
+Use the instance to drive the active reel through the same state paths as
+horizontal and vertical reel gestures:
+
+```ts
+// Media items within the active post (horizontal reel navigation).
+vibe.nextReelMediaItem()
+vibe.previousReelMediaItem()
+
+// Posts within the reel (vertical reel navigation).
+vibe.nextReelPost()
+vibe.previousReelPost()
+```
+
+Each navigation method returns `true` when it accepted a navigation and `false`
+when it was a no-op. Media-item navigation loops from the first item to the last
+and from the last item to the first, matching reel swipes; a post with only one
+media item returns `false`. Post navigation does not loop and returns `false` at
+the first or last currently loaded post. It does not implicitly load another
+page.
+
+All four methods return `false` before mount, during the initial loading or empty
+state, after destroy, and while the instance is showing only its masonry feed.
+They work in both a base reel layout and an open masonry-origin reel viewer.
+Successful navigation updates `state.activeReelPostId`, the selected media item,
+card-region props, route synchronization, and an open information sheet's
+consumer context through the same handlers used by gestures and keyboard input.
+
 ## Reel information sheet
 
 Provide an application-owned Vue component when a reel should offer a
@@ -530,6 +559,10 @@ viewer without disabling the sheet, so it is open again when another masonry
 card opens a reel. The consumer close control or `setReelInfoSheet(false)`
 explicitly disables it. The underlying masonry renderer stays mounted, so
 closing either surface preserves its scroll, media selections, and focus target.
+Calling `setReelInfoSheet()` before mount, during loading, or outside an active
+reel still updates this requested state; the sheet becomes visible when a valid
+reel context exists. This preserves the existing persistent sheet-state
+behavior across masonry viewer closes.
 
 ## Load-more lock
 
@@ -588,6 +621,10 @@ vibe.setReelAutoAdvance(true)
 vibe.setReelAutoAdvance({ includePostItems: true, intervalMs: 8_000 })
 vibe.setReelInfoSheet(true)
 vibe.setReelInfoSheet(false)
+vibe.nextReelMediaItem()
+vibe.previousReelMediaItem()
+vibe.nextReelPost()
+vibe.previousReelPost()
 vibe.setAutoScroll(true, 80)
 vibe.pauseAutoScroll()
 vibe.resumeAutoScroll()

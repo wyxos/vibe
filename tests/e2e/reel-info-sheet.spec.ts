@@ -97,6 +97,36 @@ test.describe('phone reel information sheet', () => {
     await expect(layer).toHaveClass(/vibe-info-sheet-leave-active/)
     await expect(layer).toBeHidden()
   })
+
+  test('supports public media, post, and sheet controls in the base reel', async ({ page }) => {
+    await waitForDemo(page)
+    const reel = page.locator('.demo-vibe-host .reel-feed')
+    const initialPostId = await reel.getAttribute('data-active-post-id')
+
+    expect(await page.evaluate(() => (
+      window.__vibeReelInfoSheetDemo?.previousReelPost()
+    ))).toBe(false)
+    expect(await page.evaluate(() => (
+      window.__vibeReelInfoSheetDemo?.nextReelPost()
+    ))).toBe(true)
+    await expect.poll(() => reel.getAttribute('data-active-post-id')).not.toBe(initialPostId)
+    expect(await page.evaluate(() => {
+      const vibe = window.__vibeReelInfoSheetDemo
+      if (!vibe) return false
+
+      for (let index = 0; index < vibe.getState().items.length; index += 1) {
+        if (vibe.nextReelMediaItem()) return true
+        if (!vibe.nextReelPost()) return false
+      }
+      return false
+    })).toBe(true)
+    await expect(reel).toHaveAttribute('data-active-media-index', '1')
+
+    await page.evaluate(() => window.__vibeReelInfoSheetDemo?.setReelInfoSheet(true))
+    await expect(page.getByRole('dialog', { name: 'Reel information' })).toBeVisible()
+    await page.evaluate(() => window.__vibeReelInfoSheetDemo?.setReelInfoSheet(false))
+    await expect(page.getByRole('dialog', { name: 'Reel information' })).toBeHidden()
+  })
 })
 
 test.describe('tablet reel information sheet', () => {
@@ -178,6 +208,21 @@ test.describe('desktop reel information sheet', () => {
     await expect(page.locator('[data-test="reel-info-sheet"]')).toBeHidden()
     await page.keyboard.press('Escape')
     await expect(page.locator('.vibe-reel-overlay')).toBeHidden()
+  })
+
+  test('supports public post navigation in a masonry-origin reel', async ({ page }) => {
+    await waitForDemo(page)
+    expect(await page.evaluate(() => (
+      window.__vibeReelInfoSheetDemo?.nextReelPost()
+    ))).toBe(false)
+
+    await page.locator('.demo-vibe-host .masonry-item').first().click()
+    const reel = page.locator('.vibe-reel-overlay .reel-feed')
+    const initialPostId = await reel.getAttribute('data-active-post-id')
+    expect(await page.evaluate(() => (
+      window.__vibeReelInfoSheetDemo?.nextReelPost()
+    ))).toBe(true)
+    await expect.poll(() => reel.getAttribute('data-active-post-id')).not.toBe(initialPostId)
   })
 })
 

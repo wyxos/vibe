@@ -26,6 +26,7 @@ interface FeedRendererExpose {
   changeActiveMedia?: (direction: -1 | 1) => boolean
   getScrollElement?: () => HTMLElement | null
   loadIfNearBottom: () => void
+  moveActivePost?: (direction: -1 | 1) => boolean
 }
 
 type ReelOriginStyle = CSSProperties & Record<`--vibe-reel-origin-${string}`, string>
@@ -154,6 +155,20 @@ async function loadIfNearBottom(): Promise<void> {
     ? reelRenderer.value
     : masonryRenderer.value
   renderer?.loadIfNearBottom()
+}
+
+function changeActiveReelMedia(direction: -1 | 1): boolean {
+  if (props.state.isLoading || props.state.items.length === 0) return false
+  if (props.state.layout !== 'reel' && props.state.reelOrigin !== 'masonry') return false
+
+  return reelRenderer.value?.changeActiveMedia?.(direction) ?? false
+}
+
+function moveActiveReelPost(direction: -1 | 1): boolean {
+  if (props.state.isLoading || props.state.items.length === 0) return false
+  if (props.state.layout !== 'reel' && props.state.reelOrigin !== 'masonry') return false
+
+  return reelRenderer.value?.moveActivePost?.(direction) ?? false
 }
 
 function getAutoScrollElement(): HTMLElement | null {
@@ -297,7 +312,12 @@ onBeforeUnmount(() => {
   if (enterReleaseFrame !== null) cancelAnimationFrame(enterReleaseFrame)
 })
 
-defineExpose({ getAutoScrollElement, loadIfNearBottom })
+defineExpose({
+  changeActiveReelMedia,
+  getAutoScrollElement,
+  loadIfNearBottom,
+  moveActiveReelPost,
+})
 </script>
 
 <template>

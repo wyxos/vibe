@@ -125,9 +125,12 @@ describe('reel information sheet', () => {
     expect(target.querySelector('.reel-info-sheet')?.getAttribute('role'))
       .toBe('complementary')
 
-    const reel = target.querySelector<HTMLElement>('.reel-feed')!
-    reel.scrollTop = 500
-    reel.dispatchEvent(new Event('scroll'))
+    expect(instance.nextReelMediaItem()).toBe(true)
+    await flushPromises()
+    expect(target.querySelector('[data-test="consumer-sheet"] output')?.textContent)
+      .toBe('1:0:reel:reel:original:1:2:2:8')
+
+    expect(instance.nextReelPost()).toBe(true)
     await flushPromises()
     expect(target.querySelector('[data-test="consumer-sheet"] output')?.textContent)
       .toBe('2:1:reel:reel:original:0:1:2:8')

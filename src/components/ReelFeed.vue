@@ -193,6 +193,14 @@ function changeActiveMedia(direction: -1 | 1): boolean {
   return true
 }
 
+function moveActivePost(direction: -1 | 1): boolean {
+  const nextIndex = activeIndex.value + direction
+  if (!galleryElement.value || nextIndex < 0 || nextIndex >= props.items.length) return false
+
+  advanceToPost(nextIndex)
+  return true
+}
+
 function prefersReducedMotion(): boolean {
   return typeof window.matchMedia === 'function'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -203,13 +211,13 @@ function advanceToPost(index: number): void {
   if (!element) return
 
   const top = index * (viewportHeight || element.clientHeight)
+  activeIndex.value = index
   if (!prefersReducedMotion() && typeof element.scrollTo === 'function') {
     element.scrollTo({ behavior: 'smooth', top })
     return
   }
 
   element.scrollTop = top
-  activeIndex.value = index
 }
 
 function onAutoAdvanceComplete(): void {
@@ -289,7 +297,13 @@ onBeforeUnmount(() => {
   if (resizeReleaseTimer !== null) clearTimeout(resizeReleaseTimer)
 })
 
-defineExpose({ activeIndex, activePostId, changeActiveMedia, loadIfNearBottom })
+defineExpose({
+  activeIndex,
+  activePostId,
+  changeActiveMedia,
+  loadIfNearBottom,
+  moveActivePost,
+})
 </script>
 
 <template>

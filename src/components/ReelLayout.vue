@@ -18,6 +18,7 @@ import ReelFeed from './ReelFeed.vue'
 interface ReelFeedExpose {
   changeActiveMedia: (direction: -1 | 1) => boolean
   loadIfNearBottom: () => void
+  moveActivePost: (direction: -1 | 1) => boolean
 }
 
 const props = defineProps<ReelLayoutProps>()
@@ -81,6 +82,10 @@ function loadIfNearBottom(): void {
   reelFeed.value?.loadIfNearBottom()
 }
 
+function moveActivePost(direction: -1 | 1): boolean {
+  return reelFeed.value?.moveActivePost(direction) ?? false
+}
+
 function relayError(postId: VibeItemId, mediaIndex: number): void {
   emit('error', postId, mediaIndex)
 }
@@ -120,7 +125,7 @@ onBeforeUnmount(() => {
   previousFocus = null
 })
 
-defineExpose({ changeActiveMedia, loadIfNearBottom })
+defineExpose({ changeActiveMedia, loadIfNearBottom, moveActivePost })
 </script>
 
 <template>

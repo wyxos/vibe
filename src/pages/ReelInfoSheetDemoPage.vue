@@ -26,6 +26,12 @@ const emit = defineEmits<{
 const vibeTarget = shallowRef<HTMLElement | null>(null)
 let vibe: VibeInstance | null = null
 
+declare global {
+  interface Window {
+    __vibeReelInfoSheetDemo?: VibeInstance
+  }
+}
+
 watch(() => props.infiniteScroll, (enabled) => {
   vibe?.setInfiniteScroll(enabled)
 })
@@ -54,11 +60,13 @@ onMounted(async () => {
     },
   })
   emit('vibeInstanceChange', vibe)
+  window.__vibeReelInfoSheetDemo = vibe
   await vibe.mount()
 })
 
 onBeforeUnmount(() => {
   emit('vibeInstanceChange', null)
+  delete window.__vibeReelInfoSheetDemo
   vibe?.destroy()
   vibe = null
 })

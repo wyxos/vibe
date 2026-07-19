@@ -1,5 +1,4 @@
 import { createApp, nextTick, reactive, watch, type App, type WatchHandle } from 'vue'
-
 import VibeSurface from '../components/VibeSurface.vue'
 import {
   cancelAutofill,
@@ -40,7 +39,6 @@ import type {
   VibeReelAutoAdvanceOptions,
   VibeState,
 } from '../types'
-
 class VibeController implements VibeInstance {
   private app: App<Element> | null = null
   private readonly autoScroll: VibeAutoScrollController
@@ -127,7 +125,10 @@ class VibeController implements VibeInstance {
   getState(): VibeState {
     return snapshotState(this.state)
   }
-
+  nextReelMediaItem(): boolean { return this.surface?.changeActiveReelMedia(1) ?? false }
+  previousReelMediaItem(): boolean { return this.surface?.changeActiveReelMedia(-1) ?? false }
+  nextReelPost(): boolean { return this.surface?.moveActiveReelPost(1) ?? false }
+  previousReelPost(): boolean { return this.surface?.moveActiveReelPost(-1) ?? false }
   pauseAutoScroll(): void { this.autoScroll.setPaused(true) }
   resumeAutoScroll(): void { this.autoScroll.setPaused(false) }
   setAutoScroll(enabled: boolean, speedPxPerSecond?: number): void {
@@ -136,7 +137,6 @@ class VibeController implements VibeInstance {
   setAutoScrollSpeed(speedPxPerSecond: number): void {
     this.autoScroll.setSpeed(speedPxPerSecond)
   }
-
   applyAutofillUpdate(update: VibeBackendAutofillUpdate): boolean {
     const applied = applyBackendAutofillUpdate(this.options.autofill, this.state, update)
     if (applied) this.syncAutofillCountdown()

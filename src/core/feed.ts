@@ -44,8 +44,10 @@ export interface ReelLayoutProps extends ReelFeedProps {
 }
 
 export interface VibeSurfaceExpose {
+  changeActiveReelMedia: (direction: -1 | 1) => boolean
   getAutoScrollElement: () => HTMLElement | null
   loadIfNearBottom: () => Promise<void>
+  moveActiveReelPost: (direction: -1 | 1) => boolean
 }
 
 export const LOAD_MORE_THRESHOLD = 240
