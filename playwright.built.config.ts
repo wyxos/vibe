@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test'
 
 const host = '127.0.0.1'
-const port = 4173
+const port = 4174
 const baseURL = `http://${host}:${port}`
 
 export default defineConfig({
@@ -19,7 +19,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     viewport: {
-      width: 1440,
+      width: 1_440,
       height: 900,
     },
   },
@@ -32,7 +32,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `node ./node_modules/vite/bin/vite.js --host ${host} --port ${port} --strictPort`,
+    command: `node ./node_modules/vite/bin/vite.js preview --host ${host} --port ${port} --strictPort`,
     url: baseURL,
     reuseExistingServer: false,
     stdout: 'pipe',
