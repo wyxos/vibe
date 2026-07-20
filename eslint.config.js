@@ -20,7 +20,7 @@ const baseRules = {
 
 export default [
   {
-    ignores: ['dist/**', 'lib/**', 'node_modules/**', '.gh-pages/**', '__blank-vite/**', 'test-results/**', 'playwright-report/**', 'coverage/**'],
+    ignores: ['dist/**', 'docs/.vitepress/cache/**', 'docs/.vitepress/dist/**', 'lib/**', 'node_modules/**', '.gh-pages/**', '__blank-vite/**', 'test-results/**', 'playwright-report/**', 'coverage/**'],
   },
   js.configs.recommended,
   {

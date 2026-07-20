@@ -1,0 +1,15 @@
+:root {
+  --vp-c-brand-1: #0891b2;
+  --vp-c-brand-2: #0284c7;
+  --vp-c-brand-3: #2563eb;
+  --vp-c-brand-soft: rgb(6 182 212 / 14%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

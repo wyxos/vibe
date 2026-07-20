@@ -1,0 +1,66 @@
+# Configuration
+
+Pass `CreateVibeOptions` to `createVibe()`.
+
+```ts
+import { createVibe, type CreateVibeOptions } from '@wyxos/vibe'
+
+const options: CreateVibeOptions = {
+  target: '#gallery',
+  loadPage,
+}
+
+const vibe = createVibe(options)
+```
+
+## Core options
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `target` | `Element \| string` | required | Element, or selector resolving to one, that will contain Vibe. |
+| `layout` | `'masonry' \| 'reel' \| 'responsive'` | `'masonry'` | Selects the renderer or responsive switching. |
+| `initialPage` | `VibePage` | — | Items and cursor restored before mounting. |
+| `loadPage` | `VibePageLoader` | — | Asynchronous cursor page loader. |
+| `infiniteScroll` | `boolean` | `true` | Loads forward when the feed reaches its boundary. |
+| `onStateChange` | `(state: VibeState) => void` | — | Receives the initial state and every public state change. |
+
+At least one of `initialPage` or `loadPage` is needed to display content.
+
+## Presentation options
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `cardHeader` | `VibeCardRegion` | Typed Vue component above each post's media. |
+| `cardFooter` | `VibeCardRegion` | Typed Vue component below each post's media. |
+| `reelInfoSheet` | `VibeReelInfoSheetOptions` | Application-owned information sheet for an active reel. |
+| `reelAutoAdvance` | `VibeReelAutoAdvanceOptions` | Timed image progression and playback-ended media progression. |
+| `autoScroll` | `VibeAutoScrollOptions` | Continuous masonry scrolling in pixels per second. |
+
+## Feed workflow options
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `autofill` | `VibeAutofillOptions` | Collects toward a target number of unique top-level cards. Supports frontend and backend strategies. |
+| `fill` | `VibeFillOptions` | Configures caller-triggered page collection through `vibe.fill()`. Supports frontend and backend strategies. |
+| `routing` | `VibeRoutingOptions` | Synchronizes active reel locations through an application-owned Vue Router instance. |
+
+Vue Router is an optional peer dependency and is only required when `routing` is configured.
+
+## State changes
+
+```ts
+const vibe = createVibe({
+  target: '#gallery',
+  loadPage,
+  onStateChange(state) {
+    renderStatus({
+      layout: state.layout,
+      lifecycle: state.lifecycle,
+      loaded: state.items.length,
+      total: state.total,
+    })
+  },
+})
+```
+
+The callback is observational. Use instance methods to request runtime changes.

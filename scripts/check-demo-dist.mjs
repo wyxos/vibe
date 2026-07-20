@@ -8,6 +8,7 @@ const errors = []
 
 const indexHtml = await readRequired('index.html')
 const fallbackHtml = await readRequired('404.html')
+const docsHtml = await readRequired('docs/index.html')
 const cname = await readRequired('CNAME')
 
 if (cname !== null && cname.trim() !== expectedCname) {
@@ -16,6 +17,10 @@ if (cname !== null && cname.trim() !== expectedCname) {
 
 if (indexHtml !== null && fallbackHtml !== null && fallbackHtml !== indexHtml) {
   errors.push('Expected dist/404.html to match dist/index.html for GitHub Pages deep-link fallback.')
+}
+
+if (docsHtml !== null && !docsHtml.includes('<h1 id="getting-started"')) {
+  errors.push('Expected dist/docs/index.html to render the Getting started documentation page.')
 }
 
 if (errors.length > 0) {

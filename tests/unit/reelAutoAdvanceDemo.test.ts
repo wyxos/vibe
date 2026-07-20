@@ -70,14 +70,14 @@ describe('reel auto advance demo', () => {
       .toBe('Reel auto advance')
     expect(wrapper.get('[data-layout-mode="reel"]').exists()).toBe(true)
     expect(wrapper.get('[data-active-post-id]').attributes('data-active-post-id')).toBe('2')
-    expect(wrapper.get('img').attributes('src')).toBe('https://example.com/2.jpg')
+    expect(wrapper.get('.media-preview').attributes('src')).toBe('https://example.com/2.jpg')
     expect(wrapper.get('[data-post-id="3"] video').attributes('src'))
       .toBe('https://example.com/3.mp4')
     expect(wrapper.get('[aria-label="Start reel auto advance"]').exists()).toBe(true)
     expect(wrapper.get('[data-test="reel-auto-advance-items"]').attributes('checked'))
       .toBeUndefined()
 
-    await wrapper.get('img').trigger('load')
+    await wrapper.get('.media-preview').trigger('load')
     await wrapper.get('[aria-label="Start reel auto advance"]').trigger('click')
     await flushPromises()
 

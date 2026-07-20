@@ -2,6 +2,8 @@
 
 Vibe is an initializable Vue 3 media feed with virtualized masonry and reel layouts.
 
+Read the [full documentation](./docs/index.md) for guided setup, layout and data-loading concepts, and the API reference.
+
 ## Installation
 
 ```bash

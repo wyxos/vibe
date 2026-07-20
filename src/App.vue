@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Info, Lock, LockOpen, Pause, Play, Square, X } from 'lucide-vue-next'
+import { BookOpen, Github, Info, Lock, LockOpen, Pause, Play, Square, X } from 'lucide-vue-next'
 import { computed, ref, shallowRef } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 
@@ -121,7 +121,10 @@ function updateVibeInstance(instance: VibeInstance | null): void {
   <div class="app-shell">
     <header class="app-header">
       <div class="app-header-navigation">
-        <RouterLink class="app-title" to="/">Vibe</RouterLink>
+        <RouterLink class="app-title" to="/">
+          <img class="app-title-logo" :src="'/logo.svg'" alt="">
+          <span>Vibe</span>
+        </RouterLink>
         <nav class="app-navigation" aria-label="Primary navigation">
           <RouterLink
             class="app-nav-link"
@@ -129,6 +132,27 @@ function updateVibeInstance(instance: VibeInstance | null): void {
           >
             Demos
           </RouterLink>
+          <a class="app-nav-link" href="/docs/">
+            <BookOpen :size="15" aria-hidden="true" />
+            Docs
+          </a>
+          <a
+            class="app-nav-link"
+            href="https://github.com/wyxos/vibe"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Github :size="15" aria-hidden="true" />
+            GitHub
+          </a>
+          <a
+            class="app-nav-link"
+            href="https://wyxos.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Wyxos
+          </a>
         </nav>
       </div>
 

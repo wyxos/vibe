@@ -85,7 +85,7 @@ describe('App', () => {
     expect(wrapper.get('[data-layout-mode="masonry"]').exists()).toBe(true)
     expect(wrapper.get('[data-test="vibe-lifecycle"]').text()).toBe('Masonry·Loaded')
     expect(wrapper.findAll('.masonry-item')).toHaveLength(1)
-    expect(wrapper.get('img').attributes('src'))
+    expect(wrapper.get('.media-preview').attributes('src'))
       .toBe('https://example.com/image-10-preview.jpeg')
   })
 
@@ -102,7 +102,7 @@ describe('App', () => {
     expect(wrapper.get('[data-layout-mode="reel"]').exists()).toBe(true)
     expect(wrapper.get('.reel-track').exists()).toBe(true)
     expect(wrapper.find('.masonry').exists()).toBe(false)
-    expect(wrapper.get('img').attributes('src'))
+    expect(wrapper.get('.media-preview').attributes('src'))
       .toBe('https://example.com/image-10-preview.jpeg')
   })
 
@@ -118,7 +118,7 @@ describe('App', () => {
 
     expect(wrapper.get('[data-layout-mode="reel"]').exists()).toBe(true)
     expect(wrapper.find('.masonry').exists()).toBe(false)
-    expect(wrapper.get('img').attributes('src'))
+    expect(wrapper.get('.media-preview').attributes('src'))
       .toBe('https://example.com/image-10-preview.jpeg')
   })
 
@@ -150,7 +150,7 @@ describe('App', () => {
 
     const wrapper = await mountApp()
     await flushPromises()
-    await wrapper.get('img').trigger('error')
+    await wrapper.get('.media-preview').trigger('error')
 
     const error = wrapper.get('[data-test="media-error"]')
     expect(error.text()).toContain('404')
