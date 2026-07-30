@@ -55,10 +55,12 @@ onMounted(async () => {
       delayMaxMs: 1_500,
     },
     cardFooter: {
+      background: 'transparent',
       component: DemoCardFooter,
       height: 48,
     },
     cardHeader: {
+      background: 'transparent',
       component: DemoCardHeader,
       height: 48,
     },

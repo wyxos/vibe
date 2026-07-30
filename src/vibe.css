@@ -456,6 +456,10 @@
   background: #111111;
 }
 
+.media-card-region--transparent {
+  background: transparent;
+}
+
 .media-card-activator {
   position: absolute;
   z-index: 1;

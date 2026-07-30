@@ -158,8 +158,16 @@ describe('ReelFeed', () => {
     const wrapper = mount(ReelFeed, {
       props: {
         ...props(),
-        cardFooter: { component: Region, height: 48 },
-        cardHeader: { component: Region, height: 40 },
+        cardFooter: {
+          background: 'transparent',
+          component: Region,
+          height: 48,
+        },
+        cardHeader: {
+          background: 'transparent',
+          component: Region,
+          height: 40,
+        },
         items: [feedItem(10), groupedSecondItem],
       },
     })
@@ -172,6 +180,8 @@ describe('ReelFeed', () => {
     const gallery = wrapper.get('.reel-feed')
     expect(wrapper.findAll('.media-card-header')).toHaveLength(1)
     expect(wrapper.findAll('.media-card-footer')).toHaveLength(1)
+    expect(header.classes()).toContain('media-card-region--transparent')
+    expect(footer.classes()).toContain('media-card-region--transparent')
     expect(gallery.find('.media-card-header').exists()).toBe(false)
     expect(gallery.find('.media-card-footer').exists()).toBe(false)
     expect(header.text()).toBe('0:10:0')

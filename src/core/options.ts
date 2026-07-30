@@ -12,6 +12,13 @@ function validateCardRegion(
   if (!Number.isFinite(region.height) || region.height <= 0) {
     throw new TypeError(`Vibe ${name} height must be a positive number.`)
   }
+  if (region.background !== undefined
+    && region.background !== 'default'
+    && region.background !== 'transparent') {
+    throw new TypeError(
+      `Vibe ${name} background must be "default" or "transparent".`,
+    )
+  }
 }
 
 export function validateOptions(options: CreateVibeOptions): void {

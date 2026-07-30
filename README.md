@@ -87,24 +87,27 @@ const vibe = createVibe({
   layout: 'responsive',
   loadPage,
   cardHeader: {
+    background: 'transparent',
     component: MediaInfo,
     height: 40,
   },
   cardFooter: {
+    background: 'transparent',
     component: MediaReactions,
     height: 48,
   },
 })
 ```
 
-The heights are CSS pixels and let Vibe include both regions in masonry before
-virtualized cards mount. In reel layout, one header and footer remain stationary
-while only the media viewport scrolls between posts. Each component controls its
-own content and alignment, and receives `item`, `layout`, `mediaSource`, zero-based `index`,
-`loadedCount`, the active `mediaItem`, its zero-based `mediaIndex`, its inclusive
-`mediaCount`, and the optional remote `total`. Import the
-`VibeCardRegionProps` type for typed Vue props. Interacting with these regions
-does not activate the underlying media.
+The optional `background` is either `default` (the existing Vibe surface) or
+`transparent`. The heights are CSS pixels and let Vibe include both regions in
+masonry before virtualized cards mount. In reel layout, one header and footer
+remain stationary while only the media viewport scrolls between posts. Each
+component controls its own content and alignment, and receives `item`, `layout`,
+`mediaSource`, zero-based `index`, `loadedCount`, the active `mediaItem`, its
+zero-based `mediaIndex`, its inclusive `mediaCount`, and the optional remote
+`total`. Import the `VibeCardRegionProps` type for typed Vue props. Interacting
+with these regions does not activate the underlying media.
 
 When a feed item has entries in `item.items`, Vibe treats the parent media as
 position one and the nested entries as the remaining positions. Masonry cards

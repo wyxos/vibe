@@ -37,7 +37,12 @@ const mediaItem = computed(() => (
 <template>
   <div
     class="media-card-region"
-    :class="`media-card-${placement}`"
+    :class="[
+      `media-card-${placement}`,
+      {
+        'media-card-region--transparent': region.background === 'transparent',
+      },
+    ]"
     :style="{ height: `${region.height}px` }"
     @click.stop
     @keydown.stop

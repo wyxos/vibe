@@ -92,6 +92,7 @@ export interface VibeItem extends VibeMediaAsset {
 }
 
 export interface VibeCardRegion {
+  background?: 'default' | 'transparent'
   component: Component
   height: number
 }
