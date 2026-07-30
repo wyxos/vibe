@@ -11,12 +11,15 @@ import {
 
 import type { MediaPreviewState } from '../core/mediaPreview'
 import { clampMediaIndex, mediaStateKey } from '../core/mediaAsset'
-import type { VibeRuntimeState } from '../core/runtime'
+import { snapshotState, type VibeRuntimeState } from '../core/runtime'
 import type {
   VibeCardRegion,
+  VibeFeedFooter,
+  VibeFeedFooterActions,
   VibeItemId,
   VibeReelInfoSheetOptions,
 } from '../types'
+import FeedStatus from './FeedStatus.vue'
 import MasonryFeed from './MasonryFeed.vue'
 import ReelLayout from './ReelLayout.vue'
 
@@ -35,6 +38,8 @@ const props = defineProps<{
   canRetryEnd: boolean
   cardFooter?: VibeCardRegion
   cardHeader?: VibeCardRegion
+  feedFooter?: VibeFeedFooter
+  feedFooterActions: VibeFeedFooterActions
   reelInfoSheet?: VibeReelInfoSheetOptions
   state: VibeRuntimeState
 }>()
@@ -59,6 +64,7 @@ const entryDelays = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
 const mediaIndices = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
 const mediaPreviewStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
 const mediaOriginalStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
+const footerState = computed(() => snapshotState(props.state))
 const reelMediaStates = computed(() => props.state.reelMediaSource === 'original'
   ? mediaOriginalStates.value
   : mediaPreviewStates.value)
@@ -325,34 +331,15 @@ defineExpose({
     ref="surfaceElement"
     class="vibe-surface"
   >
-    <main
-      v-if="state.error"
-      class="gallery-shell"
-      role="alert"
-    >
-      <p class="gallery-status">
-        Unable to load media.
-      </p>
-    </main>
-
-    <main
-      v-else-if="state.isLoading"
-      class="gallery-shell"
-      role="status"
-    >
-      <p class="gallery-status">
-        Loading media…
-      </p>
-    </main>
-
-    <main
-      v-else-if="state.items.length === 0"
-      class="gallery-shell"
-    >
-      <p class="gallery-status">
-        No media found.
-      </p>
-    </main>
+    <FeedStatus
+      v-if="state.error || state.isLoading || state.items.length === 0"
+      :actions="feedFooterActions"
+      :can-retry-end="canRetryEnd"
+      :feed-footer="feedFooter"
+      :state="footerState"
+      @load-more="emit('loadMore')"
+      @retry-end="emit('retryEnd')"
+    />
 
     <ReelLayout
       v-else-if="state.layout === 'reel'"
@@ -361,6 +348,8 @@ defineExpose({
       :has-next="state.next !== null"
       :card-footer="cardFooter"
       :card-header="cardHeader"
+      :feed-footer="feedFooter"
+      :feed-footer-actions="feedFooterActions"
       :infinite-scroll="state.infiniteScroll"
       :is-loading-more="state.isLoadingMore"
       :items="state.items"
@@ -375,6 +364,7 @@ defineExpose({
       origin="reel"
       :preview-states="reelMediaStates"
       :reel-auto-advance="state.reelAutoAdvance"
+      :state="footerState"
       :total="state.total"
       @active-change="emit('activeReelChange', $event)"
       @close-info-sheet="emit('reelInfoSheetChange', false)"
@@ -393,6 +383,8 @@ defineExpose({
         :entry-delays="entryDelays"
         :card-footer="cardFooter"
         :card-header="cardHeader"
+        :feed-footer="feedFooter"
+        :feed-footer-actions="feedFooterActions"
         :has-next="state.next !== null"
         :infinite-scroll="state.infiniteScroll"
         :is-loading-more="state.isLoadingMore"
@@ -402,6 +394,7 @@ defineExpose({
         :next-page-error="Boolean(state.nextPageError)"
         :preview-states="mediaPreviewStates"
         :suspended="state.reelOrigin === 'masonry' || isReelLeaving"
+        :state="footerState"
         :total="state.total"
         @activate="activateMasonryItem"
         @error="markMediaPreviewError"
@@ -430,6 +423,8 @@ defineExpose({
             :can-retry-end="canRetryEnd"
             :card-footer="cardFooter"
             :card-header="cardHeader"
+            :feed-footer="feedFooter"
+            :feed-footer-actions="feedFooterActions"
             :has-next="state.next !== null"
             :infinite-scroll="state.infiniteScroll"
             :initial-post-id="state.activeReelPostId"
@@ -445,6 +440,7 @@ defineExpose({
             origin="masonry"
             :preview-states="mediaOriginalStates"
             :reel-auto-advance="state.reelAutoAdvance"
+            :state="footerState"
             :total="state.total"
             @active-change="emit('activeReelChange', $event)"
             @close-info-sheet="emit('reelInfoSheetChange', false)"

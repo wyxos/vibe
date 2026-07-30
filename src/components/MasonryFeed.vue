@@ -18,7 +18,7 @@ import {
 } from '../core/masonry'
 import type { VibeItemId } from '../types'
 import GalleryScrollbar from './GalleryScrollbar.vue'
-import GalleryFooter from './GalleryFooter.vue'
+import FeedFooter from './FeedFooter.vue'
 import MediaCard from './MediaCard.vue'
 
 const MIN_COLUMN_WIDTH = 240
@@ -244,13 +244,16 @@ defineExpose({ getScrollElement, loadIfNearBottom })
         />
       </section>
 
-      <GalleryFooter
+      <FeedFooter
+        :actions="feedFooterActions"
         :can-retry-end="canRetryEnd"
+        :feed-footer="feedFooter"
         :has-error="nextPageError"
         :has-next="hasNext"
         :infinite-scroll="infiniteScroll"
         :is-loading="isLoadingMore"
         :load-more-locked="loadMoreLocked"
+        :state="state"
         @load-more="emit('loadMore')"
         @retry-end="emit('retryEnd')"
       />

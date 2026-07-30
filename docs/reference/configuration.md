@@ -32,6 +32,7 @@ At least one of `initialPage` or `loadPage` is needed to display content.
 | --- | --- | --- |
 | `cardHeader` | `VibeCardRegion` | Typed Vue component above each post's media. |
 | `cardFooter` | `VibeCardRegion` | Typed Vue component below each post's media. |
+| `feedFooter` | `VibeFeedFooter` | Replaces the default `GalleryFooter` with a consumer-owned component. |
 | `reelInfoSheet` | `VibeReelInfoSheetOptions` | Application-owned information sheet for an active reel. |
 | `reelAutoAdvance` | `VibeReelAutoAdvanceOptions` | Timed image progression and playback-ended media progression. |
 | `autoScroll` | `VibeAutoScrollOptions` | Continuous masonry scrolling in pixels per second. |
@@ -45,6 +46,19 @@ At least one of `initialPage` or `loadPage` is needed to display content.
 | `routing` | `VibeRoutingOptions` | Synchronizes active reel locations through an application-owned Vue Router instance. |
 
 Vue Router is an optional peer dependency and is only required when `routing` is configured.
+
+Frontend `autofill.maxAdditionalPages` accepts a non-negative integer or
+`'unlimited'`. The unlimited value is serializable and does not bypass target,
+cursor, end-of-feed, error, abort, cancellation, destruction, or request-delay
+guards.
+
+## Custom feed footer
+
+The configured component receives `VibeFeedFooterProps`: a reactive public
+`state: VibeState` and `actions` containing `loadMore()`, `retryEnd()`,
+`retry()`, and `cancelAutofill()`. It may invoke those callbacks or emit
+`load-more`, `retry-end`, `retry`, and `autofill-cancel`. Omitting
+`feedFooter` preserves the built-in `GalleryFooter`.
 
 ## State changes
 

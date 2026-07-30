@@ -8,6 +8,7 @@ export type VibeLayoutMode = VibeLayout | 'responsive'
 export type VibeLifecycle = 'error' | 'loaded' | 'loading'
 export type VibeMediaSource = 'preview' | 'original'
 export type VibeAutofillStrategy = 'backend' | 'frontend'
+export type VibeAutofillPageLimit = number | 'unlimited'
 export type VibeFillStrategy = 'backend' | 'frontend'
 export type VibeAutofillStatus =
   | 'cancelled'
@@ -107,6 +108,22 @@ export interface VibeCardRegionProps {
   total: number | null
 }
 
+export interface VibeFeedFooter {
+  component: Component
+}
+
+export interface VibeFeedFooterActions {
+  cancelAutofill: () => Promise<void>
+  loadMore: () => Promise<void>
+  retry: () => Promise<void>
+  retryEnd: () => Promise<void>
+}
+
+export interface VibeFeedFooterProps {
+  actions: VibeFeedFooterActions
+  state: VibeState
+}
+
 export interface VibeReelInfoSheetProps extends VibeCardRegionProps {
   close: () => void
   layout: 'reel'
@@ -167,7 +184,7 @@ export interface VibeRequestDelayOptions {
 }
 
 export interface VibeFrontendAutofillOptions extends VibeRequestDelayOptions {
-  maxAdditionalPages?: number
+  maxAdditionalPages?: VibeAutofillPageLimit
   pageSize: number
   strategy: 'frontend'
 }
@@ -347,6 +364,7 @@ export interface CreateVibeOptions {
   autofill?: VibeAutofillOptions
   cardFooter?: VibeCardRegion
   cardHeader?: VibeCardRegion
+  feedFooter?: VibeFeedFooter
   fill?: VibeFillOptions
   target: Element | string
   layout?: VibeLayoutMode

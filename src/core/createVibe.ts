@@ -16,6 +16,7 @@ import { resolvePhoneModeForElement, resolveResponsiveLayoutForElement } from '.
 import { autofillInitialPage } from './initialAutofill'
 import { VibeFillController } from './fillController'
 import type { VibeSurfaceExpose } from './feed'
+import { createFeedFooterActions } from './feedFooter'
 import { createInitialRuntimeState } from './initialRuntimeState'
 import { resolveVibeTarget, validateOptions } from './options'
 import { appendUniqueItems, validatePage } from './page'
@@ -90,6 +91,8 @@ class VibeController implements VibeInstance {
       canRetryEnd: Boolean(this.options.loadPage),
       cardFooter: this.options.cardFooter,
       cardHeader: this.options.cardHeader,
+      feedFooter: this.options.feedFooter,
+      feedFooterActions: createFeedFooterActions(this),
       reelInfoSheet: this.options.reelInfoSheet,
       state: this.state,
       onActiveReelChange: (postId: VibeItemId) => this.setActiveReelPost(postId),
@@ -146,7 +149,6 @@ class VibeController implements VibeInstance {
   async cancelAutofill(): Promise<void> {
     await cancelAutofill(this.options.autofill, this.state, () => this.cancelRequest())
   }
-
   applyFillUpdate(update: VibeBackendFillUpdate): boolean {
     return this.fillController.applyUpdate(update)
   }
@@ -154,7 +156,6 @@ class VibeController implements VibeInstance {
   cancelFill(): Promise<void> {
     return this.fillController.cancel()
   }
-
   async fill(target: VibeFillTarget): Promise<void> {
     if (this.pendingRequest || isAutofillActive(this.state.autofill)) {
       throw new Error('Vibe cannot fill while another page operation is active.')
@@ -167,7 +168,6 @@ class VibeController implements VibeInstance {
     if (restored) this.syncAutofillCountdown()
     return restored
   }
-
   restoreFillSession(snapshot: VibeFillSessionSnapshot): boolean {
     return this.fillController.restoreSession(snapshot)
   }
@@ -202,7 +202,7 @@ class VibeController implements VibeInstance {
     return this.startRequest(null, false)
   }
 
-  private async retryEnd(): Promise<void> {
+  async retryEnd(): Promise<void> {
     if (this.pendingRequest) return this.pendingRequest
     if (this.state.loadMoreLocked) return
     if (isAutofillActive(this.state.autofill) || this.fillController.isActive()) return

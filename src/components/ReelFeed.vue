@@ -15,7 +15,7 @@ import { mediaAssetAt, mediaAssets, mediaStateKey } from '../core/mediaAsset'
 import { isTimedMediaSource } from '../core/mediaType'
 import type { VibeItemId } from '../types'
 import CardRegion from './CardRegion.vue'
-import GalleryFooter from './GalleryFooter.vue'
+import FeedFooter from './FeedFooter.vue'
 import MediaCard from './MediaCard.vue'
 import ReelAutoAdvanceProgress from './ReelAutoAdvanceProgress.vue'
 
@@ -366,13 +366,16 @@ defineExpose({
         />
       </section>
 
-      <GalleryFooter
+      <FeedFooter
+        :actions="feedFooterActions"
         :can-retry-end="canRetryEnd"
+        :feed-footer="feedFooter"
         :has-error="nextPageError"
         :has-next="hasNext"
         :infinite-scroll="infiniteScroll"
         :is-loading="isLoadingMore"
         :load-more-locked="loadMoreLocked"
+        :state="state"
         @load-more="emit('loadMore')"
         @retry-end="emit('retryEnd')"
       />

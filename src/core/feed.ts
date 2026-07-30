@@ -1,11 +1,14 @@
 import type {
   VibeCardRegion,
+  VibeFeedFooter,
+  VibeFeedFooterActions,
   VibeItem,
   VibeItemId,
   VibeMediaSource,
   VibeReelAutoAdvanceState,
   VibeReelInfoSheetOptions,
   VibeReelOrigin,
+  VibeState,
 } from '../types'
 import type { MediaPreviewState } from './mediaPreview'
 
@@ -13,6 +16,8 @@ export interface FeedRendererProps {
   canRetryEnd: boolean
   cardFooter?: VibeCardRegion
   cardHeader?: VibeCardRegion
+  feedFooter?: VibeFeedFooter
+  feedFooterActions?: VibeFeedFooterActions
   hasNext: boolean
   infiniteScroll: boolean
   isLoadingMore: boolean
@@ -21,6 +26,7 @@ export interface FeedRendererProps {
   mediaIndices: ReadonlyMap<VibeItemId, number>
   nextPageError: boolean
   previewStates: ReadonlyMap<string, MediaPreviewState>
+  state?: VibeState
   total: number | null
 }
 

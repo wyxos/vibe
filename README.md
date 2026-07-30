@@ -147,11 +147,13 @@ integration is used.
 
 ## Autofill
 
-Autofill targets a number of new top-level cards after grouping and
-deduplication. `autofill.pageSize` is the minimum card target for one Vibe load
+Autofill targets a number of new top-level cards after the provider or consumer
+adapter has grouped each post into one `VibeItem`. Vibe does not perform
+provider-specific grouping; it only deduplicates `postId` defensively as pages
+are appended. `autofill.pageSize` is the minimum card target for one Vibe load
 cycle, not the server's own response size. For example, a server may return up
-to 30 cards per request while Vibe is configured with `pageSize: 40`; Vibe then
-follows cursors until the cycle contains at least 40 cards.
+to 30 grouped cards per request while Vibe is configured with `pageSize: 40`;
+Vibe then follows cursors until the cycle contains at least 40 cards.
 
 ### Frontend autofill
 
@@ -169,7 +171,7 @@ const vibe = createVibe({
   autofill: {
     strategy: 'frontend',
     pageSize: 40,
-    maxAdditionalPages: 10,
+    maxAdditionalPages: 'unlimited',
     delayStepMs: 2_000,
     delayMaxMs: 10_000,
   },
@@ -188,6 +190,9 @@ await vibe.mount()
 There is no frontend session snapshot. With 25 restored cards and
 `pageSize: 40`, Vibe continues from `initialPage.next` until the load cycle has
 at least 40 unique cards. Without `initialPage`, Vibe starts at cursor `null`.
+`maxAdditionalPages` accepts a non-negative integer or the serializable string
+`'unlimited'`. Unlimited cycles still stop at the target, end of pagination,
+a repeated cursor, an error, cancellation/abort, or `destroy()`.
 
 The first request is immediate. Each subsequent request waits
 `min(completedRequests * delayStepMs, delayMaxMs)`, so the defaults produce
@@ -565,6 +570,47 @@ Calling `setReelInfoSheet()` before mount, during loading, or outside an active
 reel still updates this requested state; the sheet becomes visible when a valid
 reel context exists. This preserves the existing persistent sheet-state
 behavior across masonry viewer closes.
+
+## Custom feed footer
+
+Set `feedFooter.component` to replace the built-in `GalleryFooter`. Consumers
+that omit it keep the existing pagination and end-of-feed footer.
+
+```ts
+import FeedFooter from './FeedFooter.vue'
+
+const vibe = createVibe({
+  target: '#gallery',
+  loadPage,
+  feedFooter: {
+    component: FeedFooter,
+  },
+})
+```
+
+Type the component with `VibeFeedFooterProps`. Its `state` prop is the reactive
+public `VibeState`, including autofill progress, request count, countdown,
+loading, end, error, and load-more-lock state. Its `actions` prop contains
+`loadMore()`, `retryEnd()`, `retry()`, and `cancelAutofill()`:
+
+```vue
+<script setup lang="ts">
+import type { VibeFeedFooterProps } from '@wyxos/vibe'
+
+const props = defineProps<VibeFeedFooterProps>()
+</script>
+
+<template>
+  <footer>
+    <span>{{ props.state.autofill.received }} / {{ props.state.autofill.pageSize }}</span>
+    <button type="button" @click="props.actions.cancelAutofill()">Cancel</button>
+  </footer>
+</template>
+```
+
+A footer may instead emit `load-more`, `retry-end`, `retry`, or
+`autofill-cancel`; Vibe routes those events to the same actions. Consumer
+components own their markup, styling, state selection, and additional controls.
 
 ## Load-more lock
 

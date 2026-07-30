@@ -1,6 +1,6 @@
 import {
-  DEFAULT_MAX_ADDITIONAL_PAGES,
   collectFrontendAutofill,
+  frontendAutofillRequestLimit,
 } from './autofill'
 import { startBackendAutofill } from './backendAutofill'
 import { appendUniqueItems } from './page'
@@ -65,7 +65,7 @@ export async function autofillInitialPage({
     existingItems: state.items,
     initialCursor: state.next,
     loadPage: options.loadPage,
-    maximumRequests: autofill.maxAdditionalPages ?? DEFAULT_MAX_ADDITIONAL_PAGES,
+    maximumRequests: frontendAutofillRequestLimit(autofill, false),
     onDelayChange: (delay) => {
       if (isCurrent()) Object.assign(state.autofill, delay)
     },

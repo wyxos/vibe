@@ -46,3 +46,12 @@ const vibe = createVibe({
 ```
 
 The declared height is included in masonry calculations before the component mounts. Region components receive `VibeCardRegionProps` and remain owned by the consuming application.
+
+## Application-owned feed footer
+
+Use `feedFooter: { component }` to replace the default `GalleryFooter` in
+masonry and reel layouts. The component receives `VibeFeedFooterProps`, whose
+reactive public state covers loading, autofill, countdown, pause, error, and
+end states. Its typed actions can load more, retry the end cursor, retry the
+feed, or cancel autofill. The same actions can be requested by emitting
+`load-more`, `retry-end`, `retry`, or `autofill-cancel`.

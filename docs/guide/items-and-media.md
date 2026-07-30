@@ -32,6 +32,14 @@ const item: VibeItem = {
 
 Use `null` for unknown dimensions. Supplying accurate dimensions lets masonry reserve space before assets load and reduces layout movement.
 
+## Provider grouping boundary
+
+Every provider or consumer adapter must return one grouped top-level
+`VibeItem` per post. Put the post's first media asset on the parent item and
+its remaining assets in `items`. Vibe deliberately does not contain
+provider-specific grouping logic. It only deduplicates matching `postId`
+values defensively when pages are appended.
+
 ## Preview selection
 
 Phone reels load `preview.src`. Tablet and desktop reels load the original `src`, including reels opened from masonry. Masonry uses previews while preserving the original source for its reel viewer.

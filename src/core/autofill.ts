@@ -19,6 +19,16 @@ import {
 
 export const DEFAULT_MAX_ADDITIONAL_PAGES = 10
 
+export function frontendAutofillRequestLimit(
+  options: VibeFrontendAutofillOptions,
+  includeInitialRequest = true,
+): number {
+  if (options.maxAdditionalPages === 'unlimited') return Number.POSITIVE_INFINITY
+
+  const additionalPages = options.maxAdditionalPages ?? DEFAULT_MAX_ADDITIONAL_PAGES
+  return additionalPages + (includeInitialRequest ? 1 : 0)
+}
+
 export interface FrontendAutofillProgress {
   missing: number
   next: VibeCursor
@@ -64,9 +74,10 @@ export function validateAutofillOptions(options?: VibeAutofillOptions): void {
   if (options.strategy === 'frontend') {
     validateRequestDelayOptions(options, 'frontend autofill')
     const maximum = options.maxAdditionalPages
-    if (maximum !== undefined && (!Number.isInteger(maximum) || maximum < 0)) {
+    if (maximum !== undefined && maximum !== 'unlimited'
+      && (!Number.isInteger(maximum) || maximum < 0)) {
       throw new TypeError(
-        'Vibe autofill maxAdditionalPages must be a non-negative integer.',
+        'Vibe autofill maxAdditionalPages must be a non-negative integer or "unlimited".',
       )
     }
     return
@@ -194,9 +205,8 @@ export async function collectFrontendAutofill({
   const items: VibeItem[] = []
   const knownItems = [...existingItems]
   const seenCursors = new Set<string>()
-  const maximumRequests = configuredMaximumRequests ?? 1 + (
-    options.maxAdditionalPages ?? DEFAULT_MAX_ADDITIONAL_PAGES
-  )
+  const maximumRequests = configuredMaximumRequests
+    ?? frontendAutofillRequestLimit(options)
   let cursor = initialCursor
   let next: VibeCursor = initialCursor
   let requests = 0
