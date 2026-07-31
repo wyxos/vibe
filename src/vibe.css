@@ -397,6 +397,10 @@
   background: #121212;
 }
 
+.media-card--transparent-chrome {
+  background: transparent;
+}
+
 .media-card-content {
   display: flex;
   position: relative;

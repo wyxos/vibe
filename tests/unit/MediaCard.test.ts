@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h, markRaw } from 'vue'
 
 import MediaCard from '@/components/MediaCard.vue'
 
@@ -49,6 +50,39 @@ describe('MediaCard', () => {
   afterEach(() => {
     vi.useRealTimers()
     vi.restoreAllMocks()
+  })
+
+  it('clears the card backdrop behind transparent chrome regions', async () => {
+    const Region = markRaw(defineComponent(() => (
+      () => h('span', 'Region')
+    )))
+    const wrapper = mount(MediaCard, {
+      props: {
+        ...props(),
+        cardHeader: {
+          background: 'transparent',
+          component: Region,
+          height: 32,
+        },
+        layout: 'masonry',
+      },
+    })
+
+    expect(wrapper.classes()).toContain('media-card--transparent-chrome')
+    expect(wrapper.get('.media-card-header').classes())
+      .toContain('media-card-region--transparent')
+    expect(wrapper.get('.media-card-media').classes())
+      .toContain('media-card-media')
+
+    await wrapper.setProps({
+      cardHeader: {
+        background: 'default',
+        component: Region,
+        height: 32,
+      },
+    })
+
+    expect(wrapper.classes()).not.toContain('media-card--transparent-chrome')
   })
 
   it('handles repeated horizontal wheel gestures without using deltaY as a fallback', async () => {

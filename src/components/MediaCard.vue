@@ -271,6 +271,9 @@ onBeforeUnmount(() => {
     :class="{
       'media-card--entering': entering,
       'media-card--error': previewState === 'error',
+      'media-card--transparent-chrome':
+        cardHeader?.background === 'transparent'
+        || cardFooter?.background === 'transparent',
     }"
     :style="itemStyle"
     :aria-busy="previewState === 'loading'"

@@ -27,6 +27,17 @@ test('custom feed footer exposes autofill, pause, error, retry, and end states',
     { timeout: 25_000 },
   )
 
+  const firstCard = page.locator('.masonry-item').first()
+  const firstHeader = firstCard.locator('.media-card-header')
+  await expect(firstCard).toHaveClass(/media-card--transparent-chrome/)
+  await expect(firstHeader).toHaveClass(/media-card-region--transparent/)
+  expect(await firstCard.evaluate((element) => (
+    getComputedStyle(element).backgroundColor
+  ))).toBe('rgba(0, 0, 0, 0)')
+  expect(await firstHeader.evaluate((element) => (
+    getComputedStyle(element).backgroundColor
+  ))).toBe('rgba(0, 0, 0, 0)')
+
   const infoAction = page.getByRole('button', { name: /Show information for post/ }).first()
   const loveAction = page.getByRole('button', { name: 'Love' }).first()
   await expect(infoAction).toBeVisible()
