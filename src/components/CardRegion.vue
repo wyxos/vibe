@@ -8,6 +8,7 @@ import {
 } from '../core/mediaAsset'
 import type {
   VibeCardRegion,
+  VibeCardChromeStyle,
   VibeItem,
   VibeLayout,
   VibeMediaSource,
@@ -22,6 +23,7 @@ const props = defineProps<{
   mediaSource?: VibeMediaSource
   placement: 'footer' | 'header'
   region: VibeCardRegion
+  style?: VibeCardChromeStyle
   total: number | null
 }>()
 
@@ -32,6 +34,18 @@ const mediaItems = computed(() => mediaAssets(props.item))
 const mediaItem = computed(() => (
   mediaAssetAt(props.item, normalizedMediaIndex.value)
 ))
+const chromeStyle = computed(() => ({
+  height: `${props.region.height}px`,
+  paddingBlock: props.style?.paddingY === undefined
+    ? undefined
+    : `${props.style.paddingY}px`,
+  paddingInline: props.style?.paddingX === undefined
+    ? undefined
+    : `${props.style.paddingX}px`,
+}))
+const background = computed(() => (
+  props.style?.background ?? props.region.background
+))
 </script>
 
 <template>
@@ -40,10 +54,10 @@ const mediaItem = computed(() => (
     :class="[
       `media-card-${placement}`,
       {
-        'media-card-region--transparent': region.background === 'transparent',
+        'media-card-region--transparent': background === 'transparent',
       },
     ]"
-    :style="{ height: `${region.height}px` }"
+    :style="chromeStyle"
     @click.stop
     @keydown.stop
   >

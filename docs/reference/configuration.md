@@ -33,6 +33,7 @@ At least one of `initialPage` or `loadPage` is needed to display content.
 | --- | --- | --- |
 | `cardHeader` | `VibeCardRegion` | Typed Vue component above each post's media. |
 | `cardFooter` | `VibeCardRegion` | Typed Vue component below each post's media. |
+| `mediaCard` | `VibeMediaCardOptions` | Consumer-owned header/footer background and spacing. |
 | `feedFooter` | `VibeFeedFooter` | Replaces the default `GalleryFooter` with a consumer-owned component. |
 | `reelInfoSheet` | `VibeReelInfoSheetOptions` | Application-owned information sheet for an active reel. |
 | `reelAutoAdvance` | `VibeReelAutoAdvanceOptions` | Timed image progression and playback-ended media progression. |
@@ -60,6 +61,13 @@ The configured component receives `VibeFeedFooterProps`: a reactive public
 `retry()`, and `cancelAutofill()`. It may invoke those callbacks or emit
 `load-more`, `retry-end`, `retry`, and `autofill-cancel`. Omitting
 `feedFooter` preserves the built-in `GalleryFooter`.
+
+## Media card chrome
+
+`mediaCard.header` and `mediaCard.footer` accept `background`, `paddingX`, and
+`paddingY`. Numeric spacing values are CSS pixels and must be non-negative.
+Region-specific `mediaCard` backgrounds take precedence over the legacy
+`cardHeader.background` and `cardFooter.background` values.
 
 ## State changes
 

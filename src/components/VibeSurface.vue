@@ -17,6 +17,7 @@ import type {
   VibeFeedFooter,
   VibeFeedFooterActions,
   VibeItemId,
+  VibeMediaCardOptions,
   VibeReelInfoSheetOptions,
 } from '../types'
 import FeedStatus from './FeedStatus.vue'
@@ -41,6 +42,7 @@ const props = defineProps<{
   cardHeader?: VibeCardRegion
   feedFooter?: VibeFeedFooter
   feedFooterActions: VibeFeedFooterActions
+  mediaCard?: VibeMediaCardOptions
   reelInfoSheet?: VibeReelInfoSheetOptions
   state: VibeRuntimeState
 }>()
@@ -384,6 +386,7 @@ defineExpose({
       :card-header="cardHeader"
       :feed-footer="feedFooter"
       :feed-footer-actions="feedFooterActions"
+      :media-card="mediaCard"
       :infinite-scroll="state.infiniteScroll"
       :is-loading-more="state.isLoadingMore"
       :items="state.items"
@@ -421,6 +424,7 @@ defineExpose({
         :card-header="cardHeader"
         :feed-footer="feedFooter"
         :feed-footer-actions="feedFooterActions"
+        :media-card="mediaCard"
         :has-next="state.next !== null"
         :infinite-scroll="state.infiniteScroll"
         :is-loading-more="state.isLoadingMore"
@@ -461,6 +465,7 @@ defineExpose({
             :card-header="cardHeader"
             :feed-footer="feedFooter"
             :feed-footer-actions="feedFooterActions"
+            :media-card="mediaCard"
             :has-next="state.next !== null"
             :infinite-scroll="state.infiniteScroll"
             :initial-post-id="state.activeReelPostId"

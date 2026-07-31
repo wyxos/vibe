@@ -5,6 +5,7 @@ import type {
   VibeItem,
   VibeItemId,
   VibeMediaSource,
+  VibeMediaCardOptions,
   VibeReelAutoAdvanceState,
   VibeReelInfoSheetOptions,
   VibeReelOrigin,
@@ -23,6 +24,7 @@ export interface FeedRendererProps {
   isLoadingMore: boolean
   items: readonly VibeItem[]
   loadMoreLocked: boolean
+  mediaCard?: VibeMediaCardOptions
   mediaIndices: ReadonlyMap<VibeItemId, number>
   nextPageError: boolean
   previewStates: ReadonlyMap<string, MediaPreviewState>

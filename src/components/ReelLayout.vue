@@ -147,6 +147,7 @@ defineExpose({ changeActiveMedia, loadIfNearBottom, moveActivePost })
         :card-header="cardHeader"
         :feed-footer="feedFooter"
         :feed-footer-actions="feedFooterActions"
+        :media-card="mediaCard"
         :has-next="hasNext"
         :infinite-scroll="infiniteScroll"
         :initial-post-id="initialPostId"

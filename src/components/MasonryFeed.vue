@@ -291,6 +291,7 @@ defineExpose({ getScrollElement, loadIfNearBottom })
           :fetch-priority="fetchPriority"
           :card-footer="cardFooter"
           :card-header="cardHeader"
+          :media-card="mediaCard"
           :index="index"
           :item="item"
           :item-style="itemStyle(index)"

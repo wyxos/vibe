@@ -325,6 +325,7 @@ defineExpose({
       :media-source="mediaSource"
       placement="header"
       :region="cardHeader"
+      :style="mediaCard?.header"
       :total="total"
     />
 
@@ -350,6 +351,7 @@ defineExpose({
           :index="index"
           :item="item"
           :item-style="itemStyle(index)"
+          :media-card="mediaCard"
           layout="reel"
           :loaded-count="items.length"
           :media-index="mediaIndices.get(item.postId) ?? 0"
@@ -391,6 +393,7 @@ defineExpose({
       :media-source="mediaSource"
       placement="footer"
       :region="cardFooter"
+      :style="mediaCard?.footer"
       :total="total"
     />
 

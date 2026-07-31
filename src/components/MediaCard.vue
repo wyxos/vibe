@@ -26,6 +26,7 @@ import type {
   VibeItem,
   VibeLayout,
   VibeMediaSource,
+  VibeMediaCardOptions,
 } from '../types'
 import CardRegion from './CardRegion.vue'
 import MediaControls from './MediaControls.vue'
@@ -44,6 +45,7 @@ const props = defineProps<{
   layout: VibeLayout
   loadedCount: number
   mediaIndex: number
+  mediaCard?: VibeMediaCardOptions
   mediaSource?: VibeMediaSource
   previewState: MediaPreviewState
   total: number | null
@@ -274,7 +276,9 @@ onBeforeUnmount(() => {
       'media-card--leaving': leaving,
       'media-card--error': previewState === 'error',
       'media-card--transparent-chrome':
-        cardHeader?.background === 'transparent'
+        mediaCard?.header?.background === 'transparent'
+        || mediaCard?.footer?.background === 'transparent'
+        || cardHeader?.background === 'transparent'
         || cardFooter?.background === 'transparent',
     }"
     :style="itemStyle"
@@ -298,6 +302,7 @@ onBeforeUnmount(() => {
         :media-source="mediaSource"
         placement="header"
         :region="cardHeader"
+        :style="mediaCard?.header"
         :total="total"
       />
 
@@ -441,6 +446,7 @@ onBeforeUnmount(() => {
         :media-source="mediaSource"
         placement="footer"
         :region="cardFooter"
+        :style="mediaCard?.footer"
         :total="total"
       />
     </div>

@@ -2,7 +2,11 @@ import { validateAutofillOptions } from './autofill'
 import { validateAutoScrollOptions } from './autoScroll'
 import { validateFillOptions } from './fill'
 import { validateReelAutoAdvanceOptions } from './reelAutoAdvance'
-import type { CreateVibeOptions, VibeCardRegion } from '../types'
+import type {
+  CreateVibeOptions,
+  VibeCardChromeStyle,
+  VibeCardRegion,
+} from '../types'
 
 function validateCardRegion(
   name: 'cardFooter' | 'cardHeader',
@@ -21,10 +25,36 @@ function validateCardRegion(
   }
 }
 
+function validateCardChromeStyle(
+  name: 'footer' | 'header',
+  style?: VibeCardChromeStyle,
+): void {
+  if (!style) return
+  if (style.background !== undefined
+    && style.background !== 'default'
+    && style.background !== 'transparent') {
+    throw new TypeError(
+      `Vibe mediaCard ${name} background must be "default" or "transparent".`,
+    )
+  }
+  for (const [property, value] of [
+    ['paddingX', style.paddingX],
+    ['paddingY', style.paddingY],
+  ] as const) {
+    if (value !== undefined && (!Number.isFinite(value) || value < 0)) {
+      throw new TypeError(
+        `Vibe mediaCard ${name} ${property} must be a non-negative number.`,
+      )
+    }
+  }
+}
+
 export function validateOptions(options: CreateVibeOptions): void {
   validateAutoScrollOptions(options.autoScroll)
   validateCardRegion('cardHeader', options.cardHeader)
   validateCardRegion('cardFooter', options.cardFooter)
+  validateCardChromeStyle('header', options.mediaCard?.header)
+  validateCardChromeStyle('footer', options.mediaCard?.footer)
   validateAutofillOptions(options.autofill)
   validateFillOptions(options.fill)
   validateReelAutoAdvanceOptions(options.reelAutoAdvance)

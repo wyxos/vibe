@@ -108,6 +108,17 @@ export interface VibeCardRegion {
   height: number
 }
 
+export interface VibeCardChromeStyle {
+  background?: 'default' | 'transparent'
+  paddingX?: number
+  paddingY?: number
+}
+
+export interface VibeMediaCardOptions {
+  footer?: VibeCardChromeStyle
+  header?: VibeCardChromeStyle
+}
+
 export interface VibeCardRegionProps {
   index: number
   item: VibeItem
@@ -383,6 +394,7 @@ export interface CreateVibeOptions {
   infiniteScroll?: boolean
   initialPage?: VibeInitialPage
   loadPage?: VibePageLoader
+  mediaCard?: VibeMediaCardOptions
   onStateChange?: (state: VibeState) => void
   removalHistoryLimit?: number
   reelAutoAdvance?: VibeReelAutoAdvanceOptions
