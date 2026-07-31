@@ -69,7 +69,7 @@ describe('custom feed footer', () => {
     let footerProps: VibeFeedFooterProps | null = null
     const ConsumerFooter = defineComponent({
       emits: ['load-more'],
-      props: ['actions', 'state'],
+      props: ['actions', 'canRetryEnd', 'state'],
       setup(rawProps, { emit }) {
         footerProps = rawProps as unknown as VibeFeedFooterProps
         return () => h('button', {
@@ -93,6 +93,7 @@ describe('custom feed footer', () => {
     await instance.mount()
     await flushPromises()
     expect(target.querySelector('.gallery-footer')).toBeNull()
+    expect(footerProps!.canRetryEnd).toBe(true)
     expect(footerProps!.state.items.map(({ postId }) => postId)).toEqual([1])
 
     target.querySelector<HTMLButtonElement>('[data-test="consumer-feed-footer"]')!.click()

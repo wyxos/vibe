@@ -37,6 +37,7 @@ function retry(): void {
     :is="feedFooter.component"
     v-if="feedFooter && actions && state"
     :actions="actions"
+    :can-retry-end="canRetryEnd"
     :state="state"
     @autofill-cancel="cancelAutofill"
     @load-more="emit('loadMore')"

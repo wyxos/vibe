@@ -144,6 +144,7 @@ export interface VibeFeedFooterActions {
 
 export interface VibeFeedFooterProps {
   actions: VibeFeedFooterActions
+  canRetryEnd: boolean
   state: VibeState
 }
 

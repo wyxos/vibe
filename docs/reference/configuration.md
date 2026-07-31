@@ -57,7 +57,7 @@ guards.
 ## Custom feed footer
 
 The configured component receives `VibeFeedFooterProps`: a reactive public
-`state: VibeState` and `actions` containing `loadMore()`, `retryEnd()`,
+`state: VibeState`, `canRetryEnd: boolean`, and `actions` containing `loadMore()`, `retryEnd()`,
 `retry()`, and `cancelAutofill()`. It may invoke those callbacks or emit
 `load-more`, `retry-end`, `retry`, and `autofill-cancel`. Omitting
 `feedFooter` preserves the built-in `GalleryFooter`.
