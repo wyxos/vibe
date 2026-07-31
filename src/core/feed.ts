@@ -33,6 +33,8 @@ export interface FeedRendererProps {
 export interface MasonryFeedProps extends FeedRendererProps {
   enteringPostIds: ReadonlySet<VibeItemId>
   entryDelays: ReadonlyMap<VibeItemId, number>
+  leavingPostIds?: ReadonlySet<VibeItemId>
+  removalDelays?: ReadonlyMap<VibeItemId, number>
   suspended?: boolean
 }
 
@@ -54,6 +56,7 @@ export interface VibeSurfaceExpose {
   getAutoScrollElement: () => HTMLElement | null
   loadIfNearBottom: () => Promise<void>
   moveActiveReelPost: (direction: -1 | 1) => boolean
+  startItemRemoval: (postIds: readonly VibeItemId[]) => number
 }
 
 export const LOAD_MORE_THRESHOLD = 240

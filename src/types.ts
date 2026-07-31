@@ -91,6 +91,17 @@ export interface VibeItem extends VibeMediaAsset {
   items: VibeMediaAsset[]
 }
 
+export interface VibeItemPlacement {
+  index: number
+  item: VibeItem
+}
+
+declare const vibeRemovalBrand: unique symbol
+
+export type VibeRemoval = readonly VibeItemPlacement[] & {
+  readonly [vibeRemovalBrand]: true
+}
+
 export interface VibeCardRegion {
   background?: 'default' | 'transparent'
   component: Component
@@ -373,6 +384,7 @@ export interface CreateVibeOptions {
   initialPage?: VibeInitialPage
   loadPage?: VibePageLoader
   onStateChange?: (state: VibeState) => void
+  removalHistoryLimit?: number
   reelAutoAdvance?: VibeReelAutoAdvanceOptions
   reelInfoSheet?: VibeReelInfoSheetOptions
   routing?: VibeRoutingOptions
@@ -415,9 +427,12 @@ export interface VibeInstance {
   previousReelMediaItem: () => boolean
   previousReelPost: () => boolean
   reload: () => Promise<void>
+  removeItems: (postIds: readonly VibeItemId[]) => Promise<VibeRemoval>
   resumeAutoScroll: () => void
   restoreAutofillSession: (snapshot: VibeAutofillSessionSnapshot) => boolean
   restoreFillSession: (snapshot: VibeFillSessionSnapshot) => boolean
+  restoreItems: (placements: readonly VibeItemPlacement[]) => void
+  restoreRemoval: (removal: VibeRemoval) => boolean
   setAutoScroll: (enabled: boolean, speedPxPerSecond?: number) => void
   setAutoScrollSpeed: (speedPxPerSecond: number) => void
   setInfiniteScroll: (enabled: boolean) => void
@@ -427,4 +442,5 @@ export interface VibeInstance {
     update: boolean | VibeReelAutoAdvanceOptions,
   ) => void
   setReelInfoSheet: (enabled: boolean) => void
+  undoLastRemoval: () => VibeRemoval | null
 }

@@ -1,36 +1,17 @@
 import { expect, test } from '@playwright/test'
 
-test('custom feed footer exposes autofill, pause, error, retry, and end states', async ({
+test('card header and footer remain focused on custom card chrome', async ({
   page,
 }) => {
-  test.setTimeout(60_000)
   await page.goto('/demos/card-header-and-footer')
-  const byTest = (name: string) => page.locator(`[data-test="${name}"]`)
-
-  await expect(byTest('grouping-contract')).toContainText(
-    'one grouped VibeItem per post',
-  )
-  const footer = byTest('demo-feed-footer')
-  await expect(footer).toBeVisible()
-  await expect(byTest('demo-feed-footer-progress')).toHaveText('45 / 500')
-  await expect(byTest('demo-feed-footer-requests')).toHaveText('1 request')
-  await expect(byTest('demo-feed-footer-status')).toHaveText('Waiting')
-  await expect(byTest('demo-feed-footer-countdown')).toContainText('Next in')
-
-  await byTest('demo-feed-footer-cancel').click()
-  await expect(byTest('demo-feed-footer-status')).toHaveText(
-    'Autofill cancelled',
-  )
-  await byTest('demo-feed-footer-restart').click()
-  await expect(byTest('demo-feed-footer-status')).toHaveText(
-    'End of feed',
-    { timeout: 25_000 },
-  )
 
   const firstCard = page.locator('.masonry-item').first()
   const firstHeader = firstCard.locator('.media-card-header')
+  const firstFooter = firstCard.locator('.media-card-footer')
+  await expect(firstCard).toBeVisible()
   await expect(firstCard).toHaveClass(/media-card--transparent-chrome/)
   await expect(firstHeader).toHaveClass(/media-card-region--transparent/)
+  await expect(firstFooter).toHaveClass(/media-card-region--transparent/)
   expect(await firstCard.evaluate((element) => (
     getComputedStyle(element).backgroundColor
   ))).toBe('rgba(0, 0, 0, 0)')
@@ -38,7 +19,9 @@ test('custom feed footer exposes autofill, pause, error, retry, and end states',
     getComputedStyle(element).backgroundColor
   ))).toBe('rgba(0, 0, 0, 0)')
 
-  const infoAction = page.getByRole('button', { name: /Show information for post/ }).first()
+  const infoAction = page.getByRole('button', {
+    name: /Show information for post/,
+  }).first()
   const loveAction = page.getByRole('button', { name: 'Love' }).first()
   await expect(infoAction).toBeVisible()
   await infoAction.click()
@@ -46,37 +29,22 @@ test('custom feed footer exposes autofill, pause, error, retry, and end states',
   await loveAction.click()
   await expect(loveAction).toHaveAttribute('aria-pressed', 'true')
 
-  await byTest('card-demo-pause').click()
-  await expect(byTest('demo-feed-footer-status')).toHaveText(
-    'Load more paused',
-  )
-  await byTest('card-demo-pause').click()
-  await expect(byTest('demo-feed-footer-status')).toHaveText('End of feed')
-
-  await byTest('demo-feed-footer-fail-retry').click()
-  await expect(byTest('demo-feed-footer-status')).toHaveText('Request failed')
-  await byTest('demo-feed-footer-retry').click()
-  await expect(byTest('demo-feed-footer-status')).toHaveText('End of feed')
+  await expect(page.locator('[data-test="card-remove"]')).toHaveCount(0)
+  await expect(page.locator('[data-test="remove-random-items"]')).toHaveCount(0)
+  await expect(page.locator('[data-test="demo-feed-footer"]')).toHaveCount(0)
 })
 
-test('custom feed footer remains usable in the narrow reel layout', async ({ page }) => {
-  test.setTimeout(60_000)
+test('card chrome remains usable in the narrow reel layout', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 932 })
   await page.goto('/demos/card-header-and-footer')
-  const byTest = (name: string) => page.locator(`[data-test="${name}"]`)
 
-  await expect(byTest('demo-feed-footer')).toBeVisible()
-  await expect(byTest('demo-feed-footer-progress')).toHaveText('45 / 500')
-  await expect(byTest('demo-feed-footer-cancel')).toBeVisible()
-  await expect(byTest('demo-feed-footer-status')).toHaveText(
-    'End of feed',
-    { timeout: 35_000 },
-  )
   const reel = page.locator('[data-layout-mode="reel"]')
   await expect(reel).toBeVisible()
-  await reel.evaluate((element) => { element.scrollTop = element.scrollHeight })
-  await expect(byTest('demo-feed-footer')).toBeVisible()
-  expect(await page.locator('.card-chrome-demo-stage').evaluate((element) => (
+  await expect(reel.locator('.media-card-header').first()).toBeVisible()
+  await expect(reel.locator('.media-card-footer').first()).toBeVisible()
+  await expect(page.locator('[data-test="card-remove"]')).toHaveCount(0)
+  await expect(page.locator('[data-test="demo-feed-footer"]')).toHaveCount(0)
+  expect(await page.locator('.demo-stage').evaluate((element) => (
     element.scrollWidth <= element.clientWidth
   ))).toBe(true)
 })

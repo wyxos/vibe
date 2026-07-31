@@ -23,6 +23,7 @@ const vibe = createVibe(options)
 | `loadPage` | `VibePageLoader` | — | Asynchronous cursor page loader. |
 | `infiniteScroll` | `boolean` | `true` | Loads forward when the feed reaches its boundary. |
 | `onStateChange` | `(state: VibeState) => void` | — | Receives the initial state and every public state change. |
+| `removalHistoryLimit` | `number` | `20` | Maximum recent removal transactions retained for `undoLastRemoval()`; use `0` to disable automatic history. |
 
 At least one of `initialPage` or `loadPage` is needed to display content.
 

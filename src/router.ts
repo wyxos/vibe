@@ -13,6 +13,7 @@ import CardHeaderFooterDemoPage from './pages/CardHeaderFooterDemoPage.vue'
 import FeedDemoPage from './pages/FeedDemoPage.vue'
 import FillBackendDemoPage from './pages/FillBackendDemoPage.vue'
 import FillFrontendDemoPage from './pages/FillFrontendDemoPage.vue'
+import ItemRemovalDemoPage from './pages/ItemRemovalDemoPage.vue'
 import ReelUrlDemoPage from './pages/ReelUrlDemoPage.vue'
 import ReelAutoAdvanceDemoPage from './pages/ReelAutoAdvanceDemoPage.vue'
 import ReelInfoSheetDemoPage from './pages/ReelInfoSheetDemoPage.vue'
@@ -35,6 +36,11 @@ export function createDemoRouter(
             path: 'card-header-and-footer',
             name: 'demo-card-header-footer',
             component: CardHeaderFooterDemoPage,
+          },
+          {
+            path: 'item-removal',
+            name: 'demo-item-removal',
+            component: ItemRemovalDemoPage,
           },
           {
             path: 'reel-url',

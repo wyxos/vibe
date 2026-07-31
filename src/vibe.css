@@ -376,6 +376,11 @@
   will-change: transform;
 }
 
+.masonry-item.media-card--leaving {
+  pointer-events: none;
+  will-change: transform;
+}
+
 .media-card {
   background: #171717;
 }

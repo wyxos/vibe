@@ -42,6 +42,12 @@ const emit = defineEmits<{
       </RouterLink>
       <RouterLink
         class="demos-aside-link"
+        to="/demos/item-removal"
+      >
+        Item removal
+      </RouterLink>
+      <RouterLink
+        class="demos-aside-link"
         to="/demos/reel-url"
       >
         Reel URL

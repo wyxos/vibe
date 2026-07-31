@@ -240,6 +240,8 @@ describe('App', () => {
     expect(router.currentRoute.value.fullPath).toBe('/demos/card-header-and-footer')
     expect(wrapper.get('.demos-aside a[href="/demos/card-header-and-footer"]')
       .text()).toBe('Card header & footer')
+    expect(wrapper.get('.demos-aside a[href="/demos/item-removal"]')
+      .text()).toBe('Item removal')
     expect(wrapper.get('.demos-aside a[href="/demos/reel-url"]')
       .text()).toBe('Reel URL')
     expect(wrapper.find('.demo-stage-header').exists()).toBe(false)

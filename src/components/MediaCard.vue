@@ -40,6 +40,7 @@ const props = defineProps<{
   item: VibeItem
   itemStyle?: CSSProperties
   interactive?: boolean
+  leaving?: boolean
   layout: VibeLayout
   loadedCount: number
   mediaIndex: number
@@ -270,15 +271,18 @@ onBeforeUnmount(() => {
     class="media-card"
     :class="{
       'media-card--entering': entering,
+      'media-card--leaving': leaving,
       'media-card--error': previewState === 'error',
       'media-card--transparent-chrome':
         cardHeader?.background === 'transparent'
         || cardFooter?.background === 'transparent',
     }"
     :style="itemStyle"
+    :aria-hidden="leaving || undefined"
     :aria-busy="previewState === 'loading'"
-    :role="interactive && !usesSeparateActivator ? 'button' : undefined"
-    :tabindex="interactive && !usesSeparateActivator ? 0 : undefined"
+    :inert="leaving || undefined"
+    :role="interactive && !leaving && !usesSeparateActivator ? 'button' : undefined"
+    :tabindex="interactive && !leaving && !usesSeparateActivator ? 0 : undefined"
     @click="activate(interactive && !usesSeparateActivator, activationInput($event))"
     @keydown.enter="activate(interactive && !usesSeparateActivator, 'keyboard')"
     @keydown.space.prevent="activate(interactive && !usesSeparateActivator, 'keyboard')"

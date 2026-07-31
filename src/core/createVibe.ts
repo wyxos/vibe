@@ -12,15 +12,16 @@ import {
   restoreBackendAutofillSession,
   startBackendAutofill,
 } from './backendAutofill'
-import { resolvePhoneModeForElement, resolveResponsiveLayoutForElement } from './responsiveLayout'
 import { autofillInitialPage } from './initialAutofill'
 import { VibeFillController } from './fillController'
 import type { VibeSurfaceExpose } from './feed'
 import { createFeedFooterActions } from './feedFooter'
 import { createInitialRuntimeState } from './initialRuntimeState'
+import { ItemRemovalController } from './itemRemovalController'
 import { resolveVibeTarget, validateOptions } from './options'
 import { appendUniqueItems, validatePage } from './page'
 import { RequestDelayCountdown } from './requestDelay'
+import { ResponsiveLayoutController } from './responsiveLayoutController'
 import { updateReelAutoAdvanceState } from './reelAutoAdvance'
 import { setReelInfoSheetEnabled } from './reelInfoSheet'
 import { VibeRouteSync } from './vibeRouting'
@@ -35,8 +36,9 @@ import type {
   VibeFillTarget,
   VibeInstance,
   VibeItemId,
-  VibeLayout,
+  VibeItemPlacement,
   VibeLayoutMode,
+  VibeRemoval,
   VibeReelAutoAdvanceOptions,
   VibeState,
 } from '../types'
@@ -48,20 +50,19 @@ class VibeController implements VibeInstance {
   private abortController: AbortController | null = null
   private pendingRequest: Promise<void> | null = null
   private requestVersion = 0
-  private resizeObserver: ResizeObserver | null = null
+  private readonly responsiveLayout: ResponsiveLayoutController
   private readonly routing: VibeRouteSync
   private readonly fillController: VibeFillController
+  private readonly itemRemoval: ItemRemovalController
   private surface: VibeSurfaceExpose | null = null
   private stopStateWatcher: WatchHandle | null = null
-  private target: Element | null = null
-  private layoutMode: VibeLayoutMode
   private lastLoadedCursor: VibeCursor = null
   private readonly state: VibeRuntimeState
 
   constructor(private readonly options: CreateVibeOptions) {
     validateOptions(options)
-    this.layoutMode = options.layout ?? 'masonry'
-    this.state = reactive(createInitialRuntimeState(options, this.layoutMode))
+    const layoutMode = options.layout ?? 'masonry'
+    this.state = reactive(createInitialRuntimeState(options, layoutMode))
     this.autoScroll = new VibeAutoScrollController({
       getScrollElement: () => this.surface?.getAutoScrollElement() ?? null,
       state: this.state.autoScroll,
@@ -77,6 +78,17 @@ class VibeController implements VibeInstance {
       state: this.state,
     })
     this.routing = new VibeRouteSync(options.routing, this.state)
+    this.itemRemoval = new ItemRemovalController({
+      historyLimit: options.removalHistoryLimit,
+      onItemsRemoved: (placements, activeIndex) => {
+        this.restoreActiveItemAfterRemoval(placements, activeIndex)
+      },
+      startRemoval: (postIds) => this.surface?.startItemRemoval(postIds) ?? 0,
+      state: this.state,
+    })
+    this.responsiveLayout = new ResponsiveLayoutController(layoutMode, this.state, () => {
+      this.routing.syncFeed()
+    })
     this.startStateNotifications()
   }
 
@@ -85,8 +97,7 @@ class VibeController implements VibeInstance {
 
     this.startStateNotifications()
     const target = resolveVibeTarget(this.options.target)
-    this.target = target
-    this.startResponsiveLayout()
+    this.responsiveLayout.mount(target)
     this.app = createApp(VibeSurface, {
       canRetryEnd: Boolean(this.options.loadPage),
       cardFooter: this.options.cardFooter,
@@ -116,18 +127,26 @@ class VibeController implements VibeInstance {
     this.autoScroll.destroy()
     this.fillController.destroy()
     this.cancelRequest()
-    this.stopResponsiveLayout()
+    this.itemRemoval.destroy()
+    this.responsiveLayout.destroy()
     this.stopStateWatcher?.()
     this.stopStateWatcher = null
     this.app?.unmount()
     this.app = null
     this.surface = null
-    this.target = null
   }
 
   getState(): VibeState {
     return snapshotState(this.state)
   }
+
+  removeItems(postIds: readonly VibeItemId[]): Promise<VibeRemoval> {
+    return this.itemRemoval.remove(postIds)
+  }
+
+  restoreItems(placements: readonly VibeItemPlacement[]): void { this.itemRemoval.restoreItems(placements) }
+  restoreRemoval(removal: VibeRemoval): boolean { return this.itemRemoval.restoreRemoval(removal) }
+  undoLastRemoval(): VibeRemoval | null { return this.itemRemoval.undoLast() }
   nextReelMediaItem(): boolean { return this.surface?.changeActiveReelMedia(1) ?? false }
   previousReelMediaItem(): boolean { return this.surface?.changeActiveReelMedia(-1) ?? false }
   nextReelPost(): boolean { return this.surface?.moveActiveReelPost(1) ?? false }
@@ -193,6 +212,7 @@ class VibeController implements VibeInstance {
     this.cancelRequest()
     this.state.autofill = createAutofillState(this.options.autofill, undefined, false)
     this.fillController.reset()
+    this.itemRemoval.reset()
     this.state.error = null
     this.state.isLoading = true
     this.state.items = []
@@ -237,52 +257,7 @@ class VibeController implements VibeInstance {
   }
 
   setLayout(layout: VibeLayoutMode): void {
-    if (layout === this.layoutMode) return
-
-    this.layoutMode = layout
-    if (layout === 'responsive') this.handleResponsiveLayout()
-    else this.applyLayout(layout)
-  }
-
-  private applyLayout(layout: VibeLayout): void {
-    if (layout === this.state.layout) return
-
-    if (layout === 'masonry') {
-      this.state.activeReelPostId = null
-      this.routing.syncFeed()
-    }
-    this.state.reelOrigin = null
-    this.state.layout = layout
-  }
-
-  private readonly handleResponsiveLayout = (): void => {
-    if (!this.target) return
-
-    const responsiveLayout = resolveResponsiveLayoutForElement(this.target)
-    this.state.reelInfoSheetOverlay = resolvePhoneModeForElement(this.target)
-    this.state.reelMediaSource = responsiveLayout === 'reel' ? 'preview' : 'original'
-    if (this.layoutMode === 'responsive') this.applyLayout(responsiveLayout)
-  }
-
-  private startResponsiveLayout(): void {
-    if (!this.target) return
-
-    this.handleResponsiveLayout()
-    const view = this.target.ownerDocument.defaultView
-    view?.addEventListener('resize', this.handleResponsiveLayout)
-
-    const ResizeObserverConstructor = view?.ResizeObserver ?? globalThis.ResizeObserver
-    if (typeof ResizeObserverConstructor === 'undefined') return
-
-    this.resizeObserver = new ResizeObserverConstructor(this.handleResponsiveLayout)
-    this.resizeObserver.observe(this.target)
-  }
-
-  private stopResponsiveLayout(): void {
-    this.target?.ownerDocument.defaultView
-      ?.removeEventListener('resize', this.handleResponsiveLayout)
-    this.resizeObserver?.disconnect()
-    this.resizeObserver = null
+    this.responsiveLayout.setLayout(layout)
   }
 
   private closeMasonryReel(): void {
@@ -291,6 +266,29 @@ class VibeController implements VibeInstance {
     this.state.activeReelPostId = null
     this.state.reelOrigin = null
     this.routing.syncFeed()
+  }
+
+  private restoreActiveItemAfterRemoval(
+    placements: readonly VibeItemPlacement[],
+    activeIndex: number,
+  ): void {
+    const removedPostIds = new Set(placements.map(({ item }) => item.postId))
+    if (
+      this.state.activeReelPostId === null
+      || !removedPostIds.has(this.state.activeReelPostId)
+    ) return
+
+    if (this.state.reelOrigin === 'masonry') {
+      this.closeMasonryReel()
+      return
+    }
+
+    const replacement = this.state.items[
+      Math.min(Math.max(activeIndex, 0), this.state.items.length - 1)
+    ]
+    this.state.activeReelPostId = replacement?.postId ?? null
+    if (replacement) this.routing.syncReel(replacement.postId)
+    else this.routing.syncFeed()
   }
 
   private openMasonryReel(postId: VibeItemId): void {

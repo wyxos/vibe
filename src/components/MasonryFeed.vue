@@ -15,6 +15,7 @@ import {
   calculateMasonryEntryOffset,
   calculateMasonryLayout,
   calculateVisibleMasonryIndices,
+  type MasonryLayout,
 } from '../core/masonry'
 import type { VibeItemId } from '../types'
 import GalleryScrollbar from './GalleryScrollbar.vue'
@@ -27,7 +28,10 @@ const MAX_GAP = 12
 const VIRTUAL_OVERSCAN_MIN = 800
 const VIRTUAL_OVERSCAN_FACTOR = 1.5
 
-const props = defineProps<MasonryFeedProps>()
+const props = withDefaults(defineProps<MasonryFeedProps>(), {
+  leavingPostIds: () => new Set(),
+  removalDelays: () => new Map(),
+})
 const emit = defineEmits<{
   activate: [postId: VibeItemId, input: 'keyboard' | 'pointer']
   error: [postId: VibeItemId, mediaIndex: number]
@@ -49,7 +53,7 @@ let masonryResizeObserver: ResizeObserver | null = null
 let galleryResizeObserver: ResizeObserver | null = null
 let resizeFrame: number | null = null
 
-const masonryLayout = computed(() => calculateMasonryLayout(
+const settledMasonryLayout = computed(() => calculateMasonryLayout(
   props.items,
   masonryWidth.value,
   {
@@ -60,8 +64,44 @@ const masonryLayout = computed(() => calculateMasonryLayout(
   },
 ))
 
+const masonryLayout = computed<MasonryLayout>(() => {
+  const settledLayout = settledMasonryLayout.value
+  if (props.leavingPostIds.size === 0) return settledLayout
+
+  const retainedItems = props.items.filter(
+    (item) => !props.leavingPostIds.has(item.postId),
+  )
+  const projectedLayout = calculateMasonryLayout(
+    retainedItems,
+    masonryWidth.value,
+    {
+      additionalHeight:
+        (props.cardHeader?.height ?? 0) + (props.cardFooter?.height ?? 0),
+      gap: masonryGap.value,
+      minColumnWidth: MIN_COLUMN_WIDTH,
+    },
+  )
+  const projectedPositions = new Map(
+    retainedItems.map((item, index) => [
+      item.postId,
+      projectedLayout.items[index]!,
+    ]),
+  )
+
+  return {
+    ...projectedLayout,
+    items: props.items.map((item, index) => (
+      props.leavingPostIds.has(item.postId)
+        ? settledLayout.items[index]!
+        : projectedPositions.get(item.postId) ?? settledLayout.items[index]!
+    )),
+  }
+})
+
 const masonryStyle = computed<CSSProperties>(() => ({
-  height: `${masonryLayout.value.height}px`,
+  height: `${props.leavingPostIds.size === 0
+    ? masonryLayout.value.height
+    : settledMasonryLayout.value.height}px`,
 }))
 
 const visibleItems = computed(() => {
@@ -73,14 +113,32 @@ const visibleItems = computed(() => {
     scrollTop: galleryScrollTop.value - masonryContentTop.value,
     viewportHeight: galleryViewportHeight.value,
   }
-  const indices = calculateVisibleMasonryIndices(
+  const targetIndices = calculateVisibleMasonryIndices(
     masonryLayout.value.items,
     { ...viewport, overscan },
   )
-  const viewportIndices = new Set(calculateVisibleMasonryIndices(
+  const settledIndices = props.leavingPostIds.size === 0
+    ? []
+    : calculateVisibleMasonryIndices(
+        settledMasonryLayout.value.items,
+        { ...viewport, overscan },
+      )
+  const indices = [...new Set([...targetIndices, ...settledIndices])]
+    .sort((first, second) => first - second)
+  const targetViewportIndices = calculateVisibleMasonryIndices(
     masonryLayout.value.items,
     { ...viewport, overscan: 0 },
-  ))
+  )
+  const settledViewportIndices = props.leavingPostIds.size === 0
+    ? []
+    : calculateVisibleMasonryIndices(
+        settledMasonryLayout.value.items,
+        { ...viewport, overscan: 0 },
+      )
+  const viewportIndices = new Set([
+    ...targetViewportIndices,
+    ...settledViewportIndices,
+  ])
 
   return indices.flatMap((index) => {
     const item = props.items[index]
@@ -98,20 +156,27 @@ function itemStyle(index: number): CSSProperties {
   const postId = props.items[index]?.postId
   if (!position) return {}
 
-  const entryOffset = postId !== undefined && props.enteringPostIds.has(postId)
+  const entering = postId !== undefined && props.enteringPostIds.has(postId)
+  const leaving = postId !== undefined && props.leavingPostIds.has(postId)
+  const entryOffset = entering || leaving
     ? calculateMasonryEntryOffset({
-        containerHeight: masonryLayout.value.height,
+        containerHeight: settledMasonryLayout.value.height,
         gap: masonryGap.value,
       })
     : 0
+  const motionDelay = postId === undefined
+    ? 0
+    : leaving
+      ? props.removalDelays.get(postId) ?? 0
+      : entering
+        ? props.entryDelays.get(postId) ?? 0
+        : 0
 
   return {
-    '--masonry-entry-delay': `${postId === undefined ? 0 : props.entryDelays.get(postId) ?? 0}ms`,
-    top: `${position.y}px`,
-    left: `${position.x}px`,
+    '--masonry-entry-delay': `${motionDelay}ms`,
     width: `${position.width}px`,
     height: `${position.height}px`,
-    transform: `translate3d(0, ${entryOffset}px, 0)`,
+    transform: `translate3d(${position.x}px, ${position.y + entryOffset}px, 0)`,
   }
 }
 
@@ -222,6 +287,7 @@ defineExpose({ getScrollElement, loadIfNearBottom })
           :key="item.postId"
           class="masonry-item"
           :entering="enteringPostIds.has(item.postId)"
+          :leaving="leavingPostIds.has(item.postId)"
           :fetch-priority="fetchPriority"
           :card-footer="cardFooter"
           :card-header="cardHeader"

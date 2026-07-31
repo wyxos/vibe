@@ -12,6 +12,48 @@
 | `reload()` | Reloads the feed from its initial boundary. |
 | `loadNext()` | Requests the next ordinary cursor page. |
 
+## Item removal and restoration
+
+| Method | Purpose |
+| --- | --- |
+| `removeItems(postIds)` | Animates loaded items out, removes them, records the transaction, and resolves with a `VibeRemoval`. |
+| `restoreRemoval(removal)` | Restores a removal transaction once, including one evicted from automatic undo history. |
+| `undoLastRemoval()` | Restores and returns the latest recorded removal, or returns `null`. |
+| `restoreItems(placements)` | Restores explicit item/index placements without creating an undo transaction. |
+
+`VibeRemoval` is an opaque, readonly removal token whose entries contain the
+removed items and their original indexes. Pass the token back when application
+state, a failed request, or a specific queue action needs to restore that
+removal:
+
+```ts
+const removal = await vibe.removeItems(['post-12', 'post-18'])
+
+// Restores this transaction even if later removals happened.
+vibe.restoreRemoval(removal)
+```
+
+For a conventional latest-action undo:
+
+```ts
+const restored = vibe.undoLastRemoval()
+if (restored) console.log(`Restored ${restored.length} items`)
+```
+
+Vibe preserves the field's logical item order, so restoring removal
+transactions out of sequence still places their items correctly. Each
+instance retains the latest 20 removals by default. Configure
+`removalHistoryLimit` to use another non-negative limit; `0` disables
+`undoLastRemoval()` history without invalidating the tokens returned by
+`removeItems()`. Reloading or destroying the instance clears its history.
+
+`restoreItems()` remains available for consumer-created `{ item, index }`
+placements. Indexes must be non-negative integers. Items whose `postId` is
+already loaded are ignored. Passing a current `VibeRemoval` to this method is
+equivalent to `restoreRemoval()`.
+
+All restored cards use the same entry motion as newly loaded cards.
+
 ## Layout and navigation
 
 | Method | Purpose |

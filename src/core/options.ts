@@ -29,6 +29,14 @@ export function validateOptions(options: CreateVibeOptions): void {
   validateFillOptions(options.fill)
   validateReelAutoAdvanceOptions(options.reelAutoAdvance)
 
+  if (options.removalHistoryLimit !== undefined
+    && (!Number.isInteger(options.removalHistoryLimit)
+      || options.removalHistoryLimit < 0)) {
+    throw new TypeError(
+      'Vibe removalHistoryLimit must be a non-negative integer.',
+    )
+  }
+
   if (!options.initialPage && !options.loadPage) {
     throw new TypeError('Vibe requires either initialPage or loadPage.')
   }

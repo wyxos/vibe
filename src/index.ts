@@ -38,6 +38,8 @@ export type {
   VibeInstance,
   VibeItem,
   VibeItemId,
+  VibeItemPlacement,
+  VibeRemoval,
   VibeLayout,
   VibeLayoutMode,
   VibeLifecycle,

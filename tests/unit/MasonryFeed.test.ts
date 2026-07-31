@@ -189,7 +189,39 @@ describe('MasonryFeed', () => {
 
     await wrapper.setProps({ enteringPostIds: new Set<number>() })
     expect((firstCard.element as HTMLElement).style.transform)
-      .toBe('translate3d(0, 0px, 0)')
+      .toBe('translate3d(0px, 0px, 0)')
+  })
+
+  it('moves retained items while removed items reverse their entry motion', async () => {
+    const items = [feedItem(1), feedItem(2), feedItem(3)]
+    const wrapper = mount(MasonryFeed, {
+      props: {
+        ...props(items),
+        enteringPostIds: new Set<number>(),
+      },
+    })
+    await wrapper.vm.$nextTick()
+
+    const leavingCard = wrapper.get('[data-post-id="1"]')
+    const retainedCard = wrapper.get('[data-post-id="2"]')
+    const leavingStart = (leavingCard.element as HTMLElement).style.transform
+    const retainedStart = (retainedCard.element as HTMLElement).style.transform
+    const masonryHeight = (wrapper.get('.masonry').element as HTMLElement)
+      .style.height
+
+    await wrapper.setProps({
+      leavingPostIds: new Set([1]),
+      removalDelays: new Map([[1, 0]]),
+    })
+
+    expect((leavingCard.element as HTMLElement).style.transform)
+      .not.toBe(leavingStart)
+    expect((retainedCard.element as HTMLElement).style.transform)
+      .not.toBe(retainedStart)
+    expect((retainedCard.element as HTMLElement).style.transform)
+      .toBe('translate3d(0px, 0px, 0)')
+    expect((wrapper.get('.masonry').element as HTMLElement).style.height)
+      .toBe(masonryHeight)
   })
 
   it('activates an item by pointer or keyboard', async () => {

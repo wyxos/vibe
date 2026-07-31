@@ -24,6 +24,7 @@ import MasonryFeed from './MasonryFeed.vue'
 import ReelLayout from './ReelLayout.vue'
 
 const ENTRY_STAGGER_MS = 35
+const ITEM_MOTION_MS = 420
 
 interface FeedRendererExpose {
   changeActiveMedia?: (direction: -1 | 1) => boolean
@@ -61,6 +62,8 @@ const reelOriginStyle = shallowRef<ReelOriginStyle>({})
 const isReelLeaving = shallowRef(false)
 const enteringPostIds = shallowRef<ReadonlySet<VibeItemId>>(new Set())
 const entryDelays = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
+const leavingPostIds = shallowRef<ReadonlySet<VibeItemId>>(new Set())
+const removalDelays = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
 const mediaIndices = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
 const mediaPreviewStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
 const mediaOriginalStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
@@ -200,6 +203,29 @@ function findMasonryCard(postId: VibeItemId): HTMLElement | null {
   return Array.from(cards).find((card) => card.dataset.postId === String(postId)) ?? null
 }
 
+function startItemRemoval(postIds: readonly VibeItemId[]): number {
+  if (
+    props.state.layout !== 'masonry'
+    || props.state.reelOrigin !== null
+    || prefersReducedMotion()
+  ) return 0
+
+  const removalPostIds = [...new Set(postIds)]
+  const visiblePostIds = removalPostIds.filter(findMasonryCard)
+  if (visiblePostIds.length === 0) return 0
+
+  const nextDelays = new Map(removalDelays.value)
+  visiblePostIds.forEach((postId, index) => {
+    nextDelays.set(postId, index * ENTRY_STAGGER_MS)
+  })
+  enteringPostIds.value = new Set(
+    [...enteringPostIds.value].filter((postId) => !visiblePostIds.includes(postId)),
+  )
+  leavingPostIds.value = new Set([...leavingPostIds.value, ...removalPostIds])
+  removalDelays.value = nextDelays
+  return ITEM_MOTION_MS + ((visiblePostIds.length - 1) * ENTRY_STAGGER_MS)
+}
+
 function focusMasonryCard(postId: VibeItemId, showFocusRing: boolean): void {
   const card = findMasonryCard(postId)
   const activator = card?.querySelector<HTMLElement>('.media-card-activator')
@@ -293,7 +319,14 @@ watch(
   () => props.state.items.map((item) => item.postId),
   (postIds) => {
     const addedPostIds = postIds.filter((postId) => !previousPostIds.has(postId))
+    const currentPostIds = new Set(postIds)
     previousPostIds = new Set(postIds)
+    leavingPostIds.value = new Set(
+      [...leavingPostIds.value].filter((postId) => currentPostIds.has(postId)),
+    )
+    removalDelays.value = new Map(
+      [...removalDelays.value].filter(([postId]) => currentPostIds.has(postId)),
+    )
     if (addedPostIds.length === 0 || prefersReducedMotion()) return
 
     const nextEntryDelays = new Map<VibeItemId, number>()
@@ -323,6 +356,7 @@ defineExpose({
   getAutoScrollElement,
   loadIfNearBottom,
   moveActiveReelPost,
+  startItemRemoval,
 })
 </script>
 
@@ -381,6 +415,8 @@ defineExpose({
         :can-retry-end="canRetryEnd"
         :entering-post-ids="enteringPostIds"
         :entry-delays="entryDelays"
+        :leaving-post-ids="leavingPostIds"
+        :removal-delays="removalDelays"
         :card-footer="cardFooter"
         :card-header="cardHeader"
         :feed-footer="feedFooter"
