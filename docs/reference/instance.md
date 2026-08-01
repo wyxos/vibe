@@ -9,8 +9,15 @@
 | `mount()` | Mounts the Vue tree and starts initial loading when needed. |
 | `destroy()` | Unmounts Vibe and aborts its active page request. |
 | `getState()` | Returns the current public state snapshot. |
+| `refresh()` | Replaces the visible feed from its current continuation boundary. |
 | `reload()` | Reloads the feed from its initial boundary. |
 | `loadNext()` | Requests the next ordinary cursor page. |
+
+`refresh()` requests the current `next` cursor. When `next` is `null`, it falls
+back to the cursor that produced the last successfully loaded page so an
+exhausted feed can still be refreshed. `reload()` always requests the initial
+`null` cursor. Both methods replace the currently visible items and reset
+feed-owned fill, autofill, error, and removal-history state before loading.
 
 ## Item removal and restoration
 

@@ -203,10 +203,11 @@ class VibeController implements VibeInstance {
     return this.startRequest(this.state.next, true)
   }
 
-  async reload(): Promise<void> {
-    if (!this.options.loadPage) {
-      throw new Error('Vibe cannot reload without loadPage.')
-    }
+  async refresh(): Promise<void> { return this.replaceFeed(this.state.next ?? this.lastLoadedCursor, 'refresh') }
+  async reload(): Promise<void> { return this.replaceFeed(null, 'reload') }
+
+  private async replaceFeed(cursor: VibeCursor, action: 'refresh' | 'reload'): Promise<void> {
+    if (!this.options.loadPage) throw new Error(`Vibe cannot ${action} without loadPage.`)
 
     if (isAutofillActive(this.state.autofill)) await this.cancelAutofill()
     if (this.fillController.isActive()) await this.cancelFill()
@@ -220,7 +221,7 @@ class VibeController implements VibeInstance {
     this.state.next = null
     this.state.nextPageError = null
     this.state.total = null
-    return this.startRequest(null, false)
+    return this.startRequest(cursor, false)
   }
 
   async retryEnd(): Promise<void> {

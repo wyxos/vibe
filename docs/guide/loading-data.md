@@ -67,10 +67,18 @@ Use `setLoadMoreLocked(true)` to pause forward pagination without cancelling an 
 `loadPage` may throw. Vibe exposes the failure through state and renders retry UI for its owned request surfaces.
 
 ```ts
+// Replace the feed from its current continuation boundary.
+await vibe.refresh()
+
+// Replace the feed from the initial boundary.
 await vibe.reload()
 
 const state = vibe.getState()
 console.log(state.lifecycle, state.error, state.nextPageError)
 ```
+
+Both methods require `loadPage`. `refresh()` requests the current `next` cursor,
+or the cursor that produced the last loaded page when `next` is `null`.
+`reload()` always starts over with a `null` cursor.
 
 For batch collection beyond ordinary pagination, see the `autofill` and `fill` options in the [configuration reference](../reference/configuration).

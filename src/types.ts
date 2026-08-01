@@ -439,6 +439,7 @@ export interface VibeInstance {
   pauseAutoScroll: () => void
   previousReelMediaItem: () => boolean
   previousReelPost: () => boolean
+  refresh: () => Promise<void>
   reload: () => Promise<void>
   removeItems: (postIds: readonly VibeItemId[]) => Promise<VibeRemoval>
   resumeAutoScroll: () => void

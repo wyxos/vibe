@@ -683,10 +683,15 @@ vibe.pauseAutoScroll()
 vibe.resumeAutoScroll()
 vibe.setAutoScroll(false)
 await vibe.loadNext()
+await vibe.refresh()
 await vibe.reload()
 vibe.getState()
 vibe.destroy()
 ```
+
+`refresh()` replaces the visible feed from its current continuation cursor. At
+the end of the feed, it requests the cursor that produced the last loaded page
+again. Use `reload()` to replace the feed from its initial `null` cursor instead.
 
 Destroying an instance unmounts its Vue tree and aborts its active page request.
 
