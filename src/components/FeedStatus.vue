@@ -43,7 +43,6 @@ const emit = defineEmits<{
       :feed-footer="feedFooter"
       :has-error="Boolean(state.nextPageError)"
       :has-next="state.next !== null"
-      :infinite-scroll="state.infiniteScroll"
       :is-loading="state.isLoadingMore"
       :load-more-locked="state.loadMoreLocked"
       :state="state"

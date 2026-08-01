@@ -317,7 +317,6 @@ defineExpose({ getScrollElement, loadIfNearBottom })
         :feed-footer="feedFooter"
         :has-error="nextPageError"
         :has-next="hasNext"
-        :infinite-scroll="infiniteScroll"
         :is-loading="isLoadingMore"
         :load-more-locked="loadMoreLocked"
         :state="state"

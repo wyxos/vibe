@@ -206,6 +206,18 @@ test.describe('desktop reel information sheet', () => {
     await expect(page.locator('.vibe-reel-overlay')).toBeHidden()
   })
 
+  test('keeps manual pagination available alongside infinite scrolling', async ({ page }) => {
+    await openMasonrySheet(page)
+    const sheet = page.locator('.reel-info-sheet')
+    const cards = sheet.locator('.masonry-item')
+    const initialCount = await cards.count()
+    const loadMore = sheet.getByRole('button', { name: 'Load more' })
+
+    await expect(loadMore).toBeVisible()
+    await loadMore.click()
+    await expect.poll(() => cards.count()).toBeGreaterThan(initialCount)
+  })
+
   test('supports public post navigation in a masonry-origin reel', async ({ page }) => {
     await waitForDemo(page)
     expect(await page.evaluate(() => (

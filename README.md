@@ -577,7 +577,9 @@ behavior across masonry viewer closes.
 ## Custom feed footer
 
 Set `feedFooter.component` to replace the built-in `GalleryFooter`. Consumers
-that omit it keep the existing pagination and end-of-feed footer.
+that omit it keep the built-in manual load, retry, and end-of-feed controls.
+The manual Load more action remains available when infinite scrolling is
+enabled, so short feeds can continue without requiring a scrollbar.
 
 ```ts
 import FeedFooter from './FeedFooter.vue'

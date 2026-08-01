@@ -277,6 +277,21 @@ describe('MasonryFeed', () => {
     expect(wrapper.emitted('retryEnd')).toEqual([[]])
   })
 
+  it('offers manual loading without disabling infinite scroll', async () => {
+    const wrapper = mount(MasonryFeed, {
+      props: {
+        ...props(),
+        hasNext: true,
+      },
+    })
+    const gallery = wrapper.get('.gallery-shell')
+    gallery.element.scrollTop = 1800
+
+    expect(wrapper.get('[data-test="load-more"]').text()).toBe('Load more')
+    await gallery.trigger('scroll')
+    expect(wrapper.emitted('loadMore')).toEqual([[]])
+  })
+
   it('disables manual and infinite pagination while loading more is locked', async () => {
     const wrapper = mount(MasonryFeed, {
       props: {

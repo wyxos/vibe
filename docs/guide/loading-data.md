@@ -43,7 +43,11 @@ Provide both `initialPage` and `loadPage` when restored or server-rendered items
 
 ## Pagination controls
 
-Infinite scrolling is enabled by default. You can disable it and load explicitly:
+Infinite scrolling is enabled by default. The built-in footer also keeps a
+manual Load more action visible while another cursor exists. This lets users
+continue a short feed that does not yet have enough content to scroll.
+
+You can disable automatic loading and load only through the footer or API:
 
 ```ts
 const vibe = createVibe({

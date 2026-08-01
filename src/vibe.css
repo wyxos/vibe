@@ -882,11 +882,6 @@
   place-items: center;
 }
 
-.gallery-sentinel {
-  width: 1px;
-  height: 2rem;
-}
-
 .load-more-status {
   margin: 0;
   color: #a3a3a3;

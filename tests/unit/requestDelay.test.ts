@@ -22,6 +22,24 @@ describe('request delay', () => {
     ))).toEqual([0, 100, 200, 250, 250])
   })
 
+  it('increments a custom step to the default maximum', () => {
+    const options = { delayStepMs: 1_250 }
+    expect(Array.from({ length: 10 }, (_, index) => (
+      getRequestDelayMs(index, options)
+    ))).toEqual([
+      0,
+      1_250,
+      2_500,
+      3_750,
+      5_000,
+      6_250,
+      7_500,
+      8_750,
+      10_000,
+      10_000,
+    ])
+  })
+
   it('rejects invalid public delay options', () => {
     expect(() => validateRequestDelayOptions(
       { delayStepMs: -1 },

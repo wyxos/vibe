@@ -3,7 +3,6 @@ const props = defineProps<{
   canRetryEnd: boolean
   hasError: boolean
   hasNext: boolean
-  infiniteScroll: boolean
   isLoading: boolean
   loadMoreLocked: boolean
 }>()
@@ -34,7 +33,7 @@ function onAction(): void {
     </p>
 
     <button
-      v-else-if="hasError || (hasNext && (!infiniteScroll || loadMoreLocked))"
+      v-else-if="hasError || hasNext"
       data-test="load-more"
       class="load-more-button"
       type="button"
@@ -43,12 +42,6 @@ function onAction(): void {
     >
       {{ hasError ? 'Try again' : loadMoreLocked ? 'Loading paused' : 'Load more' }}
     </button>
-
-    <span
-      v-else-if="hasNext"
-      class="gallery-sentinel"
-      aria-hidden="true"
-    />
 
     <div
       v-else

@@ -12,7 +12,6 @@ const props = defineProps<{
   feedFooter?: VibeFeedFooter
   hasError: boolean
   hasNext: boolean
-  infiniteScroll: boolean
   isLoading: boolean
   loadMoreLocked: boolean
   state?: VibeState
@@ -50,7 +49,6 @@ function retry(): void {
     :can-retry-end="canRetryEnd"
     :has-error="hasError"
     :has-next="hasNext"
-    :infinite-scroll="infiniteScroll"
     :is-loading="isLoading"
     :load-more-locked="loadMoreLocked"
     @load-more="emit('loadMore')"

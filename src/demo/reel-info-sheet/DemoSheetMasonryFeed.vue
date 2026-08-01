@@ -65,12 +65,12 @@ onMounted(async () => {
     vibe = createVibe({
       target,
       layout: 'masonry',
-      infiniteScroll: false,
-      loadPage: async () => {
-        const page = await getFakeMediaPage(null)
+      infiniteScroll: true,
+      loadPage: async ({ cursor }) => {
+        const page = await getFakeMediaPage(cursor)
         const items = rotateFromActive(page.items)
 
-        return { items, next: null, total: items.length }
+        return { items, next: page.meta.next, total: page.meta.total }
       },
     })
   }

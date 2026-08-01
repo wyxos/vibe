@@ -52,10 +52,15 @@ describe('custom feed footer', () => {
     return instance
   }
 
-  it('keeps GalleryFooter as the default', async () => {
+  it('keeps a manual load action visible while infinite scrolling is enabled', async () => {
+    const loadPage = vi.fn().mockResolvedValue({
+      items: [item(2)],
+      next: null,
+    })
     const instance = track(createVibe({
       initialPage: { items: [item(1)], next: 'two' },
-      loadPage: vi.fn(),
+      infiniteScroll: true,
+      loadPage,
       target,
     }))
 
@@ -63,6 +68,16 @@ describe('custom feed footer', () => {
 
     expect(target.querySelector('.gallery-footer')).not.toBeNull()
     expect(target.querySelector('[data-test="consumer-feed-footer"]')).toBeNull()
+    expect(target.querySelector('[data-test="load-more"]')?.textContent)
+      .toBe('Load more')
+
+    target.querySelector<HTMLButtonElement>('[data-test="load-more"]')!.click()
+    await flushPromises()
+
+    expect(loadPage).toHaveBeenCalledWith(
+      expect.objectContaining({ cursor: 'two' }),
+    )
+    expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1, 2])
   })
 
   it('passes reactive public state and working load, end-retry, and retry actions', async () => {
