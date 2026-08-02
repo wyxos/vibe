@@ -1,26 +1,24 @@
-import type { VibeRouteSync } from './vibeRouting'
 import type { VibeRuntimeState } from './runtime'
-import type { VibeItemPlacement } from '../types'
+import type { VibeItem, VibeItemId, VibeItemPlacement } from '../types'
 
 export function restoreActiveItemAfterRemoval(
   state: VibeRuntimeState,
-  routing: VibeRouteSync,
   placements: readonly VibeItemPlacement[],
   activeIndex: number,
-  closeMasonryReel: () => void,
+  activate: (postId: VibeItemId) => void,
+  loadForward: (postIndex: number, item: VibeItem) => void,
 ): void {
   const removedPostIds = new Set(placements.map(({ item }) => item.postId))
   if (state.activeReelPostId === null || !removedPostIds.has(state.activeReelPostId)) return
 
-  if (state.reelOrigin === 'masonry') {
-    closeMasonryReel()
+  const replacement = state.items[Math.max(activeIndex, 0)]
+  if (replacement) {
+    activate(replacement.postId)
     return
   }
 
-  const replacement = state.items[
-    Math.min(Math.max(activeIndex, 0), state.items.length - 1)
-  ]
-  state.activeReelPostId = replacement?.postId ?? null
-  if (replacement) routing.syncReel(replacement.postId)
-  else routing.syncFeed()
+  const removedActiveItem = placements.find(
+    ({ item }) => item.postId === state.activeReelPostId,
+  )?.item
+  if (removedActiveItem) loadForward(Math.max(activeIndex, 0), removedActiveItem)
 }

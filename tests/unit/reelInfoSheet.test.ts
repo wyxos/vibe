@@ -194,4 +194,34 @@ describe('reel information sheet', () => {
     expect(target.querySelector('.vibe-reel-overlay')).not.toBeNull()
     expect(target.querySelector('[data-test="consumer-sheet"]')).not.toBeNull()
   })
+
+  it('clears the sheet state when closing a masonry reel on phones', async () => {
+    vi.spyOn(window.screen, 'width', 'get').mockReturnValue(390)
+    vi.spyOn(window.screen, 'height', 'get').mockReturnValue(844)
+    const instance = track(createVibe({
+      target,
+      initialPage: { items: [item(1), item(2)], next: null },
+      reelInfoSheet: { component: InfoSheet, enabled: true },
+    }))
+    await instance.mount()
+    await flushPromises()
+
+    target.querySelector<HTMLElement>('[data-post-id="1"]')?.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, detail: 1 }),
+    )
+    await flushPromises()
+
+    expect(target.querySelector('.vibe-reel-overlay')).not.toBeNull()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await flushPromises()
+
+    expect(target.querySelector('.vibe-reel-overlay')).toBeNull()
+    expect(instance.getState().reelInfoSheet.enabled).toBe(false)
+
+    target.querySelector<HTMLElement>('[data-post-id="2"]')?.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, detail: 1 }),
+    )
+    await flushPromises()
+    expect(target.querySelector('[data-test="consumer-sheet"]')).toBeNull()
+  })
 })

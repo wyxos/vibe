@@ -280,9 +280,14 @@ watch(galleryElement, (element) => {
 })
 
 watch(
-  () => props.items.length,
-  async (length) => {
-    activeIndex.value = Math.min(activeIndex.value, Math.max(0, length - 1))
+  [() => props.items.length, () => props.initialPostId],
+  async ([length, requestedPostId]) => {
+    const requestedIndex = requestedPostId === null || requestedPostId === undefined
+      ? -1
+      : props.items.findIndex(({ postId }) => postId === requestedPostId)
+    activeIndex.value = requestedIndex >= 0
+      ? requestedIndex
+      : Math.min(activeIndex.value, Math.max(0, length - 1))
     await nextTick()
     restoreActiveItem()
   },

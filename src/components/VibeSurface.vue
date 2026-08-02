@@ -279,16 +279,16 @@ function onKeydown(event: KeyboardEvent): void {
 
   if (event.key === 'Escape' && props.state.reelOrigin === 'masonry') {
     event.preventDefault()
+    if (props.state.reelInfoSheetOverlay && props.state.reelInfoSheet.enabled)
+      emit('reelInfoSheetChange', false)
     closeMasonryReel()
     return
   }
-
   if (event.key === 'Escape' && reelActive && props.state.reelInfoSheet.enabled) {
     event.preventDefault()
     emit('reelInfoSheetChange', false)
     return
   }
-
   if (
     event.defaultPrevented
     || event.altKey

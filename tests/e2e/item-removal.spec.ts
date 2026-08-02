@@ -82,3 +82,24 @@ test('item removal is available in the narrow reel layout', async ({ page }) => 
     element.scrollWidth <= element.clientWidth
   ))).toBe(true)
 })
+
+test('removing the active masonry reel item advances without closing the reel', async ({
+  page,
+}) => {
+  await page.goto('/demos/item-removal')
+  await page.locator('.masonry-item').first().click()
+
+  const overlay = page.locator('.vibe-reel-overlay')
+  const reel = overlay.locator('.reel-feed')
+  await expect(overlay).toBeVisible()
+  const activePostId = await reel.getAttribute('data-active-post-id')
+  expect(activePostId).not.toBeNull()
+
+  await overlay.getByRole('button', {
+    name: `Remove post ${activePostId}`,
+  }).click()
+  await expect(page.locator('[data-test="removal-status"]')).toHaveText('Removed 1 item')
+  await expect(overlay).toBeVisible()
+  await expect.poll(() => reel.getAttribute('data-active-post-id'))
+    .not.toBe(activePostId)
+})

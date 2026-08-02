@@ -18,9 +18,11 @@ const DEFAULT_REMOVAL_HISTORY_LIMIT = 20
 interface ItemRemovalControllerOptions {
   historyLimit?: number
   onItemsRemoved: (
+    removal: VibeRemoval,
     placements: readonly VibeItemPlacement[],
     activeIndex: number,
   ) => void
+  onRemovalRestored: (removal: VibeRemoval) => void
   startRemoval: (postIds: readonly VibeItemId[]) => number
   state: VibeRuntimeState
 }
@@ -70,8 +72,16 @@ export class ItemRemovalController {
     const activeIndex = this.state.items.findIndex(
       (item) => item.postId === this.state.activeReelPostId,
     )
+    const removedPostIdsSet = new Set(placements.map(({ item }) => item.postId))
+    const removedBeforeActive = activeIndex < 0
+      ? 0
+      : this.state.items
+          .slice(0, activeIndex)
+          .filter(({ postId }) => removedPostIdsSet.has(postId))
+          .length
+    const forwardIndex = Math.max(activeIndex - removedBeforeActive, 0)
     this.state.items = removePlacedItems(this.state.items, placements)
-    this.options.onItemsRemoved(placements, activeIndex)
+    this.options.onItemsRemoved(removal, placements, forwardIndex)
     this.record(removal)
     return removal
   }
@@ -103,7 +113,9 @@ export class ItemRemovalController {
 
     metadata.restored = true
     this.removeFromHistory(removal)
-    return this.restoreOrderedPlacements(removal)
+    const restored = this.restoreOrderedPlacements(removal)
+    if (restored) this.options.onRemovalRestored(removal)
+    return restored
   }
 
   undoLast(): VibeRemoval | null {

@@ -227,6 +227,30 @@ test.describe('phone reel information sheet', () => {
     await page.evaluate(() => window.__vibeReelInfoSheetDemo?.setReelInfoSheet(false))
     await expect(page.getByRole('dialog', { name: 'Reel information' })).toBeHidden()
   })
+
+})
+
+test.describe('masonry reel resized to phone width', () => {
+  test.use({
+    hasTouch: true,
+    isMobile: true,
+    screen: { width: 1440, height: 900 },
+    viewport: { width: 1440, height: 900 },
+  })
+
+  test('clears the sheet when the phone-width reel closes', async ({ page }) => {
+    await openMasonrySheet(page)
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect(page.getByRole('dialog', { name: 'Reel information' })).toBeVisible()
+
+    await page.keyboard.press('Escape')
+    await expect(page.locator('.vibe-reel-overlay')).toBeHidden()
+
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.locator('.demo-vibe-host .masonry-item').nth(1).click()
+    await expect(page.locator('.vibe-reel-overlay')).toBeVisible()
+    await expect(page.locator('[data-test="reel-info-sheet"]')).toBeHidden()
+  })
 })
 
 test.describe('tablet reel information sheet', () => {

@@ -13,16 +13,14 @@ import {
   startBackendAutofill,
 } from './backendAutofill'
 import { autofillInitialPage } from './initialAutofill'
-import { restoreActiveItemAfterRemoval } from './activeItemRemoval'
-import { ExactMediaRemovalController } from './exactMediaRemovalController'
 import { VibeFillController } from './fillController'
 import type { VibeSurfaceExpose } from './feed'
 import { createFeedFooterActions } from './feedFooter'
 import { createInitialRuntimeState } from './initialRuntimeState'
-import { ItemRemovalController } from './itemRemovalController'
 import { resolveVibeTarget, validateOptions } from './options'
 import { appendUniqueItems, validatePage } from './page'
 import { RequestDelayCountdown } from './requestDelay'
+import { createRemovalControllers, type RemovalControllers } from './removalControllers'
 import { ResponsiveLayoutController } from './responsiveLayoutController'
 import { updateReelAutoAdvanceState } from './reelAutoAdvance'
 import { setReelInfoSheetEnabled } from './reelInfoSheet'
@@ -57,8 +55,9 @@ class VibeController implements VibeInstance {
   private readonly responsiveLayout: ResponsiveLayoutController
   private readonly routing: VibeRouteSync
   private readonly fillController: VibeFillController
-  private readonly exactMediaRemoval: ExactMediaRemovalController
-  private readonly itemRemoval: ItemRemovalController
+  private readonly exactMediaRemoval: RemovalControllers['exactMediaRemoval']
+  private readonly itemRemoval: RemovalControllers['itemRemoval']
+  private readonly reelForward: RemovalControllers['reelForward']
   private surface: VibeSurfaceExpose | null = null
   private stopStateWatcher: WatchHandle | null = null
   private lastLoadedCursor: VibeCursor = null
@@ -83,26 +82,17 @@ class VibeController implements VibeInstance {
       state: this.state,
     })
     this.routing = new VibeRouteSync(options.routing, this.state)
-    this.exactMediaRemoval = new ExactMediaRemovalController({
+    const removals = createRemovalControllers({
+      historyLimit: options.removalHistoryLimit,
       loadNext: () => this.loadNext(),
       onActivate: (postId) => this.setActiveReelPost(postId),
       retryEnd: () => this.retryEnd(),
-      state: this.state,
-    })
-    this.itemRemoval = new ItemRemovalController({
-      historyLimit: options.removalHistoryLimit,
-      onItemsRemoved: (placements, activeIndex) => {
-        restoreActiveItemAfterRemoval(
-          this.state,
-          this.routing,
-          placements,
-          activeIndex,
-          () => this.closeMasonryReel(),
-        )
-      },
       startRemoval: (postIds) => this.surface?.startItemRemoval(postIds) ?? 0,
       state: this.state,
     })
+    this.exactMediaRemoval = removals.exactMediaRemoval
+    this.itemRemoval = removals.itemRemoval
+    this.reelForward = removals.reelForward
     this.responsiveLayout = new ResponsiveLayoutController(layoutMode, this.state, () => {
       this.routing.syncFeed()
     })
@@ -123,7 +113,9 @@ class VibeController implements VibeInstance {
       mediaCard: this.options.mediaCard,
       reelInfoSheet: this.options.reelInfoSheet,
       state: this.state,
-      onActiveReelChange: (postId: VibeItemId) => this.setActiveReelPost(postId),
+      onActiveReelChange: (postId: VibeItemId) => {
+        if (this.state.reelForward.status === 'idle') this.setActiveReelPost(postId)
+      },
       onCloseReel: () => this.closeMasonryReel(),
       onLoadMore: () => { void this.loadNext() },
       onOpenReel: (postId: VibeItemId) => this.openMasonryReel(postId),
@@ -144,6 +136,7 @@ class VibeController implements VibeInstance {
     this.autoScroll.destroy()
     this.fillController.destroy()
     this.cancelRequest()
+    this.reelForward.reset()
     this.exactMediaRemoval.reset()
     this.itemRemoval.destroy()
     this.responsiveLayout.destroy()
@@ -169,7 +162,7 @@ class VibeController implements VibeInstance {
     return this.exactMediaRemoval.restore(removal)
   }
   restoreRemoval(removal: VibeRemoval): boolean { return this.itemRemoval.restoreRemoval(removal) }
-  retryReelForward(): Promise<void> { return this.exactMediaRemoval.retryForward() }
+  retryReelForward(): Promise<void> { return this.reelForward.retry() }
   undoLastRemoval(): VibeRemoval | null { return this.itemRemoval.undoLast() }
   nextReelMediaItem(): boolean { return this.surface?.changeActiveReelMedia(1) ?? false }
   previousReelMediaItem(): boolean { return this.surface?.changeActiveReelMedia(-1) ?? false }
@@ -237,6 +230,7 @@ class VibeController implements VibeInstance {
     this.cancelRequest()
     this.state.autofill = createAutofillState(this.options.autofill, undefined, false)
     this.fillController.reset()
+    this.reelForward.reset()
     this.exactMediaRemoval.reset()
     this.itemRemoval.reset()
     this.state.error = null

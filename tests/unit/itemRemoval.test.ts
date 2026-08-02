@@ -22,6 +22,17 @@ function item(postId: number): VibeItem {
   }
 }
 
+function deferred<T>(): {
+  promise: Promise<T>
+  resolve: (value: T) => void
+} {
+  let resolve!: (value: T) => void
+  return {
+    promise: new Promise<T>((accept) => { resolve = accept }),
+    resolve,
+  }
+}
+
 describe('item removal and restoration', () => {
   let instance: VibeInstance | null = null
   let target: HTMLDivElement
@@ -129,6 +140,98 @@ describe('item removal and restoration', () => {
     expect(instance.getState().items.map(({ postId }) => postId))
       .toEqual([1, 2, 3, 4])
     expect(instance.restoreRemoval(firstRemoval)).toBe(false)
+  })
+
+  it('keeps a masonry reel open and advances to the next loaded item', async () => {
+    instance = createVibe({
+      target,
+      initialPage: { items: [item(1), item(2)], next: null },
+    })
+    await instance.mount()
+
+    target.querySelector<HTMLElement>('[data-post-id="1"]')?.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, detail: 1 }),
+    )
+    await flushPromises()
+    expect(target.querySelector('.vibe-reel-overlay')).not.toBeNull()
+
+    const removalPromise = instance.removeItems([1])
+    await vi.advanceTimersByTimeAsync(455)
+    await removalPromise
+    await flushPromises()
+
+    expect(instance.getState().activeReelPostId).toBe(2)
+    expect(instance.getState().reelOrigin).toBe('masonry')
+    expect(instance.getState().reelForward.status).toBe('idle')
+    expect(target.querySelector('.vibe-reel-overlay')).not.toBeNull()
+  })
+
+  it('loads the first item from the next page after removing the last loaded reel item', async () => {
+    const nextPage = deferred<{ items: VibeItem[]; next: null }>()
+    instance = createVibe({
+      target,
+      initialPage: { items: [item(1), item(2)], next: 'next' },
+      loadPage: () => nextPage.promise,
+    })
+    await instance.mount()
+
+    target.querySelector<HTMLElement>('[data-post-id="1"]')?.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, detail: 1 }),
+    )
+    await flushPromises()
+    expect(instance.nextReelPost()).toBe(true)
+    await flushPromises()
+    expect(instance.getState().activeReelPostId).toBe(2)
+    const removalPromise = instance.removeItems([2])
+    await vi.advanceTimersByTimeAsync(455)
+    await removalPromise
+    await flushPromises()
+
+    expect(instance.getState().reelForward.status).toBe('loading')
+    expect(instance.getState().activeReelPostId).toBe(2)
+    expect(target.querySelector('.vibe-reel-overlay')).not.toBeNull()
+    expect(target.textContent).toContain('Loading the next media')
+
+    nextPage.resolve({ items: [item(3)], next: null })
+    await flushPromises()
+    expect(instance.getState().activeReelPostId).toBe(3)
+    expect(instance.getState().reelForward.status).toBe('idle')
+    expect(target.querySelector('.vibe-reel-overlay')).not.toBeNull()
+  })
+
+  it('restores a pending active item without moving away from a loaded replacement', async () => {
+    const nextPage = deferred<{ items: VibeItem[]; next: null }>()
+    instance = createVibe({
+      target,
+      initialPage: { items: [item(1)], next: 'next' },
+      loadPage: () => nextPage.promise,
+    })
+    await instance.mount()
+
+    target.querySelector<HTMLElement>('[data-post-id="1"]')?.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, detail: 1 }),
+    )
+    await flushPromises()
+    const pendingRemovalPromise = instance.removeItems([1])
+    await vi.advanceTimersByTimeAsync(455)
+    const pendingRemoval = await pendingRemovalPromise
+    expect(instance.restoreRemoval(pendingRemoval)).toBe(true)
+    expect(instance.getState().activeReelPostId).toBe(1)
+
+    nextPage.resolve({ items: [item(2)], next: null })
+    await flushPromises()
+    expect(instance.getState().activeReelPostId).toBe(1)
+
+    const loadedRemovalPromise = instance.removeItems([1])
+    await vi.advanceTimersByTimeAsync(455)
+    const loadedRemoval = await loadedRemovalPromise
+    await flushPromises()
+    expect(instance.getState().activeReelPostId).toBe(2)
+    expect(instance.restoreRemoval(loadedRemoval)).toBe(true)
+    await flushPromises()
+    expect(instance.getState().activeReelPostId).toBe(2)
+    expect(target.querySelector('.reel-feed')?.getAttribute('data-active-post-id')).toBe('2')
+    expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1, 2])
   })
 
   it('bounds latest-removal undo without invalidating returned transactions', async () => {

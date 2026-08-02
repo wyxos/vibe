@@ -1,4 +1,5 @@
 import { mediaAssets } from './mediaAsset'
+import type { ReelForwardController } from './reelForwardController'
 import type { VibeRuntimeState } from './runtime'
 import type {
   VibeItem,
@@ -9,9 +10,8 @@ import type {
 } from '../types'
 
 interface ExactMediaRemovalControllerOptions {
-  loadNext: () => Promise<void>
   onActivate: (postId: VibeItemId) => void
-  retryEnd: () => Promise<void>
+  reelForward: ReelForwardController
   state: VibeRuntimeState
 }
 
@@ -19,12 +19,6 @@ interface RemovalMetadata {
   generation: number
   originalItem: VibeItem
   restored: boolean
-}
-
-interface ForwardTarget {
-  postIndex: number
-  removal: VibeMediaRemoval
-  version: number
 }
 
 function itemWithMedia(item: VibeItem, assets: readonly VibeMediaAsset[]): VibeItem {
@@ -40,9 +34,6 @@ function assertMediaTarget(target: VibeMediaTarget): void {
 }
 
 export class ExactMediaRemovalController {
-  private forward: ForwardTarget | null = null
-  private forwardPromise: Promise<void> | null = null
-  private forwardVersion = 0
   private generation = 0
   private readonly metadata = new WeakMap<VibeMediaRemoval, RemovalMetadata>()
   private readonly state: VibeRuntimeState
@@ -92,10 +83,6 @@ export class ExactMediaRemovalController {
 
   reset(): void {
     this.generation += 1
-    this.forwardVersion += 1
-    this.forward = null
-    this.forwardPromise = null
-    this.clearForwardState()
   }
 
   restore(removal: VibeMediaRemoval): boolean {
@@ -112,21 +99,11 @@ export class ExactMediaRemovalController {
       metadata.originalItem,
     )
 
-    if (this.forward?.removal === removal && this.state.reelForward.status !== 'idle') {
-      this.forwardVersion += 1
-      this.forward = null
-      this.clearForwardState()
+    if (this.options.reelForward.cancel(removal)) {
       this.state.mediaIndices.set(removal.postId, removal.mediaIndex)
       this.options.onActivate(removal.postId)
     }
     return true
-  }
-
-  retryForward(): Promise<void> {
-    if (!this.forward || this.state.reelForward.status === 'idle') return Promise.resolve()
-    this.state.nextPageError = null
-    this.state.reelForward = { error: null, status: 'loading' }
-    return this.startForwardRequest(this.state.next === null)
   }
 
   private advanceFromRemovedPost(removal: VibeMediaRemoval, item: VibeItem): void {
@@ -136,21 +113,7 @@ export class ExactMediaRemovalController {
       return
     }
 
-    this.forward = {
-      postIndex: removal.postIndex,
-      removal,
-      version: ++this.forwardVersion,
-    }
-    this.state.reelForward = { error: null, status: 'loading' }
-    this.state.reelForwardIndex = removal.postIndex
-    this.state.reelForwardItem = item
-    void this.startForwardRequest(false)
-  }
-
-  private clearForwardState(): void {
-    this.state.reelForward = { error: null, status: 'idle' }
-    this.state.reelForwardIndex = null
-    this.state.reelForwardItem = null
+    this.options.reelForward.start(removal, removal.postIndex, item)
   }
 
   private isReelOpen(): boolean {
@@ -168,57 +131,6 @@ export class ExactMediaRemovalController {
     const activeIndex = this.state.mediaIndices.get(removal.postId) ?? 0
     if (activeIndex >= insertAt) {
       this.state.mediaIndices.set(removal.postId, activeIndex + 1)
-    }
-  }
-
-  private startForwardRequest(retryExhausted: boolean): Promise<void> {
-    if (this.forwardPromise) return this.forwardPromise
-    const request = this.loadForward(retryExhausted)
-    this.forwardPromise = request
-    return request.finally(() => {
-      if (this.forwardPromise !== request) return
-      this.forwardPromise = null
-      if (this.forward && this.state.reelForward.status === 'loading') {
-        void this.startForwardRequest(false)
-      }
-    })
-  }
-
-  private async loadForward(retryExhausted: boolean): Promise<void> {
-    const target = this.forward
-    if (!target) return
-    if (retryExhausted) await this.options.retryEnd()
-
-    while (this.forward === target && target.version === this.forwardVersion) {
-      const replacement = this.state.items[target.postIndex]
-      if (replacement) {
-        this.forward = null
-        this.clearForwardState()
-        this.options.onActivate(replacement.postId)
-        return
-      }
-      if (this.state.nextPageError) {
-        this.state.reelForward = { error: this.state.nextPageError, status: 'error' }
-        return
-      }
-      if (this.state.next === null) {
-        this.state.reelForward = { error: null, status: 'end' }
-        return
-      }
-
-      const previousCursor = this.state.next
-      await this.options.loadNext()
-      if (
-        this.state.next === previousCursor
-        && !this.state.nextPageError
-        && !this.state.items[target.postIndex]
-      ) {
-        this.state.reelForward = {
-          error: new Error('Vibe could not advance while page loading is unavailable.'),
-          status: 'error',
-        }
-        return
-      }
     }
   }
 

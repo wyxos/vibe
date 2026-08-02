@@ -184,7 +184,9 @@ describe('exact media removal', () => {
     await flushPromises()
     expect(instance.getState().activeReelPostId).toBe(2)
     expect(instance.restoreMediaRemoval(loadedRemoval)).toBe(true)
+    await flushPromises()
     expect(instance.getState().activeReelPostId).toBe(2)
+    expect(target.querySelector('.reel-feed')?.getAttribute('data-active-post-id')).toBe('2')
     expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1, 2])
   })
 
