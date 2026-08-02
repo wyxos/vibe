@@ -7,6 +7,7 @@ import type {
   VibeMediaSource,
   VibeMediaCardOptions,
   VibeReelAutoAdvanceState,
+  VibeReelForwardState,
   VibeReelInfoSheetOptions,
   VibeReelOrigin,
   VibeState,
@@ -44,9 +45,12 @@ export interface ReelFeedProps extends FeedRendererProps {
   initialPostId?: VibeItemId | null
   mediaSource?: VibeMediaSource
   reelAutoAdvance: VibeReelAutoAdvanceState
+  reelForward?: VibeReelForwardState
 }
 
 export interface ReelLayoutProps extends ReelFeedProps {
+  forwardIndex?: number | null
+  forwardItem?: VibeItem | null
   infoSheet?: VibeReelInfoSheetOptions
   infoSheetEnabled: boolean
   infoSheetOverlay: boolean

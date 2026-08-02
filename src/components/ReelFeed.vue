@@ -21,7 +21,9 @@ import ReelAutoAdvanceProgress from './ReelAutoAdvanceProgress.vue'
 
 const VIRTUAL_OVERSCAN = 2
 
-const props = defineProps<ReelFeedProps>()
+const props = withDefaults(defineProps<ReelFeedProps>(), {
+  reelForward: () => ({ error: null, status: 'idle' }),
+})
 const emit = defineEmits<{
   activeChange: [postId: VibeItemId]
   error: [postId: VibeItemId, mediaIndex: number]
@@ -29,6 +31,7 @@ const emit = defineEmits<{
   mediaChange: [postId: VibeItemId, mediaIndex: number]
   ready: [postId: VibeItemId, mediaIndex: number]
   retryEnd: []
+  retryForward: []
 }>()
 
 const galleryElement = shallowRef<HTMLElement | null>(null)
@@ -100,10 +103,16 @@ const autoAdvanceLabel = computed(() => {
 })
 const showAutoAdvance = computed(() => (
   props.reelAutoAdvance.enabled
+  && props.reelForward.status === 'idle'
   && activeItem.value !== undefined
   && activePreviewState.value !== 'loading'
   && !activeMediaWaitsForEnd.value
 ))
+const forwardMessage = computed(() => {
+  if (props.reelForward.status === 'loading') return 'Loading the next media…'
+  if (props.reelForward.status === 'error') return 'Unable to load the next media.'
+  return 'You reached the end of this feed.'
+})
 
 function itemStyle(index: number): CSSProperties {
   return { gridRow: `${index + 1}` }
@@ -316,7 +325,7 @@ defineExpose({
     data-layout-mode="reel"
   >
     <CardRegion
-      v-if="cardHeader && activeItem"
+      v-if="cardHeader && activeItem && reelForward.status === 'idle'"
       :index="activeIndex"
       :item="activeItem"
       layout="reel"
@@ -336,7 +345,25 @@ defineExpose({
       :data-active-media-index="activeMediaIndex"
       @scroll.passive="onScroll"
     >
+      <div
+        v-if="reelForward.status !== 'idle'"
+        class="reel-forward-status"
+        :role="reelForward.status === 'error' ? 'alert' : 'status'"
+        :data-status="reelForward.status"
+      >
+        <p>{{ forwardMessage }}</p>
+        <button
+          v-if="reelForward.status === 'error' || reelForward.status === 'end'"
+          class="reel-forward-retry"
+          type="button"
+          @click="emit('retryForward')"
+        >
+          Retry
+        </button>
+      </div>
+
       <section
+        v-else
         class="reel-track"
         :style="trackStyle"
         aria-label="Media gallery"
@@ -369,6 +396,7 @@ defineExpose({
       </section>
 
       <FeedFooter
+        v-if="reelForward.status === 'idle'"
         :actions="feedFooterActions"
         :can-retry-end="canRetryEnd"
         :feed-footer="feedFooter"
@@ -383,7 +411,7 @@ defineExpose({
     </div>
 
     <CardRegion
-      v-if="cardFooter && activeItem"
+      v-if="cardFooter && activeItem && reelForward.status === 'idle'"
       :index="activeIndex"
       :item="activeItem"
       layout="reel"

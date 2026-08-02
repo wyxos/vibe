@@ -47,11 +47,115 @@ async function expectPersistentAcrossPostChange(page: Page): Promise<void> {
 
   await expect.poll(() => reel.getAttribute('data-active-post-id')).not.toBe(firstPostId)
   await expect(sheet).toHaveAttribute('data-e2e-identity', 'stable')
-  await expect(page.locator('.demo-reel-info-sheet')).toHaveAttribute(
-    'data-context-post-id',
-    await reel.getAttribute('data-active-post-id') ?? '',
-  )
+  await expect.poll(async () => (
+    await page.locator('.demo-reel-info-sheet').getAttribute('data-context-post-id')
+    === await reel.getAttribute('data-active-post-id')
+  )).toBe(true)
 }
+
+test('exact media removal keeps the reel and sheet active through restore and forward loading', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await openMasonrySheet(page)
+  const reel = page.locator('.vibe-reel-overlay .reel-feed')
+  const sheet = page.locator('[data-test="reel-info-sheet"]')
+  const nonActive = await page.evaluate(() => {
+    const vibe = window.__vibeReelInfoSheetDemo
+    if (!vibe) return null
+    const state = vibe.getState()
+    const target = state.items.find((item) => item.postId !== state.activeReelPostId)
+    return target
+      ? {
+          activePostId: String(state.activeReelPostId),
+          count: target.items.length + 1,
+          postId: target.postId,
+        }
+      : null
+  })
+  expect(nonActive).not.toBeNull()
+  await expect(reel).toHaveAttribute('data-active-post-id', nonActive!.activePostId)
+  const activePreview = reel.locator(
+    `[data-post-id="${nonActive!.activePostId}"] img.media-preview`,
+  ).first()
+  const initialSource = await activePreview.getAttribute('src')
+
+  expect(await page.evaluate(({ postId }) => {
+    const vibe = window.__vibeReelInfoSheetDemo
+    if (!vibe) return false
+    const holder = vibe as typeof vibe & { __e2eRemoval?: unknown }
+    holder.__e2eRemoval = vibe.removeMedia({
+      mediaIndex: 0,
+      postId,
+    })
+    return holder.__e2eRemoval !== null
+  }, nonActive!)).toBe(true)
+
+  await expect(sheet).toBeVisible()
+  await expect(reel).toHaveAttribute('data-active-post-id', nonActive!.activePostId)
+  await expect(reel).toHaveAttribute('data-active-media-index', '0')
+  await expect(activePreview).toHaveAttribute('src', initialSource ?? '')
+
+  expect(await page.evaluate(() => {
+    const vibe = window.__vibeReelInfoSheetDemo
+    if (!vibe) return false
+    const holder = vibe as typeof vibe & { __e2eRemoval?: unknown }
+    return holder.__e2eRemoval
+      ? vibe.restoreMediaRemoval(holder.__e2eRemoval as never)
+      : false
+  })).toBe(true)
+  await expect(activePreview).toHaveAttribute('src', initialSource ?? '')
+  expect(await page.evaluate((postId) => {
+    const vibe = window.__vibeReelInfoSheetDemo
+    const item = vibe?.getState().items.find((candidate) => candidate.postId === postId)
+    return item ? item.items.length + 1 : 0
+  }, nonActive!.postId)).toBe(nonActive!.count)
+
+  const remainingPostIds = await page.evaluate(() => {
+    const vibe = window.__vibeReelInfoSheetDemo
+    if (!vibe) return []
+    const state = vibe.getState()
+    const activeIndex = state.items.findIndex(
+      (item) => item.postId === state.activeReelPostId,
+    )
+    return state.items.slice(activeIndex + 1).map((item) => String(item.postId))
+  })
+  for (const postId of remainingPostIds) {
+    expect(await page.evaluate(() => (
+      window.__vibeReelInfoSheetDemo?.nextReelPost()
+    ))).toBe(true)
+    await expect(reel).toHaveAttribute('data-active-post-id', postId)
+  }
+  const lastLoaded = await page.evaluate(() => {
+    const vibe = window.__vibeReelInfoSheetDemo
+    if (!vibe) return null
+    const state = vibe.getState()
+    const active = state.items.find((item) => item.postId === state.activeReelPostId)
+    return active
+      ? {
+          count: active.items.length + 1,
+          postId: active.postId,
+          postIdText: String(active.postId),
+        }
+      : null
+  })
+  expect(lastLoaded).not.toBeNull()
+  await expect(reel).toHaveAttribute('data-active-post-id', lastLoaded!.postIdText)
+
+  expect(await page.evaluate(({ count, postId }) => {
+    const vibe = window.__vibeReelInfoSheetDemo
+    if (!vibe) return false
+    for (let index = 0; index < count; index += 1) {
+      if (!vibe.removeMedia({ mediaIndex: 0, postId })) return false
+    }
+    return true
+  }, lastLoaded!)).toBe(true)
+
+  await expect(page.locator('.reel-forward-status[data-status="loading"]')).toBeVisible()
+  await expect(sheet).toBeVisible()
+  await expect.poll(() => reel.getAttribute('data-active-post-id'), { timeout: 5_000 })
+    .not.toBe(lastLoaded!.postIdText)
+  await expect(page.locator('.reel-forward-status')).toBeHidden()
+  await expect(sheet).toBeVisible()
+})
 
 test.describe('phone reel information sheet', () => {
   test.use({

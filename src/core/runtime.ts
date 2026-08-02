@@ -7,6 +7,7 @@ import type {
   VibeItemId,
   VibeLayout,
   VibeReelAutoAdvanceState,
+  VibeReelForwardState,
   VibeReelInfoSheetState,
   VibeState,
 } from '../types'
@@ -23,9 +24,13 @@ export interface VibeRuntimeState {
   items: VibeItem[]
   layout: VibeLayout
   loadMoreLocked: boolean
+  mediaIndices: Map<VibeItemId, number>
   next: VibeCursor
   nextPageError: unknown | null
   reelAutoAdvance: VibeReelAutoAdvanceState
+  reelForward: VibeReelForwardState
+  reelForwardIndex: number | null
+  reelForwardItem: VibeItem | null
   reelInfoSheet: VibeReelInfoSheetState
   reelInfoSheetOverlay: boolean
   reelMediaSource: 'original' | 'preview'
@@ -55,6 +60,7 @@ export function snapshotState(state: VibeRuntimeState): VibeState {
     next: state.next,
     nextPageError: state.nextPageError,
     reelAutoAdvance: { ...state.reelAutoAdvance },
+    reelForward: { ...state.reelForward },
     reelInfoSheet: { ...state.reelInfoSheet },
     reelOrigin: state.reelOrigin,
     total: state.total,

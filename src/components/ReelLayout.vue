@@ -21,7 +21,11 @@ interface ReelFeedExpose {
   moveActivePost: (direction: -1 | 1) => boolean
 }
 
-const props = defineProps<ReelLayoutProps>()
+const props = withDefaults(defineProps<ReelLayoutProps>(), {
+  forwardIndex: null,
+  forwardItem: null,
+  reelForward: () => ({ error: null, status: 'idle' }),
+})
 const emit = defineEmits<{
   activeChange: [postId: VibeItemId]
   closeInfoSheet: []
@@ -30,6 +34,7 @@ const emit = defineEmits<{
   mediaChange: [postId: VibeItemId, mediaIndex: number]
   ready: [postId: VibeItemId, mediaIndex: number]
   retryEnd: []
+  retryForward: []
 }>()
 
 const reelFeed = shallowRef<ReelFeedExpose | null>(null)
@@ -44,20 +49,24 @@ const activeIndex = computed(() => {
   return Math.max(0, index)
 })
 const activeItem = computed(() => props.items[activeIndex.value])
+const sheetItem = computed(() => activeItem.value ?? (
+  props.reelForward.status === 'idle' ? undefined : props.forwardItem ?? undefined
+))
+const sheetIndex = computed(() => activeItem.value ? activeIndex.value : props.forwardIndex ?? 0)
 const activeMediaIndex = computed(() => {
-  const postId = activeItem.value?.postId
+  const postId = sheetItem.value?.postId
   return postId === undefined ? 0 : props.mediaIndices.get(postId) ?? 0
 })
 const sheetVisible = computed(() => Boolean(
-  props.infoSheet && props.infoSheetEnabled && activeItem.value,
+  props.infoSheet && props.infoSheetEnabled && sheetItem.value,
 ))
 const sheetContext = computed<VibeReelInfoSheetProps | null>(() => {
-  const item = activeItem.value
+  const item = sheetItem.value
   if (!item) return null
 
   return {
     close: closeInfoSheet,
-    index: activeIndex.value,
+    index: sheetIndex.value,
     item,
     layout: 'reel',
     loadedCount: props.items.length,
@@ -159,6 +168,7 @@ defineExpose({ changeActiveMedia, loadIfNearBottom, moveActivePost })
         :next-page-error="nextPageError"
         :preview-states="previewStates"
         :reel-auto-advance="reelAutoAdvance"
+        :reel-forward="reelForward"
         :state="state"
         :total="total"
         @active-change="emit('activeChange', $event)"
@@ -167,6 +177,7 @@ defineExpose({ changeActiveMedia, loadIfNearBottom, moveActivePost })
         @media-change="relayMediaChange"
         @ready="relayReady"
         @retry-end="emit('retryEnd')"
+        @retry-forward="emit('retryForward')"
       />
     </div>
 
@@ -183,7 +194,7 @@ defineExpose({ changeActiveMedia, loadIfNearBottom, moveActivePost })
           aria-label="Reel information"
           :aria-modal="infoSheetOverlay ? 'true' : undefined"
           :tabindex="infoSheetOverlay ? -1 : undefined"
-          :data-active-post-id="activeItem?.postId"
+          :data-active-post-id="sheetItem?.postId"
         >
           <component
             :is="infoSheet.component"

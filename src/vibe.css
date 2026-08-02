@@ -749,6 +749,42 @@
   scroll-snap-type: none;
 }
 
+.reel-forward-status {
+  display: grid;
+  min-height: 100%;
+  place-content: center;
+  place-items: center;
+  gap: 0.75rem;
+  color: #a3a3a3;
+  font: 500 0.875rem/1.5 system-ui, sans-serif;
+  text-align: center;
+}
+
+.reel-forward-status p {
+  margin: 0;
+}
+
+.reel-forward-retry {
+  min-height: 2rem;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid #404040;
+  border-radius: 0.25rem;
+  color: #f5f5f5;
+  background: #171717;
+  cursor: pointer;
+}
+
+.reel-forward-retry:hover,
+.reel-forward-retry:focus-visible {
+  border-color: #737373;
+  background: #262626;
+}
+
+.reel-forward-retry:focus-visible {
+  outline: 2px solid #a3a3a3;
+  outline-offset: 2px;
+}
+
 .reel-track {
   display: grid;
   width: 100%;

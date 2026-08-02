@@ -13,6 +13,8 @@ import {
   startBackendAutofill,
 } from './backendAutofill'
 import { autofillInitialPage } from './initialAutofill'
+import { restoreActiveItemAfterRemoval } from './activeItemRemoval'
+import { ExactMediaRemovalController } from './exactMediaRemovalController'
 import { VibeFillController } from './fillController'
 import type { VibeSurfaceExpose } from './feed'
 import { createFeedFooterActions } from './feedFooter'
@@ -38,6 +40,8 @@ import type {
   VibeItemId,
   VibeItemPlacement,
   VibeLayoutMode,
+  VibeMediaRemoval,
+  VibeMediaTarget,
   VibeRemoval,
   VibeReelAutoAdvanceOptions,
   VibeState,
@@ -53,6 +57,7 @@ class VibeController implements VibeInstance {
   private readonly responsiveLayout: ResponsiveLayoutController
   private readonly routing: VibeRouteSync
   private readonly fillController: VibeFillController
+  private readonly exactMediaRemoval: ExactMediaRemovalController
   private readonly itemRemoval: ItemRemovalController
   private surface: VibeSurfaceExpose | null = null
   private stopStateWatcher: WatchHandle | null = null
@@ -78,10 +83,22 @@ class VibeController implements VibeInstance {
       state: this.state,
     })
     this.routing = new VibeRouteSync(options.routing, this.state)
+    this.exactMediaRemoval = new ExactMediaRemovalController({
+      loadNext: () => this.loadNext(),
+      onActivate: (postId) => this.setActiveReelPost(postId),
+      retryEnd: () => this.retryEnd(),
+      state: this.state,
+    })
     this.itemRemoval = new ItemRemovalController({
       historyLimit: options.removalHistoryLimit,
       onItemsRemoved: (placements, activeIndex) => {
-        this.restoreActiveItemAfterRemoval(placements, activeIndex)
+        restoreActiveItemAfterRemoval(
+          this.state,
+          this.routing,
+          placements,
+          activeIndex,
+          () => this.closeMasonryReel(),
+        )
       },
       startRemoval: (postIds) => this.surface?.startItemRemoval(postIds) ?? 0,
       state: this.state,
@@ -91,7 +108,6 @@ class VibeController implements VibeInstance {
     })
     this.startStateNotifications()
   }
-
   async mount(): Promise<void> {
     if (this.app) throw new Error('Vibe is already mounted.')
 
@@ -113,6 +129,7 @@ class VibeController implements VibeInstance {
       onOpenReel: (postId: VibeItemId) => this.openMasonryReel(postId),
       onReelInfoSheetChange: (enabled: boolean) => this.setReelInfoSheet(enabled),
       onRetryEnd: () => { void this.retryEnd() },
+      onRetryForward: () => { void this.retryReelForward() },
     })
     this.surface = this.app.mount(target) as unknown as VibeSurfaceExpose
     this.autoScroll.mount()
@@ -123,11 +140,11 @@ class VibeController implements VibeInstance {
       await this.startInitialAutofill()
     }
   }
-
   destroy(): void {
     this.autoScroll.destroy()
     this.fillController.destroy()
     this.cancelRequest()
+    this.exactMediaRemoval.reset()
     this.itemRemoval.destroy()
     this.responsiveLayout.destroy()
     this.stopStateWatcher?.()
@@ -136,9 +153,11 @@ class VibeController implements VibeInstance {
     this.app = null
     this.surface = null
   }
-
   getState(): VibeState {
     return snapshotState(this.state)
+  }
+  removeMedia(target: VibeMediaTarget): VibeMediaRemoval | null {
+    return this.exactMediaRemoval.remove(target)
   }
 
   removeItems(postIds: readonly VibeItemId[]): Promise<VibeRemoval> {
@@ -146,7 +165,11 @@ class VibeController implements VibeInstance {
   }
 
   restoreItems(placements: readonly VibeItemPlacement[]): void { this.itemRemoval.restoreItems(placements) }
+  restoreMediaRemoval(removal: VibeMediaRemoval): boolean {
+    return this.exactMediaRemoval.restore(removal)
+  }
   restoreRemoval(removal: VibeRemoval): boolean { return this.itemRemoval.restoreRemoval(removal) }
+  retryReelForward(): Promise<void> { return this.exactMediaRemoval.retryForward() }
   undoLastRemoval(): VibeRemoval | null { return this.itemRemoval.undoLast() }
   nextReelMediaItem(): boolean { return this.surface?.changeActiveReelMedia(1) ?? false }
   previousReelMediaItem(): boolean { return this.surface?.changeActiveReelMedia(-1) ?? false }
@@ -214,6 +237,7 @@ class VibeController implements VibeInstance {
     this.cancelRequest()
     this.state.autofill = createAutofillState(this.options.autofill, undefined, false)
     this.fillController.reset()
+    this.exactMediaRemoval.reset()
     this.itemRemoval.reset()
     this.state.error = null
     this.state.isLoading = true
@@ -268,29 +292,6 @@ class VibeController implements VibeInstance {
     this.state.activeReelPostId = null
     this.state.reelOrigin = null
     this.routing.syncFeed()
-  }
-
-  private restoreActiveItemAfterRemoval(
-    placements: readonly VibeItemPlacement[],
-    activeIndex: number,
-  ): void {
-    const removedPostIds = new Set(placements.map(({ item }) => item.postId))
-    if (
-      this.state.activeReelPostId === null
-      || !removedPostIds.has(this.state.activeReelPostId)
-    ) return
-
-    if (this.state.reelOrigin === 'masonry') {
-      this.closeMasonryReel()
-      return
-    }
-
-    const replacement = this.state.items[
-      Math.min(Math.max(activeIndex, 0), this.state.items.length - 1)
-    ]
-    this.state.activeReelPostId = replacement?.postId ?? null
-    if (replacement) this.routing.syncReel(replacement.postId)
-    else this.routing.syncFeed()
   }
 
   private openMasonryReel(postId: VibeItemId): void {
@@ -494,7 +495,6 @@ class VibeController implements VibeInstance {
     )
   }
 }
-
 export function createVibe(options: CreateVibeOptions): VibeInstance {
   return new VibeController(options)
 }

@@ -73,6 +73,13 @@ export interface VibeReelInfoSheetState {
   enabled: boolean
 }
 
+export type VibeReelForwardStatus = 'end' | 'error' | 'idle' | 'loading'
+
+export interface VibeReelForwardState {
+  error: unknown | null
+  status: VibeReelForwardStatus
+}
+
 export interface VibePreview {
   src: string
   width: number | null
@@ -96,10 +103,25 @@ export interface VibeItemPlacement {
   item: VibeItem
 }
 
+export interface VibeMediaTarget {
+  mediaIndex: number
+  postId: VibeItemId
+}
+
+export interface VibeMediaPlacement extends VibeMediaTarget {
+  media: VibeMediaAsset
+  postIndex: number
+}
+
 declare const vibeRemovalBrand: unique symbol
+declare const vibeMediaRemovalBrand: unique symbol
 
 export type VibeRemoval = readonly VibeItemPlacement[] & {
   readonly [vibeRemovalBrand]: true
+}
+
+export type VibeMediaRemoval = Readonly<VibeMediaPlacement> & {
+  readonly [vibeMediaRemovalBrand]: true
 }
 
 export interface VibeCardRegion {
@@ -419,6 +441,7 @@ export interface VibeState {
   next: VibeCursor
   nextPageError: unknown | null
   reelAutoAdvance: VibeReelAutoAdvanceState
+  reelForward: VibeReelForwardState
   reelInfoSheet: VibeReelInfoSheetState
   reelOrigin: 'masonry' | null
   total: number | null
@@ -441,12 +464,15 @@ export interface VibeInstance {
   previousReelPost: () => boolean
   refresh: () => Promise<void>
   reload: () => Promise<void>
+  removeMedia: (target: VibeMediaTarget) => VibeMediaRemoval | null
   removeItems: (postIds: readonly VibeItemId[]) => Promise<VibeRemoval>
   resumeAutoScroll: () => void
   restoreAutofillSession: (snapshot: VibeAutofillSessionSnapshot) => boolean
   restoreFillSession: (snapshot: VibeFillSessionSnapshot) => boolean
   restoreItems: (placements: readonly VibeItemPlacement[]) => void
+  restoreMediaRemoval: (removal: VibeMediaRemoval) => boolean
   restoreRemoval: (removal: VibeRemoval) => boolean
+  retryReelForward: () => Promise<void>
   setAutoScroll: (enabled: boolean, speedPxPerSecond?: number) => void
   setAutoScrollSpeed: (speedPxPerSecond: number) => void
   setInfiniteScroll: (enabled: boolean) => void
