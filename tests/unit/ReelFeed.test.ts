@@ -125,6 +125,49 @@ describe('ReelFeed', () => {
     expect(wrapper.get('[data-post-id="15"]').attributes('style')).toContain('grid-row: 6')
   })
 
+  it('preserves gesture scrolling when the active post is echoed by the parent', async () => {
+    const items = [feedItem(10), feedItem(11), feedItem(12)]
+    const wrapper = mount(ReelFeed, {
+      props: { ...props(), items },
+    })
+    await wrapper.vm.$nextTick()
+
+    const gallery = wrapper.get('.gallery-shell')
+    const galleryElement = gallery.element as HTMLElement
+    Object.defineProperty(galleryElement, 'scrollTop', {
+      configurable: true,
+      writable: true,
+      value: 300,
+    })
+    await gallery.trigger('scroll')
+    await wrapper.setProps({ initialPostId: 11 })
+    await wrapper.vm.$nextTick()
+
+    expect(gallery.attributes('data-active-post-id')).toBe('11')
+    expect(gallery.attributes()).not.toHaveProperty('data-resizing')
+    expect(galleryElement.scrollTop).toBe(300)
+
+    galleryElement.scrollTop = 200
+    await gallery.trigger('scroll')
+    await wrapper.setProps({ initialPostId: 10 })
+    await wrapper.vm.$nextTick()
+
+    expect(gallery.attributes('data-active-post-id')).toBe('10')
+    expect(gallery.attributes()).not.toHaveProperty('data-resizing')
+    expect(galleryElement.scrollTop).toBe(200)
+
+    galleryElement.scrollTop = 300
+    await gallery.trigger('scroll')
+    await wrapper.setProps({ initialPostId: 11 })
+    await wrapper.vm.$nextTick()
+
+    await wrapper.setProps({ items: items.slice(1) })
+    await wrapper.vm.$nextTick()
+
+    expect(gallery.attributes('data-active-post-id')).toBe('11')
+    expect(galleryElement.scrollTop).toBe(0)
+  })
+
   it('uses previews by default and originals when requested', async () => {
     const previewWrapper = mount(ReelFeed, { props: props() })
     const originalWrapper = mount(ReelFeed, {

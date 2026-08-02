@@ -296,8 +296,9 @@ watch(galleryElement, (element) => {
 })
 
 watch(
-  [() => props.items.length, () => props.initialPostId],
-  async ([length, requestedPostId]) => {
+  () => props.items.length,
+  async (length) => {
+    const requestedPostId = props.initialPostId
     const requestedIndex = requestedPostId === null || requestedPostId === undefined
       ? -1
       : props.items.findIndex(({ postId }) => postId === requestedPostId)
