@@ -148,6 +148,42 @@ test('timed-media controls remain contained at the bottom of the phone reel', as
   await expect(controls).toHaveCount(0)
 })
 
+test('timed-media cursors and control surfaces stay scoped to interactive targets', async ({
+  page,
+}) => {
+  await page.goto('/demos/reel-auto-advance')
+  const reel = page.locator('.reel-feed')
+  const controls = page.locator('[data-test="reel-media-controls-host"] .media-controls')
+  await expect(reel).toBeVisible()
+  await expect.poll(() => reel.evaluate((element) => (
+    element.scrollHeight > element.clientHeight * 1.5
+  ))).toBe(true)
+
+  await reel.evaluate((element) => {
+    element.scrollTop = element.clientHeight
+  })
+  await expect(controls).toBeVisible()
+
+  const activePostId = await reel.getAttribute('data-active-post-id')
+  const video = reel.locator(`[data-post-id="${activePostId}"] video`)
+  const seek = controls.locator('.media-control-seek')
+  const playback = controls.locator('.media-control-playback')
+  const audio = controls.locator('.media-controls-audio')
+  const time = controls.locator('.media-control-time')
+
+  await expect(video).toHaveCSS('cursor', 'default')
+  await expect(controls).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await expect(controls).toHaveCSS('cursor', 'default')
+  await expect(seek).toHaveCSS('cursor', 'pointer')
+  await expect(playback).toHaveCSS('cursor', 'pointer')
+  await expect(playback).toHaveCSS('background-color', 'rgba(8, 8, 8, 0.75)')
+  await expect(audio).toHaveCSS('background-color', 'rgba(8, 8, 8, 0.75)')
+  await expect(time).toHaveCSS('background-color', 'rgba(8, 8, 8, 0.75)')
+
+  await playback.hover()
+  await expect(playback).toHaveCSS('background-color', 'rgba(38, 38, 38, 0.94)')
+})
+
 test('timed-media controls clear the snapped footer and leave Load more clickable', async ({
   page,
 }) => {
