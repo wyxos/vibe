@@ -61,14 +61,17 @@ function dispatchPointerEvent(
 }
 
 describe('MasonryFeed', () => {
+  let galleryClientHeight = 500
   let galleryScrollHeight = 2000
 
   beforeEach(() => {
+    galleryClientHeight = 500
     galleryScrollHeight = 2000
     vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1))
     vi.stubGlobal('cancelAnimationFrame', vi.fn())
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(500)
-    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(500)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get')
+      .mockImplementation(() => galleryClientHeight)
     vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get')
       .mockImplementation(function (this: HTMLElement) {
         return this.classList.contains('gallery-shell') ? galleryScrollHeight : 500
@@ -277,7 +280,7 @@ describe('MasonryFeed', () => {
     expect(wrapper.emitted('retryEnd')).toEqual([[]])
   })
 
-  it('offers manual loading without disabling infinite scroll', async () => {
+  it('hides manual loading when an infinite feed can scroll', async () => {
     const wrapper = mount(MasonryFeed, {
       props: {
         ...props(),
@@ -287,9 +290,30 @@ describe('MasonryFeed', () => {
     const gallery = wrapper.get('.gallery-shell')
     gallery.element.scrollTop = 1800
 
-    expect(wrapper.get('[data-test="load-more"]').text()).toBe('Load more')
+    expect(wrapper.find('[data-test="load-more"]').exists()).toBe(false)
     await gallery.trigger('scroll')
     expect(wrapper.emitted('loadMore')).toEqual([[]])
+  })
+
+  it('offers manual loading when an infinite feed is too short to scroll', async () => {
+    galleryClientHeight = 1_000
+    const wrapper = mount(MasonryFeed, {
+      props: {
+        ...props(),
+        hasNext: true,
+      },
+    })
+    await wrapper.vm.$nextTick()
+
+    const button = wrapper.get('[data-test="load-more"]')
+    expect(button.text()).toBe('Load more')
+    await button.trigger('click')
+    expect(wrapper.emitted('loadMore')).toEqual([[]])
+
+    await wrapper.setProps({
+      items: Array.from({ length: 8 }, (_, index) => feedItem(index + 1)),
+    })
+    expect(wrapper.find('[data-test="load-more"]').exists()).toBe(false)
   })
 
   it('disables manual and infinite pagination while loading more is locked', async () => {
@@ -297,6 +321,7 @@ describe('MasonryFeed', () => {
       props: {
         ...props(),
         hasNext: true,
+        infiniteScroll: false,
         loadMoreLocked: true,
       },
     })

@@ -5,6 +5,7 @@ const props = defineProps<{
   hasNext: boolean
   isLoading: boolean
   loadMoreLocked: boolean
+  showLoadMore: boolean
 }>()
 
 const emit = defineEmits<{
@@ -21,7 +22,7 @@ function onAction(): void {
 
 <template>
   <footer
-    v-if="hasNext || isLoading || hasError || canRetryEnd"
+    v-if="isLoading || hasError || (hasNext && showLoadMore) || (!hasNext && canRetryEnd)"
     class="gallery-footer"
   >
     <p
@@ -33,7 +34,7 @@ function onAction(): void {
     </p>
 
     <button
-      v-else-if="hasError || hasNext"
+      v-else-if="hasError || (hasNext && showLoadMore)"
       data-test="load-more"
       class="load-more-button"
       type="button"

@@ -14,6 +14,7 @@ const props = defineProps<{
   hasNext: boolean
   isLoading: boolean
   loadMoreLocked: boolean
+  showLoadMore: boolean
   state?: VibeState
 }>()
 
@@ -37,6 +38,7 @@ function retry(): void {
     v-if="feedFooter && actions && state"
     :actions="actions"
     :can-retry-end="canRetryEnd"
+    :show-load-more="showLoadMore"
     :state="state"
     @autofill-cancel="cancelAutofill"
     @load-more="emit('loadMore')"
@@ -51,6 +53,7 @@ function retry(): void {
     :has-next="hasNext"
     :is-loading="isLoading"
     :load-more-locked="loadMoreLocked"
+    :show-load-more="showLoadMore"
     @load-more="emit('loadMore')"
     @retry-end="emit('retryEnd')"
   />

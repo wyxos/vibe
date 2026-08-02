@@ -21,7 +21,7 @@ const vibe = createVibe(options)
 | `layout` | `'masonry' \| 'reel' \| 'responsive'` | `'masonry'` | Selects the renderer or responsive switching. |
 | `initialPage` | `VibePage` | — | Items and cursor restored before mounting. |
 | `loadPage` | `VibePageLoader` | — | Asynchronous cursor page loader. |
-| `infiniteScroll` | `boolean` | `true` | Loads forward when the feed reaches its boundary; the default footer still offers manual loading. |
+| `infiniteScroll` | `boolean` | `true` | Loads forward when the feed reaches its boundary; the default footer offers manual loading when the feed is underfilled. |
 | `onStateChange` | `(state: VibeState) => void` | — | Receives the initial state and every public state change. |
 | `removalHistoryLimit` | `number` | `20` | Maximum recent removal transactions retained for `undoLastRemoval()`; use `0` to disable automatic history. |
 
@@ -57,11 +57,11 @@ guards.
 ## Custom feed footer
 
 The configured component receives `VibeFeedFooterProps`: a reactive public
-`state: VibeState`, `canRetryEnd: boolean`, and `actions` containing `loadMore()`, `retryEnd()`,
+`state: VibeState`, `canRetryEnd: boolean`, optional `showLoadMore?: boolean`, and `actions` containing `loadMore()`, `retryEnd()`,
 `retry()`, and `cancelAutofill()`. It may invoke those callbacks or emit
 `load-more`, `retry-end`, `retry`, and `autofill-cancel`. Omitting
 `feedFooter` preserves the built-in `GalleryFooter`, including its manual Load
-more fallback when infinite scrolling is enabled.
+more fallback when infinite scrolling is disabled or the feed is too short to scroll.
 
 ## Media card chrome
 

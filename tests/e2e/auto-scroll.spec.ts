@@ -36,6 +36,9 @@ test('loading more can be locked at the feed boundary and resumed', async ({ pag
     element.scrollWidth <= element.clientWidth
   ))).toBe(true)
 
+  const infiniteScroll = page.getByRole('checkbox', { name: 'Infinite scroll' })
+  await infiniteScroll.evaluate((input: HTMLInputElement) => input.click())
+  await expect(infiniteScroll).not.toBeChecked()
   await page.getByRole('button', { name: 'Lock loading more' }).click()
   await expect(page.getByRole('button', { name: 'Unlock loading more' }))
     .toHaveAttribute('aria-pressed', 'true')

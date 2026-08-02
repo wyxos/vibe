@@ -43,9 +43,9 @@ Provide both `initialPage` and `loadPage` when restored or server-rendered items
 
 ## Pagination controls
 
-Infinite scrolling is enabled by default. The built-in footer also keeps a
-manual Load more action visible while another cursor exists. This lets users
-continue a short feed that does not yet have enough content to scroll.
+Infinite scrolling is enabled by default. The built-in footer shows a manual
+Load more action while another cursor exists only when the rendered feed is too
+short to scroll. Disabling infinite scrolling keeps the manual action visible.
 
 You can disable automatic loading and load only through the footer or API:
 

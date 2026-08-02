@@ -45,6 +45,7 @@ const emit = defineEmits<{
       :has-next="state.next !== null"
       :is-loading="state.isLoadingMore"
       :load-more-locked="state.loadMoreLocked"
+      show-load-more
       :state="state"
       @load-more="emit('loadMore')"
       @retry-end="emit('retryEnd')"

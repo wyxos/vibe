@@ -112,6 +112,7 @@ const showAutoAdvance = computed(() => (
   && activePreviewState.value !== 'loading'
   && !activeMediaWaitsForEnd.value
 ))
+const showLoadMore = computed(() => !props.infiniteScroll || props.items.length <= 1)
 const forwardMessage = computed(() => {
   if (props.reelForward.status === 'loading') return 'Loading the next media…'
   if (props.reelForward.status === 'error') return 'Unable to load the next media.'
@@ -440,6 +441,7 @@ defineExpose({
           :has-next="hasNext"
           :is-loading="isLoadingMore"
           :load-more-locked="loadMoreLocked"
+          :show-load-more="showLoadMore"
           :state="state"
           @load-more="emit('loadMore')"
           @retry-end="emit('retryEnd')"

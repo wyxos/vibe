@@ -238,6 +238,10 @@ describe('ReelFeed', () => {
     await wrapper.vm.$nextTick()
     expect(wrapper.get('[data-test="reel-media-controls-host"] .media-controls').exists())
       .toBe(true)
+    await wrapper.setProps({ infiniteScroll: true })
+    expect(wrapper.get('[data-test="load-more"]').text()).toBe('Load more')
+    await wrapper.setProps({ items: [timedMediaItem(10, 'mp4'), feedItem(11)] })
+    expect(wrapper.find('[data-test="load-more"]').exists()).toBe(false)
   })
 
   it('uses previews by default and originals when requested', async () => {

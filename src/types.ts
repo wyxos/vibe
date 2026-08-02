@@ -167,6 +167,7 @@ export interface VibeFeedFooterActions {
 export interface VibeFeedFooterProps {
   actions: VibeFeedFooterActions
   canRetryEnd: boolean
+  showLoadMore?: boolean
   state: VibeState
 }
 

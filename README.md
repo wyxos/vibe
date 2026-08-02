@@ -579,7 +579,9 @@ behavior across masonry viewer closes.
 Set `feedFooter.component` to replace the built-in `GalleryFooter`. Consumers
 that omit it keep the built-in manual load, retry, and end-of-feed controls.
 The manual Load more action remains available when infinite scrolling is
-enabled, so short feeds can continue without requiring a scrollbar.
+disabled or the rendered feed is too short to scroll. Scrollable feeds using
+infinite scrolling keep the action hidden until the viewport becomes
+underfilled again.
 
 ```ts
 import FeedFooter from './FeedFooter.vue'
@@ -593,7 +595,9 @@ const vibe = createVibe({
 })
 ```
 
-Type the component with `VibeFeedFooterProps`. Its `state` prop is the reactive
+Type the component with `VibeFeedFooterProps`. Its optional `showLoadMore` prop reports
+when manual pagination is needed because infinite scrolling is disabled or the
+rendered feed is too short to scroll. Its `state` prop is the reactive
 public `VibeState`, including autofill progress, request count, countdown,
 loading, end, error, and load-more-lock state. Its `actions` prop contains
 `loadMore()`, `retryEnd()`, `retry()`, and `cancelAutofill()`:

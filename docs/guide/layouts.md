@@ -52,6 +52,7 @@ The declared height is included in masonry calculations before the component mou
 Use `feedFooter: { component }` to replace the default `GalleryFooter` in
 masonry and reel layouts. The component receives `VibeFeedFooterProps`, whose
 reactive public state covers loading, autofill, countdown, pause, error, and
-end states. Its typed actions can load more, retry the end cursor, retry the
-feed, or cancel autofill. The same actions can be requested by emitting
+end states. Its `showLoadMore` flag identifies manual feeds and infinite feeds
+whose rendered content is too short to scroll. Its typed actions can load more,
+retry the end cursor, retry the feed, or cancel autofill. The same actions can be requested by emitting
 `load-more`, `retry-end`, `retry`, or `autofill-cancel`.

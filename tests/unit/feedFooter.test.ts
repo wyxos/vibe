@@ -27,8 +27,10 @@ function item(postId: number): VibeItem {
 describe('custom feed footer', () => {
   const instances: VibeInstance[] = []
   let target: HTMLDivElement
+  let targetClientHeight = 700
 
   beforeEach(() => {
+    targetClientHeight = 700
     target = document.createElement('div')
     document.body.append(target)
     vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
@@ -37,7 +39,8 @@ describe('custom feed footer', () => {
     }))
     vi.stubGlobal('cancelAnimationFrame', vi.fn())
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(900)
-    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(700)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get')
+      .mockImplementation(() => targetClientHeight)
   })
 
   afterEach(() => {
@@ -52,7 +55,7 @@ describe('custom feed footer', () => {
     return instance
   }
 
-  it('keeps a manual load action visible while infinite scrolling is enabled', async () => {
+  it('keeps a manual load action visible for an underfilled infinite feed', async () => {
     const loadPage = vi.fn().mockResolvedValue({
       items: [item(2)],
       next: null,
@@ -84,7 +87,7 @@ describe('custom feed footer', () => {
     let footerProps: VibeFeedFooterProps | null = null
     const ConsumerFooter = defineComponent({
       emits: ['load-more'],
-      props: ['actions', 'canRetryEnd', 'state'],
+      props: ['actions', 'canRetryEnd', 'showLoadMore', 'state'],
       setup(rawProps, { emit }) {
         footerProps = rawProps as unknown as VibeFeedFooterProps
         return () => h('button', {
@@ -109,6 +112,7 @@ describe('custom feed footer', () => {
     await flushPromises()
     expect(target.querySelector('.gallery-footer')).toBeNull()
     expect(footerProps!.canRetryEnd).toBe(true)
+    expect(footerProps!.showLoadMore).toBe(true)
     expect(footerProps!.state.items.map(({ postId }) => postId)).toEqual([1])
 
     target.querySelector<HTMLButtonElement>('[data-test="consumer-feed-footer"]')!.click()
@@ -137,6 +141,32 @@ describe('custom feed footer', () => {
     expect(footerProps!.state.loadMoreLocked).toBe(true)
     expect(target.querySelector('[data-test="consumer-feed-footer"]')?.textContent)
       .toBe('paused')
+  })
+
+  it('reports manual pagination only for underfilled or explicitly manual feeds', async () => {
+    targetClientHeight = 300
+    let footerProps: VibeFeedFooterProps | null = null
+    const ConsumerFooter = defineComponent({
+      props: ['actions', 'canRetryEnd', 'showLoadMore', 'state'],
+      setup(rawProps) {
+        footerProps = rawProps as unknown as VibeFeedFooterProps
+        return () => h('footer', { 'data-test': 'consumer-feed-footer' })
+      },
+    })
+    const instance = track(createVibe({
+      feedFooter: { component: ConsumerFooter },
+      initialPage: { items: [item(1)], next: 'two' },
+      infiniteScroll: true,
+      loadPage: vi.fn(),
+      target,
+    }))
+
+    await instance.mount()
+    expect(footerProps!.showLoadMore).toBe(false)
+
+    instance.setInfiniteScroll(false)
+    await flushPromises()
+    expect(footerProps!.showLoadMore).toBe(true)
   })
 
   it('lets an emitted autofill-cancel action stop active unlimited work', async () => {

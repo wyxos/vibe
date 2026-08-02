@@ -104,6 +104,15 @@ const masonryStyle = computed<CSSProperties>(() => ({
     : settledMasonryLayout.value.height}px`,
 }))
 
+const showLoadMore = computed(() => (
+  !props.infiniteScroll
+  || (
+    galleryViewportHeight.value > 0
+    && masonryContentTop.value + masonryLayout.value.height
+      <= galleryViewportHeight.value + 1
+  )
+))
+
 const visibleItems = computed(() => {
   const overscan = Math.max(
     VIRTUAL_OVERSCAN_MIN,
@@ -319,6 +328,7 @@ defineExpose({ getScrollElement, loadIfNearBottom })
         :has-next="hasNext"
         :is-loading="isLoadingMore"
         :load-more-locked="loadMoreLocked"
+        :show-load-more="showLoadMore"
         :state="state"
         @load-more="emit('loadMore')"
         @retry-end="emit('retryEnd')"
