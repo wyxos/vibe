@@ -316,7 +316,7 @@ onBeforeUnmount(() => {
       >
         <Transition :name="`media-slide-${mediaDirection}`">
           <div
-            :key="`${item.postId}:${normalizedMediaIndex}:${mediaSource ?? 'preview'}`"
+            :key="`${item.postId}:${mediaItem.src}:${mediaSource ?? 'preview'}`"
             class="media-card-frame"
             :data-media-index="normalizedMediaIndex"
           >

@@ -94,6 +94,21 @@ test('removing the active masonry reel item advances without closing the reel', 
   await expect(overlay).toBeVisible()
   const activePostId = await reel.getAttribute('data-active-post-id')
   expect(activePostId).not.toBeNull()
+  await page.evaluate((postId) => {
+    const feed = document.querySelector<HTMLElement>('.vibe-reel-overlay .reel-feed')
+    const browserWindow = window as Window & {
+      __vibeRemovalMotion?: Array<{ oldItemPresent: boolean; scrollTop: number }>
+    }
+    browserWindow.__vibeRemovalMotion = []
+    feed?.addEventListener('scroll', () => {
+      browserWindow.__vibeRemovalMotion?.push({
+        oldItemPresent: Boolean(document.querySelector(
+          `.vibe-reel-overlay .reel-item[data-post-id="${postId}"]`,
+        )),
+        scrollTop: feed.scrollTop,
+      })
+    }, { passive: true })
+  }, activePostId)
 
   await overlay.getByRole('button', {
     name: `Remove post ${activePostId}`,
@@ -102,4 +117,14 @@ test('removing the active masonry reel item advances without closing the reel', 
   await expect(overlay).toBeVisible()
   await expect.poll(() => reel.getAttribute('data-active-post-id'))
     .not.toBe(activePostId)
+  const motion = await page.evaluate(() => (
+    (window as Window & {
+      __vibeRemovalMotion?: Array<{ oldItemPresent: boolean; scrollTop: number }>
+    }).__vibeRemovalMotion ?? []
+  ))
+  expect(motion.length).toBeGreaterThan(1)
+  expect(motion[0]?.oldItemPresent).toBe(true)
+  expect(motion.filter(({ oldItemPresent }) => oldItemPresent).length).toBeGreaterThan(1)
+  expect(new Set(motion.map(({ scrollTop }) => Math.round(scrollTop))).size)
+    .toBeGreaterThan(1)
 })

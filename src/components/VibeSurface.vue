@@ -10,6 +10,7 @@ import {
 } from 'vue'
 import type { MediaPreviewState } from '../core/mediaPreview'
 import { clampMediaIndex, mediaStateKey } from '../core/mediaAsset'
+import type { FeedRendererExpose } from '../core/feed'
 import { snapshotState, type VibeRuntimeState } from '../core/runtime'
 import type {
   VibeCardRegion,
@@ -24,12 +25,6 @@ import MasonryFeed from './MasonryFeed.vue'
 import ReelLayout from './ReelLayout.vue'
 const ENTRY_STAGGER_MS = 35
 const ITEM_MOTION_MS = 420
-interface FeedRendererExpose {
-  changeActiveMedia?: (direction: -1 | 1) => boolean
-  getScrollElement?: () => HTMLElement | null
-  loadIfNearBottom: () => void
-  moveActivePost?: (direction: -1 | 1) => boolean
-}
 type ReelOriginStyle = CSSProperties & Record<`--vibe-reel-origin-${string}`, string>
 
 const props = defineProps<{
@@ -353,6 +348,8 @@ defineExpose({
   loadIfNearBottom,
   moveActiveReelPost,
   startItemRemoval,
+  transitionActiveReelMedia: (direction: -1 | 1) => reelRenderer.value?.transitionActiveMedia?.(direction) ?? Promise.resolve(false),
+  transitionActiveReelPost: (postId: VibeItemId) => reelRenderer.value?.transitionActivePost?.(postId) ?? Promise.resolve(false),
 })
 </script>
 

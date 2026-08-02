@@ -140,11 +140,11 @@ test('exact media removal keeps the reel and sheet active through restore and fo
   expect(lastLoaded).not.toBeNull()
   await expect(reel).toHaveAttribute('data-active-post-id', lastLoaded!.postIdText)
 
-  expect(await page.evaluate(({ count, postId }) => {
+  expect(await page.evaluate(async ({ count, postId }) => {
     const vibe = window.__vibeReelInfoSheetDemo
-    if (!vibe) return false
+    if (!vibe?.removeMediaAnimated) return false
     for (let index = 0; index < count; index += 1) {
-      if (!vibe.removeMedia({ mediaIndex: 0, postId })) return false
+      if (!await vibe.removeMediaAnimated({ mediaIndex: 0, postId })) return false
     }
     return true
   }, lastLoaded!)).toBe(true)

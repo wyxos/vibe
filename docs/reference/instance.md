@@ -24,6 +24,9 @@ feed-owned fill, autofill, error, and removal-history state before loading.
 | Method | Purpose |
 | --- | --- |
 | `removeItems(postIds)` | Animates loaded items out, removes them, records the transaction, and resolves with a `VibeRemoval`. |
+| `removeMediaAnimated(target)` | Advances an active reel through Vibe's media/post transition, then removes the exact media and resolves with a `VibeMediaRemoval`. |
+| `removeMedia(target)` | Removes exact media immediately and returns a `VibeMediaRemoval`. |
+| `restoreMediaRemoval(removal)` | Restores an exact-media removal at its original group and media position. |
 | `restoreRemoval(removal)` | Restores a removal transaction once, including one evicted from automatic undo history. |
 | `undoLastRemoval()` | Restores and returns the latest recorded removal, or returns `null`. |
 | `restoreItems(placements)` | Restores explicit item/index placements without creating an undo transaction. |
@@ -60,6 +63,14 @@ already loaded are ignored. Passing a current `VibeRemoval` to this method is
 equivalent to `restoreRemoval()`.
 
 All restored cards use the same entry motion as newly loaded cards.
+
+Use `removeMediaAnimated()` for reactions or other actions against the media
+currently visible in a reel. Vibe completes the horizontal group transition or
+vertical post transition before committing the exact removal. When no loaded
+post follows, the reel remains open while its configured forward loader reaches
+the next page, an error, or the end of the feed. `removeMedia()` remains the
+immediate, backward-compatible primitive for consumers that own their own
+transition.
 
 ## Layout and navigation
 

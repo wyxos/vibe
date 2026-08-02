@@ -19,6 +19,8 @@ interface ReelFeedExpose {
   changeActiveMedia: (direction: -1 | 1) => boolean
   loadIfNearBottom: () => void
   moveActivePost: (direction: -1 | 1) => boolean
+  transitionActiveMedia: (direction: -1 | 1) => Promise<boolean>
+  transitionActivePost: (postId: VibeItemId) => Promise<boolean>
 }
 
 const props = withDefaults(defineProps<ReelLayoutProps>(), {
@@ -95,6 +97,14 @@ function moveActivePost(direction: -1 | 1): boolean {
   return reelFeed.value?.moveActivePost(direction) ?? false
 }
 
+function transitionActiveMedia(direction: -1 | 1): Promise<boolean> {
+  return reelFeed.value?.transitionActiveMedia(direction) ?? Promise.resolve(false)
+}
+
+function transitionActivePost(postId: VibeItemId): Promise<boolean> {
+  return reelFeed.value?.transitionActivePost(postId) ?? Promise.resolve(false)
+}
+
 function relayError(postId: VibeItemId, mediaIndex: number): void {
   emit('error', postId, mediaIndex)
 }
@@ -134,7 +144,13 @@ onBeforeUnmount(() => {
   previousFocus = null
 })
 
-defineExpose({ changeActiveMedia, loadIfNearBottom, moveActivePost })
+defineExpose({
+  changeActiveMedia,
+  loadIfNearBottom,
+  moveActivePost,
+  transitionActiveMedia,
+  transitionActivePost,
+})
 </script>
 
 <template>

@@ -102,6 +102,31 @@ describe('exact media removal', () => {
     expect(sources.some((src) => src.endsWith(expectedSrc))).toBe(true)
   })
 
+  it('uses the native media slide before committing animated exact-media removal', async () => {
+    instance = createVibe({
+      initialPage: { items: [item(1, ['1-middle', '1-last'])], next: null },
+      layout: 'reel',
+      target,
+    })
+    await instance.mount()
+
+    const removalPromise = instance.removeMediaAnimated?.({ mediaIndex: 0, postId: 1 })
+    await flushPromises()
+    expect(removalPromise).toBeDefined()
+    expect(instance.getState().items[0]?.items).toHaveLength(2)
+    expect(target.querySelector('.reel-feed')?.getAttribute('data-active-media-index'))
+      .toBe('1')
+
+    const removal = await removalPromise
+    await flushPromises()
+    expect(removal?.mediaIndex).toBe(0)
+    expect(instance.getState().items[0]?.items).toHaveLength(1)
+    expect(target.querySelector('.reel-feed')?.getAttribute('data-active-media-index'))
+      .toBe('0')
+    expect(target.querySelector<HTMLImageElement>('.reel-item .media-preview')?.src)
+      .toContain('1-middle')
+  })
+
   it('preserves a different visible post when non-active media is removed', async () => {
     instance = createVibe({
       initialPage: { items: [item(1), item(2, ['2-child'])], next: null },

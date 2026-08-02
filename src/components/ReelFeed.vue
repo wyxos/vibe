@@ -13,6 +13,7 @@ import type { ReelFeedProps } from '../core/feed'
 import { isNearFeedBottom } from '../core/feed'
 import { mediaAssetAt, mediaAssets, mediaStateKey } from '../core/mediaAsset'
 import { isTimedMediaSource } from '../core/mediaType'
+import { transitionReelScroll } from '../core/reelScrollTransition'
 import type { VibeItemId } from '../types'
 import CardRegion from './CardRegion.vue'
 import FeedFooter from './FeedFooter.vue'
@@ -20,6 +21,7 @@ import MediaCard from './MediaCard.vue'
 import ReelAutoAdvanceProgress from './ReelAutoAdvanceProgress.vue'
 
 const VIRTUAL_OVERSCAN = 2
+const MEDIA_TRANSITION_MS = 300
 
 const props = withDefaults(defineProps<ReelFeedProps>(), {
   reelForward: () => ({ error: null, status: 'idle' }),
@@ -215,18 +217,32 @@ function prefersReducedMotion(): boolean {
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-function advanceToPost(index: number): void {
+function scrollToPost(index: number): Promise<void> {
   const element = galleryElement.value
-  if (!element) return
+  if (!element) return Promise.resolve()
 
   const top = index * (viewportHeight || element.clientHeight)
   activeIndex.value = index
-  if (!prefersReducedMotion() && typeof element.scrollTo === 'function') {
-    element.scrollTo({ behavior: 'smooth', top })
-    return
-  }
+  return transitionReelScroll(element, top, prefersReducedMotion())
+}
 
-  element.scrollTop = top
+function advanceToPost(index: number): void {
+  void scrollToPost(index)
+}
+
+async function transitionActivePost(postId: VibeItemId): Promise<boolean> {
+  const index = props.items.findIndex((item) => item.postId === postId)
+  if (index < 0 || index === activeIndex.value) return false
+  await scrollToPost(index)
+  return true
+}
+
+async function transitionActiveMedia(direction: -1 | 1): Promise<boolean> {
+  if (!changeActiveMedia(direction)) return false
+  if (!prefersReducedMotion()) {
+    await new Promise((resolve) => setTimeout(resolve, MEDIA_TRANSITION_MS))
+  }
+  return true
 }
 
 function onAutoAdvanceComplete(): void {
@@ -317,6 +333,8 @@ defineExpose({
   changeActiveMedia,
   loadIfNearBottom,
   moveActivePost,
+  transitionActiveMedia,
+  transitionActivePost,
 })
 </script>
 

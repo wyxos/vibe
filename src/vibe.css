@@ -745,7 +745,8 @@
   height: 0;
 }
 
-.reel-feed[data-resizing] {
+.reel-feed[data-resizing],
+.reel-feed[data-transitioning] {
   scroll-snap-type: none;
 }
 

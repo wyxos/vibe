@@ -58,6 +58,7 @@ class VibeController implements VibeInstance {
   private readonly exactMediaRemoval: RemovalControllers['exactMediaRemoval']
   private readonly itemRemoval: RemovalControllers['itemRemoval']
   private readonly reelForward: RemovalControllers['reelForward']
+  private readonly reelRemoval: RemovalControllers['reelRemoval']
   private surface: VibeSurfaceExpose | null = null
   private stopStateWatcher: WatchHandle | null = null
   private lastLoadedCursor: VibeCursor = null
@@ -87,12 +88,13 @@ class VibeController implements VibeInstance {
       loadNext: () => this.loadNext(),
       onActivate: (postId) => this.setActiveReelPost(postId),
       retryEnd: () => this.retryEnd(),
-      startRemoval: (postIds) => this.surface?.startItemRemoval(postIds) ?? 0,
       state: this.state,
+      surface: () => this.surface,
     })
     this.exactMediaRemoval = removals.exactMediaRemoval
     this.itemRemoval = removals.itemRemoval
     this.reelForward = removals.reelForward
+    this.reelRemoval = removals.reelRemoval
     this.responsiveLayout = new ResponsiveLayoutController(layoutMode, this.state, () => {
       this.routing.syncFeed()
     })
@@ -137,6 +139,7 @@ class VibeController implements VibeInstance {
     this.fillController.destroy()
     this.cancelRequest()
     this.reelForward.reset()
+    this.reelRemoval.reset()
     this.exactMediaRemoval.reset()
     this.itemRemoval.destroy()
     this.responsiveLayout.destroy()
@@ -152,7 +155,9 @@ class VibeController implements VibeInstance {
   removeMedia(target: VibeMediaTarget): VibeMediaRemoval | null {
     return this.exactMediaRemoval.remove(target)
   }
-
+  removeMediaAnimated(target: VibeMediaTarget): Promise<VibeMediaRemoval | null> {
+    return this.reelRemoval.prepareMedia(target).then(() => this.exactMediaRemoval.remove(target))
+  }
   removeItems(postIds: readonly VibeItemId[]): Promise<VibeRemoval> {
     return this.itemRemoval.remove(postIds)
   }
@@ -231,6 +236,7 @@ class VibeController implements VibeInstance {
     this.state.autofill = createAutofillState(this.options.autofill, undefined, false)
     this.fillController.reset()
     this.reelForward.reset()
+    this.reelRemoval.reset()
     this.exactMediaRemoval.reset()
     this.itemRemoval.reset()
     this.state.error = null

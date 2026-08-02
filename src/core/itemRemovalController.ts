@@ -23,6 +23,7 @@ interface ItemRemovalControllerOptions {
     activeIndex: number,
   ) => void
   onRemovalRestored: (removal: VibeRemoval) => void
+  prepareRemoval: (postIds: readonly VibeItemId[]) => Promise<void>
   startRemoval: (postIds: readonly VibeItemId[]) => number
   state: VibeRuntimeState
 }
@@ -63,6 +64,8 @@ export class ItemRemovalController {
     if (placements.length === 0) return removal
 
     const postIdsToRemove = placements.map(({ item }) => item.postId)
+    await this.options.prepareRemoval(postIdsToRemove)
+    if (this.metadata.get(removal)?.generation !== this.generation) return removal
     const duration = this.options.startRemoval(postIdsToRemove)
     if (duration > 0) {
       await new Promise((resolve) => setTimeout(resolve, duration))

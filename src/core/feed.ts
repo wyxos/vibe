@@ -41,6 +41,15 @@ export interface MasonryFeedProps extends FeedRendererProps {
   suspended?: boolean
 }
 
+export interface FeedRendererExpose {
+  changeActiveMedia?: (direction: -1 | 1) => boolean
+  getScrollElement?: () => HTMLElement | null
+  loadIfNearBottom: () => void
+  moveActivePost?: (direction: -1 | 1) => boolean
+  transitionActiveMedia?: (direction: -1 | 1) => Promise<boolean>
+  transitionActivePost?: (postId: VibeItemId) => Promise<boolean>
+}
+
 export interface ReelFeedProps extends FeedRendererProps {
   initialPostId?: VibeItemId | null
   mediaSource?: VibeMediaSource
@@ -63,6 +72,8 @@ export interface VibeSurfaceExpose {
   loadIfNearBottom: () => Promise<void>
   moveActiveReelPost: (direction: -1 | 1) => boolean
   startItemRemoval: (postIds: readonly VibeItemId[]) => number
+  transitionActiveReelMedia: (direction: -1 | 1) => Promise<boolean>
+  transitionActiveReelPost: (postId: VibeItemId) => Promise<boolean>
 }
 
 export const LOAD_MORE_THRESHOLD = 240
