@@ -1,6 +1,6 @@
 {
   "name": "@wyxos/vibe",
-  "version": "4.5.1",
+  "version": "4.5.2",
   "description": "An initializable Vue 3 media feed with virtualized masonry and reel layouts.",
   "keywords": [
     "vue",
