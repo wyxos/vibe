@@ -133,7 +133,7 @@ describe('unlimited frontend autofill', () => {
     })
   })
 
-  it('stops on cancellation without committing the buffered batch', async () => {
+  it('commits the buffered batch when cancellation stops collection', async () => {
     const loadPage = vi.fn()
       .mockResolvedValueOnce({ items: [item(1)], next: 'two' })
       .mockImplementationOnce(({ signal }: { signal: AbortSignal }) => (
@@ -143,7 +143,11 @@ describe('unlimited frontend autofill', () => {
           })
         })
       ))
-    const instance = track(createVibe(options(loadPage)))
+      .mockResolvedValueOnce({ items: [item(2)], next: null })
+    const instance = track(createVibe({
+      ...options(loadPage),
+      initialPage: { items: [item(0)], next: 'one' },
+    }))
     const mounting = instance.mount()
     await flushPromises()
 
@@ -151,8 +155,25 @@ describe('unlimited frontend autofill', () => {
     await mounting
 
     expect(loadPage).toHaveBeenCalledTimes(2)
-    expect(instance.getState().items).toHaveLength(0)
-    expect(instance.getState().autofill.status).toBe('cancelled')
+    expect(instance.getState().items.map(({ postId }) => postId)).toEqual([0, 1])
+    expect(instance.getState()).toMatchObject({
+      autofill: {
+        delayRemainingMs: null,
+        missing: 18,
+        received: 2,
+        requests: 2,
+        status: 'cancelled',
+      },
+      isLoading: false,
+      isLoadingMore: false,
+      next: 'two',
+    })
+
+    await instance.loadNext()
+
+    expect(loadPage).toHaveBeenCalledTimes(3)
+    expect(instance.getState().items.map(({ postId }) => postId)).toEqual([0, 1, 2])
+    expect(instance.getState().autofill.status).toBe('exhausted')
   })
 
   it('aborts outstanding unlimited work when Vibe is destroyed', async () => {

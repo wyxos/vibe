@@ -1,11 +1,11 @@
 import { createApp, nextTick, reactive, watch, type App, type WatchHandle } from 'vue'
 import VibeSurface from '../components/VibeSurface.vue'
 import {
-  cancelAutofill,
   collectFrontendAutofill,
   createAutofillState,
   isAutofillActive,
 } from './autofill'
+import { VibeAutofillController } from './autofillController'
 import { VibeAutoScrollController } from './autoScroll'
 import {
   applyBackendAutofillUpdate,
@@ -19,7 +19,6 @@ import { createFeedFooterActions } from './feedFooter'
 import { createInitialRuntimeState } from './initialRuntimeState'
 import { resolveVibeTarget, validateOptions } from './options'
 import { appendUniqueItems, validatePage } from './page'
-import { RequestDelayCountdown } from './requestDelay'
 import { createRemovalControllers, type RemovalControllers } from './removalControllers'
 import { ResponsiveLayoutController } from './responsiveLayoutController'
 import { updateReelAutoAdvanceState } from './reelAutoAdvance'
@@ -47,8 +46,7 @@ import type {
 class VibeController implements VibeInstance {
   private app: App<Element> | null = null
   private readonly autoScroll: VibeAutoScrollController
-  private readonly autofillDelayCountdown: RequestDelayCountdown
-  private autofillCycle = 0
+  private readonly autofillController: VibeAutofillController
   private abortController: AbortController | null = null
   private pendingRequest: Promise<void> | null = null
   private requestVersion = 0
@@ -72,10 +70,12 @@ class VibeController implements VibeInstance {
       getScrollElement: () => this.surface?.getAutoScrollElement() ?? null,
       state: this.state.autoScroll,
     })
-    this.autofillDelayCountdown = new RequestDelayCountdown(
-      (delay) => Object.assign(this.state.autofill, delay),
-    )
-    this.syncAutofillCountdown()
+    this.autofillController = new VibeAutofillController({
+      cancelRequest: () => this.cancelRequest(),
+      onLastCursor: (cursor) => { this.lastLoadedCursor = cursor },
+      options: options.autofill,
+      state: this.state,
+    })
     this.fillController = new VibeFillController({
       fill: options.fill,
       loadPage: options.loadPage,
@@ -183,13 +183,11 @@ class VibeController implements VibeInstance {
   }
   applyAutofillUpdate(update: VibeBackendAutofillUpdate): boolean {
     const applied = applyBackendAutofillUpdate(this.options.autofill, this.state, update)
-    if (applied) this.syncAutofillCountdown()
+    if (applied) this.autofillController.syncCountdown()
     return applied
   }
 
-  async cancelAutofill(): Promise<void> {
-    await cancelAutofill(this.options.autofill, this.state, () => this.cancelRequest())
-  }
+  cancelAutofill(): Promise<void> { return this.autofillController.cancel() }
   applyFillUpdate(update: VibeBackendFillUpdate): boolean {
     return this.fillController.applyUpdate(update)
   }
@@ -206,7 +204,7 @@ class VibeController implements VibeInstance {
 
   restoreAutofillSession(snapshot: VibeAutofillSessionSnapshot): boolean {
     const restored = restoreBackendAutofillSession(this.options.autofill, this.state, snapshot)
-    if (restored) this.syncAutofillCountdown()
+    if (restored) this.autofillController.syncCountdown()
     return restored
   }
   restoreFillSession(snapshot: VibeFillSessionSnapshot): boolean {
@@ -309,7 +307,7 @@ class VibeController implements VibeInstance {
     this.routing.syncReel(postId)
   }
   private cancelRequest(): void {
-    this.autofillDelayCountdown.clear()
+    this.autofillController.clearCountdown()
     this.requestVersion += 1
     this.abortController?.abort()
     this.abortController = null
@@ -325,7 +323,7 @@ class VibeController implements VibeInstance {
     const requestVersion = ++this.requestVersion
     const abortController = new AbortController()
     const autofillOptions = this.options.autofill
-    const cycleId = autofillOptions ? this.beginAutofillCycle() : null
+    const cycleId = autofillOptions ? this.autofillController.beginCycle() : null
     let pageCommitted = false
     this.abortController = abortController
 
@@ -335,6 +333,9 @@ class VibeController implements VibeInstance {
           existingItems: append ? this.state.items : [],
           initialCursor: cursor,
           loadPage,
+          onCollection: (collection) => this.autofillController.captureCollection(
+            collection, requestVersion === this.requestVersion,
+          ),
           onDelayChange: (delay) => {
             if (requestVersion === this.requestVersion) {
               Object.assign(this.state.autofill, delay)
@@ -361,6 +362,7 @@ class VibeController implements VibeInstance {
           requests: result.requests,
           status: result.status,
         })
+        this.autofillController.clearCollection()
         return
       }
 
@@ -399,7 +401,7 @@ class VibeController implements VibeInstance {
           signal: abortController.signal,
           total: this.state.total,
         }, () => requestVersion === this.requestVersion)
-        this.syncAutofillCountdown()
+        this.autofillController.syncCountdown()
       }
     } catch (error: unknown) {
       if (abortController.signal.aborted || requestVersion !== this.requestVersion) return
@@ -414,34 +416,12 @@ class VibeController implements VibeInstance {
       }
     } finally {
       if (requestVersion === this.requestVersion) {
+        this.autofillController.clearCollection()
         this.abortController = null
         this.state.isLoading = false
         this.state.isLoadingMore = false
       }
     }
-  }
-
-  private beginAutofillCycle(): string {
-    const options = this.options.autofill
-    if (!options) return ''
-
-    this.autofillDelayCountdown.clear()
-    const cycleId = `vibe-autofill-${Date.now().toString(36)}-${++this.autofillCycle}`
-    this.state.autofill = {
-      ...createAutofillState(options, undefined, false),
-      cycleId,
-      status: 'filling',
-    }
-    return cycleId
-  }
-
-  private syncAutofillCountdown(): void {
-    const autofill = this.state.autofill
-    this.autofillDelayCountdown.sync(
-      autofill.strategy === 'backend' && autofill.status === 'waiting'
-        ? autofill.nextRequestAt
-        : null,
-    )
   }
 
   private startRequest(cursor: VibeCursor, append: boolean): Promise<void> {
@@ -456,13 +436,16 @@ class VibeController implements VibeInstance {
   private startInitialAutofill(): Promise<void> {
     const requestVersion = ++this.requestVersion
     const abortController = new AbortController()
-    const cycleId = this.beginAutofillCycle()
+    const cycleId = this.autofillController.beginCycle()
     this.abortController = abortController
     this.state.isLoadingMore = true
 
     const request = autofillInitialPage({
       cycleId,
       isCurrent: () => requestVersion === this.requestVersion,
+      onCollection: (collection) => this.autofillController.captureCollection(
+        collection, requestVersion === this.requestVersion,
+      ),
       onLastCursor: (cursor) => { this.lastLoadedCursor = cursor },
       options: this.options,
       signal: abortController.signal,
@@ -474,7 +457,8 @@ class VibeController implements VibeInstance {
       this.state.nextPageError = error
     }).finally(() => {
       if (requestVersion !== this.requestVersion) return
-      this.syncAutofillCountdown()
+      this.autofillController.clearCollection()
+      this.autofillController.syncCountdown()
       this.abortController = null
       this.state.isLoadingMore = false
       if (this.pendingRequest === request) this.pendingRequest = null

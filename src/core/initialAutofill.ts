@@ -1,6 +1,7 @@
 import {
   collectFrontendAutofill,
   frontendAutofillRequestLimit,
+  type FrontendAutofillCollection,
 } from './autofill'
 import { startBackendAutofill } from './backendAutofill'
 import { appendUniqueItems } from './page'
@@ -13,6 +14,7 @@ import type {
 interface InitialAutofillContext {
   cycleId: string
   isCurrent: () => boolean
+  onCollection: (collection: FrontendAutofillCollection) => void
   onLastCursor: (cursor: VibeCursor) => void
   options: CreateVibeOptions
   signal: AbortSignal
@@ -22,6 +24,7 @@ interface InitialAutofillContext {
 export async function autofillInitialPage({
   cycleId,
   isCurrent,
+  onCollection,
   onLastCursor,
   options,
   signal,
@@ -66,6 +69,7 @@ export async function autofillInitialPage({
     initialCursor: state.next,
     loadPage: options.loadPage,
     maximumRequests: frontendAutofillRequestLimit(autofill, false),
+    onCollection,
     onDelayChange: (delay) => {
       if (isCurrent()) Object.assign(state.autofill, delay)
     },

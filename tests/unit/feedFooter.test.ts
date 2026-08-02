@@ -177,6 +177,6 @@ describe('custom feed footer', () => {
     await mounting
 
     expect(instance.getState().autofill.status).toBe('cancelled')
-    expect(instance.getState().items).toHaveLength(0)
+    expect(instance.getState().items).toHaveLength(1)
   })
 })

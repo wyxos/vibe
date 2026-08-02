@@ -134,7 +134,7 @@ describe('Vibe autofill', () => {
     })
   })
 
-  it('cancels an in-flight frontend cycle without committing its buffered batch', async () => {
+  it('commits a partial frontend batch on cancellation', async () => {
     const loadPage = vi.fn()
       .mockResolvedValueOnce({ items: [item(1)], next: 'two' })
       .mockImplementationOnce(({ signal }: { signal: AbortSignal }) => (
@@ -157,7 +157,7 @@ describe('Vibe autofill', () => {
     await instance.cancelAutofill()
     await mountPromise
 
-    expect(instance.getState().items).toHaveLength(0)
+    expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1])
     expect(instance.getState().autofill.status).toBe('cancelled')
   })
 

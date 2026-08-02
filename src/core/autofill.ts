@@ -36,11 +36,14 @@ export interface FrontendAutofillProgress {
   requests: number
 }
 
-export interface FrontendAutofillResult extends FrontendAutofillProgress {
+export interface FrontendAutofillCollection extends FrontendAutofillProgress {
   items: VibeItem[]
   lastCursor: VibeCursor
-  status: 'complete' | 'exhausted'
   total?: number
+}
+
+export interface FrontendAutofillResult extends FrontendAutofillCollection {
+  status: 'complete' | 'exhausted'
 }
 
 interface CollectFrontendAutofillOptions {
@@ -48,6 +51,7 @@ interface CollectFrontendAutofillOptions {
   initialCursor: VibeCursor
   loadPage: VibePageLoader
   maximumRequests?: number
+  onCollection: (collection: FrontendAutofillCollection) => void
   onDelayChange: (snapshot: RequestDelaySnapshot) => void
   onProgress: (progress: FrontendAutofillProgress) => void
   options: VibeFrontendAutofillOptions
@@ -195,6 +199,7 @@ export async function collectFrontendAutofill({
   initialCursor,
   loadPage,
   maximumRequests: configuredMaximumRequests,
+  onCollection,
   onDelayChange,
   onProgress,
   options,
@@ -241,12 +246,19 @@ export async function collectFrontendAutofill({
       requests: requestOffset + requests,
     }
     onProgress(progress)
+    const collection = {
+      ...progress,
+      items: [...items],
+      lastCursor: cursor,
+      total,
+    }
+    onCollection(collection)
 
     if (progress.missing === 0) {
-      return { ...progress, items, lastCursor: cursor, status: 'complete', total }
+      return { ...collection, status: 'complete' }
     }
     if (next === null) {
-      return { ...progress, items, lastCursor: cursor, status: 'exhausted', total }
+      return { ...collection, status: 'exhausted' }
     }
 
     cursor = next
