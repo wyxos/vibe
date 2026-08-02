@@ -567,6 +567,48 @@
   backdrop-filter: none;
 }
 
+.reel-media-controls-host {
+  --vibe-reel-media-seek-height: 0.9rem;
+  --vibe-reel-media-row-height: 2.5rem;
+
+  position: absolute;
+  z-index: 6;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: calc(var(--vibe-reel-media-seek-height) + var(--vibe-reel-media-row-height));
+  pointer-events: none;
+}
+
+.reel-media-controls-host .media-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+}
+
+.reel-media-controls-host .media-control-seek {
+  height: var(--vibe-reel-media-seek-height);
+}
+
+.reel-media-controls-host .media-controls-row {
+  min-height: var(--vibe-reel-media-row-height);
+}
+
+.vibe-reel-media-controls-enter-active,
+.vibe-reel-media-controls-leave-active {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.reel-media-controls-host .vibe-reel-media-controls-leave-active {
+  pointer-events: none;
+}
+
+.vibe-reel-media-controls-enter-from,
+.vibe-reel-media-controls-leave-to {
+  opacity: 0;
+  transform: translateY(0.25rem);
+}
+
 .media-controls-row {
   display: flex;
   min-width: 0;
@@ -712,6 +754,17 @@
   scrollbar-color: auto;
   scrollbar-gutter: auto;
   scrollbar-width: none;
+}
+
+.reel-viewport {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+}
+
+.reel-viewport > .reel-feed {
+  height: 100%;
 }
 
 .reel-shell {
@@ -997,6 +1050,8 @@
   .media-slide-next-leave-active,
   .media-slide-previous-enter-active,
   .media-slide-previous-leave-active,
+  .vibe-reel-media-controls-enter-active,
+  .vibe-reel-media-controls-leave-active,
   .media-preview,
   .gallery-scrollbar,
   .gallery-scrollbar-thumb,

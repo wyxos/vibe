@@ -48,6 +48,8 @@ function props() {
 
 describe('MediaCard', () => {
   afterEach(() => {
+    document.querySelectorAll('[data-test="stationary-controls-target"]')
+      .forEach((element) => element.remove())
     vi.useRealTimers()
     vi.restoreAllMocks()
   })
@@ -219,6 +221,44 @@ describe('MediaCard', () => {
     expect(wrapper.find('[aria-label="Play video"]').exists()).toBe(false)
     expect(wrapper.find('[aria-label="Video volume"]').exists()).toBe(false)
     expect(wrapper.find('.media-control-time').exists()).toBe(false)
+  })
+
+  it('ports active reel controls to their stationary host', async () => {
+    const controlsTarget = document.createElement('div')
+    controlsTarget.dataset.test = 'stationary-controls-target'
+    document.body.appendChild(controlsTarget)
+    const wrapper = mount(MediaCard, {
+      props: {
+        ...props(),
+        active: true,
+        item: {
+          postId: 11,
+          ...videoAsset('11'),
+          items: [],
+        },
+        reelControlsTarget: controlsTarget,
+        stationaryReelControls: true,
+      },
+    })
+    const video = wrapper.get('video').element as HTMLVideoElement
+    const play = vi.spyOn(video, 'play').mockResolvedValue()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('.media-controls').exists()).toBe(false)
+    expect(controlsTarget.querySelector('.media-controls')).not.toBeNull()
+    expect(controlsTarget.querySelector('.media-controls')?.getAttribute(
+      'data-control-post-id',
+    )).toBe('11')
+
+    controlsTarget.querySelector<HTMLButtonElement>('[aria-label="Play video"]')?.click()
+    await wrapper.vm.$nextTick()
+    expect(play).toHaveBeenCalledOnce()
+
+    await wrapper.setProps({ active: false })
+    expect(controlsTarget.querySelector('.media-controls')).toBeNull()
+
+    wrapper.unmount()
+    expect(controlsTarget.querySelector('.media-controls')).toBeNull()
   })
 
   it('stops looping and reports completion when media drives auto advance', async () => {

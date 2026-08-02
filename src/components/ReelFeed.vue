@@ -37,10 +37,12 @@ const emit = defineEmits<{
 }>()
 
 const galleryElement = shallowRef<HTMLElement | null>(null)
+const reelControlsElement = shallowRef<HTMLElement | null>(null)
 const initialIndex = props.initialPostId === null || props.initialPostId === undefined
   ? -1
   : props.items.findIndex((item) => item.postId === props.initialPostId)
 const activeIndex = shallowRef(Math.max(0, initialIndex))
+const isFooterVisible = shallowRef(false)
 const isResizing = shallowRef(false)
 let viewportHeight = 0
 let resizeObserver: ResizeObserver | null = null
@@ -134,6 +136,11 @@ function onScroll(event: Event): void {
   const element = event.currentTarget as HTMLElement | null
   if (!element) return
 
+  const height = viewportHeight || element.clientHeight
+  const lastItemAnchor = Math.max(0, props.items.length - 1) * height
+  isFooterVisible.value = props.items.length > 0
+    && element.scrollTop > lastItemAnchor + 1
+
   if (!isResizing.value) activeIndex.value = nearestIndex(element)
   if (!props.loadMoreLocked && props.infiniteScroll && isNearFeedBottom(element)) {
     emit('loadMore')
@@ -144,6 +151,7 @@ function restoreActiveItem(): void {
   const element = galleryElement.value
   if (!element) return
 
+  isFooterVisible.value = false
   setResizeState(true)
   viewportHeight = element.clientHeight
   element.scrollTop = activeIndex.value * viewportHeight
@@ -362,75 +370,86 @@ defineExpose({
       :total="total"
     />
 
-    <div
-      ref="galleryElement"
-      class="gallery-shell reel-feed"
-      :data-active-post-id="activePostId"
-      :data-active-media-index="activeMediaIndex"
-      @scroll.passive="onScroll"
-    >
+    <div class="reel-viewport">
       <div
-        v-if="reelForward.status !== 'idle'"
-        class="reel-forward-status"
-        :role="reelForward.status === 'error' ? 'alert' : 'status'"
-        :data-status="reelForward.status"
+        ref="galleryElement"
+        class="gallery-shell reel-feed"
+        :data-active-post-id="activePostId"
+        :data-active-media-index="activeMediaIndex"
+        @scroll.passive="onScroll"
       >
-        <p>{{ forwardMessage }}</p>
-        <button
-          v-if="reelForward.status === 'error' || reelForward.status === 'end'"
-          class="reel-forward-retry"
-          type="button"
-          @click="emit('retryForward')"
+        <div
+          v-if="reelForward.status !== 'idle'"
+          class="reel-forward-status"
+          :role="reelForward.status === 'error' ? 'alert' : 'status'"
+          :data-status="reelForward.status"
         >
-          Retry
-        </button>
+          <p>{{ forwardMessage }}</p>
+          <button
+            v-if="reelForward.status === 'error' || reelForward.status === 'end'"
+            class="reel-forward-retry"
+            type="button"
+            @click="emit('retryForward')"
+          >
+            Retry
+          </button>
+        </div>
+
+        <section
+          v-else
+          class="reel-track"
+          :style="trackStyle"
+          aria-label="Media gallery"
+        >
+          <MediaCard
+            v-for="({ fetchPriority, item, index }) in visibleItems"
+            :key="item.postId"
+            :active="index === activeIndex && !isFooterVisible"
+            :advance-on-media-end="props.reelAutoAdvance.enabled && index === activeIndex"
+            class="reel-item"
+            :entering="false"
+            :fetch-priority="fetchPriority"
+            :index="index"
+            :item="item"
+            :item-style="itemStyle(index)"
+            :media-card="mediaCard"
+            layout="reel"
+            :loaded-count="items.length"
+            :media-index="mediaIndices.get(item.postId) ?? 0"
+            :media-source="mediaSource"
+            :preview-state="previewStates.get(mediaStateKey(
+              item.postId,
+              mediaIndices.get(item.postId) ?? 0,
+            )) ?? 'loading'"
+            :reel-controls-target="reelControlsElement"
+            stationary-reel-controls
+            :total="total"
+            @media-change="emit('mediaChange', item.postId, $event)"
+            @ended="onMediaEnded(item.postId, $event)"
+            @ready="emit('ready', item.postId, $event)"
+            @error="emit('error', item.postId, $event)"
+          />
+        </section>
+
+        <FeedFooter
+          v-if="reelForward.status === 'idle'"
+          :actions="feedFooterActions"
+          :can-retry-end="canRetryEnd"
+          :feed-footer="feedFooter"
+          :has-error="nextPageError"
+          :has-next="hasNext"
+          :is-loading="isLoadingMore"
+          :load-more-locked="loadMoreLocked"
+          :state="state"
+          @load-more="emit('loadMore')"
+          @retry-end="emit('retryEnd')"
+        />
       </div>
 
-      <section
-        v-else
-        class="reel-track"
-        :style="trackStyle"
-        aria-label="Media gallery"
-      >
-        <MediaCard
-          v-for="({ fetchPriority, item, index }) in visibleItems"
-          :key="item.postId"
-          :advance-on-media-end="props.reelAutoAdvance.enabled && index === activeIndex"
-          class="reel-item"
-          :entering="false"
-          :fetch-priority="fetchPriority"
-          :index="index"
-          :item="item"
-          :item-style="itemStyle(index)"
-          :media-card="mediaCard"
-          layout="reel"
-          :loaded-count="items.length"
-          :media-index="mediaIndices.get(item.postId) ?? 0"
-          :media-source="mediaSource"
-          :preview-state="previewStates.get(mediaStateKey(
-            item.postId,
-            mediaIndices.get(item.postId) ?? 0,
-          )) ?? 'loading'"
-          :total="total"
-          @media-change="emit('mediaChange', item.postId, $event)"
-          @ended="onMediaEnded(item.postId, $event)"
-          @ready="emit('ready', item.postId, $event)"
-          @error="emit('error', item.postId, $event)"
-        />
-      </section>
-
-      <FeedFooter
-        v-if="reelForward.status === 'idle'"
-        :actions="feedFooterActions"
-        :can-retry-end="canRetryEnd"
-        :feed-footer="feedFooter"
-        :has-error="nextPageError"
-        :has-next="hasNext"
-        :is-loading="isLoadingMore"
-        :load-more-locked="loadMoreLocked"
-        :state="state"
-        @load-more="emit('loadMore')"
-        @retry-end="emit('retryEnd')"
+      <div
+        ref="reelControlsElement"
+        class="reel-media-controls-host"
+        data-test="reel-media-controls-host"
       />
     </div>
 

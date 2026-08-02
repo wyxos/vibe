@@ -32,6 +32,7 @@ import CardRegion from './CardRegion.vue'
 import MediaControls from './MediaControls.vue'
 
 const props = defineProps<{
+  active?: boolean
   advanceOnMediaEnd?: boolean
   cardFooter?: VibeCardRegion
   cardHeader?: VibeCardRegion
@@ -48,6 +49,8 @@ const props = defineProps<{
   mediaCard?: VibeMediaCardOptions
   mediaSource?: VibeMediaSource
   previewState: MediaPreviewState
+  reelControlsTarget?: HTMLElement | null
+  stationaryReelControls?: boolean
   total: number | null
 }>()
 
@@ -185,6 +188,20 @@ function onMediaTouchEnd(event: TouchEvent): void {
 }
 
 const mediaIsTimed = computed(() => isTimedMediaSource(mediaSrc.value))
+const usesStationaryReelControls = computed(() => (
+  props.layout === 'reel' && props.stationaryReelControls === true
+))
+const mediaControlsVisible = computed(() => (
+  mediaIsTimed.value
+  && props.previewState === 'ready'
+  && (
+    !usesStationaryReelControls.value
+    || Boolean(props.active && props.reelControlsTarget)
+  )
+))
+const mediaControlsKey = computed(() => (
+  `${props.item.postId}:${normalizedMediaIndex.value}:${mediaSrc.value}`
+))
 
 function onVideoClick(event: MouseEvent): void {
   if (props.layout !== 'reel') return
@@ -386,19 +403,31 @@ onBeforeUnmount(() => {
           </div>
         </Transition>
 
-        <MediaControls
-          v-if="mediaIsTimed && previewState === 'ready'"
-          :current-time="videoCurrentTime"
-          :duration="videoDuration"
-          :layout="layout"
-          :muted="videoIsMuted"
-          :playing="videoIsPlaying"
-          :volume="videoVolume"
-          @seek="seekVideo"
-          @toggle-mute="toggleVideoMute"
-          @toggle-playback="toggleVideoPlayback"
-          @volume-change="setVideoVolume"
-        />
+        <Teleport
+          :disabled="!usesStationaryReelControls || !reelControlsTarget"
+          :to="reelControlsTarget ?? 'body'"
+        >
+          <Transition
+            name="vibe-reel-media-controls"
+            :css="usesStationaryReelControls"
+          >
+            <MediaControls
+              v-if="mediaControlsVisible"
+              :key="mediaControlsKey"
+              :current-time="videoCurrentTime"
+              :data-control-post-id="usesStationaryReelControls ? item.postId : undefined"
+              :duration="videoDuration"
+              :layout="layout"
+              :muted="videoIsMuted"
+              :playing="videoIsPlaying"
+              :volume="videoVolume"
+              @seek="seekVideo"
+              @toggle-mute="toggleVideoMute"
+              @toggle-playback="toggleVideoPlayback"
+              @volume-change="setVideoVolume"
+            />
+          </Transition>
+        </Teleport>
 
         <div
           v-if="mediaItems.length > 1"

@@ -168,6 +168,78 @@ describe('ReelFeed', () => {
     expect(galleryElement.scrollTop).toBe(0)
   })
 
+  it('keeps active timed-media controls in one stationary viewport host', async () => {
+    const wrapper = mount(ReelFeed, {
+      props: {
+        ...props(),
+        items: [timedMediaItem(10, 'mp4'), timedMediaItem(11, 'mp3')],
+        previewStates: new Map([
+          ['10:0', 'ready'],
+          ['11:0', 'ready'],
+        ]),
+      },
+    })
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+
+    const gallery = wrapper.get('.gallery-shell')
+    const controlsHost = wrapper.get('[data-test="reel-media-controls-host"]')
+    const controlsHostElement = controlsHost.element
+    expect(gallery.find('.media-controls').exists()).toBe(false)
+    expect(controlsHost.get('.media-controls').attributes('data-control-post-id')).toBe('10')
+
+    Object.defineProperty(gallery.element, 'scrollTop', {
+      configurable: true,
+      writable: true,
+      value: 500,
+    })
+    await gallery.trigger('scroll')
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get('[data-test="reel-media-controls-host"]').element)
+      .toBe(controlsHostElement)
+    expect(gallery.find('.media-controls').exists()).toBe(false)
+    expect(controlsHost.find('[data-control-post-id="11"]').exists()).toBe(true)
+  })
+
+  it('hides timed-media controls over the footer and leaves its action available', async () => {
+    const wrapper = mount(ReelFeed, {
+      props: {
+        ...props(),
+        hasNext: true,
+        infiniteScroll: false,
+        items: [timedMediaItem(10, 'mp4')],
+        previewStates: new Map([['10:0', 'ready']]),
+      },
+    })
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+
+    const gallery = wrapper.get('.gallery-shell')
+    const galleryElement = gallery.element as HTMLElement
+    expect(wrapper.get('[data-test="reel-media-controls-host"] .media-controls').exists())
+      .toBe(true)
+
+    Object.defineProperty(galleryElement, 'scrollTop', {
+      configurable: true,
+      writable: true,
+      value: 40,
+    })
+    await gallery.trigger('scroll')
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-test="reel-media-controls-host"] .media-controls').exists())
+      .toBe(false)
+    await wrapper.get('[data-test="load-more"]').trigger('click')
+    expect(wrapper.emitted('loadMore')).toEqual([[]])
+
+    galleryElement.scrollTop = 0
+    await gallery.trigger('scroll')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('[data-test="reel-media-controls-host"] .media-controls').exists())
+      .toBe(true)
+  })
+
   it('uses previews by default and originals when requested', async () => {
     const previewWrapper = mount(ReelFeed, { props: props() })
     const originalWrapper = mount(ReelFeed, {
