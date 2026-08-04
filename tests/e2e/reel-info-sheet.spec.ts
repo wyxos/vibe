@@ -334,6 +334,25 @@ test.describe('desktop reel information sheet', () => {
     await expect(page.locator('.vibe-reel-overlay')).toBeHidden()
   })
 
+  test('Escape returns a nested reel to its sheet feed without closing the parent', async ({ page }) => {
+    await openMasonrySheet(page)
+    const parentOverlay = page.locator(
+      '.demo-vibe-host > .vibe-surface > .vibe-reel-overlay',
+    )
+    const sheet = parentOverlay.locator('[data-test="reel-info-sheet"]')
+    const nestedFeed = sheet.locator('.demo-info-sheet-feed')
+    const nestedOverlay = nestedFeed.locator(':scope > .vibe-surface > .vibe-reel-overlay')
+
+    await nestedFeed.locator('.masonry-item').first().click()
+    await expect(nestedOverlay).toBeVisible()
+    await page.keyboard.press('Escape')
+
+    await expect(nestedOverlay).toBeHidden()
+    await expect(parentOverlay).toBeVisible()
+    await expect(sheet).toBeVisible()
+    await expect(nestedFeed.locator('.masonry-feed')).toBeVisible()
+  })
+
   test('offers manual pagination when an infinite sheet feed is underfilled', async ({ page }) => {
     await page.route('**/data/civitai/images/page-01.json', async (route) => {
       const response = await route.fetch()

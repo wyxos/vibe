@@ -3,13 +3,12 @@ import {
   computed,
   nextTick,
   onBeforeUnmount,
-  onMounted,
   shallowRef,
   watch,
   type CSSProperties,
 } from 'vue'
 import type { MediaPreviewState } from '../core/mediaPreview'
-import { clampMediaIndex, mediaStateKey } from '../core/mediaAsset'
+import { clampMediaIndex, mediaAssets, mediaStateKey } from '../core/mediaAsset'
 import type { FeedRendererExpose } from '../core/feed'
 import { snapshotState, type VibeRuntimeState } from '../core/runtime'
 import type {
@@ -19,10 +18,13 @@ import type {
   VibeItemId,
   VibeMediaCardOptions,
   VibeReelInfoSheetOptions,
+  VibeReelItemTarget,
+  VibeReelNavigationResult,
 } from '../types'
 import FeedStatus from './FeedStatus.vue'
 import MasonryFeed from './MasonryFeed.vue'
 import ReelLayout from './ReelLayout.vue'
+import { useReelKeyboard } from './useReelKeyboard'
 const ENTRY_STAGGER_MS = 35
 const ITEM_MOTION_MS = 420
 type ReelOriginStyle = CSSProperties & Record<`--vibe-reel-origin-${string}`, string>
@@ -171,6 +173,21 @@ function moveActiveReelPost(direction: -1 | 1): boolean {
   return reelRenderer.value?.moveActivePost?.(direction) ?? false
 }
 
+function navigateToReelItem(target: VibeReelItemTarget): VibeReelNavigationResult {
+  const reelActive = props.state.layout === 'reel' || props.state.reelOrigin === 'masonry'
+  if (!reelActive || props.state.isLoading) return 'reel-inactive'
+
+  const item = props.state.items.find((candidate) => candidate.postId === target.postId)
+  if (!item) return 'not-found'
+
+  const mediaIndex = mediaAssets(item).findIndex((media) => media.mediaId === target.mediaId)
+  if (mediaIndex < 0) return 'not-found'
+
+  return reelRenderer.value?.navigateToItem?.(target.postId, mediaIndex)
+    ? 'navigated'
+    : 'reel-inactive'
+}
+
 function getAutoScrollElement(): HTMLElement | null {
   if (props.state.layout !== 'masonry' || props.state.reelOrigin === 'masonry') return null
   return masonryRenderer.value?.getScrollElement?.() ?? null
@@ -268,43 +285,14 @@ function finishReelLeave(): void {
   })
 }
 
-function onKeydown(event: KeyboardEvent): void {
-  const reelActive = props.state.layout === 'reel'
-    || props.state.reelOrigin === 'masonry'
-
-  if (event.key === 'Escape' && props.state.reelOrigin === 'masonry') {
-    event.preventDefault()
-    if (props.state.reelInfoSheetOverlay && props.state.reelInfoSheet.enabled)
-      emit('reelInfoSheetChange', false)
-    closeMasonryReel()
-    return
-  }
-  if (event.key === 'Escape' && reelActive && props.state.reelInfoSheet.enabled) {
-    event.preventDefault()
-    emit('reelInfoSheetChange', false)
-    return
-  }
-  if (
-    event.defaultPrevented
-    || event.altKey
-    || event.ctrlKey
-    || event.metaKey
-    || event.shiftKey
-    || isReelLeaving.value
-    || (props.state.layout !== 'reel' && props.state.reelOrigin !== 'masonry')
-  ) return
-
-  const target = event.target
-  if (
-    target instanceof HTMLElement
-    && (target.isContentEditable || ['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName))
-  ) return
-
-  const direction = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0
-  if (direction !== 0 && reelRenderer.value?.changeActiveMedia?.(direction)) {
-    event.preventDefault()
-  }
-}
+useReelKeyboard({
+  closeMasonryReel,
+  element: () => surfaceElement.value,
+  isReelLeaving: () => isReelLeaving.value,
+  reelRenderer: () => reelRenderer.value,
+  setReelInfoSheet: (enabled) => emit('reelInfoSheetChange', enabled),
+  state: props.state,
+})
 
 watch(
   () => props.state.items.map((item) => item.postId),
@@ -335,10 +323,7 @@ watch(
   { flush: 'sync' },
 )
 
-onMounted(() => window.addEventListener('keydown', onKeydown))
-
 onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKeydown)
   if (enterReleaseFrame !== null) cancelAnimationFrame(enterReleaseFrame)
 })
 
@@ -347,6 +332,7 @@ defineExpose({
   getAutoScrollElement,
   loadIfNearBottom,
   moveActiveReelPost,
+  navigateToReelItem,
   startItemRemoval,
   transitionActiveReelMedia: (direction: -1 | 1) => reelRenderer.value?.transitionActiveMedia?.(direction) ?? Promise.resolve(false),
   transitionActiveReelPost: (postId: VibeItemId) => reelRenderer.value?.transitionActivePost?.(postId) ?? Promise.resolve(false),

@@ -19,6 +19,7 @@ interface ReelFeedExpose {
   changeActiveMedia: (direction: -1 | 1) => boolean
   loadIfNearBottom: () => void
   moveActivePost: (direction: -1 | 1) => boolean
+  navigateToItem: (postId: VibeItemId, mediaIndex: number) => boolean
   transitionActiveMedia: (direction: -1 | 1) => Promise<boolean>
   transitionActivePost: (postId: VibeItemId) => Promise<boolean>
 }
@@ -97,6 +98,10 @@ function moveActivePost(direction: -1 | 1): boolean {
   return reelFeed.value?.moveActivePost(direction) ?? false
 }
 
+function navigateToItem(postId: VibeItemId, mediaIndex: number): boolean {
+  return reelFeed.value?.navigateToItem(postId, mediaIndex) ?? false
+}
+
 function transitionActiveMedia(direction: -1 | 1): Promise<boolean> {
   return reelFeed.value?.transitionActiveMedia(direction) ?? Promise.resolve(false)
 }
@@ -148,6 +153,7 @@ defineExpose({
   changeActiveMedia,
   loadIfNearBottom,
   moveActivePost,
+  navigateToItem,
   transitionActiveMedia,
   transitionActivePost,
 })

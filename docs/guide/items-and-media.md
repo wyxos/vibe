@@ -7,6 +7,7 @@ import type { VibeItem } from '@wyxos/vibe'
 
 const item: VibeItem = {
   postId: 42,
+  mediaId: 'asset-101',
   src: 'https://cdn.example.com/photo.jpg',
   width: 1600,
   height: 1200,
@@ -31,6 +32,11 @@ const item: VibeItem = {
 | `items` | `VibeMediaAsset[]` | Additional media in the same post. |
 
 Use `null` for unknown dimensions. Supplying accurate dimensions lets masonry reserve space before assets load and reduces layout movement.
+
+Each `VibeMediaAsset` may also provide a stable `mediaId` (`string | number`).
+It is optional for rendering, but required when a consumer uses
+`navigateToReelItem()` to select exact media without relying on its current
+position in the group.
 
 ## Provider grouping boundary
 

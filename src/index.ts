@@ -62,6 +62,8 @@ export type {
   VibeReelInfoSheetOptions,
   VibeReelInfoSheetProps,
   VibeReelInfoSheetState,
+  VibeReelItemTarget,
+  VibeReelNavigationResult,
   VibeReelForwardState,
   VibeReelForwardStatus,
   VibeReelOrigin,

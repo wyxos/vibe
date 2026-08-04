@@ -77,12 +77,21 @@ transition.
 | Method | Purpose |
 | --- | --- |
 | `setLayout(mode)` | Changes between masonry, reel, and responsive modes. |
+| `navigateToReelItem(target)` | Selects a loaded post and media asset by stable `postId` and `mediaId`. |
 | `nextReelPost()` / `previousReelPost()` | Moves vertically between loaded posts. |
 | `nextReelMediaItem()` / `previousReelMediaItem()` | Moves horizontally within grouped media. |
 | `setReelInfoSheet(enabled)` | Opens or closes the configured information sheet. |
 | `setReelAutoAdvance(update)` | Enables, disables, or updates reel auto advance. |
 
-Navigation methods return `true` when a navigation was accepted and `false` when it was a no-op.
+The next/previous navigation methods return `true` when a navigation was
+accepted and `false` when it was a no-op.
+
+`navigateToReelItem({ postId, mediaId })` returns `navigated` when both stable
+identities resolve in the active reel, including when that exact item is
+already active. It returns `not-found` when either identity is absent from the
+loaded feed, and `reel-inactive` before mount, after destroy, during initial
+loading, or while only masonry is visible. It never loads, inserts, or falls
+back to another item.
 
 ## Loading controls
 

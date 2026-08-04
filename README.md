@@ -125,6 +125,8 @@ show looping previous/next controls on hover or keyboard focus. Reel layout
 keeps those controls visible and supports native horizontal-wheel or touch-swipe
 navigation through grouped media. Media changes use a directional horizontal
 transition, while vertical reel scrolling continues to move between posts.
+Media assets may include a stable `mediaId` (`string | number`) when consumers
+need to select exact grouped media independently of its array position.
 
 ## Reel URLs with Vue Router
 
@@ -504,6 +506,9 @@ vibe.previousReelMediaItem()
 // Posts within the reel (vertical reel navigation).
 vibe.nextReelPost()
 vibe.previousReelPost()
+
+// An exact loaded post/media pair by stable identity.
+vibe.navigateToReelItem({ postId: 'post-42', mediaId: 'asset-101' })
 ```
 
 Each navigation method returns `true` when it accepted a navigation and `false`
@@ -519,6 +524,13 @@ They work in both a base reel layout and an open masonry-origin reel viewer.
 Successful navigation updates `state.activeReelPostId`, the selected media item,
 card-region props, route synchronization, and an open information sheet's
 consumer context through the same handlers used by gestures and keyboard input.
+
+`navigateToReelItem()` returns `navigated` when both identities resolve,
+including when the requested media is already active. It returns `not-found`
+when the loaded post or media is missing, and `reel-inactive` before mount,
+after destroy, during initial loading, or while only masonry is visible. The
+method does not load, insert, or fall back to another item. Every targetable
+parent or nested `VibeMediaAsset` must provide its stable `mediaId`.
 
 ## Reel information sheet
 
@@ -583,6 +595,11 @@ Calling `setReelInfoSheet()` before mount, during loading, or outside an active
 reel still updates this requested state; the sheet becomes visible when a valid
 reel context exists. This preserves the existing persistent sheet-state
 behavior across masonry viewer closes.
+
+When a sheet contains another Vibe instance, Escape is owned by the topmost
+active reel. A nested masonry-origin reel therefore closes back to its nested
+feed without also closing the parent sheet or reel. Single-instance Escape
+behavior is unchanged.
 
 ## Custom feed footer
 
@@ -692,6 +709,7 @@ vibe.nextReelMediaItem()
 vibe.previousReelMediaItem()
 vibe.nextReelPost()
 vibe.previousReelPost()
+vibe.navigateToReelItem({ postId: 'post-42', mediaId: 'asset-101' })
 vibe.setAutoScroll(true, 80)
 vibe.pauseAutoScroll()
 vibe.resumeAutoScroll()

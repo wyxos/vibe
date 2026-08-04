@@ -87,6 +87,7 @@ export interface VibePreview {
 }
 
 export interface VibeMediaAsset {
+  mediaId?: VibeItemId
   src: string
   preview: VibePreview
   width: number | null
@@ -107,6 +108,13 @@ export interface VibeMediaTarget {
   mediaIndex: number
   postId: VibeItemId
 }
+
+export interface VibeReelItemTarget {
+  mediaId: VibeItemId
+  postId: VibeItemId
+}
+
+export type VibeReelNavigationResult = 'navigated' | 'not-found' | 'reel-inactive'
 
 export interface VibeMediaPlacement extends VibeMediaTarget {
   media: VibeMediaAsset
@@ -459,6 +467,7 @@ export interface VibeInstance {
   getState: () => VibeState
   loadNext: () => Promise<void>
   mount: () => Promise<void>
+  navigateToReelItem: (target: VibeReelItemTarget) => VibeReelNavigationResult
   nextReelMediaItem: () => boolean
   nextReelPost: () => boolean
   pauseAutoScroll: () => void

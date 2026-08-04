@@ -221,6 +221,20 @@ function moveActivePost(direction: -1 | 1): boolean {
   return true
 }
 
+function navigateToItem(postId: VibeItemId, mediaIndex: number): boolean {
+  const index = props.items.findIndex((item) => item.postId === postId)
+  const item = props.items[index]
+  if (!galleryElement.value || !item || mediaIndex < 0 || mediaIndex > item.items.length) {
+    return false
+  }
+
+  if ((props.mediaIndices.get(postId) ?? 0) !== mediaIndex) {
+    emit('mediaChange', postId, mediaIndex)
+  }
+  if (index !== activeIndex.value) advanceToPost(index)
+  return true
+}
+
 function prefersReducedMotion(): boolean {
   return typeof window.matchMedia === 'function'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -343,6 +357,7 @@ defineExpose({
   changeActiveMedia,
   loadIfNearBottom,
   moveActivePost,
+  navigateToItem,
   transitionActiveMedia,
   transitionActivePost,
 })

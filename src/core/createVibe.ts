@@ -41,6 +41,8 @@ import type {
   VibeMediaTarget,
   VibeRemoval,
   VibeReelAutoAdvanceOptions,
+  VibeReelItemTarget,
+  VibeReelNavigationResult,
   VibeState,
 } from '../types'
 class VibeController implements VibeInstance {
@@ -173,6 +175,9 @@ class VibeController implements VibeInstance {
   previousReelMediaItem(): boolean { return this.surface?.changeActiveReelMedia(-1) ?? false }
   nextReelPost(): boolean { return this.surface?.moveActiveReelPost(1) ?? false }
   previousReelPost(): boolean { return this.surface?.moveActiveReelPost(-1) ?? false }
+  navigateToReelItem(target: VibeReelItemTarget): VibeReelNavigationResult {
+    return this.surface?.navigateToReelItem(target) ?? 'reel-inactive'
+  }
   pauseAutoScroll(): void { this.autoScroll.setPaused(true) }
   resumeAutoScroll(): void { this.autoScroll.setPaused(false) }
   setAutoScroll(enabled: boolean, speedPxPerSecond?: number): void {

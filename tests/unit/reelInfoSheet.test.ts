@@ -57,6 +57,7 @@ const InfoSheet = defineComponent({
         type: 'button',
         onClick: props.close,
       }, 'Close'),
+      h('div', { 'data-test': 'nested-vibe-target' }),
     ])
   },
 })
@@ -193,6 +194,45 @@ describe('reel information sheet', () => {
     await flushPromises()
     expect(target.querySelector('.vibe-reel-overlay')).not.toBeNull()
     expect(target.querySelector('[data-test="consumer-sheet"]')).not.toBeNull()
+  })
+
+  it('closes only the topmost nested reel on Escape', async () => {
+    const parent = track(createVibe({
+      target,
+      layout: 'reel',
+      initialPage: { items: [item(1), item(2)], next: null },
+      reelInfoSheet: { component: InfoSheet, enabled: true },
+    }))
+    await parent.mount()
+    await flushPromises()
+
+    const nestedTarget = target.querySelector<HTMLElement>('[data-test="nested-vibe-target"]')!
+    const nested = createVibe({
+      target: nestedTarget,
+      initialPage: { items: [item(11), item(12)], next: null },
+    })
+
+    try {
+      await nested.mount()
+      await flushPromises()
+      nestedTarget.querySelector<HTMLElement>('[data-post-id="11"]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, detail: 1 }),
+      )
+      await flushPromises()
+
+      expect(nested.getState().reelOrigin).toBe('masonry')
+      expect(parent.getState().reelInfoSheet.enabled).toBe(true)
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+      await flushPromises()
+
+      expect(nested.getState().reelOrigin).toBeNull()
+      expect(nestedTarget.querySelector('.vibe-reel-overlay')).toBeNull()
+      expect(parent.getState().reelInfoSheet.enabled).toBe(true)
+      expect(parent.getState().activeReelPostId).toBe(1)
+      expect(target.querySelector('[data-test="consumer-sheet"]')).not.toBeNull()
+    } finally {
+      nested.destroy()
+    }
   })
 
   it('clears the sheet state when closing a masonry reel on phones', async () => {

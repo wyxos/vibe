@@ -9,6 +9,8 @@ import type {
   VibeReelAutoAdvanceState,
   VibeReelForwardState,
   VibeReelInfoSheetOptions,
+  VibeReelItemTarget,
+  VibeReelNavigationResult,
   VibeReelOrigin,
   VibeState,
 } from '../types'
@@ -46,6 +48,7 @@ export interface FeedRendererExpose {
   getScrollElement?: () => HTMLElement | null
   loadIfNearBottom: () => void
   moveActivePost?: (direction: -1 | 1) => boolean
+  navigateToItem?: (postId: VibeItemId, mediaIndex: number) => boolean
   transitionActiveMedia?: (direction: -1 | 1) => Promise<boolean>
   transitionActivePost?: (postId: VibeItemId) => Promise<boolean>
 }
@@ -71,6 +74,7 @@ export interface VibeSurfaceExpose {
   getAutoScrollElement: () => HTMLElement | null
   loadIfNearBottom: () => Promise<void>
   moveActiveReelPost: (direction: -1 | 1) => boolean
+  navigateToReelItem: (target: VibeReelItemTarget) => VibeReelNavigationResult
   startItemRemoval: (postIds: readonly VibeItemId[]) => number
   transitionActiveReelMedia: (direction: -1 | 1) => Promise<boolean>
   transitionActiveReelPost: (postId: VibeItemId) => Promise<boolean>
