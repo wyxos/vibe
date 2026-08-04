@@ -33,7 +33,7 @@ At least one of `initialPage` or `loadPage` is needed to display content.
 | --- | --- | --- |
 | `cardHeader` | `VibeCardRegion` | Typed Vue component above each post's media. |
 | `cardFooter` | `VibeCardRegion` | Typed Vue component below each post's media. |
-| `mediaCard` | `VibeMediaCardOptions` | Consumer-owned header/footer background and spacing. |
+| `mediaCard` | `VibeMediaCardOptions` | Consumer-owned header/footer styling and initial video mute behavior. Videos start unmuted; use `videoMuted: true` to start muted. |
 | `feedFooter` | `VibeFeedFooter` | Replaces the default `GalleryFooter` with a consumer-owned component. |
 | `reelInfoSheet` | `VibeReelInfoSheetOptions` | Application-owned information sheet for an active reel. |
 | `reelAutoAdvance` | `VibeReelAutoAdvanceOptions` | Timed image progression and playback-ended media progression. |

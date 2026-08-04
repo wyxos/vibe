@@ -223,6 +223,33 @@ describe('MediaCard', () => {
     expect(wrapper.find('.media-control-time').exists()).toBe(false)
   })
 
+  it('starts videos unmuted by default and accepts a muted configuration', () => {
+    const defaultWrapper = mount(MediaCard, {
+      props: {
+        ...props(),
+        item: {
+          postId: 11,
+          ...videoAsset('11'),
+          items: [],
+        },
+      },
+    })
+    const mutedWrapper = mount(MediaCard, {
+      props: {
+        ...props(),
+        item: {
+          postId: 12,
+          ...videoAsset('12'),
+          items: [],
+        },
+        mediaCard: { videoMuted: true },
+      },
+    })
+
+    expect((defaultWrapper.get('video').element as HTMLVideoElement).muted).toBe(false)
+    expect((mutedWrapper.get('video').element as HTMLVideoElement).muted).toBe(true)
+  })
+
   it('ports active reel controls to their stationary host', async () => {
     const controlsTarget = document.createElement('div')
     controlsTarget.dataset.test = 'stationary-controls-target'

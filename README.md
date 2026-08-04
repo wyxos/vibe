@@ -96,6 +96,9 @@ const vibe = createVibe({
     component: MediaReactions,
     height: 48,
   },
+  mediaCard: {
+    videoMuted: true,
+  },
 })
 ```
 
@@ -108,6 +111,10 @@ component controls its own content and alignment, and receives `item`, `layout`,
 zero-based `mediaIndex`, its inclusive `mediaCount`, and the optional remote
 `total`. Import the `VibeCardRegionProps` type for typed Vue props. Interacting
 with these regions does not activate the underlying media.
+
+Videos start unmuted by default. Set `mediaCard.videoMuted` to `true` when the
+consumer requires muted initial playback. Users can still change mute and
+volume through the timed-media controls.
 
 When a feed item has entries in `item.items`, Vibe treats the parent media as
 position one and the nested entries as the remaining positions. Masonry cards

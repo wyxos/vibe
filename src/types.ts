@@ -139,6 +139,7 @@ export interface VibeCardChromeStyle {
 export interface VibeMediaCardOptions {
   footer?: VibeCardChromeStyle
   header?: VibeCardChromeStyle
+  videoMuted?: boolean
 }
 
 export interface VibeCardRegionProps {

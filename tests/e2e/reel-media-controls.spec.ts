@@ -29,7 +29,13 @@ test('timed-media controls stay fixed to the reel viewport and fade between post
   await expect.poll(() => reel.getAttribute('data-active-post-id')).not.toBe(firstPostId)
   const timedPostId = await reel.getAttribute('data-active-post-id')
   const controls = controlsHost.locator('.media-controls')
+  const activeVideo = reel.locator(`[data-post-id="${timedPostId}"] video`)
   await expect(controls).toBeVisible()
+  await expect(activeVideo).toBeVisible()
+  await expect.poll(() => activeVideo.evaluate((video: HTMLVideoElement) => ({
+    defaultMuted: video.defaultMuted,
+    muted: video.muted,
+  }))).toEqual({ defaultMuted: false, muted: false })
   await expect(controls).not.toHaveClass(/vibe-reel-media-controls-enter-active/)
   await expect(controls).toHaveAttribute('data-control-post-id', timedPostId!)
   await expect(reel.locator('.media-controls')).toHaveCount(0)
@@ -121,7 +127,15 @@ test('timed-media controls remain contained at the bottom of the phone reel', as
   })
   await expect.poll(() => reel.getAttribute('data-active-post-id')).not.toBe(firstPostId)
   const controls = controlsHost.locator('.media-controls')
+  const activeVideo = reel.locator(
+    `[data-post-id="${await reel.getAttribute('data-active-post-id')}"] video`,
+  )
   await expect(controls).toBeVisible()
+  await expect(activeVideo).toBeVisible()
+  await expect.poll(() => activeVideo.evaluate((video: HTMLVideoElement) => ({
+    defaultMuted: video.defaultMuted,
+    muted: video.muted,
+  }))).toEqual({ defaultMuted: false, muted: false })
   await expect(controls).not.toHaveClass(/vibe-reel-media-controls-enter-active/)
 
   const reelBox = await reel.boundingBox()
