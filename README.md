@@ -112,9 +112,12 @@ zero-based `mediaIndex`, its inclusive `mediaCount`, and the optional remote
 `total`. Import the `VibeCardRegionProps` type for typed Vue props. Interacting
 with these regions does not activate the underlying media.
 
-Masonry videos start muted, while reel videos start unmuted. Set
-`mediaCard.videoMuted` to explicitly override the initial state in either
-layout. Users can still change mute and volume through the timed-media controls.
+Masonry videos start muted, while the active reel video starts unmuted. Inactive
+reel videos are always paused and muted while they remain mounted for nearby
+virtualization; their user-selected mute state is restored when they become
+active again. Set `mediaCard.videoMuted` to explicitly override the initial
+state in either layout. Users can still change mute and volume through the
+timed-media controls.
 
 When a feed item has entries in `item.items`, Vibe treats the parent media as
 position one and the nested entries as the remaining positions. Masonry cards

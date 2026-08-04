@@ -23,6 +23,17 @@ test('timed-media controls stay fixed to the reel viewport and fade between post
   ))).toBe(true)
 
   const firstPostId = await reel.getAttribute('data-active-post-id')
+  const initiallyInactiveVideos = reel.locator(
+    `.reel-item:not([data-post-id="${firstPostId}"]) video`,
+  )
+  await expect.poll(() => initiallyInactiveVideos.count()).toBeGreaterThan(0)
+  await expect.poll(() => initiallyInactiveVideos.evaluateAll((videos) => (
+    videos.every((video) => {
+      const media = video as HTMLVideoElement
+      return !media.autoplay && media.muted && media.paused
+    })
+  ))).toBe(true)
+
   await reel.evaluate((element) => {
     element.scrollTop = element.clientHeight
   })
@@ -98,6 +109,11 @@ test('timed-media controls stay fixed to the reel viewport and fade between post
   })
   await expect(reel).toHaveAttribute('data-active-post-id', firstPostId!)
   await expect(controlsHost.locator('.media-controls')).toHaveCount(0)
+  await expect.poll(() => activeVideo.evaluate((video: HTMLVideoElement) => ({
+    autoplay: video.autoplay,
+    muted: video.muted,
+    paused: video.paused,
+  }))).toEqual({ autoplay: false, muted: true, paused: true })
   expect(fadeSamples.some(({ className, opacity }) => (
     className.includes('vibe-reel-media-controls-leave-active') || opacity < 1
   ))).toBe(true)
@@ -107,6 +123,10 @@ test('timed-media controls stay fixed to the reel viewport and fade between post
   })
   await expect(reel).toHaveAttribute('data-active-post-id', timedPostId!)
   await expect(controlsHost.locator('.media-controls')).toBeVisible()
+  await expect.poll(() => activeVideo.evaluate((video: HTMLVideoElement) => ({
+    autoplay: video.autoplay,
+    muted: video.muted,
+  }))).toEqual({ autoplay: true, muted: false })
 })
 
 test('timed-media controls remain contained at the bottom of the phone reel', async ({

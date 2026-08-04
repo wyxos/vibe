@@ -30,6 +30,7 @@ function videoAsset(name: string) {
 
 function props() {
   return {
+    active: true,
     entering: false,
     fetchPriority: 'high' as const,
     index: 0,
@@ -223,10 +224,11 @@ describe('MediaCard', () => {
     expect(wrapper.find('.media-control-time').exists()).toBe(false)
   })
 
-  it('mutes masonry videos and starts reel videos unmuted by default', () => {
+  it('mutes masonry and inactive reel videos while active reels start unmuted', () => {
     const reelWrapper = mount(MediaCard, {
       props: {
         ...props(),
+        active: true,
         item: {
           postId: 11,
           ...videoAsset('11'),
@@ -241,6 +243,17 @@ describe('MediaCard', () => {
         item: {
           postId: 12,
           ...videoAsset('12'),
+          items: [],
+        },
+      },
+    })
+    const inactiveReelWrapper = mount(MediaCard, {
+      props: {
+        ...props(),
+        active: false,
+        item: {
+          postId: 14,
+          ...videoAsset('14'),
           items: [],
         },
       },
@@ -260,9 +273,44 @@ describe('MediaCard', () => {
 
     expect((reelWrapper.get('video').element as HTMLVideoElement).muted).toBe(false)
     expect((masonryWrapper.get('video').element as HTMLVideoElement).muted).toBe(true)
+    expect((inactiveReelWrapper.get('video').element as HTMLVideoElement).autoplay)
+      .toBe(false)
+    expect((inactiveReelWrapper.get('video').element as HTMLVideoElement).muted)
+      .toBe(true)
     expect(
       (configuredMasonryWrapper.get('video').element as HTMLVideoElement).muted,
     ).toBe(false)
+  })
+
+  it('pauses and mutes inactive reel videos without losing the user mute state', async () => {
+    const wrapper = mount(MediaCard, {
+      props: {
+        ...props(),
+        active: true,
+        item: {
+          postId: 14,
+          ...videoAsset('14'),
+          items: [],
+        },
+      },
+    })
+    const video = wrapper.get('video').element as HTMLVideoElement
+    const play = vi.spyOn(video, 'play').mockResolvedValue()
+    const pause = vi.spyOn(video, 'pause').mockImplementation(() => undefined)
+
+    expect(video.autoplay).toBe(true)
+    expect(video.muted).toBe(false)
+
+    await wrapper.setProps({ active: false })
+    expect(pause).toHaveBeenCalledOnce()
+    expect(video.autoplay).toBe(false)
+    expect(video.muted).toBe(true)
+
+    await wrapper.setProps({ active: true })
+    await wrapper.vm.$nextTick()
+    expect(play).toHaveBeenCalledOnce()
+    expect(video.autoplay).toBe(true)
+    expect(video.muted).toBe(false)
   })
 
   it('ports active reel controls to their stationary host', async () => {
@@ -284,6 +332,7 @@ describe('MediaCard', () => {
     })
     const video = wrapper.get('video').element as HTMLVideoElement
     const play = vi.spyOn(video, 'play').mockResolvedValue()
+    vi.spyOn(video, 'pause').mockImplementation(() => undefined)
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('.media-controls').exists()).toBe(false)

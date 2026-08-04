@@ -30,6 +30,7 @@ import type {
 } from '../types'
 import CardRegion from './CardRegion.vue'
 import MediaControls from './MediaControls.vue'
+import { useReelVideoActivity } from './useReelVideoActivity'
 
 const props = defineProps<{
   active?: boolean
@@ -106,6 +107,18 @@ const videoIsMuted = shallowRef(
 const videoIsPlaying = shallowRef(false)
 const videoVolume = shallowRef(1)
 let lastAudibleVolume = 1
+
+const {
+  effectiveMuted: effectiveVideoMuted,
+  onPlaying: onVideoPlaying,
+  playbackAllowed: videoPlaybackAllowed,
+} = useReelVideoActivity({
+  active: () => props.active,
+  layout: () => props.layout,
+  videoElement,
+  videoIsMuted,
+  videoIsPlaying,
+})
 
 const usesSeparateActivator = computed(() => (
   props.interactive && Boolean(props.cardHeader || props.cardFooter)
@@ -213,7 +226,7 @@ function onVideoClick(event: MouseEvent): void {
 }
 
 async function toggleVideoPlayback(): Promise<void> {
-  if (!videoElement.value) return
+  if (!videoElement.value || !videoPlaybackAllowed.value) return
 
   if (videoIsPlaying.value) {
     videoElement.value.pause()
@@ -237,7 +250,7 @@ function syncVideoState(event?: Event): void {
 
   videoCurrentTime.value = finiteMediaValue(video.currentTime)
   videoDuration.value = finiteMediaValue(video.duration)
-  videoIsMuted.value = video.muted
+  if (videoPlaybackAllowed.value) videoIsMuted.value = video.muted
   videoVolume.value = video.volume
   if (video.volume > 0) lastAudibleVolume = video.volume
 }
@@ -372,16 +385,16 @@ onBeforeUnmount(() => {
               :src="mediaSrc"
               :width="mediaWidth ?? undefined"
               :height="mediaHeight ?? undefined"
-              autoplay
+              :autoplay="videoPlaybackAllowed"
               :loop="!advanceOnMediaEnd"
-              :muted="videoIsMuted"
+              :muted="effectiveVideoMuted"
               playsinline
               :preload="fetchPriority === 'high' ? 'auto' : 'metadata'"
               @loadedmetadata="onVideoLoadedMetadata"
               @durationchange="syncVideoState"
               @timeupdate="syncVideoState"
               @volumechange="syncVideoState"
-              @playing="videoIsPlaying = true"
+              @playing="onVideoPlaying"
               @pause="videoIsPlaying = false"
               @ended="onMediaEnded"
               @click="onVideoClick"
