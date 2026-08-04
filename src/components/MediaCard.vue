@@ -100,7 +100,9 @@ const mediaHeight = computed(() => (
 const videoElement = shallowRef<HTMLVideoElement | null>(null)
 const videoCurrentTime = shallowRef(0)
 const videoDuration = shallowRef(0)
-const videoIsMuted = shallowRef(props.mediaCard?.videoMuted ?? false)
+const videoIsMuted = shallowRef(
+  props.mediaCard?.videoMuted ?? props.layout === 'masonry',
+)
 const videoIsPlaying = shallowRef(false)
 const videoVolume = shallowRef(1)
 let lastAudibleVolume = 1

@@ -223,8 +223,8 @@ describe('MediaCard', () => {
     expect(wrapper.find('.media-control-time').exists()).toBe(false)
   })
 
-  it('starts videos unmuted by default and accepts a muted configuration', () => {
-    const defaultWrapper = mount(MediaCard, {
+  it('mutes masonry videos and starts reel videos unmuted by default', () => {
+    const reelWrapper = mount(MediaCard, {
       props: {
         ...props(),
         item: {
@@ -234,20 +234,35 @@ describe('MediaCard', () => {
         },
       },
     })
-    const mutedWrapper = mount(MediaCard, {
+    const masonryWrapper = mount(MediaCard, {
       props: {
         ...props(),
+        layout: 'masonry',
         item: {
           postId: 12,
           ...videoAsset('12'),
           items: [],
         },
-        mediaCard: { videoMuted: true },
+      },
+    })
+    const configuredMasonryWrapper = mount(MediaCard, {
+      props: {
+        ...props(),
+        layout: 'masonry',
+        item: {
+          postId: 13,
+          ...videoAsset('13'),
+          items: [],
+        },
+        mediaCard: { videoMuted: false },
       },
     })
 
-    expect((defaultWrapper.get('video').element as HTMLVideoElement).muted).toBe(false)
-    expect((mutedWrapper.get('video').element as HTMLVideoElement).muted).toBe(true)
+    expect((reelWrapper.get('video').element as HTMLVideoElement).muted).toBe(false)
+    expect((masonryWrapper.get('video').element as HTMLVideoElement).muted).toBe(true)
+    expect(
+      (configuredMasonryWrapper.get('video').element as HTMLVideoElement).muted,
+    ).toBe(false)
   })
 
   it('ports active reel controls to their stationary host', async () => {
