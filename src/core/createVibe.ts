@@ -115,6 +115,8 @@ class VibeController implements VibeInstance {
       feedFooter: this.options.feedFooter,
       feedFooterActions: createFeedFooterActions(this),
       mediaCard: this.options.mediaCard,
+      onMediaReady: this.options.onMediaReady,
+      onReelMediaChange: this.options.onReelMediaChange,
       reelInfoSheet: this.options.reelInfoSheet,
       state: this.state,
       onActiveReelChange: (postId: VibeItemId) => {

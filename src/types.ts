@@ -30,11 +30,7 @@ export type VibeFillStatus =
   | 'idle'
   | 'restoring'
   | 'waiting'
-
-export type VibeFillTarget =
-  | { pages: number }
-  | { until: 'end' }
-
+export type VibeFillTarget = { pages: number } | { until: 'end' }
 export interface VibeAutoScrollOptions {
   enabled?: boolean
   maxSpeedPxPerSecond?: number
@@ -61,7 +57,6 @@ export interface VibeReelAutoAdvanceState {
   includePostItems: boolean
   intervalMs: number
 }
-
 export type VibeReelOrigin = 'masonry' | 'reel'
 
 export interface VibeReelInfoSheetOptions {
@@ -119,6 +114,13 @@ export type VibeReelNavigationResult = 'navigated' | 'not-found' | 'reel-inactiv
 export interface VibeMediaPlacement extends VibeMediaTarget {
   media: VibeMediaAsset
   postIndex: number
+}
+
+export interface VibeMediaLifecycleContext extends VibeMediaPlacement {
+  item: VibeItem
+  layout: VibeLayout
+  mediaId: VibeItemId | null
+  origin: VibeReelOrigin | null
 }
 
 declare const vibeRemovalBrand: unique symbol
@@ -211,9 +213,7 @@ export interface VibePageRequest {
   signal: AbortSignal
 }
 
-export type VibePageLoader = (
-  request: VibePageRequest,
-) => Promise<VibePage>
+export type VibePageLoader = (request: VibePageRequest) => Promise<VibePage>
 
 export type VibeInitialPage = VibePage
 
@@ -428,6 +428,8 @@ export interface CreateVibeOptions {
   initialPage?: VibeInitialPage
   loadPage?: VibePageLoader
   mediaCard?: VibeMediaCardOptions
+  onMediaReady?: (context: VibeMediaLifecycleContext) => void
+  onReelMediaChange?: (context: VibeMediaLifecycleContext) => void
   onStateChange?: (state: VibeState) => void
   removalHistoryLimit?: number
   reelAutoAdvance?: VibeReelAutoAdvanceOptions

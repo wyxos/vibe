@@ -128,6 +128,33 @@ transition, while vertical reel scrolling continues to move between posts.
 Media assets may include a stable `mediaId` (`string | number`) when consumers
 need to select exact grouped media independently of its array position.
 
+## Media lifecycle hooks
+
+Use `onMediaReady` when an image has loaded or a video has enough metadata for
+Vibe to render it, and `onReelMediaChange` when a reel first selects media or
+moves to another parent, nested, or single-item post:
+
+```ts
+const vibe = createVibe({
+  target: '#gallery',
+  loadPage,
+  onMediaReady: ({ postId, mediaId, layout, origin }) => {
+    recordMediaReady({ postId, mediaId, layout, origin })
+  },
+  onReelMediaChange: ({ postId, mediaId, postIndex, mediaIndex }) => {
+    updateActiveMedia({ postId, mediaId, postIndex, mediaIndex })
+  },
+})
+```
+
+Both optional callbacks receive `VibeMediaLifecycleContext`: stable `postId`
+and `mediaId` identity, zero-based `postIndex` and `mediaIndex`, the complete
+`item` and selected `media`, the rendered `layout`, and `origin`. `mediaId` is
+`null` when the source asset does not define one. `origin` is `null` for the
+masonry grid, `reel` for the base reel, and `masonry` for a reel opened from a
+masonry card. The readiness hook may run again if media remounts and becomes
+ready again; reel-change events describe selection changes, not load state.
+
 ## Reel URLs with Vue Router
 
 Pass a Vue Router instance when the application should reflect the active reel

@@ -9,6 +9,7 @@ import {
 } from 'vue'
 import type { MediaPreviewState } from '../core/mediaPreview'
 import { clampMediaIndex, mediaAssets, mediaStateKey } from '../core/mediaAsset'
+import { mediaLifecycleContext, useReelMediaChangeLifecycle } from '../core/mediaLifecycle'
 import type { FeedRendererExpose } from '../core/feed'
 import { snapshotState, type VibeRuntimeState } from '../core/runtime'
 import type {
@@ -16,10 +17,13 @@ import type {
   VibeFeedFooter,
   VibeFeedFooterActions,
   VibeItemId,
+  VibeLayout,
   VibeMediaCardOptions,
+  VibeMediaLifecycleContext,
   VibeReelInfoSheetOptions,
   VibeReelItemTarget,
   VibeReelNavigationResult,
+  VibeReelOrigin,
 } from '../types'
 import FeedStatus from './FeedStatus.vue'
 import MasonryFeed from './MasonryFeed.vue'
@@ -43,7 +47,9 @@ const emit = defineEmits<{
   activeReelChange: [postId: VibeItemId]
   closeReel: []
   loadMore: []
+  mediaReady: [context: VibeMediaLifecycleContext]
   openReel: [postId: VibeItemId]
+  reelMediaChange: [context: VibeMediaLifecycleContext]
   reelInfoSheetChange: [enabled: boolean]
   retryEnd: []
   retryForward: []
@@ -115,14 +121,11 @@ function markMediaPreviewError(postId: VibeItemId, mediaIndex: number): void {
 
 function markMediaPreviewReady(postId: VibeItemId, mediaIndex: number): void {
   setMediaPreviewState(postId, mediaIndex, 'ready')
+  emitMediaReady(postId, mediaIndex, 'masonry', null)
 }
 
 function markMediaOriginalError(postId: VibeItemId, mediaIndex: number): void {
   setMediaOriginalState(postId, mediaIndex, 'error')
-}
-
-function markMediaOriginalReady(postId: VibeItemId, mediaIndex: number): void {
-  setMediaOriginalState(postId, mediaIndex, 'ready')
 }
 
 function markReelMediaError(postId: VibeItemId, mediaIndex: number): void {
@@ -135,10 +138,21 @@ function markReelMediaError(postId: VibeItemId, mediaIndex: number): void {
 
 function markReelMediaReady(postId: VibeItemId, mediaIndex: number): void {
   if (props.state.reelMediaSource === 'original') {
-    markMediaOriginalReady(postId, mediaIndex)
-    return
+    setMediaOriginalState(postId, mediaIndex, 'ready')
+  } else {
+    setMediaPreviewState(postId, mediaIndex, 'ready')
   }
-  markMediaPreviewReady(postId, mediaIndex)
+  emitMediaReady(postId, mediaIndex, 'reel', props.state.reelOrigin ?? 'reel')
+}
+
+function emitMediaReady(
+  postId: VibeItemId,
+  mediaIndex: number,
+  layout: VibeLayout,
+  origin: VibeReelOrigin | null,
+): void {
+  const context = mediaLifecycleContext(props.state, postId, mediaIndex, layout, origin)
+  if (context) emit('mediaReady', context)
 }
 
 function setMediaIndex(postId: VibeItemId, mediaIndex: number): void {
@@ -293,6 +307,8 @@ useReelKeyboard({
   setReelInfoSheet: (enabled) => emit('reelInfoSheetChange', enabled),
   state: props.state,
 })
+
+useReelMediaChangeLifecycle(props.state, (context) => emit('reelMediaChange', context))
 
 watch(
   () => props.state.items.map((item) => item.postId),
@@ -472,7 +488,7 @@ defineExpose({
             @error="markMediaOriginalError"
             @load-more="emit('loadMore')"
             @media-change="setMediaIndex"
-            @ready="markMediaOriginalReady"
+            @ready="markReelMediaReady"
             @retry-end="emit('retryEnd')"
             @retry-forward="emit('retryForward')"
           />

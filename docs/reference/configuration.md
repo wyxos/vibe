@@ -22,10 +22,30 @@ const vibe = createVibe(options)
 | `initialPage` | `VibePage` | — | Items and cursor restored before mounting. |
 | `loadPage` | `VibePageLoader` | — | Asynchronous cursor page loader. |
 | `infiniteScroll` | `boolean` | `true` | Loads forward when the feed reaches its boundary; the default footer offers manual loading when the feed is underfilled. |
+| `onMediaReady` | `(context: VibeMediaLifecycleContext) => void` | — | Runs when an image loads or a video has enough metadata to render. |
+| `onReelMediaChange` | `(context: VibeMediaLifecycleContext) => void` | — | Runs for the initial reel selection and each parent, nested, or single-item media change. |
 | `onStateChange` | `(state: VibeState) => void` | — | Receives the initial state and every public state change. |
 | `removalHistoryLimit` | `number` | `20` | Maximum recent removal transactions retained for `undoLastRemoval()`; use `0` to disable automatic history. |
 
 At least one of `initialPage` or `loadPage` is needed to display content.
+
+### Media lifecycle context
+
+`onMediaReady` and `onReelMediaChange` receive the same typed context:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `postId` | `VibeItemId` | Stable identity of the top-level post. |
+| `mediaId` | `VibeItemId \| null` | Stable identity supplied by the selected asset, or `null` when omitted. |
+| `postIndex` | `number` | Zero-based index of the post in the loaded feed. |
+| `mediaIndex` | `number` | Zero-based index of the selected parent or nested media. |
+| `item` | `VibeItem` | Complete top-level post. |
+| `media` | `VibeMediaAsset` | Selected parent or nested media asset. |
+| `layout` | `VibeLayout` | Layout rendering the media (`masonry` or `reel`). |
+| `origin` | `VibeReelOrigin \| null` | `null` for the masonry grid, `reel` for the base reel, or `masonry` for its reel viewer. |
+
+Readiness may be reported again after a media remount. Reel media changes are
+selection events and do not imply that the selected media has finished loading.
 
 ## Presentation options
 
