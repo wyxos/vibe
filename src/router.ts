@@ -15,6 +15,7 @@ import FillBackendDemoPage from './pages/FillBackendDemoPage.vue'
 import FillFrontendDemoPage from './pages/FillFrontendDemoPage.vue'
 import ItemRemovalDemoPage from './pages/ItemRemovalDemoPage.vue'
 import ItemRemovalReconciliationDemoPage from './pages/ItemRemovalReconciliationDemoPage.vue'
+import MediaVisibilityDemoPage from './pages/MediaVisibilityDemoPage.vue'
 import ReelUrlDemoPage from './pages/ReelUrlDemoPage.vue'
 import ReelAutoAdvanceDemoPage from './pages/ReelAutoAdvanceDemoPage.vue'
 import ReelInfoSheetDemoPage from './pages/ReelInfoSheetDemoPage.vue'
@@ -47,6 +48,11 @@ export function createDemoRouter(
             path: 'item-removal-reconciliation',
             name: 'demo-item-removal-reconciliation',
             component: ItemRemovalReconciliationDemoPage,
+          },
+          {
+            path: 'media-visibility',
+            name: 'demo-media-visibility',
+            component: MediaVisibilityDemoPage,
           },
           {
             path: 'reel-url',

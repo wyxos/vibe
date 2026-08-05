@@ -23,21 +23,26 @@ export interface FrontendFillProgress {
   received: number
 }
 
-export interface FrontendFillResult extends FrontendFillProgress {
+export interface FrontendFillCollection extends FrontendFillProgress {
   items: VibeItem[]
   lastCursor: VibeCursor
   pages: LoadedPageRecord[]
-  status: 'complete' | 'exhausted'
   total?: number
+}
+
+export interface FrontendFillResult extends FrontendFillCollection {
+  status: 'complete' | 'exhausted' | 'paused'
 }
 
 interface CollectFrontendFillOptions {
   existingItems: readonly VibeItem[]
   initialCursor: VibeCursor
   loadPage: VibePageLoader
+  onCollection?: (collection: FrontendFillCollection) => void
   onDelayChange: (snapshot: RequestDelaySnapshot) => void
   onProgress: (progress: FrontendFillProgress) => void
   options: VibeFrontendFillOptions
+  shouldPause?: () => boolean
   signal: AbortSignal
   target: VibeFillTarget
 }
@@ -119,9 +124,11 @@ export async function collectFrontendFill({
   existingItems,
   initialCursor,
   loadPage,
+  onCollection = () => undefined,
   onDelayChange,
   onProgress,
   options,
+  shouldPause = () => false,
   signal,
   target,
 }: CollectFrontendFillOptions): Promise<FrontendFillResult> {
@@ -131,6 +138,7 @@ export async function collectFrontendFill({
   const seenCursors = new Set<string>()
   let completedPages = 0
   let cursor = initialCursor
+  let lastCursor = initialCursor
   let next = initialCursor
   let received = 0
   let total: number | undefined
@@ -145,9 +153,22 @@ export async function collectFrontendFill({
       onChange: onDelayChange,
       signal,
     })
+    if (completedPages > 0 && shouldPause()) {
+      return {
+        completedPages,
+        items,
+        lastCursor,
+        next,
+        pages,
+        received,
+        status: 'paused',
+        total,
+      }
+    }
 
     const page = validatePage(await loadPage({ cursor, signal }))
     completedPages += 1
+    lastCursor = cursor
     const combined = appendUniqueItems(knownItems, page.items)
     const additions = combined.slice(knownItems.length)
     pages.push({
@@ -162,6 +183,15 @@ export async function collectFrontendFill({
     next = page.next
     if (page.total !== undefined) total = page.total
     onProgress({ completedPages, next, received })
+    onCollection({
+      completedPages,
+      items: [...items],
+      lastCursor: cursor,
+      next,
+      pages: [...pages],
+      received,
+      total,
+    })
 
     if ('pages' in target && completedPages >= target.pages) {
       return {
@@ -184,6 +214,18 @@ export async function collectFrontendFill({
         pages,
         received,
         status: 'pages' in target ? 'exhausted' : 'complete',
+        total,
+      }
+    }
+    if (shouldPause()) {
+      return {
+        completedPages,
+        items,
+        lastCursor: cursor,
+        next,
+        pages,
+        received,
+        status: 'paused',
         total,
       }
     }

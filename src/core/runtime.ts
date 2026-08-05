@@ -27,6 +27,7 @@ export interface VibeRuntimeState {
   mediaIndices: Map<VibeItemId, number>
   next: VibeCursor
   nextPageError: unknown | null
+  phoneMode: boolean
   reelAutoAdvance: VibeReelAutoAdvanceState
   reelForward: VibeReelForwardState
   reelForwardIndex: number | null
@@ -59,6 +60,7 @@ export function snapshotState(state: VibeRuntimeState): VibeState {
     loadMoreLocked: state.loadMoreLocked,
     next: state.next,
     nextPageError: state.nextPageError,
+    phoneMode: state.phoneMode,
     reelAutoAdvance: { ...state.reelAutoAdvance },
     reelForward: { ...state.reelForward },
     reelInfoSheet: { ...state.reelInfoSheet },

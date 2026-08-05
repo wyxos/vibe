@@ -17,6 +17,7 @@ export type VibeAutofillStatus =
   | 'exhausted'
   | 'filling'
   | 'idle'
+  | 'paused'
   | 'restoring'
   | 'waiting'
 export type VibeFillStatus =
@@ -27,6 +28,7 @@ export type VibeFillStatus =
   | 'exhausted'
   | 'filling'
   | 'idle'
+  | 'paused'
   | 'restoring'
   | 'waiting'
 export type VibeFillTarget = { pages: number } | { until: 'end' }
@@ -58,13 +60,10 @@ export interface VibeReelInfoSheetOptions {
   component: Component
   enabled?: boolean
 }
-
 export interface VibeReelInfoSheetState {
   enabled: boolean
 }
-
 export type VibeReelForwardStatus = 'end' | 'error' | 'idle' | 'loading'
-
 export interface VibeReelForwardState {
   error: unknown | null
   status: VibeReelForwardStatus
@@ -83,7 +82,6 @@ export interface VibeMediaAsset {
   width: number | null
   height: number | null
 }
-
 export interface VibeItem extends VibeMediaAsset {
   postId: VibeItemId
   items: VibeMediaAsset[]
@@ -116,8 +114,8 @@ export interface VibeMediaLifecycleContext extends VibeMediaPlacement {
   layout: VibeLayout
   mediaId: VibeItemId | null
   origin: VibeReelOrigin | null
+  phoneMode: boolean
 }
-
 declare const vibeRemovalBrand: unique symbol
 declare const vibeMediaRemovalBrand: unique symbol
 
@@ -140,7 +138,6 @@ export interface VibeCardChromeStyle {
   paddingX?: number
   paddingY?: number
 }
-
 export interface VibeMediaCardOptions {
   footer?: VibeCardChromeStyle
   header?: VibeCardChromeStyle
@@ -158,7 +155,6 @@ export interface VibeCardRegionProps {
   mediaSource: VibeMediaSource
   total: number | null
 }
-
 export interface VibeFeedFooter {
   component: Component
 }
@@ -428,6 +424,7 @@ export interface CreateVibeOptions {
   loadPage?: VibePageLoader
   mediaCard?: VibeMediaCardOptions
   onMediaReady?: (context: VibeMediaLifecycleContext) => void
+  onMediaVisible?: (context: VibeMediaLifecycleContext) => void
   onReelMediaChange?: (context: VibeMediaLifecycleContext) => void
   onStateChange?: (state: VibeState) => void
   removalHistoryLimit?: number
@@ -452,6 +449,7 @@ export interface VibeState {
   loadMoreLocked: boolean
   next: VibeCursor
   nextPageError: unknown | null
+  phoneMode: boolean
   reelAutoAdvance: VibeReelAutoAdvanceState
   reelForward: VibeReelForwardState
   reelInfoSheet: VibeReelInfoSheetState
@@ -464,6 +462,7 @@ export interface VibeInstance {
   applyFillUpdate: (update: VibeBackendFillUpdate) => boolean
   cancelAutofill: () => Promise<void>
   cancelFill: () => Promise<void>
+  cancelLoading: () => Promise<void>
   destroy: () => void
   fill: (target: VibeFillTarget) => Promise<void>
   getState: () => VibeState
@@ -492,6 +491,7 @@ export interface VibeInstance {
   setInfiniteScroll: (enabled: boolean) => void
   setLayout: (layout: VibeLayoutMode) => void
   setLoadMoreLocked: (locked: boolean) => void
+  setTotal: (total: number | null) => void
   setReelAutoAdvance: (
     update: boolean | VibeReelAutoAdvanceOptions,
   ) => void

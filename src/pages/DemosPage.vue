@@ -42,6 +42,12 @@ const emit = defineEmits<{
       </RouterLink>
       <RouterLink
         class="demos-aside-link"
+        to="/demos/media-visibility"
+      >
+        Media visibility
+      </RouterLink>
+      <RouterLink
+        class="demos-aside-link"
         to="/demos/item-removal"
       >
         Item removal

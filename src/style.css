@@ -1267,3 +1267,54 @@ body {
     white-space: normal;
   }
 }
+.visibility-demo-stage {
+  display: grid;
+  grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr);
+  min-height: 0;
+  height: 100%;
+}
+
+.visibility-demo-diagnostics {
+  display: grid;
+  align-content: start;
+  gap: 0.45rem;
+  padding: 1rem;
+  border-right: 1px solid #262626;
+  color: #a3a3a3;
+  font-size: 0.78rem;
+}
+
+.visibility-demo-diagnostics strong {
+  margin-top: 0.35rem;
+  color: #f5f5f5;
+}
+
+.visibility-demo-diagnostics output {
+  overflow-wrap: anywhere;
+}
+
+.visibility-demo-vibe {
+  min-width: 0;
+  min-height: 0;
+}
+
+@media (max-width: 720px) {
+  .visibility-demo-stage {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .visibility-demo-diagnostics {
+    grid-template-columns: auto minmax(0, 1fr);
+    border-right: 0;
+    border-bottom: 1px solid #262626;
+  }
+
+  .visibility-demo-diagnostics strong {
+    margin-top: 0;
+  }
+
+  .visibility-demo-diagnostics output {
+    grid-column: 1 / -1;
+  }
+}

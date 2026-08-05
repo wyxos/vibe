@@ -39,12 +39,13 @@ export interface FrontendAutofillProgress {
 export interface FrontendAutofillCollection extends FrontendAutofillProgress {
   items: VibeItem[]
   lastCursor: VibeCursor
+  pages: LoadedPageRecord[]
   total?: number
 }
 
 export interface FrontendAutofillResult extends FrontendAutofillCollection {
   pages: LoadedPageRecord[]
-  status: 'complete' | 'exhausted'
+  status: 'complete' | 'exhausted' | 'paused'
 }
 
 interface CollectFrontendAutofillOptions {
@@ -58,6 +59,7 @@ interface CollectFrontendAutofillOptions {
   options: VibeFrontendAutofillOptions
   receivedOffset?: number
   requestOffset?: number
+  shouldPause?: () => boolean
   signal: AbortSignal
 }
 
@@ -206,6 +208,7 @@ export async function collectFrontendAutofill({
   options,
   receivedOffset = 0,
   requestOffset = 0,
+  shouldPause = () => false,
   signal,
 }: CollectFrontendAutofillOptions): Promise<FrontendAutofillResult> {
   const items: VibeItem[] = []
@@ -214,6 +217,7 @@ export async function collectFrontendAutofill({
   const maximumRequests = configuredMaximumRequests
     ?? frontendAutofillRequestLimit(options)
   let cursor = initialCursor
+  let lastCursor = initialCursor
   let next: VibeCursor = initialCursor
   let requests = 0
   const pages: LoadedPageRecord[] = []
@@ -231,9 +235,23 @@ export async function collectFrontendAutofill({
       onChange: onDelayChange,
       signal,
     })
+    if (requests > 0 && shouldPause()) {
+      return {
+        items,
+        lastCursor,
+        missing: Math.max(0, options.pageSize - receivedOffset - items.length),
+        next,
+        pages,
+        received: receivedOffset + items.length,
+        requests: requestOffset + requests,
+        status: 'paused',
+        total,
+      }
+    }
 
     const page = validatePage(await loadPage({ cursor, signal }))
     requests += 1
+    lastCursor = cursor
     const combined = appendUniqueItems(knownItems, page.items)
     const additions = combined.slice(knownItems.length)
     pages.push({
@@ -257,7 +275,8 @@ export async function collectFrontendAutofill({
     const collection = {
       ...progress,
       items: [...items],
-      lastCursor: cursor,
+      lastCursor,
+      pages: [...pages],
       total,
     }
     onCollection(collection)
@@ -268,13 +287,16 @@ export async function collectFrontendAutofill({
     if (next === null) {
       return { ...collection, pages, status: 'exhausted' }
     }
+    if (shouldPause()) {
+      return { ...collection, pages, status: 'paused' }
+    }
 
     cursor = next
   }
 
   return {
     items,
-    lastCursor: cursor,
+    lastCursor,
     missing: Math.max(0, options.pageSize - receivedOffset - items.length),
     next,
     pages,

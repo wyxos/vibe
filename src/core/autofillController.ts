@@ -4,6 +4,7 @@ import {
   type FrontendAutofillCollection,
 } from './autofill'
 import { appendUniqueItems } from './page'
+import type { LoadedPageRecord } from './page'
 import { RequestDelayCountdown } from './requestDelay'
 import type { VibeRuntimeState } from './runtime'
 import type { VibeAutofillOptions, VibeCursor } from '../types'
@@ -11,6 +12,7 @@ import type { VibeAutofillOptions, VibeCursor } from '../types'
 interface AutofillControllerContext {
   cancelRequest: () => void
   onLastCursor: (cursor: VibeCursor) => void
+  onPages: (pages: readonly LoadedPageRecord[]) => void
   options?: VibeAutofillOptions
   state: VibeRuntimeState
 }
@@ -83,6 +85,7 @@ export class VibeAutofillController {
 
     state.items = appendUniqueItems(state.items, collection.items)
     onLastCursor(collection.lastCursor)
+    this.context.onPages(collection.pages)
     state.next = collection.next
     if (collection.total !== undefined) state.total = collection.total
     Object.assign(state.autofill, {

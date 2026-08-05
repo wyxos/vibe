@@ -7,6 +7,7 @@ import {
   collectFrontendFill,
   createFillState,
   isFillActive,
+  type FrontendFillCollection,
   validateFillTarget,
 } from './fill'
 import { appendUniqueItems } from './page'
@@ -36,6 +37,7 @@ export class VibeFillController {
   private cycle = 0
   private readonly delayCountdown: RequestDelayCountdown
   private requestVersion = 0
+  private collection: FrontendFillCollection | null = null
 
   constructor(private readonly options: FillControllerOptions) {
     this.delayCountdown = new RequestDelayCountdown((delay) => {
@@ -136,6 +138,7 @@ export class VibeFillController {
     this.requestVersion += 1
     this.abortController = null
     state.isLoadingMore = false
+    this.commitCollection()
 
     try {
       if (fill?.strategy === 'backend') await fill.onCancel(context)
@@ -152,6 +155,7 @@ export class VibeFillController {
     this.abortLocalRequest()
     this.delayCountdown.clear()
     this.options.state.fill = createFillState(this.options.fill, undefined, false)
+    this.collection = null
   }
 
   destroy(): void {
@@ -186,6 +190,9 @@ export class VibeFillController {
       existingItems: state.items,
       initialCursor: state.next,
       loadPage,
+      onCollection: (collection) => {
+        if (this.isCurrent(requestVersion)) this.collection = collection
+      },
       onDelayChange: (delay) => {
         if (this.isCurrent(requestVersion)) Object.assign(state.fill, delay)
       },
@@ -193,6 +200,7 @@ export class VibeFillController {
         if (this.isCurrent(requestVersion)) Object.assign(state.fill, progress)
       },
       options,
+      shouldPause: () => state.loadMoreLocked,
       signal: controller.signal,
       target,
     })
@@ -207,6 +215,24 @@ export class VibeFillController {
       completedPages: result.completedPages,
       received: result.received,
       status: result.status,
+    })
+    this.collection = null
+  }
+
+  private commitCollection(): void {
+    const collection = this.collection
+    this.collection = null
+    if (!collection || this.options.fill?.strategy !== 'frontend') return
+
+    const state = this.options.state
+    state.items = appendUniqueItems(state.items, collection.items)
+    state.next = collection.next
+    if (collection.total !== undefined) state.total = collection.total
+    this.options.onLastCursor(collection.lastCursor)
+    this.options.onPages(collection.pages)
+    Object.assign(state.fill, {
+      completedPages: collection.completedPages,
+      received: collection.received,
     })
   }
 

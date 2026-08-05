@@ -96,6 +96,163 @@ describe('media lifecycle callbacks', () => {
     expect(onMediaReady).not.toHaveBeenCalled()
   })
 
+  it('reports loaded masonry media only after it enters the real viewport', async () => {
+    const onMediaReady = vi.fn<(context: VibeMediaLifecycleContext) => void>()
+    const onMediaVisible = vi.fn<(context: VibeMediaLifecycleContext) => void>()
+    const instance = track(createVibe({
+      initialPage: {
+        items: [item(1), item(2), item(3), item(4), item(5), item(6)],
+        next: null,
+      },
+      onMediaReady,
+      onMediaVisible,
+      target,
+    }))
+    await instance.mount()
+    await flushPromises()
+
+    const offscreenImage = target.querySelector<HTMLElement>('[data-post-id="5"] img')!
+    offscreenImage.dispatchEvent(new Event('load'))
+    await flushPromises()
+
+    expect(onMediaReady).toHaveBeenCalledOnce()
+    expect(onMediaVisible).not.toHaveBeenCalled()
+
+    const gallery = target.querySelector<HTMLElement>('.masonry-feed')!
+    gallery.scrollTop = 650
+    gallery.dispatchEvent(new Event('scroll'))
+    await flushPromises()
+
+    expect(onMediaVisible).toHaveBeenCalledOnce()
+    expect(onMediaVisible.mock.calls[0]?.[0]).toMatchObject({
+      layout: 'masonry',
+      phoneMode: false,
+      postId: 5,
+    })
+  })
+
+  it('never reports failed media as visible', async () => {
+    const onMediaVisible = vi.fn<(context: VibeMediaLifecycleContext) => void>()
+    const instance = track(createVibe({
+      initialPage: { items: [item(1)], next: null },
+      onMediaVisible,
+      target,
+    }))
+    await instance.mount()
+    await flushPromises()
+
+    target.querySelector<HTMLElement>('[data-post-id="1"] img')!
+      .dispatchEvent(new Event('error'))
+    await flushPromises()
+
+    expect(onMediaVisible).not.toHaveBeenCalled()
+  })
+
+  it('reports active reel visibility after ready and on later activations', async () => {
+    const onMediaVisible = vi.fn<(context: VibeMediaLifecycleContext) => void>()
+    const instance = track(createVibe({
+      initialPage: { items: [item(1), item(2)], next: null },
+      layout: 'reel',
+      onMediaVisible,
+      target,
+    }))
+    await instance.mount()
+    await flushPromises()
+
+    target.querySelector<HTMLElement>('[data-post-id="2"] img')!
+      .dispatchEvent(new Event('load'))
+    await flushPromises()
+    expect(onMediaVisible).not.toHaveBeenCalled()
+
+    expect(instance.nextReelPost()).toBe(true)
+    await flushPromises()
+    expect(onMediaVisible).toHaveBeenCalledOnce()
+    expect(onMediaVisible.mock.calls[0]?.[0]).toMatchObject({
+      layout: 'reel',
+      phoneMode: false,
+      postId: 2,
+    })
+  })
+
+  it('keeps a forced masonry feed in phone mode and reports that context', async () => {
+    vi.spyOn(window.screen, 'width', 'get').mockReturnValue(390)
+    vi.spyOn(window.screen, 'height', 'get').mockReturnValue(844)
+    const onMediaVisible = vi.fn<(context: VibeMediaLifecycleContext) => void>()
+    const instance = track(createVibe({
+      initialPage: { items: [item(1)], next: null },
+      layout: 'masonry',
+      onMediaVisible,
+      target,
+    }))
+    await instance.mount()
+    await flushPromises()
+
+    target.querySelector<HTMLElement>('[data-post-id="1"] img')!
+      .dispatchEvent(new Event('load'))
+    await flushPromises()
+
+    expect(instance.getState()).toMatchObject({ layout: 'masonry', phoneMode: true })
+    expect(onMediaVisible.mock.calls[0]?.[0]).toMatchObject({
+      layout: 'masonry',
+      phoneMode: true,
+      postId: 1,
+    })
+  })
+
+  it('reports phone mode for visible media in a phone reel', async () => {
+    vi.spyOn(window.screen, 'width', 'get').mockReturnValue(390)
+    vi.spyOn(window.screen, 'height', 'get').mockReturnValue(844)
+    const onMediaVisible = vi.fn<(context: VibeMediaLifecycleContext) => void>()
+    const instance = track(createVibe({
+      initialPage: { items: [item(1)], next: null },
+      layout: 'reel',
+      onMediaVisible,
+      target,
+    }))
+    await instance.mount()
+    await flushPromises()
+
+    target.querySelector<HTMLElement>('[data-post-id="1"] img')!
+      .dispatchEvent(new Event('load'))
+    await flushPromises()
+
+    expect(onMediaVisible.mock.calls[0]?.[0]).toMatchObject({
+      layout: 'reel',
+      phoneMode: true,
+      postId: 1,
+    })
+  })
+
+  it('reports ready media again when virtualization leaves and re-enters the viewport', async () => {
+    const onMediaVisible = vi.fn<(context: VibeMediaLifecycleContext) => void>()
+    const instance = track(createVibe({
+      initialPage: {
+        items: Array.from({ length: 12 }, (_, index) => item(index + 1)),
+        next: null,
+      },
+      onMediaVisible,
+      target,
+    }))
+    await instance.mount()
+    await flushPromises()
+
+    target.querySelector<HTMLElement>('[data-post-id="1"] img')!
+      .dispatchEvent(new Event('load'))
+    await flushPromises()
+    expect(onMediaVisible).toHaveBeenCalledOnce()
+
+    const gallery = target.querySelector<HTMLElement>('.masonry-feed')!
+    gallery.scrollTop = 2_000
+    gallery.dispatchEvent(new Event('scroll'))
+    await flushPromises()
+    gallery.scrollTop = 0
+    gallery.dispatchEvent(new Event('scroll'))
+    await flushPromises()
+
+    expect(onMediaVisible).toHaveBeenCalledTimes(2)
+    expect(onMediaVisible.mock.calls[1]?.[0].postId).toBe(1)
+  })
+
   it('reports parent, nested, and single-item selections in a base reel', async () => {
     const items = [item(1, true), item(2)]
     const onReelMediaChange = vi.fn<(context: VibeMediaLifecycleContext) => void>()

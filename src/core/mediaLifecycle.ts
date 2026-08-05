@@ -29,6 +29,7 @@ export function mediaLifecycleContext(
     mediaId: media.mediaId ?? null,
     mediaIndex: normalizedMediaIndex,
     origin,
+    phoneMode: state.phoneMode,
     postId: item.postId,
     postIndex,
   }

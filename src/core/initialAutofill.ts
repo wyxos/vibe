@@ -82,6 +82,7 @@ export async function autofillInitialPage({
     options: autofill,
     receivedOffset: received,
     requestOffset: 1,
+    shouldPause: () => state.loadMoreLocked,
     signal,
   })
   if (!isCurrent()) return

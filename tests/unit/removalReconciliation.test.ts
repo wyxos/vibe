@@ -334,6 +334,45 @@ describe('capacity-aware removal reconciliation', () => {
       .not.toEqual(expect.arrayContaining([1, 3]))
   })
 
+  it('resumes partial reconciliation on unlock in a manual feed', async () => {
+    const firstReplay = deferred<VibePage>()
+    const requests: VibeCursor[] = []
+    let replaying = false
+    const loadPage = async ({ cursor }: { cursor: VibeCursor }) => {
+      requests.push(cursor)
+      if (replaying && cursor === null) return firstReplay.promise
+      if (cursor === null) return page([1, 2], 'p2')
+      if (cursor === 'p2') return page([3, 4], 'p3')
+      if (cursor === 'p3') return page([5, 6], 'p4')
+      return page([7, 8], null)
+    }
+    instance = createVibe({
+      infiniteScroll: false,
+      loadPage,
+      removalReconciliation: { pageSize: 2 },
+      target,
+    })
+    await instance.mount()
+    await instance.loadNext()
+    await instance.loadNext()
+    await remove([1])
+    requests.length = 0
+    replaying = true
+
+    const loading = instance.loadNext()
+    await flushPromises()
+    instance.setLoadMoreLocked(true)
+    firstReplay.resolve(page([1, 2], 'p2'))
+    await loading
+    expect(requests).toEqual([null])
+    expect(instance.getState().next).toBe('p2')
+
+    instance.setLoadMoreLocked(false)
+    await flushPromises()
+    expect(requests).toEqual([null, 'p2', 'p3', 'p4'])
+    expect(instance.getState().next).toBeNull()
+  })
+
   it('reconciles when exact-media removal deletes the top-level item', async () => {
     const requests: VibeCursor[] = []
     const loadPage = async ({ cursor }: { cursor: VibeCursor }) => {

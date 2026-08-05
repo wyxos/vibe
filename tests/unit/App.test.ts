@@ -334,12 +334,12 @@ describe('App', () => {
       .toBe('Autofill·Waiting45 / 60Next in 2s')
     expect(wrapper.get('[data-test="autofill-delay"]').text()).toBe('Next in 2s')
 
-    await wrapper.get('[data-test="cancel-autofill"]').trigger('click')
+    await wrapper.get('[data-test="cancel-loading"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.get('[data-test="autofill-lifecycle"]').text())
       .toBe('Autofill·Cancelled45 / 60')
-    expect(wrapper.get('[data-test="cancel-autofill"]').attributes('disabled'))
+    expect(wrapper.get('[data-test="cancel-loading"]').attributes('disabled'))
       .toBeDefined()
     wrapper.unmount()
   })

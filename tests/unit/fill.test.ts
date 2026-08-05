@@ -154,6 +154,36 @@ describe('Vibe fill', () => {
     })
   })
 
+  it('resumes a page-boundary-paused frontend fill on unlock', async () => {
+    let resolveFirst!: (page: { items: VibeItem[]; next: string }) => void
+    const loadPage = vi.fn()
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve }))
+      .mockResolvedValueOnce({ items: [item(3)], next: 'four' })
+    const instance = track(createVibe({
+      fill: { strategy: 'frontend', delayStepMs: 0 },
+      initialPage: { items: [item(1)], next: 'two' },
+      loadPage,
+      target,
+    }))
+    await instance.mount()
+
+    const filling = instance.fill({ pages: 2 })
+    await flushPromises()
+    instance.setLoadMoreLocked(true)
+    resolveFirst({ items: [item(2)], next: 'three' })
+    await filling
+
+    expect(instance.getState()).toMatchObject({
+      fill: { completedPages: 1, status: 'paused' },
+      next: 'three',
+    })
+    instance.setLoadMoreLocked(false)
+    await flushPromises()
+
+    expect(loadPage.mock.calls.map(([request]) => request.cursor)).toEqual(['two', 'three'])
+    expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1, 2, 3])
+  })
+
   it('fills frontend pages until the source reaches its end', async () => {
     const loadPage = vi.fn()
       .mockResolvedValueOnce({ items: [item(2)], next: 'three' })
@@ -195,7 +225,7 @@ describe('Vibe fill', () => {
     expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1, 2])
   })
 
-  it('cancels frontend fill without committing its buffered pages', async () => {
+  it('cancels frontend fill while preserving completed pages', async () => {
     const loadPage = vi.fn()
       .mockResolvedValueOnce({ items: [item(2)], next: 'three' })
       .mockImplementationOnce(({ signal }: { signal: AbortSignal }) => (
@@ -219,7 +249,7 @@ describe('Vibe fill', () => {
     await fill
 
     expect(instance.getState().fill.status).toBe('cancelled')
-    expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1])
+    expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1, 2])
   })
 
   it('delegates backend fill and applies only its terminal batch', async () => {

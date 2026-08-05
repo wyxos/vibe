@@ -28,6 +28,7 @@ export function createInitialRuntimeState(
     mediaIndices: new Map(),
     next: initialPage?.next ?? null,
     nextPageError: null,
+    phoneMode: false,
     reelAutoAdvance: createReelAutoAdvanceState(options.reelAutoAdvance),
     reelForward: { error: null, status: 'idle' },
     reelForwardIndex: null,

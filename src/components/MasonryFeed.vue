@@ -39,6 +39,7 @@ const emit = defineEmits<{
   mediaChange: [postId: VibeItemId, mediaIndex: number]
   ready: [postId: VibeItemId, mediaIndex: number]
   retryEnd: []
+  visible: [postId: VibeItemId, mediaIndex: number]
 }>()
 
 const galleryElement = shallowRef<HTMLElement | null>(null)
@@ -113,6 +114,26 @@ const showLoadMore = computed(() => (
   )
 ))
 
+const viewportIndices = computed(() => {
+  if (props.suspended) return new Set<number>()
+
+  const viewport = {
+    scrollTop: galleryScrollTop.value - masonryContentTop.value,
+    viewportHeight: galleryViewportHeight.value,
+  }
+  const target = calculateVisibleMasonryIndices(
+    masonryLayout.value.items,
+    { ...viewport, overscan: 0 },
+  )
+  const settled = props.leavingPostIds.size === 0
+    ? []
+    : calculateVisibleMasonryIndices(
+        settledMasonryLayout.value.items,
+        { ...viewport, overscan: 0 },
+      )
+  return new Set([...target, ...settled])
+})
+
 const visibleItems = computed(() => {
   const overscan = Math.max(
     VIRTUAL_OVERSCAN_MIN,
@@ -134,31 +155,37 @@ const visibleItems = computed(() => {
       )
   const indices = [...new Set([...targetIndices, ...settledIndices])]
     .sort((first, second) => first - second)
-  const targetViewportIndices = calculateVisibleMasonryIndices(
-    masonryLayout.value.items,
-    { ...viewport, overscan: 0 },
-  )
-  const settledViewportIndices = props.leavingPostIds.size === 0
-    ? []
-    : calculateVisibleMasonryIndices(
-        settledMasonryLayout.value.items,
-        { ...viewport, overscan: 0 },
-      )
-  const viewportIndices = new Set([
-    ...targetViewportIndices,
-    ...settledViewportIndices,
-  ])
-
   return indices.flatMap((index) => {
     const item = props.items[index]
 
     return item ? [{
-      fetchPriority: viewportIndices.has(index) ? 'high' as const : 'low' as const,
+      fetchPriority: viewportIndices.value.has(index) ? 'high' as const : 'low' as const,
       index,
       item,
     }] : []
   })
 })
+
+let visibleReadyMedia = new Set<string>()
+watch(
+  () => [...viewportIndices.value].flatMap((index) => {
+    const item = props.items[index]
+    if (!item) return []
+    const mediaIndex = props.mediaIndices.get(item.postId) ?? 0
+    const key = mediaStateKey(item.postId, mediaIndex)
+    return props.previewStates.get(key) === 'ready'
+      ? [{ key, mediaIndex, postId: item.postId }]
+      : []
+  }),
+  (visibleMedia) => {
+    const next = new Set(visibleMedia.map(({ key }) => key))
+    visibleMedia.forEach(({ key, mediaIndex, postId }) => {
+      if (!visibleReadyMedia.has(key)) emit('visible', postId, mediaIndex)
+    })
+    visibleReadyMedia = next
+  },
+  { immediate: true, flush: 'post' },
+)
 
 function itemStyle(index: number): CSSProperties {
   const position = masonryLayout.value.items[index]

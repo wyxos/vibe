@@ -3,7 +3,7 @@ import type {
   VibeCursor,
   VibePageRequest,
 } from '../types'
-import { collectFrontendAutofill } from './autofill'
+import { collectFrontendAutofill, frontendAutofillRequestLimit } from './autofill'
 import type { VibeAutofillController } from './autofillController'
 import { startBackendAutofill } from './backendAutofill'
 import { appendUniqueItems, validatePage, type LoadedPageRecord } from './page'
@@ -35,7 +35,20 @@ export async function performPageRequest({
   state,
 }: PageRequestOptions): Promise<void> {
   const autofillOptions = options.autofill
-  const cycleId = autofillOptions ? autofillController.beginCycle() : null
+  const resumesFrontendAutofill = append
+    && autofillOptions?.strategy === 'frontend'
+    && state.autofill.status === 'paused'
+  const resumeProgress = resumesFrontendAutofill
+    ? { received: state.autofill.received, requests: state.autofill.requests }
+    : null
+  const cycleId = autofillOptions
+    ? resumesFrontendAutofill
+      ? state.autofill.cycleId
+      : autofillController.beginCycle()
+    : null
+  if (resumesFrontendAutofill) {
+    Object.assign(state.autofill, { error: null, status: 'filling' })
+  }
   let pageCommitted = false
 
   try {
@@ -44,6 +57,12 @@ export async function performPageRequest({
         existingItems: append ? state.items : [],
         initialCursor: cursor,
         loadPage,
+        maximumRequests: resumeProgress
+          ? Math.max(
+              0,
+              frontendAutofillRequestLimit(autofillOptions) - resumeProgress.requests,
+            )
+          : undefined,
         onCollection: (collection) => autofillController.captureCollection(
           collection, isCurrent(),
         ),
@@ -55,6 +74,9 @@ export async function performPageRequest({
           Object.assign(state.autofill, progress, { status: 'filling' })
         },
         options: autofillOptions,
+        receivedOffset: resumeProgress?.received,
+        requestOffset: resumeProgress?.requests,
+        shouldPause: () => state.loadMoreLocked,
         signal,
       })
       if (!isCurrent()) return

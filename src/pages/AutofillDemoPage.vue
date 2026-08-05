@@ -6,7 +6,7 @@ import {
   shallowRef,
   watch,
 } from 'vue'
-import { RotateCcw, X } from 'lucide-vue-next'
+import { Lock, LockOpen, RotateCcw, Square } from 'lucide-vue-next'
 
 import {
   AUTOFILL_DEMO_TARGET_SIZE,
@@ -31,6 +31,7 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{
+  vibeInstanceChange: [instance: VibeInstance | null]
   vibeStateChange: [state: VibeState]
 }>()
 
@@ -44,8 +45,8 @@ const setupAbortController = new AbortController()
 const isRefreshScenario = computed(() => props.mode === 'refresh')
 
 const canCancel = computed(() => (
-  state.value !== null
-  && ['filling', 'restoring', 'waiting'].includes(state.value.autofill.status)
+  state.value?.isLoadingMore
+  || ['filling', 'restoring', 'waiting'].includes(state.value?.autofill.status ?? '')
 ))
 
 const canRestart = computed(() => (
@@ -68,8 +69,12 @@ function handleStateChange(nextState: VibeState): void {
   }
 }
 
-async function cancelAutofill(): Promise<void> {
-  await vibe?.cancelAutofill()
+async function cancelLoading(): Promise<void> {
+  await vibe?.cancelLoading()
+}
+
+function toggleLoadingLock(): void {
+  vibe?.setLoadMoreLocked(!(state.value?.loadMoreLocked ?? false))
 }
 
 async function restartAutofill(): Promise<void> {
@@ -153,6 +158,7 @@ onMounted(async () => {
     onStateChange: handleStateChange,
     target,
   })
+  emit('vibeInstanceChange', vibe)
 
   if (simulator) {
     stopSimulator = simulator.subscribe((update) => {
@@ -172,6 +178,7 @@ onBeforeUnmount(() => {
   simulator = null
   vibe?.destroy()
   vibe = null
+  emit('vibeInstanceChange', null)
 })
 </script>
 
@@ -197,13 +204,24 @@ onBeforeUnmount(() => {
 
       <div class="autofill-demo-actions">
         <button
-          data-test="cancel-autofill"
+          data-test="toggle-loading-lock"
+          class="autofill-demo-action"
+          type="button"
+          :aria-pressed="state?.loadMoreLocked ?? false"
+          @click="toggleLoadingLock"
+        >
+          <LockOpen v-if="state?.loadMoreLocked" :size="14" aria-hidden="true" />
+          <Lock v-else :size="14" aria-hidden="true" />
+          {{ state?.loadMoreLocked ? 'Unlock' : 'Lock' }}
+        </button>
+        <button
+          data-test="cancel-loading"
           class="autofill-demo-action autofill-demo-action--cancel"
           type="button"
           :disabled="!canCancel"
-          @click="cancelAutofill"
+          @click="cancelLoading"
         >
-          <X :size="14" aria-hidden="true" />
+          <Square :size="14" aria-hidden="true" />
           Cancel
         </button>
         <button
