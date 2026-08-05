@@ -5,6 +5,7 @@ import {
 } from './autofill'
 import { startBackendAutofill } from './backendAutofill'
 import { appendUniqueItems } from './page'
+import type { LoadedPageRecord } from './page'
 import type { VibeRuntimeState } from './runtime'
 import type {
   CreateVibeOptions,
@@ -16,6 +17,7 @@ interface InitialAutofillContext {
   isCurrent: () => boolean
   onCollection: (collection: FrontendAutofillCollection) => void
   onLastCursor: (cursor: VibeCursor) => void
+  onPages: (pages: readonly LoadedPageRecord[]) => void
   options: CreateVibeOptions
   signal: AbortSignal
   state: VibeRuntimeState
@@ -26,6 +28,7 @@ export async function autofillInitialPage({
   isCurrent,
   onCollection,
   onLastCursor,
+  onPages,
   options,
   signal,
   state,
@@ -87,6 +90,7 @@ export async function autofillInitialPage({
   state.next = result.next
   if (result.total !== undefined) state.total = result.total
   onLastCursor(result.lastCursor)
+  onPages(result.pages)
   Object.assign(state.autofill, {
     missing: result.missing,
     received: result.received,

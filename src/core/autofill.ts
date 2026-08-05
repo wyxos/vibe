@@ -8,7 +8,7 @@ import type {
   VibePageLoader,
 } from '../types'
 import type { VibeRuntimeState } from './runtime'
-import { appendUniqueItems, validatePage } from './page'
+import { appendUniqueItems, validatePage, type LoadedPageRecord } from './page'
 import {
   getRequestDelayMs,
   getRequestDelaySnapshot,
@@ -43,6 +43,7 @@ export interface FrontendAutofillCollection extends FrontendAutofillProgress {
 }
 
 export interface FrontendAutofillResult extends FrontendAutofillCollection {
+  pages: LoadedPageRecord[]
   status: 'complete' | 'exhausted'
 }
 
@@ -215,6 +216,7 @@ export async function collectFrontendAutofill({
   let cursor = initialCursor
   let next: VibeCursor = initialCursor
   let requests = 0
+  const pages: LoadedPageRecord[] = []
   let total: number | undefined
 
   while (requests < maximumRequests) {
@@ -234,6 +236,12 @@ export async function collectFrontendAutofill({
     requests += 1
     const combined = appendUniqueItems(knownItems, page.items)
     const additions = combined.slice(knownItems.length)
+    pages.push({
+      contributionIds: additions.map(({ postId }) => postId),
+      cursor,
+      next: page.next,
+      returnedIds: page.items.map(({ postId }) => postId),
+    })
     knownItems.push(...additions)
     items.push(...additions)
     next = page.next
@@ -255,10 +263,10 @@ export async function collectFrontendAutofill({
     onCollection(collection)
 
     if (progress.missing === 0) {
-      return { ...collection, status: 'complete' }
+      return { ...collection, pages, status: 'complete' }
     }
     if (next === null) {
-      return { ...collection, status: 'exhausted' }
+      return { ...collection, pages, status: 'exhausted' }
     }
 
     cursor = next
@@ -269,6 +277,7 @@ export async function collectFrontendAutofill({
     lastCursor: cursor,
     missing: Math.max(0, options.pageSize - receivedOffset - items.length),
     next,
+    pages,
     received: receivedOffset + items.length,
     requests: requestOffset + requests,
     status: 'exhausted',

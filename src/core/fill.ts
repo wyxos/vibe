@@ -1,4 +1,4 @@
-import { appendUniqueItems, validatePage } from './page'
+import { appendUniqueItems, validatePage, type LoadedPageRecord } from './page'
 import type {
   VibeFillOptions,
   VibeFillSessionSnapshot,
@@ -26,6 +26,7 @@ export interface FrontendFillProgress {
 export interface FrontendFillResult extends FrontendFillProgress {
   items: VibeItem[]
   lastCursor: VibeCursor
+  pages: LoadedPageRecord[]
   status: 'complete' | 'exhausted'
   total?: number
 }
@@ -125,6 +126,7 @@ export async function collectFrontendFill({
   target,
 }: CollectFrontendFillOptions): Promise<FrontendFillResult> {
   const items: VibeItem[] = []
+  const pages: LoadedPageRecord[] = []
   const knownItems = [...existingItems]
   const seenCursors = new Set<string>()
   let completedPages = 0
@@ -148,6 +150,12 @@ export async function collectFrontendFill({
     completedPages += 1
     const combined = appendUniqueItems(knownItems, page.items)
     const additions = combined.slice(knownItems.length)
+    pages.push({
+      contributionIds: additions.map(({ postId }) => postId),
+      cursor,
+      next: page.next,
+      returnedIds: page.items.map(({ postId }) => postId),
+    })
     knownItems.push(...additions)
     items.push(...additions)
     received = items.length
@@ -161,6 +169,7 @@ export async function collectFrontendFill({
         items,
         lastCursor: cursor,
         next,
+        pages,
         received,
         status: 'complete',
         total,
@@ -172,6 +181,7 @@ export async function collectFrontendFill({
         items,
         lastCursor: cursor,
         next,
+        pages,
         received,
         status: 'pages' in target ? 'exhausted' : 'complete',
         total,
@@ -185,6 +195,7 @@ export async function collectFrontendFill({
     items,
     lastCursor: cursor,
     next: null,
+    pages,
     received,
     status: 'pages' in target ? 'exhausted' : 'complete',
     total,

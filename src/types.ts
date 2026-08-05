@@ -1,6 +1,5 @@
 import type { Component } from 'vue'
 import type { RouteLocationRaw, Router } from 'vue-router'
-
 export type VibeCursor = string | number | null
 export type VibeItemId = string | number
 export type VibeLayout = 'masonry' | 'reel'
@@ -37,7 +36,6 @@ export interface VibeAutoScrollOptions {
   minSpeedPxPerSecond?: number
   speedPxPerSecond?: number
 }
-
 export interface VibeAutoScrollState {
   enabled: boolean
   maxSpeedPxPerSecond: number
@@ -45,20 +43,17 @@ export interface VibeAutoScrollState {
   paused: boolean
   speedPxPerSecond: number
 }
-
 export interface VibeReelAutoAdvanceOptions {
   enabled?: boolean
   includePostItems?: boolean
   intervalMs?: number
 }
-
 export interface VibeReelAutoAdvanceState {
   enabled: boolean
   includePostItems: boolean
   intervalMs: number
 }
 export type VibeReelOrigin = 'masonry' | 'reel'
-
 export interface VibeReelInfoSheetOptions {
   component: Component
   enabled?: boolean
@@ -239,6 +234,10 @@ export interface VibeRequestDelayOptions {
   delayStepMs?: number
 }
 
+export interface VibeRemovalReconciliationOptions {
+  maxReplayPages?: number
+  pageSize: number
+}
 export interface VibeFrontendAutofillOptions extends VibeRequestDelayOptions {
   maxAdditionalPages?: VibeAutofillPageLimit
   pageSize: number
@@ -432,6 +431,7 @@ export interface CreateVibeOptions {
   onReelMediaChange?: (context: VibeMediaLifecycleContext) => void
   onStateChange?: (state: VibeState) => void
   removalHistoryLimit?: number
+  removalReconciliation?: VibeRemovalReconciliationOptions
   reelAutoAdvance?: VibeReelAutoAdvanceOptions
   reelInfoSheet?: VibeReelInfoSheetOptions
   routing?: VibeRoutingOptions

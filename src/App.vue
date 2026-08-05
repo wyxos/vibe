@@ -60,6 +60,9 @@ const fillDelay = computed(() => (
 const isAutoScrollDemo = computed(() => route.name === 'demo-auto-scroll')
 const isReelAutoAdvanceDemo = computed(() => route.name === 'demo-reel-auto-advance')
 const isReelInfoSheetDemo = computed(() => route.name === 'demo-reel-info-sheet')
+const isRemovalReconciliationDemo = computed(() => (
+  route.name === 'demo-item-removal-reconciliation'
+))
 const autoScroll = computed(() => vibeState.value?.autoScroll ?? null)
 const reelAutoAdvance = computed(() => vibeState.value?.reelAutoAdvance ?? null)
 const reelInfoSheet = computed(() => vibeState.value?.reelInfoSheet ?? null)
@@ -338,7 +341,7 @@ function updateVibeInstance(instance: VibeInstance | null): void {
           </span>
         </output>
 
-        <label class="toggle-control">
+        <label v-if="!isRemovalReconciliationDemo" class="toggle-control">
           <span>Infinite scroll</span>
           <input
             v-model="infiniteScroll"

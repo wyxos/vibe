@@ -10,6 +10,7 @@ import {
   validateFillTarget,
 } from './fill'
 import { appendUniqueItems } from './page'
+import type { LoadedPageRecord } from './page'
 import { RequestDelayCountdown } from './requestDelay'
 import type { VibeRuntimeState } from './runtime'
 import type {
@@ -26,6 +27,7 @@ interface FillControllerOptions {
   fill?: VibeFillOptions
   loadPage?: VibePageLoader
   onLastCursor: (cursor: VibeCursor) => void
+  onPages: (pages: readonly LoadedPageRecord[]) => void
   state: VibeRuntimeState
 }
 
@@ -200,6 +202,7 @@ export class VibeFillController {
     state.next = result.next
     if (result.total !== undefined) state.total = result.total
     this.options.onLastCursor(result.lastCursor)
+    this.options.onPages(result.pages)
     Object.assign(state.fill, {
       completedPages: result.completedPages,
       received: result.received,

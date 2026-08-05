@@ -62,6 +62,33 @@ await vibe.loadNext()
 
 Use `setLoadMoreLocked(true)` to pause forward pagination without cancelling an active request or disabling interaction with loaded items.
 
+## Reconcile pages after removal
+
+Feeds whose filters change after a reaction can opt into a bounded refresh
+before forward pagination:
+
+```ts
+const vibe = createVibe({
+  target: '#gallery',
+  loadPage,
+  removalReconciliation: {
+    maxReplayPages: 5,
+    pageSize: 20,
+  },
+})
+```
+
+Before `loadNext()`, Vibe compares each recent page's surviving unique items
+with the configured provider `pageSize`. This catches local removals, duplicate
+results, and pages that originally returned fewer items than requested. Full
+pages proceed directly. Otherwise Vibe replays from the earliest underfilled
+page through the latest loaded page, keeps existing card order, appends every
+new unique item, and then requests the refreshed next cursor. Pages still below
+capacity are checked again at the next forward-load boundary. Removed
+identities remain tombstoned so delayed provider persistence cannot reintroduce
+them; Undo clears the tombstone. This option assumes previously returned
+cursors are replayable.
+
 ## Reloading and errors
 
 `loadPage` may throw. Vibe exposes the failure through state and renders retry UI for its owned request surfaces.

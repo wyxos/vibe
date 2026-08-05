@@ -1,4 +1,11 @@
-import type { VibeItem, VibePage } from '../types'
+import type { VibeCursor, VibeItem, VibeItemId, VibePage } from '../types'
+
+export interface LoadedPageRecord {
+  contributionIds: VibeItemId[]
+  cursor: VibeCursor
+  next: VibeCursor
+  returnedIds: VibeItemId[]
+}
 
 export function validatePage(page: VibePage): VibePage {
   if (!page || typeof page !== 'object' || !Array.isArray(page.items)) {

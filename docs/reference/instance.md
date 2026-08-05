@@ -64,6 +64,15 @@ equivalent to `restoreRemoval()`.
 
 All restored cards use the same entry motion as newly loaded cards.
 
+With `removalReconciliation` enabled, each provider request records the unique
+items it contributed. Before `loadNext()`, Vibe compares the surviving
+contribution of the most recent pages with the configured provider page size.
+It proceeds directly when every page is full; otherwise it replays from the
+earliest underfilled page, appends all newly surfaced unique items, and then
+continues from the refreshed next cursor. A top-level removal is tombstoned
+until it is restored or the feed is reset. Restoring after reconciliation keeps
+both the restored item and any appended replacements.
+
 Use `removeMediaAnimated()` for reactions or other actions against the media
 currently visible in a reel. Vibe completes the horizontal group transition or
 vertical post transition before committing the exact removal. When no loaded

@@ -11,6 +11,8 @@ interface RemovalControllerOptions {
   historyLimit: number | undefined
   loadNext: () => Promise<void>
   onActivate: (postId: VibeItemId) => void
+  onItemsRemoved: (postIds: readonly VibeItemId[]) => void
+  onItemsRestored: (postIds: readonly VibeItemId[]) => void
   retryEnd: () => Promise<void>
   state: VibeRuntimeState
   surface: () => VibeSurfaceExpose | null
@@ -36,12 +38,15 @@ export function createRemovalControllers(
   })
   const exactMediaRemoval = new ExactMediaRemovalController({
     onActivate: options.onActivate,
+    onPostRemoved: (postId) => options.onItemsRemoved([postId]),
+    onPostRestored: (postId) => options.onItemsRestored([postId]),
     reelForward,
     state: options.state,
   })
   const itemRemoval = new ItemRemovalController({
     historyLimit: options.historyLimit,
     onItemsRemoved: (removal, placements, activeIndex) => {
+      options.onItemsRemoved(placements.map(({ item }) => item.postId))
       restoreActiveItemAfterRemoval(
         options.state,
         placements,
@@ -51,6 +56,7 @@ export function createRemovalControllers(
       )
     },
     onRemovalRestored: (removal) => {
+      options.onItemsRestored(removal.map(({ item }) => item.postId))
       const restoredForwardItem = reelForward.cancel(removal)
       if (restoredForwardItem) options.onActivate(restoredForwardItem.postId)
     },

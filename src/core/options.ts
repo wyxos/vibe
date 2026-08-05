@@ -59,6 +59,34 @@ export function validateOptions(options: CreateVibeOptions): void {
   validateFillOptions(options.fill)
   validateReelAutoAdvanceOptions(options.reelAutoAdvance)
 
+  if (options.removalReconciliation) {
+    if (!Number.isInteger(options.removalReconciliation.pageSize)
+      || options.removalReconciliation.pageSize <= 0) {
+      throw new TypeError(
+        'Vibe removalReconciliation pageSize must be a positive integer.',
+      )
+    }
+    const maximum = options.removalReconciliation.maxReplayPages ?? 5
+    if (!Number.isInteger(maximum) || maximum <= 0) {
+      throw new TypeError(
+        'Vibe removalReconciliation maxReplayPages must be a positive integer.',
+      )
+    }
+    if (!options.loadPage) {
+      throw new TypeError('Vibe removalReconciliation requires loadPage.')
+    }
+    if (options.autofill?.strategy === 'backend') {
+      throw new TypeError(
+        'Vibe removalReconciliation does not support backend autofill.',
+      )
+    }
+    if (options.fill?.strategy === 'backend') {
+      throw new TypeError(
+        'Vibe removalReconciliation does not support backend fill.',
+      )
+    }
+  }
+
   if (options.removalHistoryLimit !== undefined
     && (!Number.isInteger(options.removalHistoryLimit)
       || options.removalHistoryLimit < 0)) {

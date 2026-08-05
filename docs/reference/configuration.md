@@ -26,6 +26,7 @@ const vibe = createVibe(options)
 | `onReelMediaChange` | `(context: VibeMediaLifecycleContext) => void` | — | Runs for the initial reel selection and each parent, nested, or single-item media change. |
 | `onStateChange` | `(state: VibeState) => void` | — | Receives the initial state and every public state change. |
 | `removalHistoryLimit` | `number` | `20` | Maximum recent removal transactions retained for `undoLastRemoval()`; use `0` to disable automatic history. |
+| `removalReconciliation` | `VibeRemovalReconciliationOptions` | — | Replays recent provider pages whose unique surviving contribution is below configured capacity. |
 
 At least one of `initialPage` or `loadPage` is needed to display content.
 
@@ -73,6 +74,18 @@ Frontend `autofill.maxAdditionalPages` accepts a non-negative integer or
 `'unlimited'`. The unlimited value is serializable and does not bypass target,
 cursor, end-of-feed, error, abort, cancellation, destruction, or request-delay
 guards.
+
+`removalReconciliation` is opt-in and requires `loadPage` plus the provider's
+positive integer `pageSize`. This is the capacity of one provider request, not
+the larger autofill target. `maxReplayPages` defaults to `5` and counts concrete
+provider requests, including requests followed internally by frontend autofill
+or fill. Before ordinary forward loading, Vibe checks the unique surviving
+contribution of each recorded page. When one is below capacity, Vibe replays
+from the earliest underfilled page through the latest loaded page, keeps
+surviving cards in place, and appends every new unique result before continuing
+from the refreshed next cursor. Providers using this option must support
+replaying previously issued cursors. Backend autofill and backend fill are not
+compatible because their provider request ledgers are owned outside Vibe.
 
 ## Custom feed footer
 

@@ -41,6 +41,7 @@ export type {
   VibeItemId,
   VibeItemPlacement,
   VibeRemoval,
+  VibeRemovalReconciliationOptions,
   VibeLayout,
   VibeLayoutMode,
   VibeLifecycle,

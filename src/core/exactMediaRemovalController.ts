@@ -11,6 +11,8 @@ import type {
 
 interface ExactMediaRemovalControllerOptions {
   onActivate: (postId: VibeItemId) => void
+  onPostRemoved: (postId: VibeItemId) => void
+  onPostRestored: (postId: VibeItemId) => void
   reelForward: ReelForwardController
   state: VibeRuntimeState
 }
@@ -76,6 +78,7 @@ export class ExactMediaRemovalController {
     }
 
     this.state.items.splice(postIndex, 1)
+    this.options.onPostRemoved(item.postId)
     this.state.mediaIndices.delete(item.postId)
     if (isActivePost) this.advanceFromRemovedPost(removal, item)
     return removal
@@ -90,6 +93,7 @@ export class ExactMediaRemovalController {
     if (!metadata) throw new TypeError('Vibe media removal does not belong to this instance.')
     if (metadata.generation !== this.generation || metadata.restored) return false
     metadata.restored = true
+    this.options.onPostRestored(removal.postId)
 
     const postIndex = this.state.items.findIndex(({ postId }) => postId === removal.postId)
     if (postIndex >= 0) this.restoreIntoPost(postIndex, removal)
