@@ -347,6 +347,12 @@ defineExpose({ getScrollElement, loadIfNearBottom })
         />
       </section>
 
+    </main>
+
+    <div
+      v-if="feedFooter || isLoadingMore || nextPageError || (hasNext && showLoadMore) || (!hasNext && canRetryEnd)"
+      class="masonry-feed-status-overlay"
+    >
       <FeedFooter
         :actions="feedFooterActions"
         :can-retry-end="canRetryEnd"
@@ -360,7 +366,7 @@ defineExpose({ getScrollElement, loadIfNearBottom })
         @load-more="emit('loadMore')"
         @retry-end="emit('retryEnd')"
       />
-    </main>
+    </div>
 
     <GalleryScrollbar
       :content-size="masonryLayout.height"

@@ -316,6 +316,19 @@ describe('MasonryFeed', () => {
     expect(wrapper.find('[data-test="load-more"]').exists()).toBe(false)
   })
 
+  it('anchors loading controls over the masonry viewport', () => {
+    const wrapper = mount(MasonryFeed, {
+      props: {
+        ...props(),
+        hasNext: true,
+        isLoadingMore: true,
+      },
+    })
+
+    expect(wrapper.get('.masonry-feed-status-overlay').find('.load-more-status').text())
+      .toBe('Loading more…')
+  })
+
   it('disables manual and infinite pagination while loading more is locked', async () => {
     const wrapper = mount(MasonryFeed, {
       props: {

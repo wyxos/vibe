@@ -272,6 +272,35 @@
   height: 0;
 }
 
+.masonry-feed-status-overlay {
+  position: absolute;
+  z-index: 9;
+  right: calc(var(--gallery-padding) + 1rem);
+  bottom: var(--gallery-padding);
+  left: var(--gallery-padding);
+  display: grid;
+  justify-items: center;
+  pointer-events: none;
+}
+
+.masonry-feed-status-overlay > * {
+  pointer-events: auto;
+}
+
+.masonry-feed-status-overlay .gallery-footer {
+  min-height: 0;
+  padding: 0.375rem;
+}
+
+.masonry-feed-status-overlay .load-more-status,
+.masonry-feed-status-overlay .end-feed-message {
+  padding: 0.375rem 0.625rem;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 999px;
+  background: rgb(8 8 8 / 68%);
+  backdrop-filter: blur(8px);
+}
+
 .gallery-scrollbar {
   position: absolute;
   z-index: 8;
