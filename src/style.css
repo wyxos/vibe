@@ -1159,7 +1159,7 @@ body {
     gap: 1rem;
   }
 
-  .app-navigation .app-nav-link:nth-child(n + 3) {
+  .app-navigation {
     display: none;
   }
 
