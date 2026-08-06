@@ -18,7 +18,7 @@ import { ResponsiveLayoutController } from './responsiveLayoutController'
 import { updateReelAutoAdvanceState } from './reelAutoAdvance'
 import { setReelInfoSheetEnabled } from './reelInfoSheet'
 import { VibeRouteSync } from './vibeRouting'
-import { snapshotState, type VibeRuntimeState } from './runtime'
+import { createItemSnapshot, snapshotState, type VibeRuntimeState } from './runtime'
 import type {
   CreateVibeOptions,
   VibeAutofillSessionSnapshot,
@@ -59,11 +59,13 @@ class VibeController implements VibeInstance {
   private surface: VibeSurfaceExpose | null = null
   private stopStateWatcher: WatchHandle | null = null
   private lastLoadedCursor: VibeCursor = null
+  private readonly notificationItems: ReturnType<typeof createItemSnapshot>
   private readonly state: VibeRuntimeState
   constructor(private readonly options: CreateVibeOptions) {
     validateOptions(options)
     const layoutMode = options.layout ?? 'masonry'
     this.state = reactive(createInitialRuntimeState(options, layoutMode))
+    this.notificationItems = createItemSnapshot(this.state)
     this.autoScroll = new VibeAutoScrollController({
       getScrollElement: () => this.surface?.getAutoScrollElement() ?? null,
       state: this.state.autoScroll,
@@ -135,7 +137,6 @@ class VibeController implements VibeInstance {
     })
     this.surface = this.app.mount(target) as unknown as VibeSurfaceExpose
     this.autoScroll.mount()
-
     if (!this.options.initialPage) await this.reload()
     else if (this.options.autofill && this.state.autofill.status === 'idle'
       && !this.fillController.isActive() && !this.state.loadMoreLocked) {
@@ -238,7 +239,6 @@ class VibeController implements VibeInstance {
     if (!this.options.loadPage) return
     if (this.state.next === null
       && !this.removalReconciliation.needsReconciliation(this.state.items)) return
-
     this.state.isLoadingMore = true
     this.state.nextPageError = null
     const request = this.loadNextSequence()
@@ -487,10 +487,10 @@ class VibeController implements VibeInstance {
     const onStateChange = this.options.onStateChange
     if (!onStateChange || this.stopStateWatcher) return
 
-    onStateChange(this.getState())
+    onStateChange(snapshotState(this.state, this.notificationItems.value))
     this.stopStateWatcher = watch(
       this.state,
-      () => onStateChange(this.getState()),
+      () => onStateChange(snapshotState(this.state, this.notificationItems.value)),
       { deep: true, flush: 'post' },
     )
   }

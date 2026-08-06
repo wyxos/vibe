@@ -64,7 +64,8 @@ const enteringPostIds = shallowRef<ReadonlySet<VibeItemId>>(new Set())
 const entryDelays = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
 const leavingPostIds = shallowRef<ReadonlySet<VibeItemId>>(new Set())
 const removalDelays = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
-const footerState = computed(() => snapshotState(props.state))
+const footerItems = computed(() => Object.freeze([...props.state.items]))
+const footerState = computed(() => snapshotState(props.state, footerItems.value))
 const {
   markMasonryVisible,
   markPreviewError,

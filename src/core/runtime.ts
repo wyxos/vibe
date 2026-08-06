@@ -1,3 +1,5 @@
+import { computed, type ComputedRef } from 'vue'
+
 import type {
   VibeAutoScrollState,
   VibeAutofillState,
@@ -39,7 +41,16 @@ export interface VibeRuntimeState {
   total: number | null
 }
 
-export function snapshotState(state: VibeRuntimeState): VibeState {
+export function createItemSnapshot(
+  state: VibeRuntimeState,
+): ComputedRef<readonly VibeItem[]> {
+  return computed(() => Object.freeze([...state.items]))
+}
+
+export function snapshotState(
+  state: VibeRuntimeState,
+  items: readonly VibeItem[] = [...state.items],
+): VibeState {
   return {
     activeReelPostId: state.activeReelPostId,
     autoScroll: { ...state.autoScroll },
@@ -52,7 +63,7 @@ export function snapshotState(state: VibeRuntimeState): VibeState {
     infiniteScroll: state.infiniteScroll,
     isLoading: state.isLoading,
     isLoadingMore: state.isLoadingMore,
-    items: [...state.items],
+    items,
     layout: state.layout,
     lifecycle: state.isLoading || state.isLoadingMore
       ? 'loading'

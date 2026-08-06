@@ -56,6 +56,29 @@ describe('createVibe state notifications', () => {
     expect(instance.getState().lifecycle).toBe('loaded')
   })
 
+  it('reuses notification item snapshots until the collection changes', async () => {
+    const target = document.createElement('div')
+    const states: Parameters<NonNullable<Parameters<typeof createVibe>[0]['onStateChange']>>[0][] = []
+    instance = createVibe({
+      initialPage: { items: [item(1)], next: 'next' },
+      loadPage: vi.fn().mockResolvedValue({ items: [item(2)], next: null }),
+      onStateChange: (state) => states.push(state),
+      target,
+    })
+    const initialItems = states.at(-1)!.items
+    const firstPublicItems = instance.getState().items
+
+    instance.setTotal(10)
+    await flushPromises()
+    expect(states.at(-1)!.items).toBe(initialItems)
+    expect(instance.getState().items).not.toBe(firstPublicItems)
+
+    await instance.loadNext()
+    await flushPromises()
+    expect(states.at(-1)!.items).not.toBe(initialItems)
+    expect(states.at(-1)!.items.map(({ postId }) => postId)).toEqual([1, 2])
+  })
+
   it('exposes pagination failures through the public lifecycle', async () => {
     const target = document.createElement('div')
     const onStateChange = vi.fn()
