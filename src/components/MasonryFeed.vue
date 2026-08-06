@@ -46,13 +46,16 @@ const galleryId = `vibe-masonry-${useId()}`
 const masonryElement = shallowRef<HTMLElement | null>(null)
 const masonryWidth = shallowRef(0)
 const masonryGap = shallowRef(MIN_GAP)
-const galleryScrollTop = shallowRef(0)
 const galleryViewportHeight = shallowRef(0)
 const galleryContentHeight = shallowRef(0)
 const masonryContentTop = shallowRef(0)
+const viewportIndexSnapshot = shallowRef<readonly number[]>([])
+const overscanIndexSnapshot = shallowRef<readonly number[]>([])
+let galleryScrollTop = 0
 let masonryResizeObserver: ResizeObserver | null = null
 let galleryResizeObserver: ResizeObserver | null = null
 let resizeFrame: number | null = null
+let viewportFrame: number | null = null
 
 const settledMasonryLayout = computed(() => calculateMasonryLayout(
   props.items,
@@ -119,48 +122,10 @@ const showLoadMore = computed(() => (
   )
 ))
 
-const viewportIndices = computed(() => {
-  if (props.suspended) return new Set<number>()
-
-  const viewport = {
-    scrollTop: galleryScrollTop.value - masonryContentTop.value,
-    viewportHeight: galleryViewportHeight.value,
-  }
-  const target = calculateVisibleMasonryIndices(
-    masonryLayout.value.items,
-    { ...viewport, overscan: 0 },
-  )
-  const settled = props.leavingPostIds.size === 0
-    ? []
-    : calculateVisibleMasonryIndices(
-        settledMasonryLayout.value.items,
-        { ...viewport, overscan: 0 },
-      )
-  return new Set([...target, ...settled])
-})
+const viewportIndices = computed(() => new Set(viewportIndexSnapshot.value))
 
 const visibleItems = computed(() => {
-  const overscan = resolveMasonryOverscan(
-    props.masonry,
-    galleryViewportHeight.value,
-  )
-  const viewport = {
-    scrollTop: galleryScrollTop.value - masonryContentTop.value,
-    viewportHeight: galleryViewportHeight.value,
-  }
-  const targetIndices = calculateVisibleMasonryIndices(
-    masonryLayout.value.items,
-    { ...viewport, overscan },
-  )
-  const settledIndices = props.leavingPostIds.size === 0
-    ? []
-    : calculateVisibleMasonryIndices(
-        settledMasonryLayout.value.items,
-        { ...viewport, overscan },
-      )
-  const indices = [...new Set([...targetIndices, ...settledIndices])]
-    .sort((first, second) => first - second)
-  return indices.flatMap((index) => {
+  return overscanIndexSnapshot.value.flatMap((index) => {
     const item = props.items[index]
 
     return item ? [{
@@ -170,6 +135,64 @@ const visibleItems = computed(() => {
     }] : []
   })
 })
+
+function mergeOrderedIndices(first: readonly number[], second: readonly number[]): number[] {
+  return [...new Set([...first, ...second])]
+    .sort((left, right) => left - right)
+}
+
+function indexSnapshotsMatch(
+  first: readonly number[],
+  second: readonly number[],
+): boolean {
+  return first.length === second.length
+    && first.every((index, position) => index === second[position])
+}
+
+function calculateIndexSnapshot(overscan: number): number[] {
+  const viewport = {
+    scrollTop: galleryScrollTop - masonryContentTop.value,
+    viewportHeight: galleryViewportHeight.value,
+  }
+  const target = calculateVisibleMasonryIndices(
+    masonryLayout.value.items,
+    { ...viewport, overscan },
+  )
+  const settled = props.leavingPostIds.size === 0
+    ? []
+    : calculateVisibleMasonryIndices(
+        settledMasonryLayout.value.items,
+        { ...viewport, overscan },
+      )
+
+  return mergeOrderedIndices(target, settled)
+}
+
+function updateIndexSnapshots(): void {
+  const viewport = props.suspended ? [] : calculateIndexSnapshot(0)
+  const overscan = calculateIndexSnapshot(resolveMasonryOverscan(
+    props.masonry,
+    galleryViewportHeight.value,
+  ))
+
+  if (!indexSnapshotsMatch(viewportIndexSnapshot.value, viewport)) {
+    viewportIndexSnapshot.value = viewport
+  }
+  if (!indexSnapshotsMatch(overscanIndexSnapshot.value, overscan)) {
+    overscanIndexSnapshot.value = overscan
+  }
+}
+
+function scheduleIndexSnapshotUpdate(): void {
+  if (viewportFrame !== null) return
+
+  viewportFrame = -1
+  const requestedFrame = requestAnimationFrame(() => {
+    viewportFrame = null
+    updateIndexSnapshots()
+  })
+  if (viewportFrame !== null) viewportFrame = requestedFrame
+}
 
 let visibleReadyMedia = new Set<string>()
 watch(
@@ -228,7 +251,7 @@ function measureViewport(): void {
   const gallery = galleryElement.value
   if (!gallery) return
 
-  galleryScrollTop.value = gallery.scrollTop
+  galleryScrollTop = gallery.scrollTop
   galleryViewportHeight.value = gallery.clientHeight
   const styles = gallery.ownerDocument.defaultView?.getComputedStyle(gallery)
   const verticalPadding = (Number.parseFloat(styles?.paddingTop ?? '') || 0)
@@ -241,6 +264,7 @@ function measureViewport(): void {
   masonryContentTop.value = masonry.getBoundingClientRect().top
     - gallery.getBoundingClientRect().top
     + gallery.scrollTop
+  updateIndexSnapshots()
 }
 
 function measureMasonry(element: HTMLElement): void {
@@ -254,7 +278,8 @@ function onScroll(event: Event): void {
   const element = event.currentTarget as HTMLElement | null
   if (!element) return
 
-  galleryScrollTop.value = element.scrollTop
+  galleryScrollTop = element.scrollTop
+  scheduleIndexSnapshotUpdate()
   if (!props.loadMoreLocked && props.infiniteScroll && isNearFeedBottom(element)) {
     emit('loadMore')
   }
@@ -302,10 +327,17 @@ watch(galleryElement, (element) => {
   galleryResizeObserver.observe(element)
 })
 
+watch(
+  [settledMasonryLayout, masonryLayout, () => props.suspended, () => props.masonry],
+  updateIndexSnapshots,
+  { flush: 'post' },
+)
+
 onBeforeUnmount(() => {
   masonryResizeObserver?.disconnect()
   galleryResizeObserver?.disconnect()
   if (resizeFrame !== null) cancelAnimationFrame(resizeFrame)
+  if (viewportFrame !== null) cancelAnimationFrame(viewportFrame)
 })
 
 defineExpose({ getScrollElement, loadIfNearBottom })

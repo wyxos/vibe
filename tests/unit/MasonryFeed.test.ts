@@ -63,12 +63,27 @@ function dispatchPointerEvent(
 describe('MasonryFeed', () => {
   let galleryClientHeight = 500
   let galleryScrollHeight = 2000
+  let animationFrames: Array<{ callback: FrameRequestCallback, id: number }> = []
+  let nextAnimationFrameId = 0
+
+  function flushAnimationFrames(): void {
+    const frames = animationFrames.splice(0)
+    frames.forEach(({ callback }) => callback(16))
+  }
 
   beforeEach(() => {
     galleryClientHeight = 500
     galleryScrollHeight = 2000
-    vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1))
-    vi.stubGlobal('cancelAnimationFrame', vi.fn())
+    animationFrames = []
+    nextAnimationFrameId = 0
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      const id = ++nextAnimationFrameId
+      animationFrames.push({ callback, id })
+      return id
+    }))
+    vi.stubGlobal('cancelAnimationFrame', vi.fn((id: number) => {
+      animationFrames = animationFrames.filter((frame) => frame.id !== id)
+    }))
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(500)
     vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get')
       .mockImplementation(() => galleryClientHeight)
@@ -101,9 +116,37 @@ describe('MasonryFeed', () => {
       value: 5000,
     })
     await gallery.trigger('scroll')
+    flushAnimationFrames()
+    await wrapper.vm.$nextTick()
 
     expect(wrapper.find('[data-post-id="1"]').exists()).toBe(false)
     expect(wrapper.findAll('.masonry-item').length).toBeLessThan(100)
+  })
+
+  it('coalesces scroll-window updates and retains cards within one window', async () => {
+    const items = Array.from({ length: 5000 }, (_, index) => feedItem(index + 1))
+    const wrapper = mount(MasonryFeed, { props: props(items) })
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+    const gallery = wrapper.get('.gallery-shell')
+    const initialCards = wrapper.findAll('.masonry-item').map((card) => card.element)
+    const requestFrame = vi.mocked(requestAnimationFrame)
+    requestFrame.mockClear()
+
+    gallery.element.scrollTop = 1
+    await gallery.trigger('scroll')
+    gallery.element.scrollTop = 2
+    await gallery.trigger('scroll')
+
+    expect(requestFrame).toHaveBeenCalledTimes(1)
+    expect(wrapper.findAll('.masonry-item').map((card) => card.element))
+      .toEqual(initialCards)
+
+    flushAnimationFrames()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.findAll('.masonry-item').map((card) => card.element))
+      .toEqual(initialCards)
   })
 
   it('supports an opt-in capped overscan without changing the default window', async () => {
