@@ -478,7 +478,7 @@ export interface VibeInstance {
   reload: () => Promise<void>
   removeMedia: (target: VibeMediaTarget) => VibeMediaRemoval | null
   removeMediaAnimated?: (target: VibeMediaTarget) => Promise<VibeMediaRemoval | null>
-  removeItems: (postIds: readonly VibeItemId[]) => Promise<VibeRemoval>
+  removeItems: (postIds: readonly VibeItemId[], options?: import('./core/itemRemovalOptions').VibeItemRemovalOptions) => Promise<VibeRemoval>
   resumeAutoScroll: () => void
   restoreAutofillSession: (snapshot: VibeAutofillSessionSnapshot) => boolean
   restoreFillSession: (snapshot: VibeFillSessionSnapshot) => boolean

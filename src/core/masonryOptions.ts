@@ -5,11 +5,19 @@ export interface VibeMasonryOverscanOptions {
 }
 
 export interface VibeMasonryOptions {
+  minColumnWidth?: number
   overscan?: VibeMasonryOverscanOptions
 }
 
+export const DEFAULT_MASONRY_MIN_COLUMN_WIDTH = 240
 export const DEFAULT_MASONRY_OVERSCAN_MINIMUM_PX = 800
 export const DEFAULT_MASONRY_OVERSCAN_VIEWPORT_MULTIPLIER = 1.5
+
+export function resolveMasonryMinColumnWidth(
+  options: VibeMasonryOptions | undefined,
+): number {
+  return options?.minColumnWidth ?? DEFAULT_MASONRY_MIN_COLUMN_WIDTH
+}
 
 export function resolveMasonryOverscan(
   options: VibeMasonryOptions | undefined,
@@ -25,6 +33,13 @@ export function resolveMasonryOverscan(
 }
 
 export function validateMasonryOptions(options?: VibeMasonryOptions): void {
+  if (options?.minColumnWidth !== undefined
+    && (!Number.isFinite(options.minColumnWidth) || options.minColumnWidth <= 0)) {
+    throw new TypeError(
+      'Vibe masonry minColumnWidth must be a positive number.',
+    )
+  }
+
   const overscan = options?.overscan
   if (!overscan) return
 

@@ -6,6 +6,7 @@ import { ReelRemovalTransitionController } from './reelRemovalTransitionControll
 import type { VibeSurfaceExpose } from './feed'
 import type { VibeRuntimeState } from './runtime'
 import type { VibeItemId } from '../types'
+import type { VibeItemRemovalOptions } from './itemRemovalOptions'
 
 interface RemovalControllerOptions {
   historyLimit: number | undefined
@@ -61,7 +62,8 @@ export function createRemovalControllers(
       if (restoredForwardItem) options.onActivate(restoredForwardItem.postId)
     },
     prepareRemoval: (postIds) => reelRemoval.prepareItems(postIds),
-    startRemoval: (postIds) => options.surface()?.startItemRemoval(postIds) ?? 0,
+    startRemoval: (postIds, removalOptions?: VibeItemRemovalOptions) => options.surface()
+      ?.startItemRemoval(postIds, removalOptions) ?? 0,
     state: options.state,
   })
 

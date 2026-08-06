@@ -14,6 +14,7 @@ import type {
   VibeReelOrigin,
   VibeState,
 } from '../types'
+import type { VibeItemRemovalOptions } from './itemRemovalOptions'
 import type { VibeMasonryOptions } from './masonryOptions'
 import type { MediaPreviewState } from './mediaPreview'
 
@@ -77,7 +78,10 @@ export interface VibeSurfaceExpose {
   loadIfNearBottom: () => Promise<void>
   moveActiveReelPost: (direction: -1 | 1) => boolean
   navigateToReelItem: (target: VibeReelItemTarget) => VibeReelNavigationResult
-  startItemRemoval: (postIds: readonly VibeItemId[]) => number
+  startItemRemoval: (
+    postIds: readonly VibeItemId[],
+    options?: VibeItemRemovalOptions,
+  ) => number
   transitionActiveReelMedia: (direction: -1 | 1) => Promise<boolean>
   transitionActiveReelPost: (postId: VibeItemId) => Promise<boolean>
 }

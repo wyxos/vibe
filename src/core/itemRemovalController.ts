@@ -12,6 +12,7 @@ import type {
   VibeItemPlacement,
   VibeRemoval,
 } from '../types'
+import type { VibeItemRemovalOptions } from './itemRemovalOptions'
 
 const DEFAULT_REMOVAL_HISTORY_LIMIT = 20
 
@@ -24,7 +25,10 @@ interface ItemRemovalControllerOptions {
   ) => void
   onRemovalRestored: (removal: VibeRemoval) => void
   prepareRemoval: (postIds: readonly VibeItemId[]) => Promise<void>
-  startRemoval: (postIds: readonly VibeItemId[]) => number
+  startRemoval: (
+    postIds: readonly VibeItemId[],
+    options?: VibeItemRemovalOptions,
+  ) => number
   state: VibeRuntimeState
 }
 
@@ -58,7 +62,17 @@ export class ItemRemovalController {
     this.stopItemsWatcher()
   }
 
-  async remove(postIds: readonly VibeItemId[]): Promise<VibeRemoval> {
+  async remove(
+    postIds: readonly VibeItemId[],
+    options?: VibeItemRemovalOptions,
+  ): Promise<VibeRemoval> {
+    if (options?.staggerMs !== undefined
+      && (!Number.isFinite(options.staggerMs) || options.staggerMs < 0)) {
+      throw new TypeError(
+        'Vibe item removal staggerMs must be a non-negative number.',
+      )
+    }
+
     const placements = this.collectOrderedPlacements(postIds)
     const removal = this.createRemoval(placements)
     if (placements.length === 0) return removal
@@ -66,7 +80,7 @@ export class ItemRemovalController {
     const postIdsToRemove = placements.map(({ item }) => item.postId)
     await this.options.prepareRemoval(postIdsToRemove)
     if (this.metadata.get(removal)?.generation !== this.generation) return removal
-    const duration = this.options.startRemoval(postIdsToRemove)
+    const duration = this.options.startRemoval(postIdsToRemove, options)
     if (duration > 0) {
       await new Promise((resolve) => setTimeout(resolve, duration))
     }

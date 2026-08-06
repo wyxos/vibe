@@ -78,6 +78,26 @@ describe('calculated masonry layout', () => {
     expect(layout.height).toBe(696)
   })
 
+  it('uses a configured minimum column width across desktop widths', () => {
+    const mediaItems = Array.from({ length: 12 }, () => media(100, 100))
+
+    expect(calculateMasonryLayout(
+      mediaItems,
+      1_920,
+      { gap: 10, minColumnWidth: 240 },
+    ).columns).toBe(7)
+    expect(calculateMasonryLayout(
+      mediaItems,
+      1_920,
+      { gap: 10, minColumnWidth: 400 },
+    ).columns).toBe(4)
+    expect(calculateMasonryLayout(
+      mediaItems,
+      5_120,
+      { gap: 10, minColumnWidth: 400 },
+    ).columns).toBe(12)
+  })
+
   it('falls back to a square when dimensions are unavailable', () => {
     const layout = calculateMasonryLayout(
       [media(null, null)],

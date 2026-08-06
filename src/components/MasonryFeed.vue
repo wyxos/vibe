@@ -17,13 +17,15 @@ import {
   calculateVisibleMasonryIndices,
   type MasonryLayout,
 } from '../core/masonry'
-import { resolveMasonryOverscan } from '../core/masonryOptions'
+import {
+  resolveMasonryMinColumnWidth,
+  resolveMasonryOverscan,
+} from '../core/masonryOptions'
 import type { VibeItemId } from '../types'
 import GalleryScrollbar from './GalleryScrollbar.vue'
 import FeedFooter from './FeedFooter.vue'
 import MediaCard from './MediaCard.vue'
 
-const MIN_COLUMN_WIDTH = 240
 const MIN_GAP = 6
 const MAX_GAP = 12
 
@@ -64,7 +66,7 @@ const settledMasonryLayout = computed(() => calculateMasonryLayout(
     additionalHeight:
       (props.cardHeader?.height ?? 0) + (props.cardFooter?.height ?? 0),
     gap: masonryGap.value,
-    minColumnWidth: MIN_COLUMN_WIDTH,
+    minColumnWidth: resolveMasonryMinColumnWidth(props.masonry),
   },
 ))
 
@@ -82,7 +84,7 @@ const masonryLayout = computed<MasonryLayout>(() => {
       additionalHeight:
         (props.cardHeader?.height ?? 0) + (props.cardFooter?.height ?? 0),
       gap: masonryGap.value,
-      minColumnWidth: MIN_COLUMN_WIDTH,
+      minColumnWidth: resolveMasonryMinColumnWidth(props.masonry),
     },
   )
   const projectedPositions = new Map(

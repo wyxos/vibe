@@ -72,6 +72,7 @@ export type {
   VibeRoutingOptions,
   VibeState,
 } from './types'
+export type { VibeItemRemovalOptions } from './core/itemRemovalOptions'
 export type {
   VibeMasonryOptions,
   VibeMasonryOverscanOptions,

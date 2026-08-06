@@ -1,12 +1,20 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  DEFAULT_MASONRY_MIN_COLUMN_WIDTH,
+  resolveMasonryMinColumnWidth,
   resolveMasonryOverscan,
   validateMasonryOptions,
 } from '@/core/masonryOptions'
 import { createVibe } from '@/index'
 
 describe('masonry options', () => {
+  it('resolves an opt-in minimum column width without changing the default', () => {
+    expect(resolveMasonryMinColumnWidth(undefined))
+      .toBe(DEFAULT_MASONRY_MIN_COLUMN_WIDTH)
+    expect(resolveMasonryMinColumnWidth({ minColumnWidth: 400 })).toBe(400)
+  })
+
   it('preserves the existing uncapped overscan by default', () => {
     expect(resolveMasonryOverscan(undefined, 400)).toBe(800)
     expect(resolveMasonryOverscan(undefined, 1_000)).toBe(1_500)
@@ -26,6 +34,9 @@ describe('masonry options', () => {
   })
 
   it('rejects negative and inverted limits', () => {
+    expect(() => validateMasonryOptions({ minColumnWidth: 0 })).toThrow(
+      'Vibe masonry minColumnWidth must be a positive number.',
+    )
     expect(() => validateMasonryOptions({
       overscan: { viewportMultiplier: -1 },
     })).toThrow(
@@ -45,5 +56,9 @@ describe('masonry options', () => {
       masonry: { overscan: { maximumPx: -1 } },
       target,
     })).toThrow('Vibe masonry overscan maximumPx must be a non-negative number.')
+    expect(() => createVibe({
+      masonry: { minColumnWidth: Number.NaN },
+      target,
+    })).toThrow('Vibe masonry minColumnWidth must be a positive number.')
   })
 })

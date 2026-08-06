@@ -125,6 +125,7 @@ item and the same removal, restoration, reel, and pagination behavior:
 
 ```ts
 masonry: {
+  minColumnWidth: 400,
   overscan: {
     minimumPx: 600,
     viewportMultiplier: 0.5,
@@ -132,6 +133,9 @@ masonry: {
   },
 },
 ```
+
+`minColumnWidth` defaults to `240` CSS pixels. Raising it produces fewer,
+larger masonry columns without constraining the feed container.
 
 Low-priority images in that overscan window use native lazy loading, and
 low-priority masonry videos defer metadata until they reach the real viewport.

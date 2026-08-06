@@ -77,6 +77,8 @@ describe('item removal and restoration', () => {
     const thirdCardTarget = thirdCard.style.transform
     expect(secondCard.classList.contains('media-card--leaving')).toBe(true)
     expect(fourthCard.classList.contains('media-card--leaving')).toBe(true)
+    expect(secondCard.style.getPropertyValue('--masonry-entry-delay')).toBe('0ms')
+    expect(fourthCard.style.getPropertyValue('--masonry-entry-delay')).toBe('35ms')
     expect(secondCard.style.transform).not.toBe('translate3d(0px, 0px, 0)')
     expect(thirdCardTarget).toBe('translate3d(253px, 0px, 0)')
     expect(secondCard.getAttribute('aria-hidden')).toBe('true')
@@ -101,6 +103,42 @@ describe('item removal and restoration', () => {
       ?.classList.contains('media-card--entering')).toBe(true)
     expect(target.querySelector('[data-post-id="4"]')
       ?.classList.contains('media-card--entering')).toBe(true)
+  })
+
+  it('removes a coordinated batch without staggering visible cards', async () => {
+    instance = createVibe({
+      target,
+      initialPage: {
+        items: [item(1), item(2), item(3), item(4)],
+        next: null,
+      },
+    })
+    await instance.mount()
+
+    const removalPromise = instance.removeItems([2, 4], { staggerMs: 0 })
+    await flushPromises()
+
+    const secondCard = target.querySelector<HTMLElement>('[data-post-id="2"]')!
+    const fourthCard = target.querySelector<HTMLElement>('[data-post-id="4"]')!
+    expect(secondCard.style.getPropertyValue('--masonry-entry-delay')).toBe('0ms')
+    expect(fourthCard.style.getPropertyValue('--masonry-entry-delay')).toBe('0ms')
+
+    await vi.advanceTimersByTimeAsync(420)
+    await removalPromise
+    expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1, 3])
+  })
+
+  it('rejects invalid item-removal stagger values', async () => {
+    instance = createVibe({
+      target,
+      initialPage: { items: [item(1)], next: null },
+    })
+    await instance.mount()
+
+    await expect(instance.removeItems([1], { staggerMs: -1 })).rejects.toThrow(
+      'Vibe item removal staggerMs must be a non-negative number.',
+    )
+    expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1])
   })
 
   it('rejects invalid restore indexes without changing the field', async () => {

@@ -41,6 +41,7 @@ import type {
   VibeReelNavigationResult,
   VibeState,
 } from '../types'
+import type { VibeItemRemovalOptions } from './itemRemovalOptions'
 class VibeController implements VibeInstance {
   private app: App<Element> | null = null
   private readonly autoScroll: VibeAutoScrollController
@@ -168,9 +169,7 @@ class VibeController implements VibeInstance {
   removeMediaAnimated(target: VibeMediaTarget): Promise<VibeMediaRemoval | null> {
     return this.reelRemoval.prepareMedia(target).then(() => this.exactMediaRemoval.remove(target))
   }
-  removeItems(postIds: readonly VibeItemId[]): Promise<VibeRemoval> {
-    return this.itemRemoval.remove(postIds)
-  }
+  removeItems(postIds: readonly VibeItemId[], options?: VibeItemRemovalOptions): Promise<VibeRemoval> { return this.itemRemoval.remove(postIds, options) }
   restoreItems(placements: readonly VibeItemPlacement[]): void { this.itemRemoval.restoreItems(placements) }
   restoreMediaRemoval(removal: VibeMediaRemoval): boolean {
     return this.exactMediaRemoval.restore(removal)

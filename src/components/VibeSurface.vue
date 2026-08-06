@@ -22,6 +22,7 @@ import type {
   VibeReelItemTarget,
   VibeReelNavigationResult,
 } from '../types'
+import type { VibeItemRemovalOptions } from '../core/itemRemovalOptions'
 import FeedStatus from './FeedStatus.vue'
 import MasonryFeed from './MasonryFeed.vue'
 import ReelLayout from './ReelLayout.vue'
@@ -173,7 +174,10 @@ function findMasonryCard(postId: VibeItemId): HTMLElement | null {
   return Array.from(cards).find((card) => card.dataset.postId === String(postId)) ?? null
 }
 
-function startItemRemoval(postIds: readonly VibeItemId[]): number {
+function startItemRemoval(
+  postIds: readonly VibeItemId[],
+  options?: VibeItemRemovalOptions,
+): number {
   if (
     props.state.layout !== 'masonry'
     || props.state.reelOrigin !== null
@@ -185,15 +189,16 @@ function startItemRemoval(postIds: readonly VibeItemId[]): number {
   if (visiblePostIds.length === 0) return 0
 
   const nextDelays = new Map(removalDelays.value)
+  const staggerMs = options?.staggerMs ?? ENTRY_STAGGER_MS
   visiblePostIds.forEach((postId, index) => {
-    nextDelays.set(postId, index * ENTRY_STAGGER_MS)
+    nextDelays.set(postId, index * staggerMs)
   })
   enteringPostIds.value = new Set(
     [...enteringPostIds.value].filter((postId) => !visiblePostIds.includes(postId)),
   )
   leavingPostIds.value = new Set([...leavingPostIds.value, ...removalPostIds])
   removalDelays.value = nextDelays
-  return ITEM_MOTION_MS + ((visiblePostIds.length - 1) * ENTRY_STAGGER_MS)
+  return ITEM_MOTION_MS + ((visiblePostIds.length - 1) * staggerMs)
 }
 
 function focusMasonryCard(postId: VibeItemId, showFocusRing: boolean): void {

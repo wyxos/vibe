@@ -25,7 +25,7 @@ const vibe = createVibe(options)
 | `onMediaReady` | `(context: VibeMediaLifecycleContext) => void` | — | Runs when an image loads or a video has enough metadata to render. |
 | `onReelMediaChange` | `(context: VibeMediaLifecycleContext) => void` | — | Runs for the initial reel selection and each parent, nested, or single-item media change. |
 | `onStateChange` | `(state: VibeState) => void` | — | Receives the initial state and every public state change. |
-| `masonry` | `VibeMasonryOptions` | Current behavior | Optionally tunes the virtualized masonry overscan window. |
+| `masonry` | `VibeMasonryOptions` | Current behavior | Optionally tunes masonry column width and the virtualized overscan window. |
 | `removalHistoryLimit` | `number` | `20` | Maximum recent removal transactions retained for `undoLastRemoval()`; use `0` to disable automatic history. |
 | `removalReconciliation` | `VibeRemovalReconciliationOptions` | — | Replays recent provider pages whose unique surviving contribution is below configured capacity. |
 
@@ -106,6 +106,10 @@ Region-specific `mediaCard` backgrounds take precedence over the legacy
 
 ## Masonry virtualization
 
+`masonry.minColumnWidth` controls calculated masonry density and defaults to
+`240` CSS pixels. Raising it produces fewer, larger columns while leaving the
+feed container responsive.
+
 `masonry.overscan` controls how far beyond the real viewport Vibe keeps
 masonry cards mounted. `minimumPx` defaults to `800` and
 `viewportMultiplier` defaults to `1.5`, preserving the existing behavior.
@@ -115,6 +119,7 @@ reel navigation, or pagination:
 
 ```ts
 masonry: {
+  minColumnWidth: 400,
   overscan: {
     minimumPx: 600,
     viewportMultiplier: 0.5,

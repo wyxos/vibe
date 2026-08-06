@@ -23,7 +23,7 @@ feed-owned fill, autofill, error, and removal-history state before loading.
 
 | Method | Purpose |
 | --- | --- |
-| `removeItems(postIds)` | Animates loaded items out, removes them, records the transaction, and resolves with a `VibeRemoval`. |
+| `removeItems(postIds, options?)` | Animates loaded items out, removes them, records the transaction, and resolves with a `VibeRemoval`. |
 | `removeMediaAnimated(target)` | Advances an active reel through Vibe's media/post transition, then removes the exact media and resolves with a `VibeMediaRemoval`. |
 | `removeMedia(target)` | Removes exact media immediately and returns a `VibeMediaRemoval`. |
 | `restoreMediaRemoval(removal)` | Restores an exact-media removal at its original group and media position. |
@@ -42,6 +42,10 @@ const removal = await vibe.removeItems(['post-12', 'post-18'])
 // Restores this transaction even if later removals happened.
 vibe.restoreRemoval(removal)
 ```
+
+Multi-item removals retain Vibe's 35ms visible-card stagger by default. Pass
+`{ staggerMs: 0 }` when a coordinated batch should begin exiting in the same
+frame. The value must be a non-negative number.
 
 For a conventional latest-action undo:
 
