@@ -48,6 +48,7 @@ const masonryWidth = shallowRef(0)
 const masonryGap = shallowRef(MIN_GAP)
 const galleryScrollTop = shallowRef(0)
 const galleryViewportHeight = shallowRef(0)
+const galleryContentHeight = shallowRef(0)
 const masonryContentTop = shallowRef(0)
 let masonryResizeObserver: ResizeObserver | null = null
 let galleryResizeObserver: ResizeObserver | null = null
@@ -98,10 +99,15 @@ const masonryLayout = computed<MasonryLayout>(() => {
   }
 })
 
-const masonryStyle = computed<CSSProperties>(() => ({
-  height: `${props.leavingPostIds.size === 0
+const effectiveMasonryHeight = computed(() => Math.max(
+  galleryContentHeight.value,
+  props.leavingPostIds.size === 0
     ? masonryLayout.value.height
-    : settledMasonryLayout.value.height}px`,
+    : settledMasonryLayout.value.height,
+))
+
+const masonryStyle = computed<CSSProperties>(() => ({
+  height: `${effectiveMasonryHeight.value}px`,
 }))
 
 const showLoadMore = computed(() => (
@@ -195,7 +201,10 @@ function itemStyle(index: number): CSSProperties {
   const leaving = postId !== undefined && props.leavingPostIds.has(postId)
   const entryOffset = entering || leaving
     ? calculateMasonryEntryOffset({
-        containerHeight: settledMasonryLayout.value.height,
+        containerHeight: Math.max(
+          galleryContentHeight.value,
+          settledMasonryLayout.value.height,
+        ),
         gap: masonryGap.value,
       })
     : 0
@@ -221,6 +230,10 @@ function measureViewport(): void {
 
   galleryScrollTop.value = gallery.scrollTop
   galleryViewportHeight.value = gallery.clientHeight
+  const styles = gallery.ownerDocument.defaultView?.getComputedStyle(gallery)
+  const verticalPadding = (Number.parseFloat(styles?.paddingTop ?? '') || 0)
+    + (Number.parseFloat(styles?.paddingBottom ?? '') || 0)
+  galleryContentHeight.value = Math.max(0, gallery.clientHeight - verticalPadding)
 
   const masonry = masonryElement.value
   if (!masonry) return

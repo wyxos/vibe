@@ -88,6 +88,7 @@ describe('MasonryFeed', () => {
     const wrapper = mount(MasonryFeed, { props: props(items) })
     await wrapper.vm.$nextTick()
 
+    await wrapper.vm.$nextTick()
     const masonry = wrapper.get('.masonry')
     expect(wrapper.findAll('.masonry-item').length).toBeGreaterThan(0)
     expect(wrapper.findAll('.masonry-item').length).toBeLessThan(100)
@@ -200,6 +201,7 @@ describe('MasonryFeed', () => {
     const wrapper = mount(MasonryFeed, { props: props(items) })
     await wrapper.vm.$nextTick()
 
+    await wrapper.vm.$nextTick()
     const cards = wrapper.findAll('.masonry-item')
     expect(cards.map((card) => (
       (card.element as HTMLElement).style.getPropertyValue('--masonry-entry-delay')
@@ -218,6 +220,28 @@ describe('MasonryFeed', () => {
     await wrapper.setProps({ enteringPostIds: new Set<number>() })
     expect((firstCard.element as HTMLElement).style.transform)
       .toBe('translate3d(0px, 0px, 0)')
+  })
+
+  it('fills the available viewport and uses it for short-feed motion', async () => {
+    galleryClientHeight = 900
+    galleryScrollHeight = 900
+    const items = [feedItem(1), feedItem(2), feedItem(3)]
+    const wrapper = mount(MasonryFeed, { props: props(items) })
+    await wrapper.vm.$nextTick()
+
+    await wrapper.vm.$nextTick()
+    const masonryHeight = Number.parseFloat(
+      (wrapper.get('.masonry').element as HTMLElement).style.height,
+    )
+    const firstCard = wrapper.get('[data-post-id="1"]')
+    const offset = Number.parseFloat(
+      (firstCard.element as HTMLElement).style.transform.match(/, ([\d.]+)px,/)?.[1] ?? '0',
+    )
+
+    expect(masonryHeight).toBe(900)
+    expect(offset).toBeGreaterThan(masonryHeight)
+    expect(wrapper.get('.gallery-shell').element.scrollHeight)
+      .toBe(wrapper.get('.gallery-shell').element.clientHeight)
   })
 
   it('moves retained items while removed items reverse their entry motion', async () => {
@@ -248,6 +272,7 @@ describe('MasonryFeed', () => {
       leavingPostIds: new Set([1]),
       removalDelays: new Map([[1, 0]]),
     })
+    await wrapper.vm.$nextTick()
 
     expect((leavingCard.element as HTMLElement).style.transform)
       .not.toBe(leavingStart)
