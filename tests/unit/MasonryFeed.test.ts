@@ -105,6 +105,31 @@ describe('MasonryFeed', () => {
     expect(wrapper.findAll('.masonry-item').length).toBeLessThan(100)
   })
 
+  it('supports an opt-in capped overscan without changing the default window', async () => {
+    const items = Array.from({ length: 5000 }, (_, index) => feedItem(index + 1))
+    const defaultWrapper = mount(MasonryFeed, { props: props(items) })
+    const cappedWrapper = mount(MasonryFeed, {
+      props: {
+        ...props(items),
+        masonry: {
+          overscan: {
+            maximumPx: 100,
+            minimumPx: 100,
+            viewportMultiplier: 0,
+          },
+        },
+      },
+    })
+    await defaultWrapper.vm.$nextTick()
+    await cappedWrapper.vm.$nextTick()
+
+    const defaultCount = defaultWrapper.findAll('.masonry-item').length
+    const cappedCount = cappedWrapper.findAll('.masonry-item').length
+    expect(cappedCount).toBeGreaterThan(0)
+    expect(cappedCount).toBeLessThan(defaultCount)
+    expect(cappedWrapper.find('[data-post-id="1"]').exists()).toBe(true)
+  })
+
   it('renders a fixed overlay thumb from native scroll geometry', async () => {
     const wrapper = mount(MasonryFeed, { props: props([feedItem(1), feedItem(2)]) })
     await wrapper.vm.$nextTick()
@@ -201,6 +226,13 @@ describe('MasonryFeed', () => {
       props: {
         ...props(items),
         enteringPostIds: new Set<number>(),
+        masonry: {
+          overscan: {
+            maximumPx: 1_000,
+            minimumPx: 600,
+            viewportMultiplier: 0.5,
+          },
+        },
       },
     })
     await wrapper.vm.$nextTick()

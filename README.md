@@ -119,6 +119,24 @@ active again. Set `mediaCard.videoMuted` to explicitly override the initial
 state in either layout. Users can still change mute and volume through the
 timed-media controls.
 
+Masonry virtualization keeps the existing 800px/1.5-viewport overscan by
+default. Consumers can opt into a capped window while retaining every loaded
+item and the same removal, restoration, reel, and pagination behavior:
+
+```ts
+masonry: {
+  overscan: {
+    minimumPx: 600,
+    viewportMultiplier: 0.5,
+    maximumPx: 1_000,
+  },
+},
+```
+
+Low-priority images in that overscan window use native lazy loading, and
+low-priority masonry videos defer metadata until they reach the real viewport.
+Reel preload behavior remains unchanged.
+
 When a feed item has entries in `item.items`, Vibe treats the parent media as
 position one and the nested entries as the remaining positions. Masonry cards
 show looping previous/next controls on hover or keyboard focus. Reel layout

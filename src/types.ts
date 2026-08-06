@@ -68,7 +68,6 @@ export interface VibeReelForwardState {
   error: unknown | null
   status: VibeReelForwardStatus
 }
-
 export interface VibePreview {
   src: string
   width: number | null
@@ -423,6 +422,7 @@ export interface CreateVibeOptions {
   initialPage?: VibeInitialPage
   loadPage?: VibePageLoader
   mediaCard?: VibeMediaCardOptions
+  masonry?: import('./core/masonryOptions').VibeMasonryOptions
   onMediaReady?: (context: VibeMediaLifecycleContext) => void
   onMediaVisible?: (context: VibeMediaLifecycleContext) => void
   onReelMediaChange?: (context: VibeMediaLifecycleContext) => void

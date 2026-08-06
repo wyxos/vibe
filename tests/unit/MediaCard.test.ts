@@ -55,6 +55,49 @@ describe('MediaCard', () => {
     vi.restoreAllMocks()
   })
 
+  it('lazily loads low-priority masonry images without changing reel loading', async () => {
+    const wrapper = mount(MediaCard, {
+      props: {
+        ...props(),
+        fetchPriority: 'low',
+        layout: 'masonry',
+      },
+    })
+
+    expect(wrapper.get('img').attributes('loading')).toBe('lazy')
+    await wrapper.setProps({ fetchPriority: 'high' })
+    expect(wrapper.get('img').attributes('loading')).toBe('eager')
+    await wrapper.setProps({ fetchPriority: 'low', layout: 'reel' })
+    expect(wrapper.get('img').attributes('loading')).toBe('eager')
+  })
+
+  it('defers low-priority masonry video metadata until it reaches the viewport', async () => {
+    const load = vi.spyOn(HTMLMediaElement.prototype, 'load')
+      .mockImplementation(() => undefined)
+    const wrapper = mount(MediaCard, {
+      props: {
+        ...props(),
+        active: false,
+        fetchPriority: 'low',
+        item: {
+          postId: 11,
+          ...videoAsset('11'),
+          items: [],
+        },
+        layout: 'masonry',
+      },
+    })
+
+    expect(wrapper.get('video').attributes('preload')).toBe('none')
+    await wrapper.setProps({ fetchPriority: 'high' })
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('video').attributes('preload')).toBe('auto')
+    expect(load).toHaveBeenCalledOnce()
+
+    await wrapper.setProps({ fetchPriority: 'low', layout: 'reel' })
+    expect(wrapper.get('video').attributes('preload')).toBe('metadata')
+  })
+
   it('clears the card backdrop behind transparent chrome regions', async () => {
     const Region = markRaw(defineComponent(() => (
       () => h('span', 'Region')

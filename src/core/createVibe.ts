@@ -60,7 +60,6 @@ class VibeController implements VibeInstance {
   private stopStateWatcher: WatchHandle | null = null
   private lastLoadedCursor: VibeCursor = null
   private readonly state: VibeRuntimeState
-
   constructor(private readonly options: CreateVibeOptions) {
     validateOptions(options)
     const layoutMode = options.layout ?? 'masonry'
@@ -118,6 +117,7 @@ class VibeController implements VibeInstance {
       feedFooter: this.options.feedFooter,
       feedFooterActions: createFeedFooterActions(this),
       mediaCard: this.options.mediaCard,
+      masonry: this.options.masonry,
       onMediaReady: this.options.onMediaReady,
       onMediaVisible: this.options.onMediaVisible,
       onReelMediaChange: this.options.onReelMediaChange,

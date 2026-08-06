@@ -14,6 +14,7 @@ import type {
   VibeReelOrigin,
   VibeState,
 } from '../types'
+import type { VibeMasonryOptions } from './masonryOptions'
 import type { MediaPreviewState } from './mediaPreview'
 
 export interface FeedRendererProps {
@@ -40,6 +41,7 @@ export interface MasonryFeedProps extends FeedRendererProps {
   entryDelays: ReadonlyMap<VibeItemId, number>
   leavingPostIds?: ReadonlySet<VibeItemId>
   removalDelays?: ReadonlyMap<VibeItemId, number>
+  masonry?: VibeMasonryOptions
   suspended?: boolean
 }
 

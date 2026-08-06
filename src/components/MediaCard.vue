@@ -20,7 +20,6 @@ import {
   mediaErrorStatus,
   type MediaPreviewState,
 } from '../core/mediaPreview'
-import { isTimedMediaSource } from '../core/mediaType'
 import type {
   VibeCardRegion,
   VibeItem,
@@ -31,6 +30,7 @@ import type {
 import CardRegion from './CardRegion.vue'
 import MediaControls from './MediaControls.vue'
 import { useReelVideoActivity } from './useReelVideoActivity'
+import { useMediaLoading } from './useMediaLoading'
 
 const props = defineProps<{
   active?: boolean
@@ -202,7 +202,7 @@ function onMediaTouchEnd(event: TouchEvent): void {
   changeMedia(normalizedMediaIndex.value + Math.sign(deltaX))
 }
 
-const mediaIsTimed = computed(() => isTimedMediaSource(mediaSrc.value))
+const { imageLoading, mediaIsTimed, videoPreload } = useMediaLoading({ fetchPriority: () => props.fetchPriority, layout: () => props.layout, mediaSource: () => mediaSrc.value, videoElement })
 const usesStationaryReelControls = computed(() => (
   props.layout === 'reel' && props.stationaryReelControls === true
 ))
@@ -389,7 +389,7 @@ onBeforeUnmount(() => {
               :loop="!advanceOnMediaEnd"
               :muted="effectiveVideoMuted"
               playsinline
-              :preload="fetchPriority === 'high' ? 'auto' : 'metadata'"
+              :preload="videoPreload"
               @loadedmetadata="onVideoLoadedMetadata"
               @durationchange="syncVideoState"
               @timeupdate="syncVideoState"
@@ -411,7 +411,7 @@ onBeforeUnmount(() => {
               :fetchpriority="fetchPriority"
               alt=""
               decoding="async"
-              loading="eager"
+              :loading="imageLoading"
               @load="$emit('ready', normalizedMediaIndex)"
               @error="$emit('error', normalizedMediaIndex)"
             >

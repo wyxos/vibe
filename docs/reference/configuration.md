@@ -25,6 +25,7 @@ const vibe = createVibe(options)
 | `onMediaReady` | `(context: VibeMediaLifecycleContext) => void` | — | Runs when an image loads or a video has enough metadata to render. |
 | `onReelMediaChange` | `(context: VibeMediaLifecycleContext) => void` | — | Runs for the initial reel selection and each parent, nested, or single-item media change. |
 | `onStateChange` | `(state: VibeState) => void` | — | Receives the initial state and every public state change. |
+| `masonry` | `VibeMasonryOptions` | Current behavior | Optionally tunes the virtualized masonry overscan window. |
 | `removalHistoryLimit` | `number` | `20` | Maximum recent removal transactions retained for `undoLastRemoval()`; use `0` to disable automatic history. |
 | `removalReconciliation` | `VibeRemovalReconciliationOptions` | — | Replays recent provider pages whose unique surviving contribution is below configured capacity. |
 
@@ -102,6 +103,29 @@ more fallback when infinite scrolling is disabled or the feed is too short to sc
 `paddingY`. Numeric spacing values are CSS pixels and must be non-negative.
 Region-specific `mediaCard` backgrounds take precedence over the legacy
 `cardHeader.background` and `cardFooter.background` values.
+
+## Masonry virtualization
+
+`masonry.overscan` controls how far beyond the real viewport Vibe keeps
+masonry cards mounted. `minimumPx` defaults to `800` and
+`viewportMultiplier` defaults to `1.5`, preserving the existing behavior.
+Omit `maximumPx` to keep that window uncapped. Consumers can opt into a smaller,
+capped window without changing the loaded feed, item ordering, removal motion,
+reel navigation, or pagination:
+
+```ts
+masonry: {
+  overscan: {
+    minimumPx: 600,
+    viewportMultiplier: 0.5,
+    maximumPx: 1_000,
+  },
+},
+```
+
+Images mounted only in the overscan window use native lazy loading. Masonry
+videos defer metadata until they enter the real viewport. Active viewport media
+remains high priority, and reel preload behavior is unchanged.
 
 ## State changes
 

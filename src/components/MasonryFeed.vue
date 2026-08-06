@@ -17,6 +17,7 @@ import {
   calculateVisibleMasonryIndices,
   type MasonryLayout,
 } from '../core/masonry'
+import { resolveMasonryOverscan } from '../core/masonryOptions'
 import type { VibeItemId } from '../types'
 import GalleryScrollbar from './GalleryScrollbar.vue'
 import FeedFooter from './FeedFooter.vue'
@@ -25,8 +26,6 @@ import MediaCard from './MediaCard.vue'
 const MIN_COLUMN_WIDTH = 240
 const MIN_GAP = 6
 const MAX_GAP = 12
-const VIRTUAL_OVERSCAN_MIN = 800
-const VIRTUAL_OVERSCAN_FACTOR = 1.5
 
 const props = withDefaults(defineProps<MasonryFeedProps>(), {
   leavingPostIds: () => new Set(),
@@ -135,9 +134,9 @@ const viewportIndices = computed(() => {
 })
 
 const visibleItems = computed(() => {
-  const overscan = Math.max(
-    VIRTUAL_OVERSCAN_MIN,
-    galleryViewportHeight.value * VIRTUAL_OVERSCAN_FACTOR,
+  const overscan = resolveMasonryOverscan(
+    props.masonry,
+    galleryViewportHeight.value,
   )
   const viewport = {
     scrollTop: galleryScrollTop.value - masonryContentTop.value,

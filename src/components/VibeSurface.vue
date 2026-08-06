@@ -9,6 +9,7 @@ import {
 } from 'vue'
 import { clampMediaIndex, mediaAssets } from '../core/mediaAsset'
 import type { FeedRendererExpose } from '../core/feed'
+import type { VibeMasonryOptions } from '../core/masonryOptions'
 import { snapshotState, type VibeRuntimeState } from '../core/runtime'
 import type {
   VibeCardRegion,
@@ -37,6 +38,7 @@ const props = defineProps<{
   feedFooter?: VibeFeedFooter
   feedFooterActions: VibeFeedFooterActions
   mediaCard?: VibeMediaCardOptions
+  masonry?: VibeMasonryOptions
   reelInfoSheet?: VibeReelInfoSheetOptions
   state: VibeRuntimeState
 }>()
@@ -365,6 +367,7 @@ defineExpose({
         :feed-footer="feedFooter"
         :feed-footer-actions="feedFooterActions"
         :media-card="mediaCard"
+        :masonry="masonry"
         :has-next="state.next !== null"
         :infinite-scroll="state.infiniteScroll"
         :is-loading-more="state.isLoadingMore"

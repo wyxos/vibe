@@ -72,3 +72,7 @@ export type {
   VibeRoutingOptions,
   VibeState,
 } from './types'
+export type {
+  VibeMasonryOptions,
+  VibeMasonryOverscanOptions,
+} from './core/masonryOptions'

@@ -1,6 +1,7 @@
 import { validateAutofillOptions } from './autofill'
 import { validateAutoScrollOptions } from './autoScroll'
 import { validateFillOptions } from './fill'
+import { validateMasonryOptions } from './masonryOptions'
 import { validateReelAutoAdvanceOptions } from './reelAutoAdvance'
 import type {
   CreateVibeOptions,
@@ -57,6 +58,7 @@ export function validateOptions(options: CreateVibeOptions): void {
   validateCardChromeStyle('footer', options.mediaCard?.footer)
   validateAutofillOptions(options.autofill)
   validateFillOptions(options.fill)
+  validateMasonryOptions(options.masonry)
   validateReelAutoAdvanceOptions(options.reelAutoAdvance)
 
   if (options.removalReconciliation) {
