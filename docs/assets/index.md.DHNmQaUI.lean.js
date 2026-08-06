@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as n,a2 as t}from"./chunks/framework.-gsMhh7K.js";const g=JSON.parse('{"title":"Getting started","description":"","frontmatter":{},"headers":[],"relativePath":"index.md","filePath":"index.md"}'),e={name:"index.md"};function l(h,s,p,k,d,r){return a(),n("div",null,[...s[0]||(s[0]=[t("",17)])])}const o=i(e,[["render",l]]);export{g as __pageData,o as default};
