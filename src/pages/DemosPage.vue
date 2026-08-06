@@ -48,6 +48,12 @@ const emit = defineEmits<{
       </RouterLink>
       <RouterLink
         class="demos-aside-link"
+        to="/demos/masonry-performance"
+      >
+        Masonry performance
+      </RouterLink>
+      <RouterLink
+        class="demos-aside-link"
         to="/demos/item-removal"
       >
         Item removal

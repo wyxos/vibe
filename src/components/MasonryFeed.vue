@@ -14,9 +14,12 @@ import { mediaStateKey } from '../core/mediaAsset'
 import {
   calculateMasonryEntryOffset,
   calculateMasonryLayout,
-  calculateVisibleMasonryIndices,
   type MasonryLayout,
 } from '../core/masonry'
+import {
+  createMasonryViewportIndex,
+  queryMasonryViewportIndex,
+} from '../core/masonryViewportIndex'
 import {
   resolveMasonryMinColumnWidth,
   resolveMasonryOverscan,
@@ -70,15 +73,14 @@ const settledMasonryLayout = computed(() => calculateMasonryLayout(
   },
 ))
 
-const masonryLayout = computed<MasonryLayout>(() => {
-  const settledLayout = settledMasonryLayout.value
-  if (props.leavingPostIds.size === 0) return settledLayout
+const projectedMasonry = computed(() => {
+  if (props.leavingPostIds.size === 0) return null
 
-  const retainedItems = props.items.filter(
-    (item) => !props.leavingPostIds.has(item.postId),
-  )
-  const projectedLayout = calculateMasonryLayout(
-    retainedItems,
+  const retained = props.items.flatMap((item, index) => (
+    props.leavingPostIds.has(item.postId) ? [] : [{ index, item }]
+  ))
+  const layout = calculateMasonryLayout(
+    retained.map(({ item }) => item),
     masonryWidth.value,
     {
       additionalHeight:
@@ -87,21 +89,40 @@ const masonryLayout = computed<MasonryLayout>(() => {
       minColumnWidth: resolveMasonryMinColumnWidth(props.masonry),
     },
   )
-  const projectedPositions = new Map(
-    retainedItems.map((item, index) => [
-      item.postId,
-      projectedLayout.items[index]!,
-    ]),
-  )
 
   return {
-    ...projectedLayout,
+    indices: retained.map(({ index }) => index),
+    layout,
+    positions: new Map(retained.map(({ item }, index) => [
+      item.postId,
+      layout.items[index]!,
+    ])),
+  }
+})
+
+const masonryLayout = computed<MasonryLayout>(() => {
+  const settledLayout = settledMasonryLayout.value
+  const projected = projectedMasonry.value
+  if (!projected) return settledLayout
+
+  return {
+    ...projected.layout,
     items: props.items.map((item, index) => (
       props.leavingPostIds.has(item.postId)
         ? settledLayout.items[index]!
-        : projectedPositions.get(item.postId) ?? settledLayout.items[index]!
+        : projected.positions.get(item.postId) ?? settledLayout.items[index]!
     )),
   }
+})
+
+const settledViewportIndex = computed(() => createMasonryViewportIndex(
+  settledMasonryLayout.value.items,
+))
+const projectedViewportIndex = computed(() => {
+  const projected = projectedMasonry.value
+  return projected
+    ? createMasonryViewportIndex(projected.layout.items, projected.indices)
+    : null
 })
 
 const effectiveMasonryHeight = computed(() => Math.max(
@@ -156,16 +177,17 @@ function calculateIndexSnapshot(overscan: number): number[] {
     scrollTop: galleryScrollTop - masonryContentTop.value,
     viewportHeight: galleryViewportHeight.value,
   }
-  const target = calculateVisibleMasonryIndices(
-    masonryLayout.value.items,
+  const projected = projectedViewportIndex.value
+  const target = queryMasonryViewportIndex(
+    projected ?? settledViewportIndex.value,
     { ...viewport, overscan },
-  )
+  ).indices
   const settled = props.leavingPostIds.size === 0
     ? []
-    : calculateVisibleMasonryIndices(
-        settledMasonryLayout.value.items,
+    : queryMasonryViewportIndex(
+        settledViewportIndex.value,
         { ...viewport, overscan },
-      )
+      ).indices
 
   return mergeOrderedIndices(target, settled)
 }

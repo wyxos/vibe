@@ -57,7 +57,10 @@ const fillDelay = computed(() => (
   delayLabel(vibeState.value?.fill.delayRemainingMs)
 ))
 
-const isAutoScrollDemo = computed(() => route.name === 'demo-auto-scroll')
+const isAutoScrollDemo = computed(() => [
+  'demo-auto-scroll',
+  'demo-masonry-performance',
+].includes(String(route.name)))
 const isReelAutoAdvanceDemo = computed(() => route.name === 'demo-reel-auto-advance')
 const isReelInfoSheetDemo = computed(() => route.name === 'demo-reel-info-sheet')
 const isRemovalReconciliationDemo = computed(() => (

@@ -16,6 +16,7 @@ import FillFrontendDemoPage from './pages/FillFrontendDemoPage.vue'
 import ItemRemovalDemoPage from './pages/ItemRemovalDemoPage.vue'
 import ItemRemovalReconciliationDemoPage from './pages/ItemRemovalReconciliationDemoPage.vue'
 import MediaVisibilityDemoPage from './pages/MediaVisibilityDemoPage.vue'
+import MasonryPerformanceDemoPage from './pages/MasonryPerformanceDemoPage.vue'
 import ReelUrlDemoPage from './pages/ReelUrlDemoPage.vue'
 import ReelAutoAdvanceDemoPage from './pages/ReelAutoAdvanceDemoPage.vue'
 import ReelInfoSheetDemoPage from './pages/ReelInfoSheetDemoPage.vue'
@@ -53,6 +54,11 @@ export function createDemoRouter(
             path: 'media-visibility',
             name: 'demo-media-visibility',
             component: MediaVisibilityDemoPage,
+          },
+          {
+            path: 'masonry-performance',
+            name: 'demo-masonry-performance',
+            component: MasonryPerformanceDemoPage,
           },
           {
             path: 'reel-url',
