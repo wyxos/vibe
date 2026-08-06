@@ -34,6 +34,7 @@ const emptyGeometry: ScrollbarGeometry = {
 
 const trackElement = shallowRef<HTMLElement | null>(null)
 const geometry = shallowRef<ScrollbarGeometry>(emptyGeometry)
+const thumbOffset = shallowRef(0)
 const isDragging = shallowRef(false)
 const isInteracting = shallowRef(false)
 const isReady = shallowRef(false)
@@ -41,6 +42,7 @@ let dragPointerId: number | null = null
 let dragStartPosition = 0
 let dragStartScrollPosition = 0
 let interactionTimer: ReturnType<typeof setTimeout> | null = null
+let lastInteractionAt = 0
 let readyFrame: number | null = null
 let contentMutationObserver: MutationObserver | null = null
 let contentResizeObserver: ResizeObserver | null = null
@@ -51,18 +53,26 @@ const isVisible = computed(() => geometry.value.scrollable && !props.suspended)
 
 const thumbStyle = computed<CSSProperties>(() => ({
   height: `${geometry.value.thumbSize}px`,
-  transform: `translate3d(0, ${geometry.value.thumbOffset}px, 0)`,
+  transform: `translate3d(0, ${thumbOffset.value}px, 0)`,
 }))
 
 function releaseInteractionSoon(): void {
-  if (interactionTimer !== null) clearTimeout(interactionTimer)
-  interactionTimer = setTimeout(() => {
+  if (interactionTimer !== null || isDragging.value) return
+  const release = (): void => {
     interactionTimer = null
-    if (!isDragging.value) isInteracting.value = false
-  }, INTERACTION_RELEASE_MS)
+    if (isDragging.value) return
+    const remaining = INTERACTION_RELEASE_MS - (Date.now() - lastInteractionAt)
+    if (remaining > 0) {
+      interactionTimer = setTimeout(release, remaining)
+      return
+    }
+    isInteracting.value = false
+  }
+  interactionTimer = setTimeout(release, INTERACTION_RELEASE_MS)
 }
 
 function markInteraction(): void {
+  lastInteractionAt = Date.now()
   isInteracting.value = true
   releaseInteractionSoon()
 }
@@ -81,27 +91,35 @@ function calculateGeometry(): ScrollbarGeometry {
   })
 }
 
+function updateThumbOffset(): void {
+  const scrollElement = props.scrollElement
+  const current = geometry.value
+  if (!scrollElement || current.maximumScrollPosition <= 0) {
+    if (thumbOffset.value !== 0) thumbOffset.value = 0
+    return
+  }
+  const progress = Math.min(
+    1,
+    Math.max(0, scrollElement.scrollTop / current.maximumScrollPosition),
+  )
+  const nextOffset = current.thumbTravel * progress
+  if (thumbOffset.value !== nextOffset) thumbOffset.value = nextOffset
+}
+
 function measure(reason: 'content' | 'resize' | 'scroll'): void {
   if (isDragging.value && reason !== 'scroll') {
     pendingMeasurement = true
     return
   }
 
-  if (isDragging.value) {
-    const scrollElement = props.scrollElement
-    if (!scrollElement || geometry.value.maximumScrollPosition <= 0) return
-    const progress = Math.min(
-      1,
-      Math.max(0, scrollElement.scrollTop / geometry.value.maximumScrollPosition),
-    )
-    geometry.value = {
-      ...geometry.value,
-      thumbOffset: geometry.value.thumbTravel * progress,
-    }
+  if (reason === 'scroll') {
+    updateThumbOffset()
     return
   }
 
-  geometry.value = calculateGeometry()
+  const nextGeometry = calculateGeometry()
+  geometry.value = nextGeometry
+  thumbOffset.value = nextGeometry.thumbOffset
   if (isReady.value || readyFrame !== null) return
   readyFrame = requestAnimationFrame(() => {
     readyFrame = null
@@ -148,9 +166,7 @@ function onThumbPointerDown(event: PointerEvent): void {
   dragStartPosition = event.clientY
   dragStartScrollPosition = props.scrollElement?.scrollTop ?? 0
   isDragging.value = true
-  isInteracting.value = true
-  if (interactionTimer !== null) clearTimeout(interactionTimer)
-  interactionTimer = null
+  markInteraction()
 }
 
 function onThumbPointerMove(event: PointerEvent): void {
@@ -174,6 +190,7 @@ function finishDragging(event: PointerEvent): void {
     pendingMeasurement = false
     measure('content')
   }
+  lastInteractionAt = Date.now()
   releaseInteractionSoon()
 }
 
