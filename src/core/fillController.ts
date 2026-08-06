@@ -8,11 +8,12 @@ import {
   createFillState,
   isFillActive,
   type FrontendFillCollection,
+  type FrontendFillProgress,
   validateFillTarget,
 } from './fill'
 import { appendUniqueItems } from './page'
 import type { LoadedPageRecord } from './page'
-import { RequestDelayCountdown } from './requestDelay'
+import { RequestDelayCountdown, type RequestDelaySnapshot } from './requestDelay'
 import type { VibeRuntimeState } from './runtime'
 import type {
   VibeBackendFillUpdate,
@@ -27,9 +28,22 @@ import type {
 interface FillControllerOptions {
   fill?: VibeFillOptions
   loadPage?: VibePageLoader
+  needsFrontendPreparation?: () => boolean
   onLastCursor: (cursor: VibeCursor) => void
   onPages: (pages: readonly LoadedPageRecord[]) => void
+  prepareFrontend?: (context: {
+    isCurrent: () => boolean
+    onDelayChange: (snapshot: RequestDelaySnapshot) => void
+    signal: AbortSignal
+  }) => Promise<'complete' | 'paused' | 'skipped'>
   state: VibeRuntimeState
+}
+
+interface FillStartOptions {
+  cycleId?: string
+  prepareFrontend?: boolean
+  progressOffset?: Pick<FrontendFillProgress, 'completedPages' | 'received'>
+  target?: VibeFillTarget
 }
 
 export class VibeFillController {
@@ -72,21 +86,29 @@ export class VibeFillController {
     return restored
   }
 
-  async start(targetValue: VibeFillTarget): Promise<void> {
+  async start(
+    targetValue: VibeFillTarget,
+    startOptions: FillStartOptions = {},
+  ): Promise<void> {
     const fillOptions = this.options.fill
     if (!fillOptions) throw new Error('Vibe fill is not configured.')
     if (this.isActive()) throw new Error('Vibe fill is already active.')
 
     const target = validateFillTarget(targetValue)
-    const cycleId = `vibe-fill-${Date.now().toString(36)}-${++this.cycle}`
+    const stateTarget = validateFillTarget(startOptions.target ?? target)
+    const progressOffset = startOptions.progressOffset ?? { completedPages: 0, received: 0 }
+    const cycleId = startOptions.cycleId
+      ?? `vibe-fill-${Date.now().toString(36)}-${++this.cycle}`
     this.options.state.fill = {
       ...createFillState(fillOptions, undefined, false),
+      completedPages: progressOffset.completedPages,
       cycleId,
+      received: progressOffset.received,
       status: 'filling',
-      target,
+      target: stateTarget,
     }
 
-    if (this.options.state.next === null) {
+    if (fillOptions.strategy === 'backend' && this.options.state.next === null) {
       this.options.state.fill.status = 'pages' in target ? 'exhausted' : 'complete'
       return
     }
@@ -97,7 +119,14 @@ export class VibeFillController {
 
     try {
       if (fillOptions.strategy === 'frontend') {
-        await this.startFrontend(fillOptions, target, controller, requestVersion)
+        await this.startFrontend(
+          fillOptions,
+          target,
+          controller,
+          requestVersion,
+          startOptions.prepareFrontend !== false,
+          progressOffset,
+        )
       } else {
         await startBackendFill(fillOptions, this.options.state, {
           cycleId,
@@ -151,6 +180,32 @@ export class VibeFillController {
     }
   }
 
+  resume(prepareFrontend: boolean): Promise<void> {
+    const { fill } = this.options.state
+    if (fill.status !== 'paused' || !fill.target) return Promise.resolve()
+
+    const target = fill.target
+    const remaining = 'pages' in target ? target.pages - fill.completedPages : null
+    if (remaining !== null && remaining <= 0) {
+      fill.status = 'complete'
+      return Promise.resolve()
+    }
+    const continuation = remaining === null ? { until: 'end' } as const : { pages: remaining }
+    if (fill.strategy === 'backend') return this.start(continuation)
+    return this.start(
+      continuation,
+      {
+        cycleId: fill.cycleId ?? undefined,
+        prepareFrontend,
+        progressOffset: {
+          completedPages: fill.completedPages,
+          received: fill.received,
+        },
+        target,
+      },
+    )
+  }
+
   reset(): void {
     this.abortLocalRequest()
     this.delayCountdown.clear()
@@ -180,24 +235,59 @@ export class VibeFillController {
     target: VibeFillTarget,
     controller: AbortController,
     requestVersion: number,
+    prepareFrontend: boolean,
+    progressOffset: Pick<FrontendFillProgress, 'completedPages' | 'received'>,
   ): Promise<void> {
     const loadPage = this.options.loadPage
     if (!loadPage) throw new Error('Vibe frontend fill requires loadPage.')
 
     const state = this.options.state
     state.isLoadingMore = true
+    if (prepareFrontend && this.options.prepareFrontend
+      && (this.options.needsFrontendPreparation?.() ?? true)) {
+      state.fill.status = 'restoring'
+      const preparation = await this.options.prepareFrontend({
+        isCurrent: () => this.isCurrent(requestVersion),
+        onDelayChange: (delay) => {
+          if (this.isCurrent(requestVersion)) Object.assign(state.fill, delay)
+        },
+        signal: controller.signal,
+      })
+      if (!this.isCurrent(requestVersion)) return
+      if (preparation === 'paused' || state.loadMoreLocked) {
+        state.fill.status = 'paused'
+        return
+      }
+      state.fill.status = 'filling'
+    }
+    if (state.next === null) {
+      state.fill.status = 'pages' in target ? 'exhausted' : 'complete'
+      return
+    }
     const result = await collectFrontendFill({
       existingItems: state.items,
       initialCursor: state.next,
       loadPage,
       onCollection: (collection) => {
-        if (this.isCurrent(requestVersion)) this.collection = collection
+        if (this.isCurrent(requestVersion)) {
+          this.collection = {
+            ...collection,
+            completedPages: progressOffset.completedPages + collection.completedPages,
+            received: progressOffset.received + collection.received,
+          }
+        }
       },
       onDelayChange: (delay) => {
         if (this.isCurrent(requestVersion)) Object.assign(state.fill, delay)
       },
       onProgress: (progress) => {
-        if (this.isCurrent(requestVersion)) Object.assign(state.fill, progress)
+        if (this.isCurrent(requestVersion)) {
+          Object.assign(state.fill, {
+            ...progress,
+            completedPages: progressOffset.completedPages + progress.completedPages,
+            received: progressOffset.received + progress.received,
+          })
+        }
       },
       options,
       shouldPause: () => state.loadMoreLocked,
@@ -212,8 +302,8 @@ export class VibeFillController {
     this.options.onLastCursor(result.lastCursor)
     this.options.onPages(result.pages)
     Object.assign(state.fill, {
-      completedPages: result.completedPages,
-      received: result.received,
+      completedPages: progressOffset.completedPages + result.completedPages,
+      received: progressOffset.received + result.received,
       status: result.status,
     })
     this.collection = null

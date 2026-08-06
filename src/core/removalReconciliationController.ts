@@ -7,7 +7,11 @@ import type {
   VibeRequestDelayOptions,
 } from '../types'
 import { validatePage, type LoadedPageRecord } from './page'
-import { getRequestDelayMs, waitForRequestDelay } from './requestDelay'
+import {
+  getRequestDelayMs,
+  waitForRequestDelay,
+  type RequestDelaySnapshot,
+} from './requestDelay'
 
 interface ReconciliationResult {
   items: VibeItem[]
@@ -22,6 +26,7 @@ interface ReconciliationResult {
 interface ReconcileOptions {
   existingItems: readonly VibeItem[]
   loadPage: VibePageLoader
+  onDelayChange?: (snapshot: RequestDelaySnapshot) => void
   shouldPause?: () => boolean
   signal: AbortSignal
 }
@@ -118,6 +123,7 @@ export class RemovalReconciliationController {
   async reconcile({
     existingItems,
     loadPage,
+    onDelayChange = () => undefined,
     shouldPause = () => false,
     signal,
   }: ReconcileOptions): Promise<ReconciliationResult> {
@@ -131,7 +137,7 @@ export class RemovalReconciliationController {
       }
       await waitForRequestDelay({
         delayMs: getRequestDelayMs(session.pages.length, this.delay),
-        onChange: () => undefined,
+        onChange: onDelayChange,
         signal,
       })
       if (session.pages.length > 0 && shouldPause()) {

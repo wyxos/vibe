@@ -6,11 +6,12 @@ import { VibeAutoScrollController } from './autoScroll'
 import { applyBackendAutofillUpdate, restoreBackendAutofillSession } from './backendAutofill'
 import { autofillInitialPage } from './initialAutofill'
 import { VibeFillController } from './fillController'
+import { reconcileBeforeFill } from './fillReconciliation'
 import type { VibeSurfaceExpose } from './feed'
 import { createFeedFooterActions } from './feedFooter'
 import { createInitialRuntimeState } from './initialRuntimeState'
 import { resolveVibeTarget, validateOptions } from './options'
-import { appendUniqueItems, validatePage } from './page'
+import { validatePage } from './page'
 import { performPageRequest } from './pageRequest'
 import { RemovalReconciliationController } from './removalReconciliationController'
 import { createRemovalControllers, type RemovalControllers } from './removalControllers'
@@ -84,8 +85,18 @@ class VibeController implements VibeInstance {
       loadPage: options.loadPage
         ? (request) => this.loadFilteredPage(request)
         : undefined,
+      needsFrontendPreparation: () => this.removalReconciliation.needsReconciliation(this.state.items),
       onLastCursor: (cursor) => { this.lastLoadedCursor = cursor },
       onPages: (pages) => this.removalReconciliation.recordPages(pages),
+      prepareFrontend: ({ isCurrent, onDelayChange, signal }) => reconcileBeforeFill({
+        controller: this.removalReconciliation,
+        isCurrent,
+        loadPage: options.loadPage!,
+        onDelayChange,
+        setLastCursor: (cursor) => { this.lastLoadedCursor = cursor },
+        signal,
+        state: this.state,
+      }),
       state: this.state,
     })
     this.routing = new VibeRouteSync(options.routing, this.state)
@@ -251,7 +262,6 @@ class VibeController implements VibeInstance {
   async reload(): Promise<void> { return this.replaceFeed(null, 'reload') }
   private async replaceFeed(cursor: VibeCursor, action: 'refresh' | 'reload'): Promise<void> {
     if (!this.options.loadPage) throw new Error(`Vibe cannot ${action} without loadPage.`)
-
     if (isAutofillActive(this.state.autofill)) await this.cancelAutofill()
     if (this.fillController.isActive()) await this.cancelFill()
     this.cancelRequest()
@@ -276,7 +286,6 @@ class VibeController implements VibeInstance {
     const page = validatePage(await loadPage(request))
     return { ...page, items: this.removalReconciliation.filterItems(page.items) }
   }
-
   private async loadNextSequence(): Promise<void> {
     if (this.removalReconciliation.needsReconciliation(this.state.items)) {
       const reconciled = await this.reconcileBeforeNext()
@@ -289,26 +298,20 @@ class VibeController implements VibeInstance {
   private async reconcileBeforeNext(): Promise<boolean> {
     const loadPage = this.options.loadPage
     if (!loadPage) return false
-
     const requestVersion = ++this.requestVersion
     const abortController = new AbortController()
     this.abortController = abortController
-
     try {
-      const result = await this.removalReconciliation.reconcile({
-        existingItems: this.state.items,
+      const status = await reconcileBeforeFill({
+        controller: this.removalReconciliation,
+        isCurrent: () => requestVersion === this.requestVersion,
         loadPage,
-        shouldPause: () => this.state.loadMoreLocked,
+        onDelayChange: () => undefined,
+        setLastCursor: (cursor) => { this.lastLoadedCursor = cursor },
         signal: abortController.signal,
+        state: this.state,
       })
-      if (requestVersion !== this.requestVersion) return false
-
-      this.state.items = appendUniqueItems(this.state.items, result.items)
-      this.state.next = result.next
-      this.lastLoadedCursor = result.lastCursor
-      if (result.total !== undefined) this.state.total = result.total
-      this.removalReconciliation.completeReconciliation(result)
-      return result.status === 'complete'
+      return requestVersion === this.requestVersion && status === 'complete'
     } catch (error: unknown) {
       if (!abortController.signal.aborted && requestVersion === this.requestVersion) {
         this.state.nextPageError = error
@@ -318,18 +321,15 @@ class VibeController implements VibeInstance {
       if (this.abortController === abortController) this.abortController = null
     }
   }
-
   async retryEnd(): Promise<void> {
     if (this.pendingRequest) return this.pendingRequest
     if (this.state.loadMoreLocked) return
     if (isAutofillActive(this.state.autofill) || this.fillController.isActive()) return
     if (this.state.next !== null || !this.options.loadPage) return
-
     this.state.isLoadingMore = true
     this.state.nextPageError = null
     return this.startRequest(this.lastLoadedCursor, true)
   }
-
   setInfiniteScroll(enabled: boolean): void {
     this.state.infiniteScroll = enabled
     if (enabled) {
@@ -345,15 +345,8 @@ class VibeController implements VibeInstance {
         ? this.state.fill.target
         : null
       if (pausedFill) {
-        const remaining = 'pages' in pausedFill
-          ? pausedFill.pages - this.state.fill.completedPages
-          : null
-        if (remaining === null || remaining > 0) {
-          void this.fillController.start(
-            remaining === null ? { until: 'end' } : { pages: remaining },
-          )
-          return
-        }
+        void this.fillController.resume(this.removalReconciliation.hasPendingSession())
+        return
       }
       const resumesPaging = this.state.autofill.status === 'paused'
         || this.removalReconciliation.hasPendingSession()
