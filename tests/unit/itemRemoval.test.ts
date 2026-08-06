@@ -128,6 +128,35 @@ describe('item removal and restoration', () => {
     expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1, 3])
   })
 
+  it('clears removal reconciliation state when restoring only failed batch placements', async () => {
+    const requests: Array<string | null> = []
+    instance = createVibe({
+      infiniteScroll: false,
+      loadPage: async ({ cursor }) => {
+        requests.push(cursor as string | null)
+        if (cursor === null) return { items: [item(1), item(2)], next: 'p2' }
+        if (cursor === 'p2') return { items: [item(3), item(4)], next: 'p3' }
+        return { items: [item(5), item(6)], next: null }
+      },
+      removalReconciliation: { pageSize: 2 },
+      target,
+    })
+    await instance.mount()
+    await instance.loadNext()
+
+    const removalPromise = instance.removeItems([2, 3], { staggerMs: 0 })
+    await vi.advanceTimersByTimeAsync(420)
+    const removal = await removalPromise
+    instance.restoreItems([removal[0]!])
+
+    requests.length = 0
+    await instance.loadNext()
+    expect(requests).toEqual(['p2', 'p3'])
+    expect(instance.getState().items.map(({ postId }) => postId))
+      .toEqual(expect.arrayContaining([1, 2]))
+    expect(instance.getState().items.map(({ postId }) => postId)).not.toContain(3)
+  })
+
   it('rejects invalid item-removal stagger values', async () => {
     instance = createVibe({
       target,

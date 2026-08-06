@@ -116,9 +116,18 @@ export class ItemRemovalController {
       return
     }
 
-    const restored = restoreItemPlacements(this.state.items, placements)
-    this.registerExternalPlacements(placements)
+    const knownPostIds = new Set(this.state.items.map(({ postId }) => postId))
+    const restoredPlacements = placements.filter(({ item }) => {
+      if (knownPostIds.has(item.postId)) return false
+      knownPostIds.add(item.postId)
+      return true
+    })
+    const restored = restoreItemPlacements(this.state.items, restoredPlacements)
+    this.registerExternalPlacements(restoredPlacements)
     this.state.items = restored
+    if (restoredPlacements.length > 0) {
+      this.options.onRemovalRestored(restoredPlacements as unknown as VibeRemoval)
+    }
   }
 
   restoreRemoval(removal: VibeRemoval): boolean {
