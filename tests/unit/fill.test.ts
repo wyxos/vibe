@@ -97,6 +97,36 @@ describe('Vibe fill', () => {
     expect(instance.getState().next).toBe('four')
   })
 
+  it('continues repeated page-count fills from the current cursor', async () => {
+    const loadPage = vi.fn(({ cursor }: { cursor: number }) => Promise.resolve({
+      items: [item(cursor)],
+      next: cursor + 1,
+    }))
+    const instance = track(createVibe({
+      fill: { strategy: 'frontend', delayStepMs: 0 },
+      initialPage: {
+        items: [item(1), item(2), item(3), item(4)],
+        next: 5,
+      },
+      loadPage,
+      target,
+    }))
+
+    await instance.mount()
+    await instance.fill({ pages: 4 })
+    expect(loadPage.mock.calls.map(([request]) => request.cursor))
+      .toEqual([5, 6, 7, 8])
+    expect(instance.getState().next).toBe(9)
+
+    await instance.fill({ pages: 4 })
+    expect(loadPage.mock.calls.map(([request]) => request.cursor))
+      .toEqual([5, 6, 7, 8, 9, 10, 11, 12])
+    expect(instance.getState()).toMatchObject({
+      fill: { completedPages: 4, received: 4, status: 'complete' },
+      next: 13,
+    })
+  })
+
   it('buffers frontend pages and commits one batch only after filling completes', async () => {
     let resolveSecond!: (page: { items: VibeItem[]; next: string }) => void
     const loadPage = vi.fn()
