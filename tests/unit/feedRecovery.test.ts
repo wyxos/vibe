@@ -127,6 +127,27 @@ describe('provider-neutral feed recovery', () => {
     expect(instance.getState().items.map(({ postId }) => postId)).toEqual([2, 3])
   })
 
+  it('replays an explicitly restored current page before advancing', async () => {
+    const requests: VibeCursor[] = []
+    const instance = track(createVibe({
+      infiniteScroll: false,
+      initialPage: { current: 'p1', items: [item(1), item(2)], next: 'p2' },
+      loadPage: async ({ cursor }) => {
+        requests.push(cursor)
+        return cursor === 'p1' ? page([1, 3], 'p2') : page([4, 5], null)
+      },
+      removalReconciliation: { pageSize: 2 },
+      target,
+    }))
+    await instance.mount()
+    instance.removeMedia({ mediaIndex: 0, postId: 1 })
+
+    await instance.replenishAfterRemoval()
+
+    expect(requests).toEqual(['p1'])
+    expect(instance.getState().items.map(({ postId }) => postId)).toEqual([2, 3])
+  })
+
   it('advances only when replay has no eligible replacement', async () => {
     const requests: VibeCursor[] = []
     const instance = track(createVibe({

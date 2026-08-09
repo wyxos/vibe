@@ -83,6 +83,7 @@ class VibeController implements VibeInstance {
       state: this.state,
     })
     this.removalReconciliation = new RemovalReconciliationController(options)
+    this.removalReconciliation.recordInitialPage(options.initialPage)
     this.fillController = new VibeFillController({
       fill: options.fill,
       loadPage: options.loadPage
@@ -478,7 +479,6 @@ class VibeController implements VibeInstance {
     this.pendingRequest = request
     return request
   }
-
   private startStateNotifications(): void {
     const onStateChange = this.options.onStateChange
     if (!onStateChange || this.stopStateWatcher) return

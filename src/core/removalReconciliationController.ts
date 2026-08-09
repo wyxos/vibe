@@ -4,6 +4,7 @@ import type {
   VibeItem,
   VibeItemId,
   VibePageLoader,
+  VibePage,
   VibeRequestDelayOptions,
 } from '../types'
 import { validatePage, type LoadedPageRecord } from './page'
@@ -102,6 +103,16 @@ export class RemovalReconciliationController {
     if (!this.enabled || records.length === 0) return
     records.forEach((record) => this.recordPage(record))
     this.pages = this.pages.slice(-this.maxReplayPages)
+  }
+
+  recordInitialPage(page?: VibePage): void {
+    if (!page) return
+    this.recordPages([{
+      contributionIds: itemIds(page.items),
+      cursor: page.current ?? null,
+      next: page.next,
+      returnedIds: itemIds(page.items),
+    }])
   }
 
   remove(postIds: readonly VibeItemId[]): void {
