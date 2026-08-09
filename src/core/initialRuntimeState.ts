@@ -17,6 +17,7 @@ export function createInitialRuntimeState(
     activeReelPostId: null,
     autoScroll: createAutoScrollState(options.autoScroll),
     autofill: createAutofillState(options.autofill),
+    current: initialPage?.current ?? null,
     error: null,
     fill: createFillState(options.fill),
     infiniteScroll: options.infiniteScroll ?? true,

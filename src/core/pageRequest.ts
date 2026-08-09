@@ -37,7 +37,7 @@ export async function performPageRequest({
   const autofillOptions = options.autofill
   const resumesFrontendAutofill = append
     && autofillOptions?.strategy === 'frontend'
-    && state.autofill.status === 'paused'
+    && (state.autofill.status === 'paused' || state.autofill.status === 'error')
   const resumeProgress = resumesFrontendAutofill
     ? { received: state.autofill.received, requests: state.autofill.requests }
     : null
@@ -142,12 +142,15 @@ export async function performPageRequest({
     }
   } catch (error: unknown) {
     if (signal.aborted || !isCurrent()) return
+    const partialCommitted = autofillOptions?.strategy === 'frontend'
+      ? autofillController.commitCollection()
+      : false
     if (autofillOptions) {
       state.autofill.error = error
       state.autofill.status = 'error'
     }
     if (!pageCommitted) {
-      if (append) state.nextPageError = error
+      if (append || partialCommitted) state.nextPageError = error
       else state.error = error
     }
   } finally {

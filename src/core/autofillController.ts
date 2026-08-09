@@ -75,13 +75,13 @@ export class VibeAutofillController {
     )
   }
 
-  private commitCollection(): void {
+  commitCollection(): boolean {
     const { onLastCursor, options, state } = this.context
-    if (options?.strategy !== 'frontend') return
+    if (options?.strategy !== 'frontend') return false
 
     const collection = this.collection
     this.collection = null
-    if (!collection) return
+    if (!collection) return false
 
     state.items = appendUniqueItems(state.items, collection.items)
     onLastCursor(collection.lastCursor)
@@ -93,5 +93,6 @@ export class VibeAutofillController {
       received: collection.received,
       requests: collection.requests,
     })
+    return true
   }
 }

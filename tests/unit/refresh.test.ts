@@ -25,19 +25,21 @@ describe('feed refresh boundaries', () => {
     instance = null
   })
 
-  it('refreshes a restored feed from its continuation cursor', async () => {
+  it('refreshes a restored feed from its explicit current cursor', async () => {
     const loadPage = vi.fn()
       .mockResolvedValueOnce({ items: [item(2)], next: 'page-3', total: 3 })
     instance = createVibe({
       target: document.createElement('div'),
-      initialPage: { items: [item(1)], next: 'page-2', total: 3 },
+      initialPage: {
+        current: 'page-1', items: [item(1)], next: 'page-2', total: 3,
+      },
       loadPage,
     })
     await instance.mount()
 
     await instance.refresh()
 
-    expect(loadPage.mock.calls[0]?.[0]).toMatchObject({ cursor: 'page-2' })
+    expect(loadPage.mock.calls[0]?.[0]).toMatchObject({ cursor: 'page-1' })
     expect(instance.getState()).toMatchObject({
       items: [expect.objectContaining({ postId: 2 })],
       next: 'page-3',
@@ -45,7 +47,7 @@ describe('feed refresh boundaries', () => {
     })
   })
 
-  it('uses the continuation cursor, falls back at the end, and keeps reload initial', async () => {
+  it('refreshes the accepted current page and keeps reload initial', async () => {
     const loadPage = vi.fn()
       .mockResolvedValueOnce({ items: [item(2)], next: 'page-3', total: 3 })
       .mockResolvedValueOnce({ items: [item(3)], next: null, total: 3 })
@@ -64,7 +66,7 @@ describe('feed refresh boundaries', () => {
     expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1, 2])
 
     await instance.refresh()
-    expect(loadPage.mock.calls[1]?.[0]).toMatchObject({ cursor: 'page-3' })
+    expect(loadPage.mock.calls[1]?.[0]).toMatchObject({ cursor: 'page-2' })
     expect(instance.getState()).toMatchObject({
       items: [expect.objectContaining({ postId: 3 })],
       next: null,
@@ -72,7 +74,7 @@ describe('feed refresh boundaries', () => {
     })
 
     await instance.refresh()
-    expect(loadPage.mock.calls[2]?.[0]).toMatchObject({ cursor: 'page-3' })
+    expect(loadPage.mock.calls[2]?.[0]).toMatchObject({ cursor: 'page-2' })
     expect(instance.getState().items[0]?.postId).toBe(30)
 
     await instance.reload()

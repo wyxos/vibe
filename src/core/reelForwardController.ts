@@ -2,9 +2,8 @@ import type { VibeRuntimeState } from './runtime'
 import type { VibeItem, VibeItemId } from '../types'
 
 interface ReelForwardControllerOptions {
-  loadNext: () => Promise<void>
   onActivate: (postId: VibeItemId) => void
-  retryEnd: () => Promise<void>
+  replenishAfterRemoval: () => Promise<void>
   state: VibeRuntimeState
 }
 
@@ -35,7 +34,7 @@ export class ReelForwardController {
     this.state.reelForward = { error: null, status: 'loading' }
     this.state.reelForwardIndex = postIndex
     this.state.reelForwardItem = item
-    void this.startForwardRequest(false)
+    void this.startForwardRequest()
   }
 
   cancel(token: object): VibeItem | null {
@@ -61,7 +60,7 @@ export class ReelForwardController {
     if (!this.forward || this.state.reelForward.status === 'idle') return Promise.resolve()
     this.state.nextPageError = null
     this.state.reelForward = { error: null, status: 'loading' }
-    return this.startForwardRequest(this.state.next === null)
+    return this.startForwardRequest()
   }
 
   private clearState(): void {
@@ -70,23 +69,22 @@ export class ReelForwardController {
     this.state.reelForwardItem = null
   }
 
-  private startForwardRequest(retryExhausted: boolean): Promise<void> {
+  private startForwardRequest(): Promise<void> {
     if (this.forwardPromise) return this.forwardPromise
-    const request = this.loadForward(retryExhausted)
+    const request = this.loadForward()
     this.forwardPromise = request
     return request.finally(() => {
       if (this.forwardPromise !== request) return
       this.forwardPromise = null
       if (this.forward && this.state.reelForward.status === 'loading') {
-        void this.startForwardRequest(false)
+        void this.startForwardRequest()
       }
     })
   }
 
-  private async loadForward(retryExhausted: boolean): Promise<void> {
+  private async loadForward(): Promise<void> {
     const target = this.forward
     if (!target) return
-    if (retryExhausted) await this.options.retryEnd()
 
     while (this.forward === target && target.version === this.forwardVersion) {
       const replacement = this.state.items[target.postIndex]
@@ -100,17 +98,21 @@ export class ReelForwardController {
         this.state.reelForward = { error: this.state.nextPageError, status: 'error' }
         return
       }
+      const previousCursor = this.state.next
+      const previousLength = this.state.items.length
+      await this.options.replenishAfterRemoval()
+      if (this.state.nextPageError) {
+        this.state.reelForward = { error: this.state.nextPageError, status: 'error' }
+        return
+      }
+      if (this.state.items[target.postIndex]) continue
       if (this.state.next === null) {
         this.state.reelForward = { error: null, status: 'end' }
         return
       }
-
-      const previousCursor = this.state.next
-      await this.options.loadNext()
       if (
         this.state.next === previousCursor
-        && !this.state.nextPageError
-        && !this.state.items[target.postIndex]
+        && this.state.items.length === previousLength
       ) {
         this.state.reelForward = {
           error: new Error('Vibe could not advance while page loading is unavailable.'),

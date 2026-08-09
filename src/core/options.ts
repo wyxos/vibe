@@ -82,6 +82,12 @@ export function validateOptions(options: CreateVibeOptions): void {
         'Vibe removalReconciliation does not support backend autofill.',
       )
     }
+    if (options.autofill?.strategy === 'frontend'
+      && options.autofill.pageSize < options.removalReconciliation.pageSize) {
+      throw new TypeError(
+        'Vibe autofill pageSize must be greater than or equal to removalReconciliation pageSize.',
+      )
+    }
     if (options.fill?.strategy === 'backend') {
       throw new TypeError(
         'Vibe removalReconciliation does not support backend fill.',

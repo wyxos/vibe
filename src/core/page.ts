@@ -12,6 +12,11 @@ export function validatePage(page: VibePage): VibePage {
     throw new TypeError('Vibe loadPage must resolve to a page with an items array.')
   }
 
+  if (page.current !== undefined && page.current !== null
+    && typeof page.current !== 'string' && typeof page.current !== 'number') {
+    throw new TypeError('Vibe page current must be a string, number, null, or undefined.')
+  }
+
   if (page.next !== null && typeof page.next !== 'string' && typeof page.next !== 'number') {
     throw new TypeError('Vibe page next must be a string, number, or null.')
   }

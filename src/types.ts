@@ -73,7 +73,6 @@ export interface VibePreview {
   width: number | null
   height: number | null
 }
-
 export interface VibeMediaAsset {
   mediaId?: VibeItemId
   src: string
@@ -193,18 +192,17 @@ export interface VibeRoutingOptions {
 }
 
 export interface VibePage {
+  current?: VibeCursor
   items: VibeItem[]
   next: VibeCursor
   total?: number
 }
-
 export interface VibePageRequest {
   cursor: VibeCursor
   signal: AbortSignal
 }
 
 export type VibePageLoader = (request: VibePageRequest) => Promise<VibePage>
-
 export type VibeInitialPage = VibePage
 
 export interface VibeAutofillState {
@@ -447,6 +445,7 @@ export interface VibeState {
   layout: VibeLayout
   lifecycle: VibeLifecycle
   loadMoreLocked: boolean
+  current: VibeCursor
   next: VibeCursor
   nextPageError: unknown | null
   phoneMode: boolean
@@ -474,6 +473,7 @@ export interface VibeInstance {
   pauseAutoScroll: () => void
   previousReelMediaItem: () => boolean
   previousReelPost: () => boolean
+  replenishAfterRemoval: () => Promise<void>
   refresh: () => Promise<void>
   reload: () => Promise<void>
   removeMedia: (target: VibeMediaTarget) => VibeMediaRemoval | null

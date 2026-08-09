@@ -2,6 +2,7 @@ import type { VibeFeedFooterActions } from '../types'
 
 interface FeedFooterActionTarget {
   cancelAutofill: () => Promise<void>
+  getState: () => import('../types').VibeState
   loadNext: () => Promise<void>
   reload: () => Promise<void>
   retryEnd: () => Promise<void>
@@ -13,7 +14,14 @@ export function createFeedFooterActions(
   return {
     cancelAutofill: () => target.cancelAutofill(),
     loadMore: () => target.loadNext(),
-    retry: () => target.reload(),
+    retry: () => {
+      const state = target.getState()
+      const resumesPartialAutofill = state.autofill.strategy === 'frontend'
+        && state.autofill.status === 'error'
+        && state.items.length > 0
+        && state.next !== null
+      return resumesPartialAutofill ? target.loadNext() : target.reload()
+    },
     retryEnd: () => target.retryEnd(),
   }
 }

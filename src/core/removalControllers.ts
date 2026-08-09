@@ -10,11 +10,10 @@ import type { VibeItemRemovalOptions } from './itemRemovalOptions'
 
 interface RemovalControllerOptions {
   historyLimit: number | undefined
-  loadNext: () => Promise<void>
   onActivate: (postId: VibeItemId) => void
   onItemsRemoved: (postIds: readonly VibeItemId[]) => void
   onItemsRestored: (postIds: readonly VibeItemId[]) => void
-  retryEnd: () => Promise<void>
+  replenishAfterRemoval: () => Promise<void>
   state: VibeRuntimeState
   surface: () => VibeSurfaceExpose | null
 }

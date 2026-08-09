@@ -18,6 +18,7 @@ export interface VibeRuntimeState {
   activeReelPostId: VibeItemId | null
   autoScroll: VibeAutoScrollState
   autofill: VibeAutofillState
+  current: VibeCursor
   error: unknown | null
   fill: VibeFillState
   infiniteScroll: boolean
@@ -55,6 +56,7 @@ export function snapshotState(
     activeReelPostId: state.activeReelPostId,
     autoScroll: { ...state.autoScroll },
     autofill: { ...state.autofill },
+    current: state.current,
     error: state.error,
     fill: {
       ...state.fill,
