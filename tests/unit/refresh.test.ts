@@ -47,6 +47,20 @@ describe('feed refresh boundaries', () => {
     })
   })
 
+  it('keeps an explicit initial null cursor distinct from a legacy omission', async () => {
+    const loadPage = vi.fn().mockResolvedValue({ items: [item(2)], next: 'page-2' })
+    instance = createVibe({
+      target: document.createElement('div'),
+      initialPage: { current: null, items: [item(1)], next: 'page-2' },
+      loadPage,
+    })
+    await instance.mount()
+
+    await instance.refresh()
+
+    expect(loadPage).toHaveBeenCalledWith(expect.objectContaining({ cursor: null }))
+  })
+
   it('refreshes the accepted current page and keeps reload initial', async () => {
     const loadPage = vi.fn()
       .mockResolvedValueOnce({ items: [item(2)], next: 'page-3', total: 3 })

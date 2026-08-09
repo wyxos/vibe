@@ -43,3 +43,9 @@ export function appendUniqueItems(
     }),
   ]
 }
+
+export function pageCurrentCursor(page: VibePage): VibeCursor {
+  return Object.prototype.hasOwnProperty.call(page, 'current')
+    ? page.current ?? null
+    : page.next
+}

@@ -11,7 +11,7 @@ import type { VibeSurfaceExpose } from './feed'
 import { createFeedFooterActions } from './feedFooter'
 import { createInitialRuntimeState } from './initialRuntimeState'
 import { resolveVibeTarget, validateOptions } from './options'
-import { validatePage } from './page'
+import { pageCurrentCursor, validatePage } from './page'
 import { performPageRequest } from './pageRequest'
 import { RemovalReconciliationController } from './removalReconciliationController'
 import { createRemovalControllers, type RemovalControllers } from './removalControllers'
@@ -67,9 +67,7 @@ class VibeController implements VibeInstance {
     validateOptions(options)
     const layoutMode = options.layout ?? 'masonry'
     this.state = reactive(createInitialRuntimeState(options, layoutMode))
-    this.lastLoadedCursor = options.initialPage?.current
-      ?? options.initialPage?.next
-      ?? null
+    this.lastLoadedCursor = options.initialPage ? pageCurrentCursor(options.initialPage) : null
     this.notificationItems = createItemSnapshot(this.state)
     this.autoScroll = new VibeAutoScrollController({
       getScrollElement: () => this.surface?.getAutoScrollElement() ?? null,

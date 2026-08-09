@@ -7,7 +7,7 @@ import type {
   VibePage,
   VibeRequestDelayOptions,
 } from '../types'
-import { validatePage, type LoadedPageRecord } from './page'
+import { pageCurrentCursor, validatePage, type LoadedPageRecord } from './page'
 import {
   getRequestDelayMs,
   waitForRequestDelay,
@@ -109,7 +109,7 @@ export class RemovalReconciliationController {
     if (!page) return
     this.recordPages([{
       contributionIds: itemIds(page.items),
-      cursor: page.current ?? null,
+      cursor: pageCurrentCursor(page),
       next: page.next,
       returnedIds: itemIds(page.items),
     }])
