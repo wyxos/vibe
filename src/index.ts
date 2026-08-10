@@ -55,6 +55,7 @@ export type {
   VibeMediaSource,
   VibeMediaTarget,
   VibeMediaType,
+  VibeMediaVariant,
   VibePage,
   VibePageLoader,
   VibePageRequest,

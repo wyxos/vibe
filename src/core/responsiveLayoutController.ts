@@ -68,7 +68,7 @@ export class ResponsiveLayoutController {
     const responsiveLayout = resolveResponsiveLayoutForElement(this.target)
     this.state.phoneMode = resolvePhoneModeForElement(this.target)
     this.state.reelInfoSheetOverlay = this.state.phoneMode
-    this.state.reelMediaSource = responsiveLayout === 'reel' ? 'preview' : 'original'
+    this.state.reelMediaSource = this.state.phoneMode ? 'mobile' : 'original'
     if (this.layoutMode === 'responsive') this.applyLayout(responsiveLayout)
   }
 }

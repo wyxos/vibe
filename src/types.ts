@@ -5,7 +5,7 @@ export type VibeItemId = string | number
 export type VibeLayout = 'masonry' | 'reel'
 export type VibeLayoutMode = VibeLayout | 'responsive'
 export type VibeLifecycle = 'error' | 'loaded' | 'loading'
-export type VibeMediaSource = 'preview' | 'original'
+export type VibeMediaSource = 'preview' | 'original' | 'mobile'
 export type VibeAutofillStrategy = 'backend' | 'frontend'
 export type VibeAutofillPageLimit = number | 'unlimited'
 export type VibeFillStrategy = 'backend' | 'frontend'
@@ -64,11 +64,13 @@ export interface VibeReelForwardState {
   error: unknown | null
   status: VibeReelForwardStatus
 }
-export interface VibePreview { height: number | null; src: string; type?: VibeMediaType; width: number | null }
+export interface VibeMediaVariant { height: number | null; src: string; type?: VibeMediaType; width: number | null }
+export type VibePreview = VibeMediaVariant
 export interface VibeMediaAsset {
   mediaId?: VibeItemId
   src: string
   preview: VibePreview
+  mobile?: VibeMediaVariant
   width: number | null
   height: number | null
   type?: VibeMediaType

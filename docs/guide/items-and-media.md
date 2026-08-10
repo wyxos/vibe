@@ -29,6 +29,7 @@ const item: VibeItem = {
 | `width` | `number \| null` | Original intrinsic width when known. |
 | `height` | `number \| null` | Original intrinsic height when known. |
 | `preview` | `VibePreview` | Preview URL and dimensions. |
+| `mobile` | `VibeMediaVariant \| undefined` | Optional mobile-optimized full-playback URL and dimensions. |
 | `items` | `VibeMediaAsset[]` | Additional media in the same post. |
 
 Use `null` for unknown dimensions. Supplying accurate dimensions lets masonry reserve space before assets load and reduces layout movement.
@@ -48,6 +49,6 @@ values defensively when pages are appended.
 
 ## Preview selection
 
-Phone reels load `preview.src`. Tablet and desktop reels load the original `src`, including reels opened from masonry. Masonry uses previews while preserving the original source for its reel viewer.
+Masonry loads `preview`. Tablet and desktop reels load the canonical `src`, including reels opened from masonry. Phone reels load `mobile` when supplied and otherwise fall back to `src`. A mobile video variant should preserve complete playback and audio; a shortened or audio-stripped feed derivative belongs only in `preview`.
 
 Grouped media navigation loops horizontally within the active post. Vertical reel navigation continues to move between top-level posts.

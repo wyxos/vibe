@@ -119,6 +119,37 @@ describe('MediaCard', () => {
     expect(wrapper.get('video').attributes('src')).toContain('playable?id=42')
   })
 
+  it('uses a mobile variant when available and otherwise falls back to the original', async () => {
+    const withMobile = mediaAsset('mobile-source')
+    const wrapper = mount(MediaCard, {
+      props: {
+        ...props(),
+        item: {
+          postId: 43,
+          ...withMobile,
+          mobile: {
+            height: 800,
+            src: 'https://example.com/mobile-source-mobile.jpg',
+            width: 600,
+          },
+          items: [],
+        },
+        mediaSource: 'mobile',
+      },
+    })
+
+    expect(wrapper.get('img').attributes('src'))
+      .toBe('https://example.com/mobile-source-mobile.jpg')
+
+    const withoutMobile = mediaAsset('original-fallback')
+    await wrapper.setProps({
+      item: { postId: 44, ...withoutMobile, items: [] },
+    })
+
+    expect(wrapper.get('img').attributes('src'))
+      .toBe('https://example.com/original-fallback.jpg')
+  })
+
   it('recognizes an already cached image as ready', async () => {
     vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true)
     vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(450)

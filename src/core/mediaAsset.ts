@@ -2,7 +2,31 @@ import type {
   VibeItem,
   VibeItemId,
   VibeMediaAsset,
+  VibeMediaSource,
+  VibeMediaVariant,
 } from '../types'
+
+function originalVariant(asset: VibeMediaAsset): VibeMediaVariant {
+  return {
+    height: asset.height,
+    src: asset.src,
+    type: asset.type,
+    width: asset.width,
+  }
+}
+
+export function mediaVariantForSource(
+  asset: VibeMediaAsset,
+  source: VibeMediaSource,
+): VibeMediaVariant {
+  if (source === 'preview') {
+    return { ...asset.preview, type: asset.preview.type ?? asset.type }
+  }
+  if (source === 'mobile' && asset.mobile) {
+    return { ...asset.mobile, type: asset.mobile.type ?? asset.type }
+  }
+  return originalVariant(asset)
+}
 
 export function mediaAssets(item: VibeItem): readonly VibeMediaAsset[] {
   return [item, ...item.items]

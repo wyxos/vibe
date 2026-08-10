@@ -14,6 +14,7 @@ import {
   clampMediaIndex,
   mediaAssetAt,
   mediaAssets,
+  mediaVariantForSource,
 } from '../core/mediaAsset'
 import {
   mediaErrorLabel,
@@ -86,22 +87,14 @@ const normalizedMediaIndex = computed(() => (
 const mediaItem = computed(() => (
   mediaAssetAt(props.item, normalizedMediaIndex.value)
 ))
-const mediaSrc = computed(() => (
-  props.mediaSource === 'original' ? mediaItem.value.src : mediaItem.value.preview.src
+const mediaVariant = computed(() => mediaVariantForSource(
+  mediaItem.value,
+  props.mediaSource ?? 'preview',
 ))
-const mediaType = computed(() => (
-  props.mediaSource === 'original'
-    ? mediaItem.value.type
-    : mediaItem.value.preview.type ?? mediaItem.value.type
-))
-
-const mediaWidth = computed(() => (
-  props.mediaSource === 'original' ? mediaItem.value.width : mediaItem.value.preview.width
-))
-
-const mediaHeight = computed(() => (
-  props.mediaSource === 'original' ? mediaItem.value.height : mediaItem.value.preview.height
-))
+const mediaSrc = computed(() => mediaVariant.value.src)
+const mediaType = computed(() => mediaVariant.value.type)
+const mediaWidth = computed(() => mediaVariant.value.width)
+const mediaHeight = computed(() => mediaVariant.value.height)
 const { effectivePreviewState, failSourceAttempt, imageElement, markSourceReady,
   noteSourceActivity, retrySource, sourceGeneration, videoElement } = useMediaReadiness({
   identity: () => `${props.item.postId}:${normalizedMediaIndex.value}:${props.mediaSource ?? 'preview'}:${mediaSrc.value}:${mediaType.value ?? ''}`,

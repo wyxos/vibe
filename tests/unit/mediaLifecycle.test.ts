@@ -203,8 +203,12 @@ describe('media lifecycle callbacks', () => {
     vi.spyOn(window.screen, 'width', 'get').mockReturnValue(390)
     vi.spyOn(window.screen, 'height', 'get').mockReturnValue(844)
     const onMediaVisible = vi.fn<(context: VibeMediaLifecycleContext) => void>()
+    const mobileItem = {
+      ...item(1),
+      mobile: { height: 800, src: '/1-mobile.jpg', width: 600 },
+    }
     const instance = track(createVibe({
-      initialPage: { items: [item(1)], next: null },
+      initialPage: { items: [mobileItem], next: null },
       layout: 'reel',
       onMediaVisible,
       target,
@@ -212,7 +216,13 @@ describe('media lifecycle callbacks', () => {
     await instance.mount()
     await flushPromises()
 
-    target.querySelector<HTMLElement>('[data-post-id="1"] img')!
+    const renderedMedia = target.querySelector<HTMLImageElement>('[data-post-id="1"] img')!
+    expect(renderedMedia.getAttribute('src')).toBe('/1-mobile.jpg')
+    expect(instance.getState()).toMatchObject({
+      layout: 'reel',
+      phoneMode: true,
+    })
+    renderedMedia
       .dispatchEvent(new Event('load'))
     await flushPromises()
 

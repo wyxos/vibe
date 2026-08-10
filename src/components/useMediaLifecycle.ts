@@ -20,9 +20,13 @@ interface MediaLifecycleEvents {
 export function useMediaLifecycle(state: VibeRuntimeState, events: MediaLifecycleEvents) {
   const previewStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
   const originalStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
-  const reelStates = computed(() => state.reelMediaSource === 'original'
-    ? originalStates.value
-    : previewStates.value)
+  const mobileStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
+  const reelStateTarget = () => {
+    if (state.reelMediaSource === 'preview') return previewStates
+    if (state.reelMediaSource === 'mobile') return mobileStates
+    return originalStates
+  }
+  const reelStates = computed(() => reelStateTarget().value)
 
   function setState(
     target: typeof previewStates,
@@ -63,21 +67,11 @@ export function useMediaLifecycle(state: VibeRuntimeState, events: MediaLifecycl
   }
 
   function markReelError(postId: VibeItemId, mediaIndex: number): void {
-    setState(
-      state.reelMediaSource === 'original' ? originalStates : previewStates,
-      postId,
-      mediaIndex,
-      'error',
-    )
+    setState(reelStateTarget(), postId, mediaIndex, 'error')
   }
 
   function markReelReady(postId: VibeItemId, mediaIndex: number): void {
-    setState(
-      state.reelMediaSource === 'original' ? originalStates : previewStates,
-      postId,
-      mediaIndex,
-      'ready',
-    )
+    setState(reelStateTarget(), postId, mediaIndex, 'ready')
     emitReady(postId, mediaIndex, 'reel', state.reelOrigin ?? 'reel')
   }
 

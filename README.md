@@ -41,9 +41,11 @@ In responsive layout, Vibe observes the target and uses reels on phones while
 keeping tablets and desktops in masonry. Use `masonry` or `reel` to force a
 renderer instead.
 
-Phone reels load `preview.src`. Reels on tablets and desktops load the full
+Masonry loads `preview`. Reels on tablets and desktops load the canonical
 `src`, including a reel forced with `layout: 'reel'` and a reel opened from a
-masonry card.
+masonry card. Phone reels load the optional `mobile` variant when supplied and
+otherwise fall back to the canonical `src`; feed previews are never promoted to
+reel playback sources.
 
 `loadPage` receives `cursor: null` for the initial request. It returns normalized Vibe items, the next opaque cursor, and an optional total:
 

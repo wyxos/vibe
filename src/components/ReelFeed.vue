@@ -10,7 +10,7 @@ import {
 } from 'vue'
 import type { ReelFeedProps } from '../core/feed'
 import { isNearFeedBottom } from '../core/feed'
-import { mediaAssetAt, mediaAssets, mediaStateKey } from '../core/mediaAsset'
+import { mediaAssetAt, mediaAssets, mediaStateKey, mediaVariantForSource } from '../core/mediaAsset'
 import { isTimedMedia } from '../core/mediaType'
 import { transitionReelScroll } from '../core/reelScrollTransition'
 import type { VibeItemId } from '../types'
@@ -73,15 +73,14 @@ const activePreviewState = computed(() => {
 const activeMedia = computed(() => activeItem.value
   ? mediaAssetAt(activeItem.value, activeMediaIndex.value)
   : null)
+const activeMediaVariant = computed(() => activeMedia.value
+  ? mediaVariantForSource(activeMedia.value, props.mediaSource ?? 'preview')
+  : null)
 const activeMediaWaitsForEnd = computed(() => (
   activePreviewState.value === 'ready'
-  && Boolean(activeMedia.value && isTimedMedia(
-    props.mediaSource === 'original'
-      ? activeMedia.value.type
-      : activeMedia.value.preview.type ?? activeMedia.value.type,
-    props.mediaSource === 'original'
-      ? activeMedia.value.src
-      : activeMedia.value.preview.src,
+  && Boolean(activeMediaVariant.value && isTimedMedia(
+    activeMediaVariant.value.type,
+    activeMediaVariant.value.src,
   ))
 ))
 const autoAdvanceKey = computed(() => [

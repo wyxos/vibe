@@ -8,6 +8,7 @@ import type {
   VibeItem,
   VibeItemId,
   VibeLayout,
+  VibeMediaSource,
   VibeReelAutoAdvanceState,
   VibeReelForwardState,
   VibeReelInfoSheetState,
@@ -37,7 +38,7 @@ export interface VibeRuntimeState {
   reelForwardItem: VibeItem | null
   reelInfoSheet: VibeReelInfoSheetState
   reelInfoSheetOverlay: boolean
-  reelMediaSource: 'original' | 'preview'
+  reelMediaSource: VibeMediaSource
   reelOrigin: 'masonry' | null
   total: number | null
 }
