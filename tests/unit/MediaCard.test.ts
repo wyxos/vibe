@@ -95,7 +95,51 @@ describe('MediaCard', () => {
     expect(load).toHaveBeenCalledOnce()
 
     await wrapper.setProps({ fetchPriority: 'low', layout: 'reel' })
+    expect(wrapper.get('video').attributes('preload')).toBe('none')
+
+    await wrapper.setProps({ active: true })
     expect(wrapper.get('video').attributes('preload')).toBe('metadata')
+  })
+
+  it('uses an explicit provider media type for remote video URLs', () => {
+    const remote = mediaAsset('remote')
+    remote.preview.src = 'https://cdn.example.com/playable?id=42'
+    const wrapper = mount(MediaCard, {
+      props: {
+        ...props(),
+        item: {
+          postId: 42,
+          ...remote,
+          preview: { ...remote.preview, type: 'video' as const },
+          items: [],
+        },
+      },
+    })
+
+    expect(wrapper.get('video').attributes('src')).toContain('playable?id=42')
+  })
+
+  it('recognizes an already cached image as ready', async () => {
+    vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true)
+    vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(450)
+    const wrapper = mount(MediaCard, {
+      props: { ...props(), previewState: 'loading' },
+    })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('ready')).toEqual([[0]])
+  })
+
+  it('retries one inactive source timeout before exposing terminal retry', async () => {
+    vi.useFakeTimers()
+    vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(false)
+    const wrapper = mount(MediaCard, {
+      props: { ...props(), previewState: 'loading' },
+    })
+    await vi.advanceTimersByTimeAsync(30_000)
+
+    expect(wrapper.emitted('error')).toEqual([[0]])
+    expect(wrapper.get('[data-test="media-retry"]').text()).toBe('Retry')
   })
 
   it('clears the card backdrop behind transparent chrome regions', async () => {

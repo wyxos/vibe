@@ -109,7 +109,7 @@ export class VibeFillController {
     }
 
     if (fillOptions.strategy === 'backend' && this.options.state.next === null) {
-      this.options.state.fill.status = 'pages' in target ? 'exhausted' : 'complete'
+      this.options.state.fill.status = 'until' in target ? 'complete' : 'exhausted'
       return
     }
 
@@ -141,6 +141,7 @@ export class VibeFillController {
       }
     } catch (error: unknown) {
       if (controller.signal.aborted || !this.isCurrent(requestVersion)) return
+      this.commitCollection()
       this.options.state.fill.error = error
       this.options.state.fill.status = 'error'
       throw error
@@ -190,10 +191,33 @@ export class VibeFillController {
       fill.status = 'complete'
       return Promise.resolve()
     }
-    const continuation = remaining === null ? { until: 'end' } as const : { pages: remaining }
+    const continuation = remaining === null ? target : { pages: remaining }
     if (fill.strategy === 'backend') return this.start(continuation)
     return this.start(
       continuation,
+      {
+        cycleId: fill.cycleId ?? undefined,
+        prepareFrontend,
+        progressOffset: {
+          completedPages: fill.completedPages,
+          received: fill.received,
+        },
+        target,
+      },
+    )
+  }
+
+  retry(prepareFrontend: boolean): Promise<void> {
+    const { fill } = this.options.state
+    if (fill.status !== 'error' || !fill.target) return Promise.resolve()
+    const target = fill.target
+    const remainingPages = 'pages' in target ? target.pages - fill.completedPages : null
+    if (remainingPages !== null && remainingPages <= 0) {
+      fill.status = 'complete'
+      return Promise.resolve()
+    }
+    return this.start(
+      remainingPages === null ? target : { pages: remainingPages },
       {
         cycleId: fill.cycleId ?? undefined,
         prepareFrontend,
@@ -261,7 +285,7 @@ export class VibeFillController {
       state.fill.status = 'filling'
     }
     if (state.next === null) {
-      state.fill.status = 'pages' in target ? 'exhausted' : 'complete'
+      state.fill.status = 'until' in target ? 'complete' : 'exhausted'
       return
     }
     const result = await collectFrontendFill({
@@ -275,6 +299,7 @@ export class VibeFillController {
             completedPages: progressOffset.completedPages + collection.completedPages,
             received: progressOffset.received + collection.received,
           }
+          this.commitCollection()
         }
       },
       onDelayChange: (delay) => {
@@ -300,7 +325,6 @@ export class VibeFillController {
     state.next = result.next
     if (result.total !== undefined) state.total = result.total
     this.options.onLastCursor(result.lastCursor)
-    this.options.onPages(result.pages)
     Object.assign(state.fill, {
       completedPages: progressOffset.completedPages + result.completedPages,
       received: progressOffset.received + result.received,

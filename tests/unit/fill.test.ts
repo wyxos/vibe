@@ -127,7 +127,7 @@ describe('Vibe fill', () => {
     })
   })
 
-  it('buffers frontend pages and commits one batch only after filling completes', async () => {
+  it('commits each successful frontend page before filling completes', async () => {
     let resolveSecond!: (page: { items: VibeItem[]; next: string }) => void
     const loadPage = vi.fn()
       .mockResolvedValueOnce({ items: [item(2)], next: 'three' })
@@ -146,13 +146,41 @@ describe('Vibe fill', () => {
     await flushPromises()
 
     expect(instance.getState().fill.completedPages).toBe(1)
-    expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1])
+    expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1, 2])
 
     resolveSecond({ items: [item(3)], next: 'four' })
     await fill
     expect(instance.getState().items.map(({ postId }) => postId)).toEqual([1, 2, 3])
   })
 
+  it('preserves incremental pages when a later frontend request fails', async () => {
+    const initial = Array.from({ length: 100 }, (_, index) => item(index + 1))
+    const loadPage = vi.fn()
+      .mockResolvedValueOnce({ items: Array.from({ length: 20 }, (_, index) => item(101 + index)), next: 'three' })
+      .mockResolvedValueOnce({ items: Array.from({ length: 20 }, (_, index) => item(121 + index)), next: 'four' })
+      .mockRejectedValueOnce(new Error('third page failed'))
+    const instance = track(createVibe({ fill: { strategy: 'frontend', delayStepMs: 0 }, initialPage: { items: initial, next: 'two' }, loadPage, target }))
+    await instance.mount()
+    await expect(instance.fill({ items: 200 })).rejects.toThrow('third page failed')
+    expect(instance.getState()).toMatchObject({ fill: { completedPages: 2, status: 'error', target: { items: 200 } }, next: 'four' })
+    expect(instance.getState().items).toHaveLength(140)
+  })
+  it('retries an absolute item target from the remaining deduped deficit', async () => {
+    const initial = Array.from({ length: 100 }, (_, index) => item(index + 1))
+    const loadPage = vi.fn()
+      .mockResolvedValueOnce({ items: Array.from({ length: 20 }, (_, index) => item(101 + index)), next: 'three' })
+      .mockRejectedValueOnce(new Error('temporary'))
+      .mockResolvedValueOnce({ items: Array.from({ length: 20 }, (_, index) => item(101 + index)), next: 'four' })
+      .mockResolvedValueOnce({ items: Array.from({ length: 20 }, (_, index) => item(121 + index)), next: 'five' })
+    const instance = track(createVibe({ fill: { strategy: 'frontend', delayStepMs: 0 }, initialPage: { items: initial, next: 'two' }, loadPage, target }))
+    await instance.mount()
+    await expect(instance.fill({ items: 140 })).rejects.toThrow('temporary')
+    await instance.retryFill()
+    expect(instance.getState().items).toHaveLength(140)
+    expect(instance.getState().fill.target).toEqual({ items: 140 })
+    expect(new Set(instance.getState().items.map(({ postId }) => postId)).size).toBe(140)
+    expect(loadPage.mock.calls.map(([request]) => request.cursor)).toEqual(['two', 'three', 'three', 'four'])
+  })
   it('waits progressively between frontend fill requests', async () => {
     vi.useFakeTimers()
     const loadPage = vi.fn()

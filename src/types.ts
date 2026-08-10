@@ -31,13 +31,9 @@ export type VibeFillStatus =
   | 'paused'
   | 'restoring'
   | 'waiting'
-export type VibeFillTarget = { pages: number } | { until: 'end' }
-export interface VibeAutoScrollOptions {
-  enabled?: boolean
-  maxSpeedPxPerSecond?: number
-  minSpeedPxPerSecond?: number
-  speedPxPerSecond?: number
-}
+export type VibeFillTarget = { items: number } | { pages: number } | { until: 'end' }
+export type VibeMediaType = 'image' | 'video'
+export interface VibeAutoScrollOptions { enabled?: boolean; maxSpeedPxPerSecond?: number; minSpeedPxPerSecond?: number; speedPxPerSecond?: number }
 export interface VibeAutoScrollState {
   enabled: boolean
   maxSpeedPxPerSecond: number
@@ -68,17 +64,14 @@ export interface VibeReelForwardState {
   error: unknown | null
   status: VibeReelForwardStatus
 }
-export interface VibePreview {
-  src: string
-  width: number | null
-  height: number | null
-}
+export interface VibePreview { height: number | null; src: string; type?: VibeMediaType; width: number | null }
 export interface VibeMediaAsset {
   mediaId?: VibeItemId
   src: string
   preview: VibePreview
   width: number | null
   height: number | null
+  type?: VibeMediaType
 }
 export interface VibeItem extends VibeMediaAsset {
   postId: VibeItemId
@@ -90,10 +83,7 @@ export interface VibeItemPlacement {
   item: VibeItem
 }
 
-export interface VibeMediaTarget {
-  mediaIndex: number
-  postId: VibeItemId
-}
+export interface VibeMediaTarget { mediaIndex: number; postId: VibeItemId }
 
 export interface VibeReelItemTarget {
   mediaId: VibeItemId
@@ -162,6 +152,7 @@ export interface VibeFeedFooterActions {
   loadMore: () => Promise<void>
   retry: () => Promise<void>
   retryEnd: () => Promise<void>
+  retryFill: () => Promise<void>
 }
 
 export interface VibeFeedFooterProps {
@@ -427,10 +418,13 @@ export interface CreateVibeOptions {
   onStateChange?: (state: VibeState) => void
   removalHistoryLimit?: number
   removalReconciliation?: VibeRemovalReconciliationOptions
+  restoreBacklog?: (context: VibeBacklogRestoreContext) => Promise<void> | void
   reelAutoAdvance?: VibeReelAutoAdvanceOptions
   reelInfoSheet?: VibeReelInfoSheetOptions
   routing?: VibeRoutingOptions
 }
+
+export interface VibeBacklogRestoreContext { appendPage: (page: VibePage) => void; signal: AbortSignal }
 
 export interface VibeState {
   activeReelPostId: VibeItemId | null
@@ -457,6 +451,7 @@ export interface VibeState {
 }
 
 export interface VibeInstance {
+  appendPage: (page: VibePage) => void
   applyAutofillUpdate: (update: VibeBackendAutofillUpdate) => boolean
   applyFillUpdate: (update: VibeBackendFillUpdate) => boolean
   cancelAutofill: () => Promise<void>
@@ -486,6 +481,7 @@ export interface VibeInstance {
   restoreMediaRemoval: (removal: VibeMediaRemoval) => boolean
   restoreRemoval: (removal: VibeRemoval) => boolean
   retryReelForward: () => Promise<void>
+  retryFill: () => Promise<void>
   setAutoScroll: (enabled: boolean, speedPxPerSecond?: number) => void
   setAutoScrollSpeed: (speedPxPerSecond: number) => void
   setInfiniteScroll: (enabled: boolean) => void

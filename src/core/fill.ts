@@ -48,6 +48,7 @@ interface CollectFrontendFillOptions {
 }
 
 function cloneTarget(target: VibeFillTarget): VibeFillTarget {
+  if ('items' in target) return { items: target.items }
   return 'pages' in target ? { pages: target.pages } : { until: 'end' }
 }
 
@@ -65,8 +66,14 @@ export function validateFillTarget(target: VibeFillTarget): VibeFillTarget {
     }
     return { pages: target.pages }
   }
+  if ('items' in target) {
+    if (!Number.isInteger(target.items) || target.items <= 0) {
+      throw new TypeError('Vibe fill items must be a positive integer.')
+    }
+    return { items: target.items }
+  }
   if ('until' in target && target.until === 'end') return { until: 'end' }
-  throw new TypeError("Vibe fill target must be { pages } or { until: 'end' }.")
+  throw new TypeError("Vibe fill target must be { items }, { pages }, or { until: 'end' }.")
 }
 
 export function validateFillOptions(options?: VibeFillOptions): void {
@@ -143,6 +150,10 @@ export async function collectFrontendFill({
   let received = 0
   let total: number | undefined
 
+  if ('items' in target && knownItems.length >= target.items) {
+    return { completedPages, items, lastCursor, next, pages, received, status: 'complete' }
+  }
+
   while (next !== null) {
     const key = cursorKey(cursor)
     if (seenCursors.has(key)) throw new Error('Vibe fill received a repeated cursor.')
@@ -193,6 +204,19 @@ export async function collectFrontendFill({
       total,
     })
 
+    if ('items' in target && knownItems.length >= target.items) {
+      return {
+        completedPages,
+        items,
+        lastCursor: cursor,
+        next,
+        pages,
+        received,
+        status: 'complete',
+        total,
+      }
+    }
+
     if ('pages' in target && completedPages >= target.pages) {
       return {
         completedPages,
@@ -213,7 +237,7 @@ export async function collectFrontendFill({
         next,
         pages,
         received,
-        status: 'pages' in target ? 'exhausted' : 'complete',
+        status: 'until' in target ? 'complete' : 'exhausted',
         total,
       }
     }
@@ -239,7 +263,7 @@ export async function collectFrontendFill({
     next: null,
     pages,
     received,
-    status: 'pages' in target ? 'exhausted' : 'complete',
+    status: 'until' in target ? 'complete' : 'exhausted',
     total,
   }
 }

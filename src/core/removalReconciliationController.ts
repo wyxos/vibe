@@ -87,7 +87,7 @@ export class RemovalReconciliationController {
   }
 
   filterItems(items: readonly VibeItem[]): VibeItem[] {
-    if (!this.enabled || this.tombstones.size === 0) return [...items]
+    if (this.tombstones.size === 0) return [...items]
     return items.filter(({ postId }) => !this.tombstones.has(identityKey(postId)))
   }
 
@@ -116,7 +116,6 @@ export class RemovalReconciliationController {
   }
 
   remove(postIds: readonly VibeItemId[]): void {
-    if (!this.enabled) return
     postIds.forEach((postId) => this.tombstones.add(identityKey(postId)))
   }
 
@@ -127,7 +126,6 @@ export class RemovalReconciliationController {
   }
 
   restore(postIds: readonly VibeItemId[]): void {
-    if (!this.enabled) return
     postIds.forEach((postId) => this.tombstones.delete(identityKey(postId)))
   }
 

@@ -395,6 +395,22 @@ describe('MasonryFeed', () => {
     expect(wrapper.emitted('loadMore')).toEqual([[]])
   })
 
+  it('suppresses removal reflow loading but allows a later deliberate scroll', async () => {
+    vi.useFakeTimers()
+    const initial = Array.from({ length: 10 }, (_, index) => feedItem(index + 1))
+    const wrapper = mount(MasonryFeed, { props: { ...props(initial), hasNext: true } })
+    const gallery = wrapper.get('.gallery-shell')
+    gallery.element.scrollTop = 1800
+
+    await wrapper.setProps({ items: initial.slice(0, 9) })
+    await gallery.trigger('scroll')
+    expect(wrapper.emitted('loadMore')).toBeUndefined()
+
+    await vi.advanceTimersByTimeAsync(251)
+    await gallery.trigger('scroll')
+    expect(wrapper.emitted('loadMore')).toEqual([[]])
+  })
+
   it('offers manual loading when an infinite feed is too short to scroll', async () => {
     galleryClientHeight = 1_000
     const wrapper = mount(MasonryFeed, {

@@ -6,6 +6,7 @@ interface FeedFooterActionTarget {
   loadNext: () => Promise<void>
   reload: () => Promise<void>
   retryEnd: () => Promise<void>
+  retryFill: () => Promise<void>
 }
 
 export function createFeedFooterActions(
@@ -23,5 +24,6 @@ export function createFeedFooterActions(
       return resumesPartialAutofill ? target.loadNext() : target.reload()
     },
     retryEnd: () => target.retryEnd(),
+    retryFill: () => target.retryFill(),
   }
 }

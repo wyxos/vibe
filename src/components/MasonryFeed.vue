@@ -31,6 +31,8 @@ import MediaCard from './MediaCard.vue'
 
 const MIN_GAP = 6
 const MAX_GAP = 12
+const REMOVAL_REFLOW_SUPPRESSION_MS = 250
+let suppressAutomaticLoadUntil = 0
 
 const props = withDefaults(defineProps<MasonryFeedProps>(), {
   leavingPostIds: () => new Set(),
@@ -304,15 +306,23 @@ function onScroll(event: Event): void {
 
   galleryScrollTop = element.scrollTop
   scheduleIndexSnapshotUpdate()
-  if (!props.loadMoreLocked && props.infiniteScroll && isNearFeedBottom(element)) {
+  if (Date.now() >= suppressAutomaticLoadUntil
+    && !props.loadMoreLocked && props.infiniteScroll && isNearFeedBottom(element)) {
     emit('loadMore')
   }
 }
 
 function loadIfNearBottom(): void {
   const element = galleryElement.value
-  if (!props.loadMoreLocked && element && isNearFeedBottom(element)) emit('loadMore')
+  if (Date.now() >= suppressAutomaticLoadUntil
+    && !props.loadMoreLocked && element && isNearFeedBottom(element)) emit('loadMore')
 }
+
+watch(() => props.items.length, (count, previous) => {
+  if (count > 0 && count < previous) {
+    suppressAutomaticLoadUntil = Date.now() + REMOVAL_REFLOW_SUPPRESSION_MS
+  }
+})
 
 function getScrollElement(): HTMLElement | null {
   return galleryElement.value

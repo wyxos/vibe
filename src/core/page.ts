@@ -44,6 +44,49 @@ export function appendUniqueItems(
   ]
 }
 
+function identityKey(value: VibeItemId): string {
+  return `${typeof value}:${String(value)}`
+}
+
+function mediaKey(item: VibeItem['items'][number]): string {
+  return item.mediaId === undefined
+    ? `source:${item.src}\u0000${item.preview.src}`
+    : `id:${identityKey(item.mediaId)}`
+}
+
+export function reconcilePageItems(
+  current: readonly VibeItem[],
+  incoming: readonly VibeItem[],
+): VibeItem[] {
+  const result = [...current]
+  const indices = new Map(current.map((item, index) => [identityKey(item.postId), index]))
+
+  incoming.forEach((item) => {
+    const key = identityKey(item.postId)
+    const existingIndex = indices.get(key)
+    if (existingIndex === undefined) {
+      indices.set(key, result.length)
+      result.push(item)
+      return
+    }
+
+    const existing = result[existingIndex]!
+    const knownMedia = new Set([existing, ...existing.items].map(mediaKey))
+    const additions = [item, ...item.items].filter((media) => {
+      const mediaIdentity = mediaKey(media)
+      if (knownMedia.has(mediaIdentity)) return false
+      knownMedia.add(mediaIdentity)
+      return true
+    })
+    if (additions.length > 0) result[existingIndex] = {
+      ...existing,
+      items: [...existing.items, ...additions],
+    }
+  })
+
+  return result
+}
+
 export function pageCurrentCursor(page: VibePage): VibeCursor {
   return Object.prototype.hasOwnProperty.call(page, 'current')
     ? page.current ?? null

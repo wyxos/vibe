@@ -1,9 +1,11 @@
 import { createApp, nextTick, reactive, watch, type App, type WatchHandle } from 'vue'
 import VibeSurface from '../components/VibeSurface.vue'
+import { appendPageToState } from './appendPage'
 import { createAutofillState, isAutofillActive } from './autofill'
 import { VibeAutofillController } from './autofillController'
 import { VibeAutoScrollController } from './autoScroll'
 import { applyBackendAutofillUpdate, restoreBackendAutofillSession } from './backendAutofill'
+import { restoreBacklog } from './backlogRestore'
 import { autofillInitialPage } from './initialAutofill'
 import { VibeFillController } from './fillController'
 import { reconcileBeforeFill } from './fillReconciliation'
@@ -21,22 +23,14 @@ import { setReelInfoSheetEnabled } from './reelInfoSheet'
 import { VibeRouteSync } from './vibeRouting'
 import { createItemSnapshot, snapshotState, type VibeRuntimeState } from './runtime'
 import type {
-  CreateVibeOptions,
-  VibeAutofillSessionSnapshot,
-  VibeBackendAutofillUpdate,
-  VibeBackendFillUpdate,
-  VibeCursor,
-  VibeFillSessionSnapshot,
-  VibeFillTarget,
-  VibeInstance,
-  VibeItemId,
-  VibeItemPlacement,
-  VibeLayoutMode,
-  VibeMediaRemoval,
-  VibeMediaTarget,
-  VibePage,
-  VibePageRequest,
-  VibeRemoval,
+  CreateVibeOptions, VibeAutofillSessionSnapshot,
+  VibeBackendAutofillUpdate, VibeBackendFillUpdate,
+  VibeCursor, VibeFillSessionSnapshot,
+  VibeFillTarget, VibeInstance,
+  VibeItemId, VibeItemPlacement,
+  VibeLayoutMode, VibeMediaRemoval,
+  VibeMediaTarget, VibePage,
+  VibePageRequest, VibeRemoval,
   VibeReelAutoAdvanceOptions,
   VibeReelItemTarget,
   VibeReelNavigationResult,
@@ -50,6 +44,7 @@ class VibeController implements VibeInstance {
   private abortController: AbortController | null = null
   private pendingRequest: Promise<void> | null = null
   private requestVersion = 0
+  private restoreController: AbortController | null = null
   private readonly responsiveLayout: ResponsiveLayoutController
   private readonly routing: VibeRouteSync
   private readonly fillController: VibeFillController
@@ -150,13 +145,16 @@ class VibeController implements VibeInstance {
     })
     this.surface = this.app.mount(target) as unknown as VibeSurfaceExpose
     this.autoScroll.mount()
-    if (!this.options.initialPage) await this.reload()
+    await restoreBacklog(this.options.restoreBacklog, (page) => this.appendPage(page), (controller) => { this.restoreController = controller })
+    if (!this.options.initialPage && this.state.items.length === 0) await this.reload()
     else if (this.options.autofill && this.state.autofill.status === 'idle'
       && !this.fillController.isActive() && !this.state.loadMoreLocked) {
       await this.startInitialAutofill()
     }
   }
   destroy(): void {
+    this.restoreController?.abort()
+    this.restoreController = null
     this.autoScroll.destroy()
     this.fillController.destroy()
     this.cancelRequest()
@@ -188,6 +186,7 @@ class VibeController implements VibeInstance {
   }
   restoreRemoval(removal: VibeRemoval): boolean { return this.itemRemoval.restoreRemoval(removal) }
   retryReelForward(): Promise<void> { return this.reelForward.retry() }
+  retryFill(): Promise<void> { return this.fillController.retry(this.removalReconciliation.hasPendingSession()) }
   undoLastRemoval(): VibeRemoval | null { return this.itemRemoval.undoLast() }
   nextReelMediaItem(): boolean { return this.surface?.changeActiveReelMedia(1) ?? false }
   previousReelMediaItem(): boolean { return this.surface?.changeActiveReelMedia(-1) ?? false }
@@ -245,6 +244,9 @@ class VibeController implements VibeInstance {
   }
   loadNext(): Promise<void> {
     return this.startLoadMore(() => this.loadNextSequence())
+  }
+  appendPage(pageValue: VibePage): void {
+    appendPageToState(pageValue, this.state, this.removalReconciliation, (cursor) => this.setCurrentCursor(cursor))
   }
   replenishAfterRemoval(): Promise<void> {
     return this.startLoadMore(() => this.replenishAfterRemovalSequence())

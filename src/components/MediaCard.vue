@@ -31,6 +31,7 @@ import CardRegion from './CardRegion.vue'
 import MediaControls from './MediaControls.vue'
 import { useReelVideoActivity } from './useReelVideoActivity'
 import { useMediaLoading } from './useMediaLoading'
+import { useMediaReadiness } from './useMediaReadiness'
 
 const props = defineProps<{
   active?: boolean
@@ -64,7 +65,6 @@ let wheelGestureConsumed = false
 let touchStartX: number | null = null
 let touchStartY: number | null = null
 const mediaDirection = shallowRef<'next' | 'previous'>('next')
-
 const emit = defineEmits<{
   activate: [input: 'keyboard' | 'pointer']
   ended: [mediaIndex: number]
@@ -72,7 +72,6 @@ const emit = defineEmits<{
   mediaChange: [mediaIndex: number]
   ready: [mediaIndex: number]
 }>()
-
 function activate(
   interactive = false,
   input: 'keyboard' | 'pointer' = 'pointer',
@@ -90,6 +89,11 @@ const mediaItem = computed(() => (
 const mediaSrc = computed(() => (
   props.mediaSource === 'original' ? mediaItem.value.src : mediaItem.value.preview.src
 ))
+const mediaType = computed(() => (
+  props.mediaSource === 'original'
+    ? mediaItem.value.type
+    : mediaItem.value.preview.type ?? mediaItem.value.type
+))
 
 const mediaWidth = computed(() => (
   props.mediaSource === 'original' ? mediaItem.value.width : mediaItem.value.preview.width
@@ -98,7 +102,14 @@ const mediaWidth = computed(() => (
 const mediaHeight = computed(() => (
   props.mediaSource === 'original' ? mediaItem.value.height : mediaItem.value.preview.height
 ))
-const videoElement = shallowRef<HTMLVideoElement | null>(null)
+const { effectivePreviewState, failSourceAttempt, imageElement, markSourceReady,
+  noteSourceActivity, retrySource, sourceGeneration, videoElement } = useMediaReadiness({
+  identity: () => `${props.item.postId}:${normalizedMediaIndex.value}:${props.mediaSource ?? 'preview'}:${mediaSrc.value}:${mediaType.value ?? ''}`,
+  mediaIndex: () => normalizedMediaIndex.value,
+  onError: (mediaIndex) => emit('error', mediaIndex),
+  onReady: (mediaIndex) => emit('ready', mediaIndex),
+  previewState: () => props.previewState,
+})
 const videoCurrentTime = shallowRef(0)
 const videoDuration = shallowRef(0)
 const videoIsMuted = shallowRef(
@@ -107,7 +118,6 @@ const videoIsMuted = shallowRef(
 const videoIsPlaying = shallowRef(false)
 const videoVolume = shallowRef(1)
 let lastAudibleVolume = 1
-
 const {
   effectiveMuted: effectiveVideoMuted,
   onPlaying: onVideoPlaying,
@@ -127,7 +137,6 @@ const usesSeparateActivator = computed(() => (
 function activationInput(event: MouseEvent): 'keyboard' | 'pointer' {
   return event.detail === 0 ? 'keyboard' : 'pointer'
 }
-
 function changeMedia(index: number, event?: MouseEvent): void {
   const mediaCount = mediaItems.value.length
   const nextIndex = (index + mediaCount) % mediaCount
@@ -145,19 +154,16 @@ function normalizeWheelDelta(delta: number, deltaMode: number, pageSize: number)
   if (deltaMode === 2) return delta * pageSize
   return delta
 }
-
 function resetWheelGesture(): void {
   wheelDeltaX = 0
   wheelGestureConsumed = false
   if (wheelResetTimer !== null) clearTimeout(wheelResetTimer)
   wheelResetTimer = null
 }
-
 function scheduleWheelReset(): void {
   if (wheelResetTimer !== null) clearTimeout(wheelResetTimer)
   wheelResetTimer = setTimeout(resetWheelGesture, MEDIA_WHEEL_RESET_MS)
 }
-
 function onMediaWheel(event: WheelEvent): void {
   const mediaCount = mediaItems.value.length
   if (mediaCount <= 1) return
@@ -179,7 +185,6 @@ function onMediaWheel(event: WheelEvent): void {
   wheelGestureConsumed = true
   changeMedia(normalizedMediaIndex.value + direction)
 }
-
 function onMediaTouchStart(event: TouchEvent): void {
   const touch = event.touches[0]
   if (props.layout !== 'reel' || !touch) return
@@ -187,7 +192,6 @@ function onMediaTouchStart(event: TouchEvent): void {
   touchStartX = touch.clientX
   touchStartY = touch.clientY
 }
-
 function onMediaTouchEnd(event: TouchEvent): void {
   const touch = event.changedTouches[0]
   if (touchStartX === null || touchStartY === null || !touch) return
@@ -202,13 +206,13 @@ function onMediaTouchEnd(event: TouchEvent): void {
   changeMedia(normalizedMediaIndex.value + Math.sign(deltaX))
 }
 
-const { imageLoading, mediaIsTimed, videoPreload } = useMediaLoading({ fetchPriority: () => props.fetchPriority, layout: () => props.layout, mediaSource: () => mediaSrc.value, videoElement })
+const { imageLoading, mediaIsTimed, videoPreload } = useMediaLoading({ active: () => props.active, fetchPriority: () => props.fetchPriority, layout: () => props.layout, mediaSource: () => mediaSrc.value, mediaType: () => mediaType.value, videoElement })
 const usesStationaryReelControls = computed(() => (
   props.layout === 'reel' && props.stationaryReelControls === true
 ))
 const mediaControlsVisible = computed(() => (
   mediaIsTimed.value
-  && props.previewState === 'ready'
+  && effectivePreviewState.value === 'ready'
   && (
     !usesStationaryReelControls.value
     || Boolean(props.active && props.reelControlsTarget)
@@ -224,7 +228,6 @@ function onVideoClick(event: MouseEvent): void {
   event.stopPropagation()
   void toggleVideoPlayback()
 }
-
 async function toggleVideoPlayback(): Promise<void> {
   if (!videoElement.value || !videoPlaybackAllowed.value) return
 
@@ -239,11 +242,9 @@ async function toggleVideoPlayback(): Promise<void> {
     videoIsPlaying.value = false
   }
 }
-
 function finiteMediaValue(value: number): number {
   return Number.isFinite(value) ? Math.max(0, value) : 0
 }
-
 function syncVideoState(event?: Event): void {
   const video = (event?.currentTarget as HTMLVideoElement | null) ?? videoElement.value
   if (!video) return
@@ -254,17 +255,14 @@ function syncVideoState(event?: Event): void {
   videoVolume.value = video.volume
   if (video.volume > 0) lastAudibleVolume = video.volume
 }
-
 function onVideoLoadedMetadata(event: Event): void {
   syncVideoState(event)
-  emit('ready', normalizedMediaIndex.value)
+  markSourceReady(event)
 }
-
 function onMediaEnded(): void {
   videoIsPlaying.value = false
   emit('ended', normalizedMediaIndex.value)
 }
-
 function seekVideo(time: number): void {
   const video = videoElement.value
   if (!video || !Number.isFinite(time)) return
@@ -272,7 +270,6 @@ function seekVideo(time: number): void {
   video.currentTime = Math.min(finiteMediaValue(video.duration), Math.max(0, time))
   videoCurrentTime.value = video.currentTime
 }
-
 function setVideoVolume(volume: number): void {
   const video = videoElement.value
   if (!video || !Number.isFinite(volume)) return
@@ -283,7 +280,6 @@ function setVideoVolume(volume: number): void {
   if (nextVolume > 0) lastAudibleVolume = nextVolume
   syncVideoState()
 }
-
 function toggleVideoMute(): void {
   const video = videoElement.value
   if (!video) return
@@ -306,7 +302,7 @@ onBeforeUnmount(() => {
     :class="{
       'media-card--entering': entering,
       'media-card--leaving': leaving,
-      'media-card--error': previewState === 'error',
+      'media-card--error': effectivePreviewState === 'error',
       'media-card--transparent-chrome':
         mediaCard?.header?.background === 'transparent'
         || mediaCard?.footer?.background === 'transparent'
@@ -315,7 +311,7 @@ onBeforeUnmount(() => {
     }"
     :style="itemStyle"
     :aria-hidden="leaving || undefined"
-    :aria-busy="previewState === 'loading'"
+    :aria-busy="effectivePreviewState === 'loading'"
     :inert="leaving || undefined"
     :role="interactive && !leaving && !usesSeparateActivator ? 'button' : undefined"
     :tabindex="interactive && !leaving && !usesSeparateActivator ? 0 : undefined"
@@ -348,12 +344,12 @@ onBeforeUnmount(() => {
       >
         <Transition :name="`media-slide-${mediaDirection}`">
           <div
-            :key="`${item.postId}:${mediaItem.src}:${mediaSource ?? 'preview'}`"
+            :key="`${item.postId}:${mediaItem.src}:${mediaSource ?? 'preview'}:${sourceGeneration}`"
             class="media-card-frame"
             :data-media-index="normalizedMediaIndex"
           >
             <div
-              v-if="previewState === 'loading'"
+              v-if="effectivePreviewState === 'loading'"
               data-test="media-loading"
               class="media-loading"
               aria-hidden="true"
@@ -362,7 +358,7 @@ onBeforeUnmount(() => {
             </div>
 
             <div
-              v-else-if="previewState === 'error'"
+              v-else-if="effectivePreviewState === 'error'"
               data-test="media-error"
               class="media-error"
               role="img"
@@ -372,14 +368,16 @@ onBeforeUnmount(() => {
                 {{ mediaErrorStatus(mediaSrc) }}
               </strong>
               <span>{{ mediaErrorLabel(mediaSrc) }}</span>
+              <button type="button" data-test="media-retry" @click.stop="retrySource">Retry</button>
             </div>
 
             <video
               v-if="mediaIsTimed"
               ref="videoElement"
+              :data-source-generation="sourceGeneration"
               class="media-preview"
               :class="{
-                'media-preview--ready': previewState === 'ready',
+                'media-preview--ready': effectivePreviewState === 'ready',
                 'media-preview--reel-video': layout === 'reel',
               }"
               :src="mediaSrc"
@@ -391,6 +389,8 @@ onBeforeUnmount(() => {
               playsinline
               :preload="videoPreload"
               @loadedmetadata="onVideoLoadedMetadata"
+              @progress="noteSourceActivity" @loadeddata="noteSourceActivity"
+              @canplay="noteSourceActivity"
               @durationchange="syncVideoState"
               @timeupdate="syncVideoState"
               @volumechange="syncVideoState"
@@ -398,13 +398,15 @@ onBeforeUnmount(() => {
               @pause="videoIsPlaying = false"
               @ended="onMediaEnded"
               @click="onVideoClick"
-              @error="$emit('error', normalizedMediaIndex)"
+              @error="failSourceAttempt"
             />
 
             <img
               v-else
+              ref="imageElement"
+              :data-source-generation="sourceGeneration"
               class="media-preview"
-              :class="{ 'media-preview--ready': previewState === 'ready' }"
+              :class="{ 'media-preview--ready': effectivePreviewState === 'ready' }"
               :src="mediaSrc"
               :width="mediaWidth ?? undefined"
               :height="mediaHeight ?? undefined"
@@ -412,8 +414,8 @@ onBeforeUnmount(() => {
               alt=""
               decoding="async"
               :loading="imageLoading"
-              @load="$emit('ready', normalizedMediaIndex)"
-              @error="$emit('error', normalizedMediaIndex)"
+              @load="markSourceReady"
+              @error="failSourceAttempt"
             >
           </div>
         </Transition>

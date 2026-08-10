@@ -8,21 +8,20 @@ import {
   watch,
   type CSSProperties,
 } from 'vue'
-
 import type { ReelFeedProps } from '../core/feed'
 import { isNearFeedBottom } from '../core/feed'
 import { mediaAssetAt, mediaAssets, mediaStateKey } from '../core/mediaAsset'
-import { isTimedMediaSource } from '../core/mediaType'
+import { isTimedMedia } from '../core/mediaType'
 import { transitionReelScroll } from '../core/reelScrollTransition'
 import type { VibeItemId } from '../types'
 import CardRegion from './CardRegion.vue'
 import FeedFooter from './FeedFooter.vue'
 import MediaCard from './MediaCard.vue'
 import ReelAutoAdvanceProgress from './ReelAutoAdvanceProgress.vue'
-
 const VIRTUAL_OVERSCAN = 2
 const MEDIA_TRANSITION_MS = 300
-
+const REMOVAL_REFLOW_SUPPRESSION_MS = 250
+let suppressAutomaticLoadUntil = 0
 const props = withDefaults(defineProps<ReelFeedProps>(), {
   reelForward: () => ({ error: null, status: 'idle' }),
 })
@@ -35,7 +34,6 @@ const emit = defineEmits<{
   retryEnd: []
   retryForward: []
 }>()
-
 const galleryElement = shallowRef<HTMLElement | null>(null)
 const reelControlsElement = shallowRef<HTMLElement | null>(null)
 const initialIndex = props.initialPostId === null || props.initialPostId === undefined
@@ -48,11 +46,9 @@ let viewportHeight = 0
 let resizeObserver: ResizeObserver | null = null
 let restoreFrame: number | null = null
 let resizeReleaseTimer: ReturnType<typeof setTimeout> | null = null
-
 const trackStyle = computed<CSSProperties>(() => ({
   gridTemplateRows: `repeat(${props.items.length}, 100cqh)`,
 }))
-
 const visibleItems = computed(() => {
   const first = Math.max(0, activeIndex.value - VIRTUAL_OVERSCAN)
   const last = Math.min(props.items.length - 1, activeIndex.value + VIRTUAL_OVERSCAN)
@@ -63,7 +59,6 @@ const visibleItems = computed(() => {
     item,
   }))
 })
-
 const activePostId = computed(() => props.items[activeIndex.value]?.postId)
 const activeItem = computed(() => props.items[activeIndex.value])
 const activeMediaIndex = computed(() => {
@@ -75,16 +70,19 @@ const activePreviewState = computed(() => {
   if (postId === undefined) return 'loading'
   return props.previewStates.get(mediaStateKey(postId, activeMediaIndex.value)) ?? 'loading'
 })
-const activeMediaSrc = computed(() => {
-  const item = activeItem.value
-  if (!item) return ''
-
-  const media = mediaAssetAt(item, activeMediaIndex.value)
-  return props.mediaSource === 'original' ? media.src : media.preview.src
-})
+const activeMedia = computed(() => activeItem.value
+  ? mediaAssetAt(activeItem.value, activeMediaIndex.value)
+  : null)
 const activeMediaWaitsForEnd = computed(() => (
   activePreviewState.value === 'ready'
-  && isTimedMediaSource(activeMediaSrc.value)
+  && Boolean(activeMedia.value && isTimedMedia(
+    props.mediaSource === 'original'
+      ? activeMedia.value.type
+      : activeMedia.value.preview.type ?? activeMedia.value.type,
+    props.mediaSource === 'original'
+      ? activeMedia.value.src
+      : activeMedia.value.preview.src,
+  ))
 ))
 const autoAdvanceKey = computed(() => [
   activePostId.value,
@@ -143,7 +141,8 @@ function onScroll(event: Event): void {
     && element.scrollTop > lastItemAnchor + 1
 
   if (!isResizing.value) activeIndex.value = nearestIndex(element)
-  if (!props.loadMoreLocked && props.infiniteScroll && isNearFeedBottom(element)) {
+  if (Date.now() >= suppressAutomaticLoadUntil
+    && !props.loadMoreLocked && props.infiniteScroll && isNearFeedBottom(element)) {
     emit('loadMore')
   }
 }
@@ -198,8 +197,14 @@ function setResizeState(resizing: boolean): void {
 
 function loadIfNearBottom(): void {
   const element = galleryElement.value
-  if (!props.loadMoreLocked && element && isNearFeedBottom(element)) emit('loadMore')
+  if (Date.now() >= suppressAutomaticLoadUntil
+    && !props.loadMoreLocked && element && isNearFeedBottom(element)) emit('loadMore')
 }
+
+watch(() => props.items.length, (count, previous) => {
+  if (count > 0 && count < previous) suppressAutomaticLoadUntil = Date.now()
+    + REMOVAL_REFLOW_SUPPRESSION_MS
+})
 
 function changeActiveMedia(direction: -1 | 1): boolean {
   const item = activeItem.value
