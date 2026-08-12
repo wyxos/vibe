@@ -195,7 +195,7 @@ function calculateIndexSnapshot(overscan: number): number[] {
 }
 
 function updateIndexSnapshots(): void {
-  const viewport = props.suspended ? [] : calculateIndexSnapshot(0)
+  const viewport = calculateIndexSnapshot(0)
   const overscan = calculateIndexSnapshot(resolveMasonryOverscan(
     props.masonry,
     galleryViewportHeight.value,
@@ -362,7 +362,7 @@ watch(galleryElement, (element) => {
 })
 
 watch(
-  [settledMasonryLayout, masonryLayout, () => props.suspended, () => props.masonry],
+  [settledMasonryLayout, masonryLayout, () => props.masonry],
   updateIndexSnapshots,
   { flush: 'post' },
 )
