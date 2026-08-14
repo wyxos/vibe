@@ -152,6 +152,12 @@ transition, while vertical reel scrolling continues to move between posts.
 Media assets may include a stable `mediaId` (`string | number`) when consumers
 need to select exact grouped media independently of its array position.
 
+Set `mediaCard.groupedMediaNavigation` to `thumbnails` to replace masonry's
+hover arrows with an in-flow, horizontally scrollable thumbnail strip. Each
+grouped card reserves a 44-pixel row with keyboard-accessible 36-pixel preview
+buttons; single-media cards keep their original height. Reel navigation remains
+the persistent arrow treatment. The default is `arrows`.
+
 ## Media lifecycle hooks
 
 Use `onMediaReady` when an image has loaded or a video has enough metadata for

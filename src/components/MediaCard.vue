@@ -1,9 +1,5 @@
 <script setup lang="ts">
 import {
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-vue-next'
-import {
   computed,
   onBeforeUnmount,
   shallowRef,
@@ -29,6 +25,7 @@ import type {
   VibeMediaCardOptions,
 } from '../types'
 import CardRegion from './CardRegion.vue'
+import GroupedMediaNavigation from './GroupedMediaNavigation.vue'
 import MediaControls from './MediaControls.vue'
 import { useReelVideoActivity } from './useReelVideoActivity'
 import { useMediaLoading } from './useMediaLoading'
@@ -125,6 +122,11 @@ const {
 
 const usesSeparateActivator = computed(() => (
   props.interactive && Boolean(props.cardHeader || props.cardFooter)
+))
+const groupedMediaNavigation = computed(() => (
+  props.layout === 'masonry'
+    ? props.mediaCard?.groupedMediaNavigation ?? 'arrows'
+    : 'arrows'
 ))
 
 function activationInput(event: MouseEvent): 'keyboard' | 'pointer' {
@@ -439,31 +441,15 @@ onBeforeUnmount(() => {
           </Transition>
         </Teleport>
 
-        <div
+        <GroupedMediaNavigation
           v-if="mediaItems.length > 1"
-          class="media-carousel-controls"
-          :class="{ 'media-carousel-controls--persistent': layout === 'reel' }"
-          aria-label="Media navigation"
-        >
-          <button
-            type="button"
-            class="media-carousel-control media-carousel-control--previous"
-            :aria-label="`Previous media for post ${item.postId}`"
-            @click.stop="changeMedia(normalizedMediaIndex - 1, $event)"
-            @keydown.stop
-          >
-            <ChevronLeft :size="20" />
-          </button>
-          <button
-            type="button"
-            class="media-carousel-control media-carousel-control--next"
-            :aria-label="`Next media for post ${item.postId}`"
-            @click.stop="changeMedia(normalizedMediaIndex + 1, $event)"
-            @keydown.stop
-          >
-            <ChevronRight :size="20" />
-          </button>
-        </div>
+          :media="mediaItems"
+          :media-index="normalizedMediaIndex"
+          :mode="groupedMediaNavigation"
+          :persistent="layout === 'reel'"
+          :post-id="item.postId"
+          @change="changeMedia"
+        />
 
         <button
           v-if="usesSeparateActivator"

@@ -31,8 +31,10 @@ export interface MasonryViewportOptions {
   overscan: number
 }
 
-interface MasonryOptions {
-  additionalHeight?: number
+interface MasonryOptions<T extends MasonryMediaDimensions> {
+  additionalHeight?: number | (
+    (item: T, index: number) => number
+  )
   gap: number
   minColumnWidth: number
 }
@@ -83,19 +85,22 @@ export function calculateVisibleMasonryIndices(
   }, [])
 }
 
-export function calculateMasonryLayout(
-  media: readonly MasonryMediaDimensions[],
+export function calculateMasonryLayout<T extends MasonryMediaDimensions>(
+  media: readonly T[],
   containerWidth: number,
-  options: MasonryOptions,
+  options: MasonryOptions<T>,
 ): MasonryLayout {
   if (containerWidth <= 0 || media.length === 0) {
     return { columns: 0, height: 0, items: [] }
   }
 
   const gap = Math.max(0, options.gap)
-  const additionalHeight = Number.isFinite(options.additionalHeight)
-    ? Math.max(0, options.additionalHeight ?? 0)
-    : 0
+  const configuredAdditionalHeight = options.additionalHeight
+  const additionalHeight = typeof configuredAdditionalHeight === 'function'
+    ? configuredAdditionalHeight
+    : () => Number.isFinite(configuredAdditionalHeight)
+      ? Math.max(0, configuredAdditionalHeight ?? 0)
+      : 0
   const minColumnWidth = Math.max(1, options.minColumnWidth)
   const columns = Math.max(
     1,
@@ -104,9 +109,11 @@ export function calculateMasonryLayout(
   const itemWidth = (containerWidth - gap * (columns - 1)) / columns
   const columnHeights = Array.from({ length: columns }, () => 0)
 
-  const items = media.map((item) => {
+  const items = media.map((item, index) => {
     const column = shortestColumn(columnHeights)
-    const height = itemWidth * itemAspectRatio(item) + additionalHeight
+    const itemAdditionalHeight = additionalHeight(item, index)
+    const height = itemWidth * itemAspectRatio(item)
+      + (Number.isFinite(itemAdditionalHeight) ? Math.max(0, itemAdditionalHeight) : 0)
     const position = {
       x: column * (itemWidth + gap),
       y: columnHeights[column],
