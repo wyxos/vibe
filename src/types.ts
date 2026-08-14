@@ -1,5 +1,7 @@
 import type { Component } from 'vue'
 import type { RouteLocationRaw, Router } from 'vue-router'
+import type { VibeMediaCardOptions, VibeReelAudioState } from './core/mediaCardOptions'
+export type { VibeCardChromeStyle, VibeGroupedMediaNavigation, VibeMediaCardOptions, VibeReelAudioState } from './core/mediaCardOptions'
 export type VibeCursor = string | number | null
 export type VibeItemId = string | number
 export type VibeLayout = 'masonry' | 'reel'
@@ -121,19 +123,6 @@ export interface VibeCardRegion {
   background?: 'default' | 'transparent'
   component: Component
   height: number
-}
-
-export interface VibeCardChromeStyle {
-  background?: 'default' | 'transparent'
-  paddingX?: number
-  paddingY?: number
-}
-export type VibeGroupedMediaNavigation = 'arrows' | 'thumbnails'
-export interface VibeMediaCardOptions {
-  footer?: VibeCardChromeStyle
-  groupedMediaNavigation?: VibeGroupedMediaNavigation
-  header?: VibeCardChromeStyle
-  videoMuted?: boolean
 }
 
 export interface VibeCardRegionProps {
@@ -412,6 +401,7 @@ export interface CreateVibeOptions {
   target: Element | string
   layout?: VibeLayoutMode
   infiniteScroll?: boolean
+  initialReelAudioState?: Partial<VibeReelAudioState>
   initialPage?: VibeInitialPage
   loadPage?: VibePageLoader
   mediaCard?: VibeMediaCardOptions
@@ -419,6 +409,7 @@ export interface CreateVibeOptions {
   onMediaReady?: (context: VibeMediaLifecycleContext) => void
   onMediaVisible?: (context: VibeMediaLifecycleContext) => void
   onReelMediaChange?: (context: VibeMediaLifecycleContext) => void
+  onReelAudioStateChange?: (state: VibeReelAudioState) => void
   onStateChange?: (state: VibeState) => void
   removalHistoryLimit?: number
   removalReconciliation?: VibeRemovalReconciliationOptions
@@ -464,6 +455,7 @@ export interface VibeInstance {
   destroy: () => void
   fill: (target: VibeFillTarget) => Promise<void>
   getState: () => VibeState
+  getReelAudioState: () => VibeReelAudioState
   loadNext: () => Promise<void>
   mount: () => Promise<void>
   navigateToReelItem: (target: VibeReelItemTarget) => VibeReelNavigationResult
@@ -495,6 +487,7 @@ export interface VibeInstance {
   setReelAutoAdvance: (
     update: boolean | VibeReelAutoAdvanceOptions,
   ) => void
+  setReelAudioState: (state: VibeReelAudioState) => void
   setReelInfoSheet: (enabled: boolean) => void
   undoLastRemoval: () => VibeRemoval | null
 }

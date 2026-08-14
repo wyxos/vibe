@@ -121,6 +121,14 @@ active again. Set `mediaCard.videoMuted` to explicitly override the initial
 state in either layout. Users can still change mute and volume through the
 timed-media controls.
 
+Applications that need audio continuity can pass `initialReelAudioState` with
+`volume`, `muted`, and `lastAudibleVolume`, then persist user changes through
+`onReelAudioStateChange`. Every reel card in that Vibe instance shares the
+state. `getReelAudioState()` returns a snapshot and `setReelAudioState()` applies
+an external update without invoking the callback, which lets applications sync
+several Vibe instances without an echo loop. Masonry's forced mute behavior is
+unchanged.
+
 Masonry virtualization keeps the existing 800px/1.5-viewport overscan by
 default. Consumers can opt into a capped window while retaining every loaded
 item and the same removal, restoration, reel, and pagination behavior:

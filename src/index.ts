@@ -65,6 +65,7 @@ export type {
   VibeReelRouteContext,
   VibeReelAutoAdvanceOptions,
   VibeReelAutoAdvanceState,
+  VibeReelAudioState,
   VibeReelInfoSheetOptions,
   VibeReelInfoSheetProps,
   VibeReelInfoSheetState,

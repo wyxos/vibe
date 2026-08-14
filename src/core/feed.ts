@@ -7,6 +7,7 @@ import type {
   VibeMediaSource,
   VibeMediaCardOptions,
   VibeReelAutoAdvanceState,
+  VibeReelAudioState,
   VibeReelForwardState,
   VibeReelInfoSheetOptions,
   VibeReelItemTarget,
@@ -33,6 +34,7 @@ export interface FeedRendererProps {
   mediaIndices: ReadonlyMap<VibeItemId, number>
   nextPageError: boolean
   previewStates: ReadonlyMap<string, MediaPreviewState>
+  reelAudioState?: VibeReelAudioState
   state?: VibeState
   total: number | null
 }

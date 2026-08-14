@@ -56,6 +56,8 @@ selection events and do not imply that the selected media has finished loading.
 | `cardHeader` | `VibeCardRegion` | Typed Vue component above each post's media. |
 | `cardFooter` | `VibeCardRegion` | Typed Vue component below each post's media. |
 | `mediaCard` | `VibeMediaCardOptions` | Consumer-owned header/footer styling and initial video mute behavior. Masonry starts muted and reels start unmuted; set `videoMuted` to override either layout. |
+| `initialReelAudioState` | `Partial<VibeReelAudioState>` | Initial shared reel `volume`, `muted`, and `lastAudibleVolume`. |
+| `onReelAudioStateChange` | `(state: VibeReelAudioState) => void` | Reports user changes from reel audio controls. External `setReelAudioState()` updates do not invoke it. |
 | `feedFooter` | `VibeFeedFooter` | Replaces the default `GalleryFooter` with a consumer-owned component. |
 | `reelInfoSheet` | `VibeReelInfoSheetOptions` | Application-owned information sheet for an active reel. |
 | `reelAutoAdvance` | `VibeReelAutoAdvanceOptions` | Timed image progression and playback-ended media progression. |
@@ -70,6 +72,11 @@ selection events and do not imply that the selected media has finished loading.
 | `routing` | `VibeRoutingOptions` | Synchronizes active reel locations through an application-owned Vue Router instance. |
 
 Vue Router is an optional peer dependency and is only required when `routing` is configured.
+
+Use `getReelAudioState()` to read the current shared reel audio snapshot and
+`setReelAudioState()` to apply an application-owned update to every mounted reel
+card in the instance. Volume values are clamped from `0` to `1`; mute remains a
+separate user preference so unmuting can restore `lastAudibleVolume`.
 
 Frontend `autofill.maxAdditionalPages` accepts a non-negative integer or
 `'unlimited'`. The unlimited value is serializable and does not bypass target,

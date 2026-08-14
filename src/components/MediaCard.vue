@@ -23,10 +23,12 @@ import type {
   VibeLayout,
   VibeMediaSource,
   VibeMediaCardOptions,
+  VibeReelAudioState,
 } from '../types'
 import CardRegion from './CardRegion.vue'
 import GroupedMediaNavigation from './GroupedMediaNavigation.vue'
 import MediaControls from './MediaControls.vue'
+import { useMediaCardAudio } from './useMediaCardAudio'
 import { useReelVideoActivity } from './useReelVideoActivity'
 import { useMediaLoading } from './useMediaLoading'
 import { useMediaReadiness } from './useMediaReadiness'
@@ -50,6 +52,7 @@ const props = defineProps<{
   mediaSource?: VibeMediaSource
   previewState: MediaPreviewState
   reelControlsTarget?: HTMLElement | null
+  reelAudioState?: VibeReelAudioState
   stationaryReelControls?: boolean
   total: number | null
 }>()
@@ -69,6 +72,7 @@ const emit = defineEmits<{
   error: [mediaIndex: number]
   mediaChange: [mediaIndex: number]
   ready: [mediaIndex: number]
+  reelAudioChange: [state: VibeReelAudioState]
 }>()
 function activate(
   interactive = false,
@@ -102,12 +106,22 @@ const { effectivePreviewState, failSourceAttempt, imageElement, markSourceReady,
 })
 const videoCurrentTime = shallowRef(0)
 const videoDuration = shallowRef(0)
-const videoIsMuted = shallowRef(
-  props.mediaCard?.videoMuted ?? props.layout === 'masonry',
-)
 const videoIsPlaying = shallowRef(false)
-const videoVolume = shallowRef(1)
-let lastAudibleVolume = 1
+const {
+  apply: applyReelAudioState,
+  setVolume: setVideoVolume,
+  sync: syncVideoAudioState,
+  toggleMute: toggleVideoMute,
+  videoIsMuted,
+  videoVolume,
+} = useMediaCardAudio({
+  active: () => props.active,
+  layout: () => props.layout,
+  mediaCard: () => props.mediaCard,
+  onChange: (state) => emit('reelAudioChange', state),
+  reelAudioState: () => props.reelAudioState,
+  videoElement,
+})
 const {
   effectiveMuted: effectiveVideoMuted,
   onPlaying: onVideoPlaying,
@@ -246,11 +260,10 @@ function syncVideoState(event?: Event): void {
 
   videoCurrentTime.value = finiteMediaValue(video.currentTime)
   videoDuration.value = finiteMediaValue(video.duration)
-  if (videoPlaybackAllowed.value) videoIsMuted.value = video.muted
-  videoVolume.value = video.volume
-  if (video.volume > 0) lastAudibleVolume = video.volume
+  syncVideoAudioState(video, videoPlaybackAllowed.value)
 }
 function onVideoLoadedMetadata(event: Event): void {
+  applyReelAudioState()
   syncVideoState(event)
   markSourceReady(event)
 }
@@ -264,24 +277,6 @@ function seekVideo(time: number): void {
 
   video.currentTime = Math.min(finiteMediaValue(video.duration), Math.max(0, time))
   videoCurrentTime.value = video.currentTime
-}
-function setVideoVolume(volume: number): void {
-  const video = videoElement.value
-  if (!video || !Number.isFinite(volume)) return
-
-  const nextVolume = Math.min(1, Math.max(0, volume))
-  video.volume = nextVolume
-  video.muted = nextVolume === 0
-  if (nextVolume > 0) lastAudibleVolume = nextVolume
-  syncVideoState()
-}
-function toggleVideoMute(): void {
-  const video = videoElement.value
-  if (!video) return
-
-  if (video.muted && video.volume === 0) video.volume = lastAudibleVolume
-  video.muted = !video.muted
-  syncVideoState()
 }
 
 onBeforeUnmount(() => {
