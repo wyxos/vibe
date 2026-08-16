@@ -75,6 +75,7 @@ export type {
   VibeRoutingOptions,
   VibeState,
 } from './types'
+export type { VibeMediaError, VibeMediaErrorProps } from './core/mediaPreview'
 export type { VibeItemRemovalOptions } from './core/itemRemovalOptions'
 export type {
   VibeMasonryOptions,

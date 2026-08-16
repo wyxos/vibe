@@ -87,7 +87,10 @@ test('removing the active masonry reel item advances without closing the reel', 
   page,
 }) => {
   await page.goto('/demos/item-removal')
-  await page.locator('.masonry-item').first().click()
+  const successfulCard = page.locator('.masonry-item').filter({
+    hasNot: page.locator('[data-test="media-error"]'),
+  }).first()
+  await successfulCard.locator('.media-card-activator').click()
 
   const overlay = page.locator('.vibe-reel-overlay')
   const reel = overlay.locator('.reel-feed')

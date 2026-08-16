@@ -29,6 +29,7 @@ import type {
   VibeMediaCardOptions,
 } from '../types'
 import CardRegion from './CardRegion.vue'
+import MediaError from './MediaError.vue'
 import MediaControls from './MediaControls.vue'
 import { useReelVideoActivity } from './useReelVideoActivity'
 import { useMediaLoading } from './useMediaLoading'
@@ -96,7 +97,8 @@ const mediaType = computed(() => mediaVariant.value.type)
 const mediaWidth = computed(() => mediaVariant.value.width)
 const mediaHeight = computed(() => mediaVariant.value.height)
 const { effectivePreviewState, failSourceAttempt, imageElement, markSourceReady,
-  noteSourceActivity, retrySource, sourceGeneration, videoElement } = useMediaReadiness({
+  noteSourceActivity, retrySource, retrying, sourceGeneration, videoElement }
+  = useMediaReadiness({
   identity: () => `${props.item.postId}:${normalizedMediaIndex.value}:${props.mediaSource ?? 'preview'}:${mediaSrc.value}:${mediaType.value ?? ''}`,
   mediaIndex: () => normalizedMediaIndex.value,
   onError: (mediaIndex) => emit('error', mediaIndex),
@@ -304,7 +306,7 @@ onBeforeUnmount(() => {
     }"
     :style="itemStyle"
     :aria-hidden="leaving || undefined"
-    :aria-busy="effectivePreviewState === 'loading'"
+    :aria-busy="effectivePreviewState === 'loading' || retrying"
     :inert="leaving || undefined"
     :role="interactive && !leaving && !usesSeparateActivator ? 'button' : undefined"
     :tabindex="interactive && !leaving && !usesSeparateActivator ? 0 : undefined"
@@ -335,7 +337,10 @@ onBeforeUnmount(() => {
         @touchstart.passive="onMediaTouchStart"
         @touchend.passive="onMediaTouchEnd"
       >
-        <Transition :name="`media-slide-${mediaDirection}`">
+        <Transition
+          :css="!retrying"
+          :name="`media-slide-${mediaDirection}`"
+        >
           <div
             :key="`${item.postId}:${mediaItem.src}:${mediaSource ?? 'preview'}:${sourceGeneration}`"
             class="media-card-frame"
@@ -350,19 +355,14 @@ onBeforeUnmount(() => {
               <span class="media-loading-shimmer" />
             </div>
 
-            <div
+            <MediaError
               v-else-if="effectivePreviewState === 'error'"
-              data-test="media-error"
-              class="media-error"
-              role="img"
-              :aria-label="`${mediaErrorStatus(mediaSrc)} ${mediaErrorLabel(mediaSrc)}`"
-            >
-              <strong class="media-error-code">
-                {{ mediaErrorStatus(mediaSrc) }}
-              </strong>
-              <span>{{ mediaErrorLabel(mediaSrc) }}</span>
-              <button type="button" data-test="media-retry" @click.stop="retrySource">Retry</button>
-            </div>
+              :component="mediaCard?.error?.component"
+              :label="mediaErrorLabel(mediaSrc)"
+              :retrying="retrying"
+              :status="mediaErrorStatus(mediaSrc)"
+              @retry="retrySource"
+            />
 
             <video
               v-if="mediaIsTimed"

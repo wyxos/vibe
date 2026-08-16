@@ -55,7 +55,7 @@ selection events and do not imply that the selected media has finished loading.
 | --- | --- | --- |
 | `cardHeader` | `VibeCardRegion` | Typed Vue component above each post's media. |
 | `cardFooter` | `VibeCardRegion` | Typed Vue component below each post's media. |
-| `mediaCard` | `VibeMediaCardOptions` | Consumer-owned header/footer styling and initial video mute behavior. Masonry starts muted and reels start unmuted; set `videoMuted` to override either layout. |
+| `mediaCard` | `VibeMediaCardOptions` | Consumer-owned header/footer styling, failed-preview presentation, and initial video mute behavior. Set `error.component` to customize the error UI; Vibe supplies `status`, `label`, guarded `retry()`, and reactive `retrying` props. |
 | `feedFooter` | `VibeFeedFooter` | Replaces the default `GalleryFooter` with a consumer-owned component. |
 | `reelInfoSheet` | `VibeReelInfoSheetOptions` | Application-owned information sheet for an active reel. |
 | `reelAutoAdvance` | `VibeReelAutoAdvanceOptions` | Timed image progression and playback-ended media progression. |
@@ -103,6 +103,28 @@ more fallback when infinite scrolling is disabled or the feed is too short to sc
 `paddingY`. Numeric spacing values are CSS pixels and must be non-negative.
 Region-specific `mediaCard` backgrounds take precedence over the legacy
 `cardHeader.background` and `cardFooter.background` values.
+
+### Failed-preview component
+
+Set `mediaCard.error.component` to replace the built-in error panel. The
+component receives `VibeMediaErrorProps`; Vibe owns the source retry lifecycle
+and guards repeated calls to `retry()` while `retrying` is true.
+
+```ts
+import { defineComponent, h } from 'vue'
+import type { VibeMediaErrorProps } from '@wyxos/vibe'
+
+const MediaError = defineComponent((props: VibeMediaErrorProps) => () => h(
+  'button',
+  { disabled: props.retrying, onClick: props.retry },
+  props.retrying ? 'Trying again…' : `${props.status}: ${props.label}`,
+))
+
+createVibe({
+  mediaCard: { error: { component: MediaError } },
+  // ...
+})
+```
 
 ## Masonry virtualization
 

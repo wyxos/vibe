@@ -1,5 +1,6 @@
 import type { Component } from 'vue'
 import type { RouteLocationRaw, Router } from 'vue-router'
+import type { VibeMediaError } from './core/mediaPreview'
 export type VibeCursor = string | number | null
 export type VibeItemId = string | number
 export type VibeLayout = 'masonry' | 'reel'
@@ -129,6 +130,7 @@ export interface VibeCardChromeStyle {
   paddingY?: number
 }
 export interface VibeMediaCardOptions {
+  error?: VibeMediaError
   footer?: VibeCardChromeStyle
   header?: VibeCardChromeStyle
   videoMuted?: boolean

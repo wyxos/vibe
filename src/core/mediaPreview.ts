@@ -1,4 +1,17 @@
+import type { Component } from 'vue'
+
 export type MediaPreviewState = 'loading' | 'ready' | 'error'
+
+export interface VibeMediaError {
+  component: Component
+}
+
+export interface VibeMediaErrorProps {
+  label: string
+  retry: () => void
+  retrying: boolean
+  status: string
+}
 
 const ERROR_LABELS: Readonly<Record<string, string>> = {
   401: 'Authentication required',

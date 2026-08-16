@@ -23,10 +23,12 @@ export function useMediaReadiness(options: MediaReadinessOptions) {
   const sourceRetry = shallowRef(0)
   const sourcePending = shallowRef(true)
   const terminalError = shallowRef(false)
+  const retrying = shallowRef(false)
   let watchdog: ReturnType<typeof setTimeout> | null = null
   let initialized = false
 
   const effectivePreviewState = computed<MediaPreviewState>(() => {
+    if (retrying.value) return 'error'
     if (terminalError.value) return 'error'
     if (sourcePending.value) return 'loading'
     return options.previewState()
@@ -52,6 +54,7 @@ export function useMediaReadiness(options: MediaReadinessOptions) {
     clearWatchdog()
     sourcePending.value = false
     terminalError.value = false
+    retrying.value = false
     options.onReady(options.mediaIndex())
   }
 
@@ -82,13 +85,17 @@ export function useMediaReadiness(options: MediaReadinessOptions) {
     }
     sourcePending.value = false
     terminalError.value = true
+    retrying.value = false
     options.onError(options.mediaIndex())
   }
 
   function retrySource(): void {
+    if (retrying.value || effectivePreviewState.value !== 'error') return
+
     sourceRetry.value = 0
-    terminalError.value = false
+    terminalError.value = true
     sourcePending.value = true
+    retrying.value = true
     sourceGeneration.value += 1
     void nextTick(reconcileCachedSource)
   }
@@ -103,6 +110,7 @@ export function useMediaReadiness(options: MediaReadinessOptions) {
     sourceRetry.value = 0
     sourcePending.value = initialized || options.previewState() === 'loading'
     terminalError.value = false
+    retrying.value = false
     initialized = true
     void nextTick(reconcileCachedSource)
   }, { immediate: true })
@@ -116,6 +124,7 @@ export function useMediaReadiness(options: MediaReadinessOptions) {
     markSourceReady,
     noteSourceActivity,
     retrySource,
+    retrying,
     sourceGeneration,
     videoElement,
   }

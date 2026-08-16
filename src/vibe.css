@@ -974,6 +974,7 @@
 
 .media-error {
   display: grid;
+  z-index: 3;
   align-content: center;
   justify-items: center;
   gap: 0.375rem;
@@ -981,7 +982,41 @@
   color: #a3a3a3;
   background: linear-gradient(145deg, #171717, #101010);
   font: 500 0.75rem/1.35 system-ui, sans-serif;
+  pointer-events: none;
   text-align: center;
+}
+
+.media-error-retry {
+  min-height: 2rem;
+  margin-top: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid #404040;
+  border-radius: 0.25rem;
+  color: #f5f5f5;
+  background: #171717;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.media-error-component {
+  display: contents;
+  pointer-events: auto;
+}
+
+.media-error-retry:hover,
+.media-error-retry:focus-visible {
+  border-color: #737373;
+  background: #262626;
+}
+
+.media-error-retry:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.media-error-retry:focus-visible {
+  outline: 2px solid #a3a3a3;
+  outline-offset: 2px;
 }
 
 .media-error-code {
