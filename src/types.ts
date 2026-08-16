@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
 import type { RouteLocationRaw, Router } from 'vue-router'
 import type { VibeMediaCardOptions, VibeReelAudioState } from './core/mediaCardOptions'
-export type { VibeCardChromeStyle, VibeGroupedMediaNavigation, VibeMediaCardOptions, VibeReelAudioState } from './core/mediaCardOptions'
+export type { VibeCardChromeStyle, VibeMediaCardOptions, VibeReelAudioState } from './core/mediaCardOptions'
 export type VibeCursor = string | number | null
 export type VibeItemId = string | number
 export type VibeLayout = 'masonry' | 'reel'

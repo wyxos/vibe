@@ -4,11 +4,8 @@ export interface VibeCardChromeStyle {
   paddingY?: number
 }
 
-export type VibeGroupedMediaNavigation = 'arrows' | 'thumbnails'
-
 export interface VibeMediaCardOptions {
   footer?: VibeCardChromeStyle
-  groupedMediaNavigation?: VibeGroupedMediaNavigation
   header?: VibeCardChromeStyle
   videoMuted?: boolean
 }

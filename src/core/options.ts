@@ -56,13 +56,6 @@ export function validateOptions(options: CreateVibeOptions): void {
   validateCardRegion('cardFooter', options.cardFooter)
   validateCardChromeStyle('header', options.mediaCard?.header)
   validateCardChromeStyle('footer', options.mediaCard?.footer)
-  if (options.mediaCard?.groupedMediaNavigation !== undefined
-    && options.mediaCard.groupedMediaNavigation !== 'arrows'
-    && options.mediaCard.groupedMediaNavigation !== 'thumbnails') {
-    throw new TypeError(
-      'Vibe mediaCard groupedMediaNavigation must be "arrows" or "thumbnails".',
-    )
-  }
   validateAutofillOptions(options.autofill)
   validateFillOptions(options.fill)
   validateMasonryOptions(options.masonry)

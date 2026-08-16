@@ -59,16 +59,4 @@ describe('card region options', () => {
       target: document.createElement('div'),
     })).toThrow('Vibe mediaCard footer paddingY must be a non-negative number.')
   })
-
-  it('rejects unsupported grouped-media navigation modes', () => {
-    expect(() => createVibe({
-      initialPage: { items: [], next: null },
-      mediaCard: {
-        groupedMediaNavigation: 'dots' as 'arrows',
-      },
-      target: document.createElement('div'),
-    })).toThrow(
-      'Vibe mediaCard groupedMediaNavigation must be "arrows" or "thumbnails".',
-    )
-  })
 })

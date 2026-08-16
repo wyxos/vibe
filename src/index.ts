@@ -47,7 +47,6 @@ export type {
   VibeLayoutMode,
   VibeLifecycle,
   VibeFrontendAutofillOptions,
-  VibeGroupedMediaNavigation,
   VibeMediaAsset,
   VibeMediaCardOptions,
   VibeMediaLifecycleContext,

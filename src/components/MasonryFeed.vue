@@ -64,21 +64,12 @@ let galleryResizeObserver: ResizeObserver | null = null
 let resizeFrame: number | null = null
 let viewportFrame: number | null = null
 
-function additionalCardHeight(item: MasonryFeedProps['items'][number]): number {
-  const chromeHeight = (props.cardHeader?.height ?? 0)
-    + (props.cardFooter?.height ?? 0)
-  const thumbnailHeight = props.mediaCard?.groupedMediaNavigation === 'thumbnails'
-    && item.items.length > 0
-    ? 44
-    : 0
-  return chromeHeight + thumbnailHeight
-}
-
 const settledMasonryLayout = computed(() => calculateMasonryLayout(
   props.items,
   masonryWidth.value,
   {
-    additionalHeight: additionalCardHeight,
+    additionalHeight:
+      (props.cardHeader?.height ?? 0) + (props.cardFooter?.height ?? 0),
     gap: masonryGap.value,
     minColumnWidth: resolveMasonryMinColumnWidth(props.masonry),
   },
@@ -94,7 +85,8 @@ const projectedMasonry = computed(() => {
     retained.map(({ item }) => item),
     masonryWidth.value,
     {
-      additionalHeight: additionalCardHeight,
+      additionalHeight:
+        (props.cardHeader?.height ?? 0) + (props.cardFooter?.height ?? 0),
       gap: masonryGap.value,
       minColumnWidth: resolveMasonryMinColumnWidth(props.masonry),
     },

@@ -126,24 +126,4 @@ describe('calculated masonry layout', () => {
     ])
     expect(layout.height).toBe(1144)
   })
-
-  it('supports item-specific in-flow chrome height', () => {
-    const layout = calculateMasonryLayout(
-      [
-        { ...media(100, 100), chromeHeight: 44 },
-        { ...media(100, 100), chromeHeight: 0 },
-      ],
-      320,
-      {
-        additionalHeight: (item) => item.chromeHeight,
-        gap: 8,
-        minColumnWidth: 320,
-      },
-    )
-
-    expect(layout.items).toEqual([
-      { x: 0, y: 0, width: 320, height: 364 },
-      { x: 0, y: 372, width: 320, height: 320 },
-    ])
-  })
 })
