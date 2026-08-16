@@ -11,6 +11,7 @@ import type { ReelLayoutProps } from '../core/feed'
 import { mediaAssetAt, mediaAssets } from '../core/mediaAsset'
 import type {
   VibeItemId,
+  VibeReelAudioState,
   VibeReelInfoSheetProps,
 } from '../types'
 import ReelFeed from './ReelFeed.vue'
@@ -36,6 +37,7 @@ const emit = defineEmits<{
   loadMore: []
   mediaChange: [postId: VibeItemId, mediaIndex: number]
   ready: [postId: VibeItemId, mediaIndex: number]
+  reelAudioChange: [state: VibeReelAudioState]
   retryEnd: []
   retryForward: []
 }>()
@@ -190,6 +192,7 @@ defineExpose({
         :next-page-error="nextPageError"
         :preview-states="previewStates"
         :reel-auto-advance="reelAutoAdvance"
+        :reel-audio-state="reelAudioState"
         :reel-forward="reelForward"
         :state="state"
         :total="total"
@@ -200,6 +203,7 @@ defineExpose({
         @ready="relayReady"
         @retry-end="emit('retryEnd')"
         @retry-forward="emit('retryForward')"
+        @reel-audio-change="emit('reelAudioChange', $event)"
       />
     </div>
 

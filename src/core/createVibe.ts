@@ -19,22 +19,16 @@ import { RemovalReconciliationController } from './removalReconciliationControll
 import { createRemovalControllers, type RemovalControllers } from './removalControllers'
 import { ResponsiveLayoutController } from './responsiveLayoutController'
 import { updateReelAutoAdvanceState } from './reelAutoAdvance'
+import { VibeReelAudioController } from './reelAudioController'
 import { setReelInfoSheetEnabled } from './reelInfoSheet'
 import { VibeRouteSync } from './vibeRouting'
 import { createItemSnapshot, snapshotState, type VibeRuntimeState } from './runtime'
 import type {
-  CreateVibeOptions, VibeAutofillSessionSnapshot,
-  VibeBackendAutofillUpdate, VibeBackendFillUpdate,
-  VibeCursor, VibeFillSessionSnapshot,
-  VibeFillTarget, VibeInstance,
-  VibeItemId, VibeItemPlacement,
-  VibeLayoutMode, VibeMediaRemoval,
-  VibeMediaTarget, VibePage,
-  VibePageRequest, VibeRemoval,
-  VibeReelAutoAdvanceOptions,
-  VibeReelItemTarget,
-  VibeReelNavigationResult,
-  VibeState,
+  CreateVibeOptions, VibeAutofillSessionSnapshot, VibeBackendAutofillUpdate,
+  VibeBackendFillUpdate, VibeCursor, VibeFillSessionSnapshot, VibeFillTarget, VibeInstance,
+  VibeItemId, VibeItemPlacement, VibeLayoutMode, VibeMediaRemoval, VibeMediaTarget,
+  VibePage, VibePageRequest, VibeRemoval, VibeReelAutoAdvanceOptions, VibeReelAudioState,
+  VibeReelItemTarget, VibeReelNavigationResult, VibeState,
 } from '../types'
 import type { VibeItemRemovalOptions } from './itemRemovalOptions'
 class VibeController implements VibeInstance {
@@ -57,11 +51,13 @@ class VibeController implements VibeInstance {
   private stopStateWatcher: WatchHandle | null = null
   private lastLoadedCursor: VibeCursor = null
   private readonly notificationItems: ReturnType<typeof createItemSnapshot>
+  private readonly reelAudio: VibeReelAudioController
   private readonly state: VibeRuntimeState
   constructor(private readonly options: CreateVibeOptions) {
     validateOptions(options)
     const layoutMode = options.layout ?? 'masonry'
     this.state = reactive(createInitialRuntimeState(options, layoutMode))
+    this.reelAudio = new VibeReelAudioController(options)
     this.lastLoadedCursor = options.initialPage ? pageCurrentCursor(options.initialPage) : null
     this.notificationItems = createItemSnapshot(this.state)
     this.autoScroll = new VibeAutoScrollController({
@@ -131,6 +127,7 @@ class VibeController implements VibeInstance {
       onMediaReady: this.options.onMediaReady,
       onMediaVisible: this.options.onMediaVisible,
       onReelMediaChange: this.options.onReelMediaChange,
+      reelAudioState: this.reelAudio.state,
       reelInfoSheet: this.options.reelInfoSheet,
       state: this.state,
       onActiveReelChange: (postId: VibeItemId) => {
@@ -140,6 +137,7 @@ class VibeController implements VibeInstance {
       onLoadMore: () => { void this.loadNext() },
       onOpenReel: (postId: VibeItemId) => this.openMasonryReel(postId),
       onReelInfoSheetChange: (enabled: boolean) => this.setReelInfoSheet(enabled),
+      onReelAudioChange: (state: VibeReelAudioState) => this.reelAudio.set(state, true),
       onRetryEnd: () => { void this.retryEnd() },
       onRetryForward: () => { void this.retryReelForward() },
     })
@@ -173,6 +171,8 @@ class VibeController implements VibeInstance {
   getState(): VibeState {
     return snapshotState(this.state)
   }
+  getReelAudioState(): VibeReelAudioState { return this.reelAudio.get() }
+  setReelAudioState(state: VibeReelAudioState): void { this.reelAudio.set(state) }
   removeMedia(target: VibeMediaTarget): VibeMediaRemoval | null {
     return this.exactMediaRemoval.remove(target)
   }

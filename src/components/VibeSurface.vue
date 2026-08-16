@@ -19,6 +19,7 @@ import type {
   VibeMediaCardOptions,
   VibeMediaLifecycleContext,
   VibeReelInfoSheetOptions,
+  VibeReelAudioState,
   VibeReelItemTarget,
   VibeReelNavigationResult,
 } from '../types'
@@ -41,6 +42,7 @@ const props = defineProps<{
   mediaCard?: VibeMediaCardOptions
   masonry?: VibeMasonryOptions
   reelInfoSheet?: VibeReelInfoSheetOptions
+  reelAudioState: VibeReelAudioState
   state: VibeRuntimeState
 }>()
 const emit = defineEmits<{
@@ -52,6 +54,7 @@ const emit = defineEmits<{
   openReel: [postId: VibeItemId]
   reelMediaChange: [context: VibeMediaLifecycleContext]
   reelInfoSheetChange: [enabled: boolean]
+  reelAudioChange: [state: VibeReelAudioState]
   retryEnd: []
   retryForward: []
 }>()
@@ -337,6 +340,7 @@ defineExpose({
       origin="reel"
       :preview-states="reelMediaStates"
       :reel-auto-advance="state.reelAutoAdvance"
+      :reel-audio-state="reelAudioState"
       :reel-forward="state.reelForward"
       :state="footerState"
       :total="state.total"
@@ -348,6 +352,7 @@ defineExpose({
       @ready="markReelReady"
       @retry-end="emit('retryEnd')"
       @retry-forward="emit('retryForward')"
+      @reel-audio-change="emit('reelAudioChange', $event)"
     />
 
     <FeedStatus
@@ -433,6 +438,7 @@ defineExpose({
             origin="masonry"
             :preview-states="mediaOriginalStates"
             :reel-auto-advance="state.reelAutoAdvance"
+            :reel-audio-state="reelAudioState"
             :reel-forward="state.reelForward"
             :state="footerState"
             :total="state.total"
@@ -444,6 +450,7 @@ defineExpose({
             @ready="markReelReady"
             @retry-end="emit('retryEnd')"
             @retry-forward="emit('retryForward')"
+            @reel-audio-change="emit('reelAudioChange', $event)"
           />
         </section>
       </Transition>

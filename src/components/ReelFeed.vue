@@ -8,17 +8,15 @@ import {
   watch,
   type CSSProperties,
 } from 'vue'
-import type { ReelFeedProps } from '../core/feed'
-import { isNearFeedBottom } from '../core/feed'
+import { isNearFeedBottom, type ReelFeedProps } from '../core/feed'
 import { mediaAssetAt, mediaAssets, mediaStateKey, mediaVariantForSource } from '../core/mediaAsset'
 import { isTimedMedia } from '../core/mediaType'
 import { transitionReelScroll } from '../core/reelScrollTransition'
-import type { VibeItemId } from '../types'
+import type { VibeItemId, VibeReelAudioState } from '../types'
 import CardRegion from './CardRegion.vue'
 import FeedFooter from './FeedFooter.vue'
 import MediaCard from './MediaCard.vue'
 import ReelAutoAdvanceProgress from './ReelAutoAdvanceProgress.vue'
-const VIRTUAL_OVERSCAN = 2
 const MEDIA_TRANSITION_MS = 300
 const REMOVAL_REFLOW_SUPPRESSION_MS = 250
 let suppressAutomaticLoadUntil = 0
@@ -31,6 +29,7 @@ const emit = defineEmits<{
   loadMore: []
   mediaChange: [postId: VibeItemId, mediaIndex: number]
   ready: [postId: VibeItemId, mediaIndex: number]
+  reelAudioChange: [state: VibeReelAudioState]
   retryEnd: []
   retryForward: []
 }>()
@@ -50,8 +49,8 @@ const trackStyle = computed<CSSProperties>(() => ({
   gridTemplateRows: `repeat(${props.items.length}, 100cqh)`,
 }))
 const visibleItems = computed(() => {
-  const first = Math.max(0, activeIndex.value - VIRTUAL_OVERSCAN)
-  const last = Math.min(props.items.length - 1, activeIndex.value + VIRTUAL_OVERSCAN)
+  const first = Math.max(0, activeIndex.value - 2)
+  const last = Math.min(props.items.length - 1, activeIndex.value + 2)
 
   return props.items.slice(first, last + 1).map((item, offset) => ({
     fetchPriority: first + offset === activeIndex.value ? 'high' as const : 'low' as const,
@@ -442,11 +441,13 @@ defineExpose({
               mediaIndices.get(item.postId) ?? 0,
             )) ?? 'loading'"
             :reel-controls-target="reelControlsElement"
+            :reel-audio-state="reelAudioState"
             stationary-reel-controls
             :total="total"
             @media-change="emit('mediaChange', item.postId, $event)"
             @ended="onMediaEnded(item.postId, $event)"
             @ready="emit('ready', item.postId, $event)"
+            @reel-audio-change="emit('reelAudioChange', $event)"
             @error="emit('error', item.postId, $event)"
           />
         </section>
