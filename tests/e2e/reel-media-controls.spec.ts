@@ -193,13 +193,19 @@ test('timed-media cursors and control surfaces stay scoped to interactive target
     element.scrollHeight > element.clientHeight * 1.5
   ))).toBe(true)
 
+  const initialPostId = await reel.getAttribute('data-active-post-id')
   await reel.evaluate((element) => {
     element.scrollTop = element.clientHeight
   })
-  await expect(controls).toBeVisible()
+  await expect.poll(() => reel.getAttribute('data-active-post-id'))
+    .not.toBe(initialPostId)
 
   const activePostId = await reel.getAttribute('data-active-post-id')
   const video = reel.locator(`[data-post-id="${activePostId}"] video`)
+  await expect(video).toBeAttached()
+  await video.dispatchEvent('loadedmetadata')
+  await expect(video).toHaveClass(/media-preview--ready/)
+  await expect(controls).toBeVisible()
   const seek = controls.locator('.media-control-seek')
   const playback = controls.locator('.media-control-playback')
   const audio = controls.locator('.media-controls-audio')
