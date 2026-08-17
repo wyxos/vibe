@@ -77,25 +77,67 @@ test('masonry reels enter and leave with the left sheet transition', async ({
 
   const firstCard = page.locator('.masonry-item').first()
   await expect(firstCard).toBeVisible()
+  await page.evaluate(() => {
+    const browserWindow = window as Window & {
+      __vibeReelTransitionRuns?: Array<{
+        duration: number
+        property: string
+      }>
+    }
+    browserWindow.__vibeReelTransitionRuns = []
+    document.addEventListener('transitionrun', (event) => {
+      if (!(event instanceof TransitionEvent)
+        || event.propertyName !== 'transform'
+        || !(event.target instanceof Element)
+        || !event.target.classList.contains('vibe-reel-overlay')) return
+
+      const transition = event.target.getAnimations().find((animation) => (
+        animation instanceof CSSTransition
+        && animation.transitionProperty === 'transform'
+      ))
+      browserWindow.__vibeReelTransitionRuns?.push({
+        duration: Number(transition?.effect?.getTiming().duration ?? 0),
+        property: event.propertyName,
+      })
+    }, true)
+  })
   await firstCard.locator('.media-card-activator').click()
   const overlay = page.locator('.vibe-reel-overlay')
   await expect(overlay).toBeVisible()
+  await expect.poll(() => page.evaluate(() => (
+    (window as Window & {
+      __vibeReelTransitionRuns?: Array<{
+        duration: number
+        property: string
+      }>
+    }).__vibeReelTransitionRuns?.at(-1)
+  ))).toEqual({ duration: 160, property: 'transform' })
+
   await expect.poll(() => overlay.evaluate((element) => (
     element.getAnimations().some((animation) => (
       animation instanceof CSSTransition
       && animation.transitionProperty === 'transform'
-      && animation.effect?.getTiming().duration === 160
     ))
-  )), { timeout: 300 }).toBe(true)
+  ))).toBe(false)
+  await page.evaluate(() => {
+    const browserWindow = window as Window & {
+      __vibeReelTransitionRuns?: Array<{
+        duration: number
+        property: string
+      }>
+    }
+    browserWindow.__vibeReelTransitionRuns = []
+  })
 
   await page.keyboard.press('Escape')
-  await expect.poll(() => overlay.evaluate((element) => (
-    element.getAnimations().some((animation) => (
-      animation instanceof CSSTransition
-      && animation.transitionProperty === 'transform'
-      && animation.effect?.getTiming().duration === 160
-    ))
-  )), { timeout: 300 }).toBe(true)
+  await expect.poll(() => page.evaluate(() => (
+    (window as Window & {
+      __vibeReelTransitionRuns?: Array<{
+        duration: number
+        property: string
+      }>
+    }).__vibeReelTransitionRuns?.at(-1)
+  ))).toEqual({ duration: 160, property: 'transform' })
   await expect(overlay).toHaveCount(0)
 })
 
