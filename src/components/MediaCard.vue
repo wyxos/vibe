@@ -33,6 +33,7 @@ import CardRegion from './CardRegion.vue'
 import MediaError from './MediaError.vue'
 import MediaControls from './MediaControls.vue'
 import { useMediaCardAudio } from './useMediaCardAudio'
+import { useVisiblePostPreload } from './useVisiblePostPreload'
 import { useReelVideoActivity } from './useReelVideoActivity'
 import { useMediaLoading } from './useMediaLoading'
 import { useMediaReadiness } from './useMediaReadiness'
@@ -44,6 +45,7 @@ const props = defineProps<{
   cardHeader?: VibeCardRegion
   entering: boolean
   fetchPriority: 'high' | 'low'
+  inViewport?: boolean
   index: number
   item: VibeItem
   itemStyle?: CSSProperties
@@ -108,6 +110,15 @@ const { effectivePreviewState, failSourceAttempt, imageElement, markSourceReady,
   onError: (mediaIndex) => emit('error', mediaIndex),
   onReady: (mediaIndex) => emit('ready', mediaIndex),
   previewState: () => props.previewState,
+})
+useVisiblePostPreload({
+  inViewport: () => props.inViewport === true,
+  item: () => props.item,
+  layout: () => props.layout,
+  mediaCard: () => props.mediaCard,
+  mediaIndex: () => normalizedMediaIndex.value,
+  mediaReady: () => effectivePreviewState.value === 'ready',
+  mediaSource: () => props.mediaSource ?? 'preview',
 })
 const videoCurrentTime = shallowRef(0)
 const videoDuration = shallowRef(0)

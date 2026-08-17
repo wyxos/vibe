@@ -59,4 +59,12 @@ describe('card region options', () => {
       target: document.createElement('div'),
     })).toThrow('Vibe mediaCard footer paddingY must be a non-negative number.')
   })
+
+  it('rejects unsupported visible-post preload modes', () => {
+    expect(() => createVibe({
+      initialPage: { items: [], next: null },
+      mediaCard: { feedPreload: 'all' as 'visible-post' },
+      target: document.createElement('div'),
+    })).toThrow('Vibe mediaCard feedPreload must be "none" or "visible-post".')
+  })
 })

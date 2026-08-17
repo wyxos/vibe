@@ -406,6 +406,7 @@ defineExpose({ getScrollElement, loadIfNearBottom })
           :card-footer="cardFooter"
           :card-header="cardHeader"
           :media-card="mediaCard"
+          :in-viewport="viewportIndices.has(index)"
           :index="index"
           :item="item"
           :item-style="itemStyle(index)"

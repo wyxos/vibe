@@ -55,7 +55,7 @@ selection events and do not imply that the selected media has finished loading.
 | --- | --- | --- |
 | `cardHeader` | `VibeCardRegion` | Typed Vue component above each post's media. |
 | `cardFooter` | `VibeCardRegion` | Typed Vue component below each post's media. |
-| `mediaCard` | `VibeMediaCardOptions` | Consumer-owned header/footer styling, failed-preview presentation, and initial video mute behavior. Set `error.component` to customize the error UI; Vibe supplies `status`, `label`, guarded `retry()`, and reactive `retrying` props. Masonry starts muted and reels start unmuted; set `videoMuted` to override either layout. |
+| `mediaCard` | `VibeMediaCardOptions` | Consumer-owned header/footer styling, failed-preview presentation, initial video mute behavior, and opt-in visible-post preview warming. Set `error.component` to customize the error UI; Vibe supplies `status`, `label`, guarded `retry()`, and reactive `retrying` props. Masonry starts muted and reels start unmuted; set `videoMuted` to override either layout. |
 | `initialReelAudioState` | `Partial<VibeReelAudioState>` | Initial shared reel `volume`, `muted`, and `lastAudibleVolume`. |
 | `onReelAudioStateChange` | `(state: VibeReelAudioState) => void` | Reports user changes from reel audio controls. External `setReelAudioState()` updates do not invoke it. |
 | `feedFooter` | `VibeFeedFooter` | Replaces the default `GalleryFooter` with a consumer-owned component. |
@@ -110,6 +110,13 @@ more fallback when infinite scrolling is disabled or the feed is too short to sc
 `paddingY`. Numeric spacing values are CSS pixels and must be non-negative.
 Region-specific `mediaCard` backgrounds take precedence over the legacy
 `cardHeader.background` and `cardFooter.background` values.
+
+`mediaCard.feedPreload` defaults to `'none'`. Set it to `'visible-post'` to
+warm every other preview source in a grouped masonry card once the currently
+visible media is ready. Exact viewport cards qualify; overscan-only cards do
+not. Images use low-priority loading plus decode, while timed video or audio
+sources request metadata only. Warming is bounded globally and never changes
+reel loading or blocks navigation and removal.
 
 ### Failed-preview component
 

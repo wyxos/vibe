@@ -2,6 +2,7 @@ import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import MasonryFeed from '@/components/MasonryFeed.vue'
+import MediaCard from '@/components/MediaCard.vue'
 
 function feedItem(postId: number) {
   return {
@@ -237,6 +238,20 @@ describe('MasonryFeed', () => {
     expect((thumb.element as HTMLElement).style.height).toBe('62.5px')
     expect(thumb.attributes('tabindex')).toBe('-1')
     expect(wrapper.get('.gallery-scrollbar').attributes('aria-hidden')).toBe('true')
+  })
+
+  it('distinguishes exact viewport cards from mounted overscan cards', async () => {
+    const items = Array.from({ length: 100 }, (_, index) => groupedFeedItem(index + 1))
+    const wrapper = mount(MasonryFeed, { props: props(items) })
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+
+    const cards = wrapper.findAllComponents(MediaCard)
+    expect(cards.some((card) => card.props('inViewport') === true)).toBe(true)
+    expect(cards.some((card) => card.props('inViewport') === false)).toBe(true)
+    cards.forEach((card) => {
+      expect(card.props('inViewport')).toBe(card.props('fetchPriority') === 'high')
+    })
   })
 
   it('stagger-rises entering items from below the masonry', async () => {

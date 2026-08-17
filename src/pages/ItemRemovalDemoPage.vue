@@ -120,6 +120,7 @@ onMounted(async () => {
     target,
     layout: 'responsive',
     infiniteScroll: props.infiniteScroll,
+    mediaCard: { feedPreload: 'visible-post' },
     onStateChange: (state) => {
       vibeState.value = state
       emit('vibeStateChange', state)

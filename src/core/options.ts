@@ -56,6 +56,13 @@ export function validateOptions(options: CreateVibeOptions): void {
   validateCardRegion('cardFooter', options.cardFooter)
   validateCardChromeStyle('header', options.mediaCard?.header)
   validateCardChromeStyle('footer', options.mediaCard?.footer)
+  if (options.mediaCard?.feedPreload !== undefined
+    && options.mediaCard.feedPreload !== 'none'
+    && options.mediaCard.feedPreload !== 'visible-post') {
+    throw new TypeError(
+      'Vibe mediaCard feedPreload must be "none" or "visible-post".',
+    )
+  }
   validateAutofillOptions(options.autofill)
   validateFillOptions(options.fill)
   validateMasonryOptions(options.masonry)
