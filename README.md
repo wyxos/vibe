@@ -99,7 +99,6 @@ const vibe = createVibe({
     height: 48,
   },
   mediaCard: {
-    feedPreload: 'replacement',
     videoMuted: true,
   },
 })
@@ -121,10 +120,6 @@ virtualization; their user-selected mute state is restored when they become
 active again. Set `mediaCard.videoMuted` to explicitly override the initial
 state in either layout. Users can still change mute and volume through the
 timed-media controls.
-
-Set `mediaCard.feedPreload` to `replacement` to warm the exact preview source
-that a grouped masonry card will show after its current media item is removed.
-The default is `none`, so consumers opt in to the additional request.
 
 Applications that need audio continuity can pass `initialReelAudioState` with
 `volume`, `muted`, and `lastAudibleVolume`, then persist user changes through

@@ -8,7 +8,6 @@ export interface VibeCardChromeStyle {
 
 export interface VibeMediaCardOptions {
   error?: VibeMediaError
-  feedPreload?: 'none' | 'replacement'
   footer?: VibeCardChromeStyle
   header?: VibeCardChromeStyle
   videoMuted?: boolean
