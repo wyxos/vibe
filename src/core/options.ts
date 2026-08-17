@@ -56,6 +56,13 @@ export function validateOptions(options: CreateVibeOptions): void {
   validateCardRegion('cardFooter', options.cardFooter)
   validateCardChromeStyle('header', options.mediaCard?.header)
   validateCardChromeStyle('footer', options.mediaCard?.footer)
+  if (options.mediaCard?.feedPreload !== undefined
+    && options.mediaCard.feedPreload !== 'none'
+    && options.mediaCard.feedPreload !== 'replacement') {
+    throw new TypeError(
+      'Vibe mediaCard feedPreload must be "none" or "replacement".',
+    )
+  }
   validateAutofillOptions(options.autofill)
   validateFillOptions(options.fill)
   validateMasonryOptions(options.masonry)
