@@ -229,6 +229,7 @@
   scrollbar-color: #525252 #111111;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
+  user-select: none;
 }
 
 .gallery-shell::-webkit-scrollbar {
@@ -818,6 +819,7 @@
   padding: var(--gallery-padding);
   overflow: hidden;
   background: #080808;
+  user-select: none;
 }
 
 .reel-shell > .media-card-region {
