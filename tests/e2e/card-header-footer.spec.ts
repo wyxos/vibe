@@ -48,3 +48,69 @@ test('card chrome remains usable in the narrow reel layout', async ({ page }) =>
     element.scrollWidth <= element.clientWidth
   ))).toBe(true)
 })
+
+test('feed dragging does not select card content', async ({ page }) => {
+  await page.goto('/demos/card-header-and-footer')
+
+  const firstCard = page.locator('.masonry-item').first()
+  await expect(firstCard).toBeVisible()
+  const bounds = await firstCard.boundingBox()
+  expect(bounds).not.toBeNull()
+
+  await page.mouse.move(bounds!.x + 16, bounds!.y + 16)
+  await page.mouse.down()
+  await page.mouse.move(
+    bounds!.x + bounds!.width - 16,
+    bounds!.y + bounds!.height - 16,
+    { steps: 12 },
+  )
+  await page.mouse.up()
+
+  expect(await page.evaluate(() => window.getSelection()?.toString() ?? ''))
+    .toBe('')
+})
+
+test('masonry reels enter and leave with the left sheet transition', async ({
+  page,
+}) => {
+  await page.goto('/demos/card-header-and-footer')
+
+  const firstCard = page.locator('.masonry-item').first()
+  await expect(firstCard).toBeVisible()
+  await firstCard.locator('.media-card-activator').click()
+  const overlay = page.locator('.vibe-reel-overlay')
+  await expect(overlay).toBeVisible()
+  await expect.poll(() => overlay.evaluate((element) => (
+    element.getAnimations().some((animation) => (
+      animation instanceof CSSTransition
+      && animation.transitionProperty === 'transform'
+      && animation.effect?.getTiming().duration === 160
+    ))
+  )), { timeout: 300 }).toBe(true)
+
+  await page.keyboard.press('Escape')
+  await expect.poll(() => overlay.evaluate((element) => (
+    element.getAnimations().some((animation) => (
+      animation instanceof CSSTransition
+      && animation.transitionProperty === 'transform'
+      && animation.effect?.getTiming().duration === 160
+    ))
+  )), { timeout: 300 }).toBe(true)
+  await expect(overlay).toHaveCount(0)
+})
+
+test('reduced motion removes masonry reel travel', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/demos/card-header-and-footer')
+
+  await page.locator('.masonry-item').first()
+    .locator('.media-card-activator').click()
+  const overlay = page.locator('.vibe-reel-overlay')
+  await expect(overlay).toBeVisible()
+  expect(await overlay.evaluate((element) => (
+    element.getAnimations().some((animation) => (
+      animation instanceof CSSTransition
+      && animation.transitionProperty === 'transform'
+    ))
+  ))).toBe(false)
+})

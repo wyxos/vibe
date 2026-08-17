@@ -20,7 +20,6 @@
   min-height: 0;
   overflow: hidden;
   background: #080808;
-  clip-path: inset(0 round 0);
   outline: none;
 }
 
@@ -30,36 +29,13 @@
 
 .vibe-reel-viewer-enter-active,
 .vibe-reel-viewer-leave-active {
-  transition:
-    clip-path 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 240ms ease;
-  will-change: clip-path, opacity;
-}
-
-.vibe-reel-viewer-enter-active > .reel-layout,
-.vibe-reel-viewer-leave-active > .reel-layout {
-  transition:
-    opacity 240ms ease,
-    transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: opacity, transform;
+  transition: transform 160ms ease-out;
+  will-change: transform;
 }
 
 .vibe-reel-viewer-enter-from,
 .vibe-reel-viewer-leave-to {
-  opacity: 0.72;
-  clip-path: inset(
-    var(--vibe-reel-origin-top, 0)
-    var(--vibe-reel-origin-right, 0)
-    var(--vibe-reel-origin-bottom, 0)
-    var(--vibe-reel-origin-left, 0)
-    round 0.5rem
-  );
-}
-
-.vibe-reel-viewer-enter-from > .reel-layout,
-.vibe-reel-viewer-leave-to > .reel-layout {
-  opacity: 0.68;
-  transform: scale(0.985);
+  transform: translateX(-100%);
 }
 
 .reel-layout {
@@ -1134,8 +1110,6 @@
   .gallery-scrollbar-thumb,
   .vibe-reel-viewer-enter-active,
   .vibe-reel-viewer-leave-active,
-  .vibe-reel-viewer-enter-active > .reel-layout,
-  .vibe-reel-viewer-leave-active > .reel-layout,
   .vibe-info-sheet-enter-active,
   .vibe-info-sheet-leave-active,
   .vibe-info-sheet-enter-active > .reel-info-sheet,

@@ -5,7 +5,6 @@ import {
   onBeforeUnmount,
   shallowRef,
   watch,
-  type CSSProperties,
 } from 'vue'
 import { clampMediaIndex, mediaAssets } from '../core/mediaAsset'
 import type { FeedRendererExpose } from '../core/feed'
@@ -31,7 +30,6 @@ import { useMediaLifecycle } from './useMediaLifecycle'
 import { useReelKeyboard } from './useReelKeyboard'
 const ENTRY_STAGGER_MS = 35
 const ITEM_MOTION_MS = 420
-type ReelOriginStyle = CSSProperties & Record<`--vibe-reel-origin-${string}`, string>
 
 const props = defineProps<{
   canRetryEnd: boolean
@@ -62,7 +60,6 @@ const masonryRenderer = shallowRef<FeedRendererExpose | null>(null)
 const reelRenderer = shallowRef<FeedRendererExpose | null>(null)
 const reelOverlay = shallowRef<HTMLElement | null>(null)
 const surfaceElement = shallowRef<HTMLElement | null>(null)
-const reelOriginStyle = shallowRef<ReelOriginStyle>({})
 const isReelLeaving = shallowRef(false)
 const enteringPostIds = shallowRef<ReadonlySet<VibeItemId>>(new Set())
 const entryDelays = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
@@ -165,7 +162,6 @@ function activateMasonryItem(
 ): void {
   restoreFocusPostId = postId
   restoreFocusVisible = input === 'keyboard'
-  reelOriginStyle.value = getReelOriginStyle(postId)
   emit('openReel', postId)
   void nextTick(() => reelOverlay.value?.focus())
 }
@@ -219,22 +215,6 @@ function focusMasonryCard(postId: VibeItemId, showFocusRing: boolean): void {
   focusTarget?.focus({ preventScroll: true })
 }
 
-function getReelOriginStyle(postId: VibeItemId): ReelOriginStyle {
-  const surface = surfaceElement.value
-  const card = findMasonryCard(postId)
-  if (surface === null || card === null) return {}
-
-  const surfaceRect = surface.getBoundingClientRect()
-  const cardRect = card.getBoundingClientRect()
-
-  return {
-    '--vibe-reel-origin-top': `${Math.max(0, cardRect.top - surfaceRect.top)}px`,
-    '--vibe-reel-origin-right': `${Math.max(0, surfaceRect.right - cardRect.right)}px`,
-    '--vibe-reel-origin-bottom': `${Math.max(0, surfaceRect.bottom - cardRect.bottom)}px`,
-    '--vibe-reel-origin-left': `${Math.max(0, cardRect.left - surfaceRect.left)}px`,
-  }
-}
-
 function closeMasonryReel(): void {
   if (props.state.reelOrigin !== 'masonry') return
 
@@ -249,7 +229,6 @@ function finishReelLeave(): void {
   isReelLeaving.value = false
   restoreFocusPostId = null
   restoreFocusVisible = false
-  reelOriginStyle.value = {}
   void nextTick(() => {
     if (postId !== null) focusMasonryCard(postId, showFocusRing)
   })
@@ -411,7 +390,6 @@ defineExpose({
           aria-label="Media viewer"
           aria-modal="true"
           tabindex="-1"
-          :style="reelOriginStyle"
         >
           <ReelLayout
             ref="reelRenderer"

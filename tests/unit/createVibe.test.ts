@@ -399,28 +399,6 @@ describe('createVibe', () => {
     const masonry = target.querySelector<HTMLElement>('.masonry-feed')!
     masonry.scrollTop = 180
     const clickedCard = target.querySelector<HTMLElement>('[data-post-id="2"]')!
-    vi.spyOn(target.firstElementChild!, 'getBoundingClientRect').mockReturnValue({
-      top: 10,
-      right: 510,
-      bottom: 510,
-      left: 10,
-      width: 500,
-      height: 500,
-      x: 10,
-      y: 10,
-      toJSON: () => ({}),
-    })
-    vi.spyOn(clickedCard, 'getBoundingClientRect').mockReturnValue({
-      top: 110,
-      right: 310,
-      bottom: 310,
-      left: 110,
-      width: 200,
-      height: 200,
-      x: 110,
-      y: 110,
-      toJSON: () => ({}),
-    })
     clickedCard.dispatchEvent(new MouseEvent('click', {
       bubbles: true,
       detail: 1,
@@ -434,10 +412,7 @@ describe('createVibe', () => {
     })
     const overlay = target.querySelector<HTMLElement>('.vibe-reel-overlay')!
     expect(overlay).not.toBeNull()
-    expect(overlay.style.getPropertyValue('--vibe-reel-origin-top')).toBe('100px')
-    expect(overlay.style.getPropertyValue('--vibe-reel-origin-right')).toBe('200px')
-    expect(overlay.style.getPropertyValue('--vibe-reel-origin-bottom')).toBe('200px')
-    expect(overlay.style.getPropertyValue('--vibe-reel-origin-left')).toBe('100px')
+    expect(overlay.hasAttribute('style')).toBe(false)
     expect(target.querySelector('.masonry-feed')).toBe(masonry)
     expect(masonry.scrollTop).toBe(180)
     expect(target.querySelector('.reel-feed')?.getAttribute('data-active-post-id')).toBe('2')
