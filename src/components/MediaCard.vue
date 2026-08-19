@@ -32,6 +32,7 @@ import type {
 import CardRegion from './CardRegion.vue'
 import MediaError from './MediaError.vue'
 import MediaControls from './MediaControls.vue'
+import MediaContextOverlay from './MediaContextOverlay.vue'
 import { useMediaCardAudio } from './useMediaCardAudio'
 import { useVisiblePostPreload } from './useVisiblePostPreload'
 import { useReelVideoActivity } from './useReelVideoActivity'
@@ -227,9 +228,8 @@ function onMediaTouchEnd(event: TouchEvent): void {
 }
 
 const { imageLoading, mediaIsTimed, videoPreload } = useMediaLoading({ active: () => props.active, fetchPriority: () => props.fetchPriority, layout: () => props.layout, mediaSource: () => mediaSrc.value, mediaType: () => mediaType.value, videoElement })
-const usesStationaryReelControls = computed(() => (
-  props.layout === 'reel' && props.stationaryReelControls === true
-))
+const usesStationaryReelControls = computed(() => props.layout === 'reel'
+  && props.stationaryReelControls === true)
 const mediaControlsVisible = computed(() => (
   mediaIsTimed.value
   && effectivePreviewState.value === 'ready'
@@ -294,7 +294,6 @@ onBeforeUnmount(() => {
   resetWheelGesture()
 })
 </script>
-
 <template>
   <article
     :data-post-id="item.postId"
@@ -418,6 +417,8 @@ onBeforeUnmount(() => {
             >
           </div>
         </Transition>
+
+        <MediaContextOverlay :item="item" :media-card="mediaCard" :media-index="normalizedMediaIndex" :media-item="mediaItem" :media-source="mediaSource ?? 'preview'" />
 
         <Teleport
           :disabled="!usesStationaryReelControls || !reelControlsTarget"

@@ -1,3 +1,5 @@
+import type { Component } from 'vue'
+
 import type { VibeMediaError } from './mediaPreview'
 
 export interface VibeCardChromeStyle {
@@ -11,6 +13,9 @@ export interface VibeMediaCardOptions {
   feedPreload?: 'none' | 'visible-post'
   footer?: VibeCardChromeStyle
   header?: VibeCardChromeStyle
+  overlay?: {
+    component: Component
+  }
   videoMuted?: boolean
 }
 

@@ -82,6 +82,13 @@ export interface VibeItem extends VibeMediaAsset {
   items: VibeMediaAsset[]
 }
 
+export interface VibeMediaOverlayProps {
+  item: VibeItem
+  mediaIndex: number
+  mediaItem: VibeMediaAsset
+  mediaSource: VibeMediaSource
+}
+
 export interface VibeItemPlacement {
   index: number
   item: VibeItem

@@ -491,4 +491,5 @@ describe('MediaCard', () => {
     await wrapper.setProps({ advanceOnMediaEnd: false })
     expect(wrapper.get('video').attributes()).toHaveProperty('loop')
   })
+
 })

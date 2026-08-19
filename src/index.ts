@@ -50,6 +50,7 @@ export type {
   VibeMediaAsset,
   VibeMediaCardOptions,
   VibeMediaLifecycleContext,
+  VibeMediaOverlayProps,
   VibeMediaPlacement,
   VibeMediaRemoval,
   VibeMediaSource,

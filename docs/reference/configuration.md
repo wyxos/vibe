@@ -55,7 +55,7 @@ selection events and do not imply that the selected media has finished loading.
 | --- | --- | --- |
 | `cardHeader` | `VibeCardRegion` | Typed Vue component above each post's media. |
 | `cardFooter` | `VibeCardRegion` | Typed Vue component below each post's media. |
-| `mediaCard` | `VibeMediaCardOptions` | Consumer-owned header/footer styling, failed-preview presentation, initial video mute behavior, and opt-in visible-post preview warming. Set `error.component` to customize the error UI; Vibe supplies `status`, `label`, guarded `retry()`, and reactive `retrying` props. Masonry starts muted and reels start unmuted; set `videoMuted` to override either layout. |
+| `mediaCard` | `VibeMediaCardOptions` | Consumer-owned header/footer styling, failed-preview presentation, contextual media overlays, initial video mute behavior, and opt-in visible-post preview warming. Set `error.component` to customize the error UI. Set `overlay.component` to receive the current item, media item/index, and source above loading, error, and ready media. |
 | `initialReelAudioState` | `Partial<VibeReelAudioState>` | Initial shared reel `volume`, `muted`, and `lastAudibleVolume`. |
 | `onReelAudioStateChange` | `(state: VibeReelAudioState) => void` | Reports user changes from reel audio controls. External `setReelAudioState()` updates do not invoke it. |
 | `feedFooter` | `VibeFeedFooter` | Replaces the default `GalleryFooter` with a consumer-owned component. |
