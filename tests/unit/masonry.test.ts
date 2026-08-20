@@ -113,6 +113,38 @@ describe('calculated masonry layout', () => {
     })
   })
 
+  it.each([
+    { height: 640, label: 'landscape', width: 960 },
+    { height: 960, label: 'portrait', width: 640 },
+    { height: 800, label: 'square', width: 800 },
+  ])('uses supplied local dimensions for $label media', ({ height, width }) => {
+    const layout = calculateMasonryLayout(
+      [{
+        height,
+        preview: { height: null, width: null },
+        width,
+      }],
+      320,
+      { gap: 8, minColumnWidth: 240 },
+    )
+
+    expect(layout.items[0]?.height).toBe(320 * (height / width))
+  })
+
+  it('prefers authoritative preview dimensions when supplied', () => {
+    const layout = calculateMasonryLayout(
+      [{
+        height: 1_200,
+        preview: { height: 450, width: 900 },
+        width: 600,
+      }],
+      320,
+      { gap: 8, minColumnWidth: 240 },
+    )
+
+    expect(layout.items[0]?.height).toBe(160)
+  })
+
   it('adds deterministic in-flow chrome to each media height', () => {
     const layout = calculateMasonryLayout(
       [media(100, 100), media(100, 200)],
