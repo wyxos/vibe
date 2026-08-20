@@ -23,10 +23,11 @@ import { VibeReelAudioController } from './reelAudioController'
 import { setReelInfoSheetEnabled } from './reelInfoSheet'
 import { VibeRouteSync } from './vibeRouting'
 import { createItemSnapshot, snapshotState, type VibeRuntimeState } from './runtime'
+import { applyItemUpdates } from './updateItems'
 import type {
   CreateVibeOptions, VibeAutofillSessionSnapshot, VibeBackendAutofillUpdate,
   VibeBackendFillUpdate, VibeCursor, VibeFillSessionSnapshot, VibeFillTarget, VibeInstance,
-  VibeItemId, VibeItemPlacement, VibeLayoutMode, VibeMediaRemoval, VibeMediaTarget,
+  VibeItem, VibeItemId, VibeItemPlacement, VibeLayoutMode, VibeMediaRemoval, VibeMediaTarget,
   VibePage, VibePageRequest, VibeRemoval, VibeReelAutoAdvanceOptions, VibeReelAudioState,
   VibeReelItemTarget, VibeReelNavigationResult, VibeState,
 } from '../types'
@@ -168,9 +169,7 @@ class VibeController implements VibeInstance {
     this.app = null
     this.surface = null
   }
-  getState(): VibeState {
-    return snapshotState(this.state)
-  }
+  getState(): VibeState { return snapshotState(this.state) }
   getReelAudioState(): VibeReelAudioState { return this.reelAudio.get() }
   setReelAudioState(state: VibeReelAudioState): void { this.reelAudio.set(state) }
   removeMedia(target: VibeMediaTarget): VibeMediaRemoval | null {
@@ -181,10 +180,9 @@ class VibeController implements VibeInstance {
   }
   removeItems(postIds: readonly VibeItemId[], options?: VibeItemRemovalOptions): Promise<VibeRemoval> { return this.itemRemoval.remove(postIds, options) }
   restoreItems(placements: readonly VibeItemPlacement[]): void { this.itemRemoval.restoreItems(placements) }
-  restoreMediaRemoval(removal: VibeMediaRemoval): boolean {
-    return this.exactMediaRemoval.restore(removal)
-  }
+  restoreMediaRemoval(removal: VibeMediaRemoval): boolean { return this.exactMediaRemoval.restore(removal) }
   restoreRemoval(removal: VibeRemoval): boolean { return this.itemRemoval.restoreRemoval(removal) }
+  updateItems(items: readonly VibeItem[]): VibeItemId[] { return applyItemUpdates(this.state, items) }
   retryReelForward(): Promise<void> { return this.reelForward.retry() }
   retryFill(): Promise<void> { return this.fillController.retry(this.removalReconciliation.hasPendingSession()) }
   undoLastRemoval(): VibeRemoval | null { return this.itemRemoval.undoLast() }

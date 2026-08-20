@@ -30,6 +30,7 @@ feed-owned fill, autofill, error, and removal-history state before loading.
 | `restoreRemoval(removal)` | Restores a removal transaction once, including one evicted from automatic undo history. |
 | `undoLastRemoval()` | Restores and returns the latest recorded removal, or returns `null`. |
 | `restoreItems(placements)` | Restores explicit item/index placements without creating an undo transaction. |
+| `updateItems(items)` | Replaces loaded items that match `postId` and returns the identities that changed. |
 
 `VibeRemoval` is an opaque, readonly removal token whose entries contain the
 removed items and their original indexes. Pass the token back when application
@@ -67,6 +68,13 @@ already loaded are ignored. Passing a current `VibeRemoval` to this method is
 equivalent to `restoreRemoval()`.
 
 All restored cards use the same entry motion as newly loaded cards.
+
+`updateItems(items)` replaces already-loaded posts in place. Matching uses
+`postId`, including when the stored identity is a number and the update uses
+the same digits as a string. Unknown identities are ignored and never inserted.
+The method does not load pages, change cursors, or play entry motion. It keeps
+the stored `postId` so mounted cards stay keyed, and it clamps that post's
+media index when the replacement has fewer assets.
 
 With `removalReconciliation` enabled, each provider request records the unique
 items it contributed. Before `loadNext()`, Vibe compares the surviving
