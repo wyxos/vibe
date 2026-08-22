@@ -22,13 +22,13 @@ const emit = defineEmits<{
 <template>
   <main
     class="gallery-shell"
-    :role="props.state.error ? 'alert' : props.state.isLoading ? 'status' : undefined"
+    :role="props.state.error ? 'alert' : props.state.isLoading || props.state.isLoadingMore ? 'status' : undefined"
   >
     <p class="gallery-status">
       <template v-if="props.state.error">
         Unable to load media.
       </template>
-      <template v-else-if="props.state.isLoading">
+      <template v-else-if="props.state.isLoading || props.state.isLoadingMore">
         Loading media…
       </template>
       <template v-else>

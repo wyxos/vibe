@@ -132,6 +132,26 @@ describe('createVibe', () => {
     })
   })
 
+  it('shows loading instead of empty while loading more into an empty feed', async () => {
+    let resolve!: (page: { items: VibeItem[], next: null }) => void
+    const loadPage = vi.fn().mockReturnValue(new Promise((accept) => { resolve = accept }))
+    const instance = track(createVibe({
+      initialPage: { items: [], next: 'cursor-2' },
+      infiniteScroll: false,
+      loadPage,
+      target,
+    }))
+    await instance.mount()
+
+    const loading = instance.loadNext()
+    await flushPromises()
+    expect(target.textContent).toContain('Loading media…')
+    expect(target.textContent).not.toContain('No media found.')
+
+    resolve({ items: [item(2)], next: null })
+    await loading
+  })
+
   it('loads the next cursor once and removes duplicate post IDs', async () => {
     const loadPage = vi.fn()
       .mockResolvedValueOnce({ items: [item(1)], next: 'cursor-2', total: 3 })

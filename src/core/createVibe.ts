@@ -328,6 +328,7 @@ class VibeController implements VibeInstance {
         signal: abortController.signal,
         state: this.state,
       })
+      if (requestVersion === this.requestVersion && status === 'complete') this.state.nextPageError = null
       return requestVersion === this.requestVersion && status === 'complete'
     } catch (error: unknown) {
       if (!abortController.signal.aborted && requestVersion === this.requestVersion) {

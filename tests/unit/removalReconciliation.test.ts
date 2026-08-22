@@ -296,6 +296,7 @@ describe('capacity-aware removal reconciliation', () => {
     requests.length = 0
     await instance.loadNext()
     expect(requests).toEqual(['p2', 'p3', 'p4'])
+    expect(instance.getState().nextPageError).toBeNull()
   })
 
   it('coalesces removals made while a reconciliation is in flight', async () => {
