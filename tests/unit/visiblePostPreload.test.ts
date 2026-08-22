@@ -7,12 +7,13 @@ import {
   visiblePostPreloadTargets,
 } from '@/core/visiblePostPreload'
 
-function asset(name: string, type?: 'image' | 'video') {
+function asset(name: string, type?: 'audio' | 'image' | 'video') {
+  const extension = type === 'video' ? 'mp4' : type === 'audio' ? 'mp3' : 'jpg'
   return {
-    src: `https://example.com/${name}.${type === 'video' ? 'mp4' : 'jpg'}`,
+    src: `https://example.com/${name}.${extension}`,
     preview: {
       src: `https://example.com/${name}-preview.${type === 'video' ? 'mp4' : 'jpg'}`,
-      type,
+      type: type === 'audio' ? 'image' as const : type,
       width: 450,
       height: 600,
     },
@@ -57,6 +58,19 @@ describe('visible post preload', () => {
       ])
     expect(visiblePostPreloadTargets(grouped, 0, 'original')[0]?.src)
       .toBe('https://example.com/one.jpg')
+  })
+
+  it('warms audio cover art without preloading audio playback', () => {
+    const grouped = item()
+    grouped.items = [asset('track', 'audio'), { ...asset('uncovered', 'audio'), preview: undefined }]
+
+    expect(visiblePostPreloadTargets(grouped, 0, 'preview')).toEqual([
+      {
+        key: 'image:https://example.com/track-preview.jpg',
+        src: 'https://example.com/track-preview.jpg',
+        timed: false,
+      },
+    ])
   })
 
   it('bounds all warmups and timed-media metadata loads globally', () => {

@@ -6,6 +6,7 @@ import {
 
 import DemosPage from './pages/DemosPage.vue'
 import AutoScrollDemoPage from './pages/AutoScrollDemoPage.vue'
+import AudioDemoPage from './pages/AudioDemoPage.vue'
 import AutofillBackendDemoPage from './pages/AutofillBackendDemoPage.vue'
 import AutofillBackendRefreshDemoPage from './pages/AutofillBackendRefreshDemoPage.vue'
 import AutofillFrontendDemoPage from './pages/AutofillFrontendDemoPage.vue'
@@ -35,6 +36,11 @@ export function createDemoRouter(
         component: DemosPage,
         redirect: { name: 'demo-card-header-footer' },
         children: [
+          {
+            path: 'audio-media',
+            name: 'demo-audio-media',
+            component: AudioDemoPage,
+          },
           {
             path: 'card-header-and-footer',
             name: 'demo-card-header-footer',

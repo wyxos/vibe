@@ -28,7 +28,7 @@ const item: VibeItem = {
 | `src` | `string` | Original image, audio, or video URL. |
 | `width` | `number \| null` | Original intrinsic width when known. |
 | `height` | `number \| null` | Original intrinsic height when known. |
-| `preview` | `VibePreview` | Preview URL and dimensions. |
+| `preview` | `VibePreview \| undefined` | Preview URL and dimensions; for audio this is optional cover art. |
 | `mobile` | `VibeMediaVariant \| undefined` | Optional mobile-optimized full-playback URL and dimensions. |
 | `items` | `VibeMediaAsset[]` | Additional media in the same post. |
 
@@ -50,5 +50,12 @@ values defensively when pages are appended.
 ## Preview selection
 
 Masonry loads `preview`. Tablet and desktop reels load the canonical `src`, including reels opened from masonry. Phone reels load `mobile` when supplied and otherwise fall back to `src`. A mobile video variant should preserve complete playback and audio; a shortened or audio-stripped feed derivative belongs only in `preview`.
+
+Set `type: 'audio'` for extensionless audio sources. Audio always plays from
+`src` (or an audio `mobile` variant on phones). When `preview` resolves to an
+image, Vibe uses it as cover art in masonry and reel layouts. If it is omitted,
+does not resolve to an image, or fails to load, Vibe renders its built-in disc
+fallback. Masonry never starts audio playback; reel audio uses the same timed
+media controls and shared mute/volume state as video.
 
 Grouped media navigation loops horizontally within the active post. Vertical reel navigation continues to move between top-level posts.

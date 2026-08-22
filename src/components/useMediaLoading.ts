@@ -9,7 +9,7 @@ interface MediaLoadingOptions {
   layout: () => VibeLayout
   mediaSource: () => string
   mediaType: () => VibeMediaType | undefined
-  videoElement: ShallowRef<HTMLVideoElement | null>
+  mediaElement: ShallowRef<HTMLMediaElement | null>
 }
 
 export function useMediaLoading(options: MediaLoadingOptions) {
@@ -19,16 +19,16 @@ export function useMediaLoading(options: MediaLoadingOptions) {
       ? 'lazy' as const
       : 'eager' as const
   ))
-  const videoPreload = computed(() => {
+  const timedMediaPreload = computed(() => {
     if (options.layout() === 'reel' && !options.active()) return 'none' as const
     if (options.fetchPriority() === 'high') return 'auto' as const
     return options.layout() === 'masonry' ? 'none' as const : 'metadata' as const
   })
 
-  watch(videoPreload, (preload, previous) => {
+  watch(timedMediaPreload, (preload, previous) => {
     if (previous !== 'none' || preload === 'none') return
-    void nextTick(() => options.videoElement.value?.load())
+    void nextTick(() => options.mediaElement.value?.load())
   })
 
-  return { imageLoading, mediaIsTimed, videoPreload }
+  return { imageLoading, mediaIsTimed, timedMediaPreload }
 }

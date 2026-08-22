@@ -13,7 +13,7 @@ interface MediaCardAudioOptions {
   mediaCard: () => VibeMediaCardOptions | undefined
   onChange: (state: VibeReelAudioState) => void
   reelAudioState: () => VibeReelAudioState | undefined
-  videoElement: Ref<HTMLVideoElement | null>
+  mediaElement: Ref<HTMLMediaElement | null>
 }
 
 export function useMediaCardAudio(options: MediaCardAudioOptions) {
@@ -26,30 +26,30 @@ export function useMediaCardAudio(options: MediaCardAudioOptions) {
   let lastAudibleVolume = shared ? initial.lastAudibleVolume : 1
 
   function apply(): void {
-    const video = options.videoElement.value
+    const media = options.mediaElement.value
     const reelAudioState = options.reelAudioState()
-    if (!video || options.layout() !== 'reel' || !reelAudioState) return
+    if (!media || options.layout() !== 'reel' || !reelAudioState) return
 
     const state = normalizeReelAudioState(reelAudioState)
     lastAudibleVolume = state.lastAudibleVolume
     videoVolume.value = state.volume
     videoIsMuted.value = state.muted
-    video.volume = state.volume
-    video.muted = options.active() === false ? true : state.muted
+    media.volume = state.volume
+    media.muted = options.active() === false ? true : state.muted
   }
 
-  function sync(video: HTMLVideoElement, syncMuted: boolean): void {
-    if (syncMuted) videoIsMuted.value = video.muted
-    videoVolume.value = video.volume
-    if (video.volume > 0) lastAudibleVolume = video.volume
+  function sync(media: HTMLMediaElement, syncMuted: boolean): void {
+    if (syncMuted) videoIsMuted.value = media.muted
+    videoVolume.value = media.volume
+    if (media.volume > 0) lastAudibleVolume = media.volume
   }
 
-  function publish(video: HTMLVideoElement): void {
+  function publish(media: HTMLMediaElement): void {
     if (options.layout() !== 'reel') return
     const state = normalizeReelAudioState({
       lastAudibleVolume,
-      muted: video.muted,
-      volume: video.volume,
+      muted: media.muted,
+      volume: media.volume,
     })
     videoIsMuted.value = state.muted
     videoVolume.value = state.volume
@@ -58,23 +58,23 @@ export function useMediaCardAudio(options: MediaCardAudioOptions) {
   }
 
   function setVolume(volume: number): void {
-    const video = options.videoElement.value
-    if (!video || !Number.isFinite(volume)) return
+    const media = options.mediaElement.value
+    if (!media || !Number.isFinite(volume)) return
     const nextVolume = Math.min(1, Math.max(0, volume))
-    video.volume = nextVolume
-    video.muted = nextVolume === 0
+    media.volume = nextVolume
+    media.muted = nextVolume === 0
     if (nextVolume > 0) lastAudibleVolume = nextVolume
-    sync(video, true)
-    publish(video)
+    sync(media, true)
+    publish(media)
   }
 
   function toggleMute(): void {
-    const video = options.videoElement.value
-    if (!video) return
-    if (video.muted && video.volume === 0) video.volume = lastAudibleVolume
-    video.muted = !video.muted
-    sync(video, true)
-    publish(video)
+    const media = options.mediaElement.value
+    if (!media) return
+    if (media.muted && media.volume === 0) media.volume = lastAudibleVolume
+    media.muted = !media.muted
+    sync(media, true)
+    publish(media)
   }
 
   watch(
@@ -84,7 +84,7 @@ export function useMediaCardAudio(options: MediaCardAudioOptions) {
       () => options.reelAudioState()?.lastAudibleVolume,
       () => options.reelAudioState()?.muted,
       () => options.reelAudioState()?.volume,
-      options.videoElement,
+      options.mediaElement,
     ],
     apply,
     { immediate: true },

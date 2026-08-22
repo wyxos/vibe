@@ -18,7 +18,7 @@ interface MediaReadinessOptions {
 
 export function useMediaReadiness(options: MediaReadinessOptions) {
   const imageElement = shallowRef<HTMLImageElement | null>(null)
-  const videoElement = shallowRef<HTMLVideoElement | null>(null)
+  const mediaElement = shallowRef<HTMLMediaElement | null>(null)
   const sourceGeneration = shallowRef(0)
   const sourceRetry = shallowRef(0)
   const sourcePending = shallowRef(true)
@@ -65,8 +65,8 @@ export function useMediaReadiness(options: MediaReadinessOptions) {
       else failSourceAttempt()
       return
     }
-    const video = videoElement.value
-    if (video && video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+    const media = mediaElement.value
+    if (media && media.readyState >= HTMLMediaElement.HAVE_METADATA) {
       markSourceReady()
       return
     }
@@ -126,6 +126,6 @@ export function useMediaReadiness(options: MediaReadinessOptions) {
     retrySource,
     retrying,
     sourceGeneration,
-    videoElement,
+    mediaElement,
   }
 }

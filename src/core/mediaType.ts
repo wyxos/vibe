@@ -1,15 +1,34 @@
 import type { VibeMediaType } from '../types'
 
-const TIMED_MEDIA_PATTERN = /\.(aac|flac|m4a|mp3|mp4|mov|ogg|opus|wav|webm)$/i
+const AUDIO_MEDIA_PATTERN = /\.(aac|flac|m4a|mp3|oga|ogg|opus|wav)$/i
+const VIDEO_MEDIA_PATTERN = /\.(m4v|mkv|mov|mp4|ogv|webm)$/i
 
-export function isTimedMediaSource(src: string): boolean {
+function sourcePath(src: string): string {
   try {
-    return TIMED_MEDIA_PATTERN.test(new URL(src).pathname)
+    return new URL(src).pathname
   } catch {
-    return TIMED_MEDIA_PATTERN.test(src.split('?')[0] ?? src)
+    return src.split(/[?#]/)[0] ?? src
   }
 }
 
+export function inferMediaType(src: string): VibeMediaType {
+  const path = sourcePath(src)
+  if (AUDIO_MEDIA_PATTERN.test(path)) return 'audio'
+  if (VIDEO_MEDIA_PATTERN.test(path)) return 'video'
+  return 'image'
+}
+
+export function resolveMediaType(
+  type: VibeMediaType | undefined,
+  src: string,
+): VibeMediaType {
+  return type ?? inferMediaType(src)
+}
+
+export function isTimedMediaSource(src: string): boolean {
+  return inferMediaType(src) !== 'image'
+}
+
 export function isTimedMedia(type: VibeMediaType | undefined, src: string): boolean {
-  return type === undefined ? isTimedMediaSource(src) : type === 'video'
+  return resolveMediaType(type, src) !== 'image'
 }

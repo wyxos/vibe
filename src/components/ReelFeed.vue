@@ -1,15 +1,9 @@
 <script setup lang="ts">
-import {
-  computed,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  shallowRef,
-  watch,
-  type CSSProperties,
-} from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, shallowRef, watch,
+  type CSSProperties } from 'vue'
 import { isNearFeedBottom, type ReelFeedProps } from '../core/feed'
-import { mediaAssetAt, mediaAssets, mediaStateKey, mediaVariantForSource } from '../core/mediaAsset'
+import { mediaAssetAt, mediaAssets, mediaPlaybackVariantForSource,
+  mediaStateKey } from '../core/mediaAsset'
 import { isTimedMedia } from '../core/mediaType'
 import { transitionReelScroll } from '../core/reelScrollTransition'
 import type { VibeItemId, VibeReelAudioState } from '../types'
@@ -73,7 +67,7 @@ const activeMedia = computed(() => activeItem.value
   ? mediaAssetAt(activeItem.value, activeMediaIndex.value)
   : null)
 const activeMediaVariant = computed(() => activeMedia.value
-  ? mediaVariantForSource(activeMedia.value, props.mediaSource ?? 'preview')
+  ? mediaPlaybackVariantForSource(activeMedia.value, props.mediaSource ?? 'preview')
   : null)
 const activeMediaWaitsForEnd = computed(() => (
   activePreviewState.value === 'ready'

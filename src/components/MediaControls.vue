@@ -7,12 +7,13 @@ import {
 } from 'lucide-vue-next'
 import { computed, type CSSProperties } from 'vue'
 
-import type { VibeLayout } from '../types'
+import type { VibeLayout, VibeMediaType } from '../types'
 
 const props = defineProps<{
   currentTime: number
   duration: number
   layout: VibeLayout
+  mediaType: Extract<VibeMediaType, 'audio' | 'video'>
   muted: boolean
   playing: boolean
   volume: number
@@ -48,6 +49,8 @@ function inputValue(event: Event): number {
 }
 
 const safeDuration = computed(() => Math.max(0, props.duration))
+const mediaLabel = computed(() => props.mediaType === 'audio' ? 'audio' : 'video')
+const mediaLabelTitle = computed(() => props.mediaType === 'audio' ? 'Audio' : 'Video')
 const safeCurrentTime = computed(() => bounded(props.currentTime, safeDuration.value))
 const seekStyle = computed<CSSProperties>(() => ({
   '--media-range-progress': `${safeDuration.value > 0
@@ -63,7 +66,8 @@ const volumeStyle = computed<CSSProperties>(() => ({
   <div
     class="media-controls"
     :class="`media-controls--${layout}`"
-    aria-label="Video controls"
+    role="group"
+    :aria-label="`${mediaLabelTitle} controls`"
     @click.stop
     @dblclick.stop
     @keydown.stop
@@ -77,7 +81,7 @@ const volumeStyle = computed<CSSProperties>(() => ({
       step="0.1"
       :value="safeCurrentTime"
       :style="seekStyle"
-      aria-label="Seek video"
+      :aria-label="`Seek ${mediaLabel}`"
       :aria-valuetext="`${formatTime(safeCurrentTime)} of ${formatTime(safeDuration)}`"
       :disabled="safeDuration <= 0"
       @input="emit('seek', inputValue($event))"
@@ -87,7 +91,7 @@ const volumeStyle = computed<CSSProperties>(() => ({
       <button
         type="button"
         class="media-control-button media-control-playback"
-        :aria-label="playing ? 'Pause video' : 'Play video'"
+        :aria-label="playing ? `Pause ${mediaLabel}` : `Play ${mediaLabel}`"
         :title="playing ? 'Pause' : 'Play'"
         @click="emit('togglePlayback')"
       >
@@ -99,7 +103,7 @@ const volumeStyle = computed<CSSProperties>(() => ({
         <button
           type="button"
           class="media-control-button"
-          :aria-label="muted ? 'Unmute video' : 'Mute video'"
+          :aria-label="muted ? `Unmute ${mediaLabel}` : `Mute ${mediaLabel}`"
           :title="muted ? 'Unmute' : 'Mute'"
           @click="emit('toggleMute')"
         >
@@ -115,7 +119,7 @@ const volumeStyle = computed<CSSProperties>(() => ({
           step="0.05"
           :value="volume"
           :style="volumeStyle"
-          aria-label="Video volume"
+          :aria-label="`${mediaLabelTitle} volume`"
           :aria-valuetext="`${Math.round(volume * 100)} percent`"
           @input="emit('volumeChange', inputValue($event))"
         >

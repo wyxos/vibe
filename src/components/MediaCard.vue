@@ -2,20 +2,25 @@
 import {
   ChevronLeft,
   ChevronRight,
+  Disc3,
 } from 'lucide-vue-next'
 import {
   computed,
-  onBeforeUnmount,
+  nextTick,
   shallowRef,
+  watch,
   type CSSProperties,
 } from 'vue'
 
 import {
+  audioCoverVariant,
   clampMediaIndex,
   mediaAssetAt,
   mediaAssets,
+  mediaPlaybackVariantForSource,
   mediaVariantForSource,
 } from '../core/mediaAsset'
+import { resolveMediaType } from '../core/mediaType'
 import {
   mediaErrorLabel,
   mediaErrorStatus,
@@ -33,11 +38,11 @@ import CardRegion from './CardRegion.vue'
 import MediaError from './MediaError.vue'
 import MediaControls from './MediaControls.vue'
 import MediaContextOverlay from './MediaContextOverlay.vue'
-import { useMediaCardAudio } from './useMediaCardAudio'
+import { useMediaCarouselNavigation } from './useMediaCarouselNavigation'
 import { useVisiblePostPreload } from './useVisiblePostPreload'
-import { useReelVideoActivity } from './useReelVideoActivity'
 import { useMediaLoading } from './useMediaLoading'
 import { useMediaReadiness } from './useMediaReadiness'
+import { useTimedMediaCard } from './useTimedMediaCard'
 
 const props = defineProps<{
   active?: boolean
@@ -64,15 +69,6 @@ const props = defineProps<{
   total: number | null
 }>()
 
-const MEDIA_SWIPE_THRESHOLD = 40
-const MEDIA_WHEEL_RESET_MS = 160
-const MEDIA_WHEEL_THRESHOLD = 24
-let wheelResetTimer: ReturnType<typeof setTimeout> | null = null
-let wheelDeltaX = 0
-let wheelGestureConsumed = false
-let touchStartX: number | null = null
-let touchStartY: number | null = null
-const mediaDirection = shallowRef<'next' | 'previous'>('next')
 const emit = defineEmits<{
   activate: [input: 'keyboard' | 'pointer']
   ended: [mediaIndex: number]
@@ -99,12 +95,25 @@ const mediaVariant = computed(() => mediaVariantForSource(
   mediaItem.value,
   props.mediaSource ?? 'preview',
 ))
-const mediaSrc = computed(() => mediaVariant.value.src)
-const mediaType = computed(() => mediaVariant.value.type)
+const assetType = computed(() => resolveMediaType(mediaItem.value.type, mediaItem.value.src))
+const isAudio = computed(() => assetType.value === 'audio')
+const playbackVariant = computed(() => mediaPlaybackVariantForSource(
+  mediaItem.value,
+  props.mediaSource ?? 'preview',
+))
+const renderedVariant = computed(() => isAudio.value ? playbackVariant.value : mediaVariant.value)
+const mediaSrc = computed(() => renderedVariant.value.src)
+const mediaType = computed(() => resolveMediaType(
+  renderedVariant.value.type,
+  renderedVariant.value.src,
+))
 const mediaWidth = computed(() => mediaVariant.value.width)
 const mediaHeight = computed(() => mediaVariant.value.height)
+const audioCover = computed(() => audioCoverVariant(mediaItem.value))
+const audioCoverFailed = shallowRef(false)
+const visibleAudioCover = computed(() => audioCoverFailed.value ? null : audioCover.value)
 const { effectivePreviewState, failSourceAttempt, imageElement, markSourceReady,
-  noteSourceActivity, retrySource, retrying, sourceGeneration, videoElement }
+  noteSourceActivity, retrySource, retrying, sourceGeneration, mediaElement }
   = useMediaReadiness({
   identity: () => `${props.item.postId}:${normalizedMediaIndex.value}:${props.mediaSource ?? 'preview'}:${mediaSrc.value}:${mediaType.value ?? ''}`,
   mediaIndex: () => normalizedMediaIndex.value,
@@ -121,34 +130,31 @@ useVisiblePostPreload({
   mediaReady: () => effectivePreviewState.value === 'ready',
   mediaSource: () => props.mediaSource ?? 'preview',
 })
-const videoCurrentTime = shallowRef(0)
-const videoDuration = shallowRef(0)
-const videoIsPlaying = shallowRef(false)
 const {
-  apply: applyReelAudioState,
-  setVolume: setVideoVolume,
-  sync: syncVideoAudioState,
-  toggleMute: toggleVideoMute,
-  videoIsMuted,
-  videoVolume,
-} = useMediaCardAudio({
+  currentTime: timedMediaCurrentTime,
+  duration: timedMediaDuration,
+  effectiveMuted: effectiveTimedMediaMuted,
+  isMuted: timedMediaIsMuted,
+  isPlaying: timedMediaIsPlaying,
+  onEnded: onTimedMediaEnded,
+  onLoadedMetadata: onTimedMediaLoadedMetadata,
+  onPlaying: onTimedMediaPlaying,
+  playbackAllowed: timedMediaPlaybackAllowed,
+  seek: seekTimedMedia,
+  setVolume: setTimedMediaVolume,
+  sync: syncTimedMediaState,
+  toggleMute: toggleTimedMediaMute,
+  togglePlayback: toggleTimedMediaPlayback,
+  volume: timedMediaVolume,
+} = useTimedMediaCard({
   active: () => props.active,
   layout: () => props.layout,
   mediaCard: () => props.mediaCard,
-  onChange: (state) => emit('reelAudioChange', state),
+  mediaElement,
+  onAudioChange: (state) => emit('reelAudioChange', state),
+  onEnded: () => emit('ended', normalizedMediaIndex.value),
+  onReady: markSourceReady,
   reelAudioState: () => props.reelAudioState,
-  videoElement,
-})
-const {
-  effectiveMuted: effectiveVideoMuted,
-  onPlaying: onVideoPlaying,
-  playbackAllowed: videoPlaybackAllowed,
-} = useReelVideoActivity({
-  active: () => props.active,
-  layout: () => props.layout,
-  videoElement,
-  videoIsMuted,
-  videoIsPlaying,
 })
 
 const usesSeparateActivator = computed(() => (
@@ -158,80 +164,25 @@ const usesSeparateActivator = computed(() => (
 function activationInput(event: MouseEvent): 'keyboard' | 'pointer' {
   return event.detail === 0 ? 'keyboard' : 'pointer'
 }
-function changeMedia(index: number, event?: MouseEvent): void {
-  const mediaCount = mediaItems.value.length
-  const nextIndex = (index + mediaCount) % mediaCount
-  if (nextIndex === normalizedMediaIndex.value) return
+const {
+  change: changeMedia,
+  direction: mediaDirection,
+  onTouchEnd: onMediaTouchEnd,
+  onTouchStart: onMediaTouchStart,
+  onWheel: onMediaWheel,
+} = useMediaCarouselNavigation({
+  item: () => props.item,
+  layout: () => props.layout,
+  mediaIndex: () => normalizedMediaIndex.value,
+  onChange: (mediaIndex) => emit('mediaChange', mediaIndex),
+})
 
-  mediaDirection.value = index < normalizedMediaIndex.value ? 'previous' : 'next'
-  emit('mediaChange', nextIndex)
-  if (event && event.detail > 0) {
-    (event.currentTarget as HTMLElement | null)?.blur()
-  }
-}
-
-function normalizeWheelDelta(delta: number, deltaMode: number, pageSize: number): number {
-  if (deltaMode === 1) return delta * 16
-  if (deltaMode === 2) return delta * pageSize
-  return delta
-}
-function resetWheelGesture(): void {
-  wheelDeltaX = 0
-  wheelGestureConsumed = false
-  if (wheelResetTimer !== null) clearTimeout(wheelResetTimer)
-  wheelResetTimer = null
-}
-function scheduleWheelReset(): void {
-  if (wheelResetTimer !== null) clearTimeout(wheelResetTimer)
-  wheelResetTimer = setTimeout(resetWheelGesture, MEDIA_WHEEL_RESET_MS)
-}
-function onMediaWheel(event: WheelEvent): void {
-  const mediaCount = mediaItems.value.length
-  if (mediaCount <= 1) return
-
-  const target = event.currentTarget as HTMLElement | null
-  const pageSize = target?.clientWidth || 1
-  const deltaX = normalizeWheelDelta(event.deltaX, event.deltaMode, pageSize)
-  if (deltaX === 0) return
-
-  event.preventDefault()
-  scheduleWheelReset()
-  if (wheelGestureConsumed) return
-
-  wheelDeltaX += deltaX
-  if (Math.abs(wheelDeltaX) < MEDIA_WHEEL_THRESHOLD) return
-
-  const direction = Math.sign(wheelDeltaX)
-  wheelDeltaX = 0
-  wheelGestureConsumed = true
-  changeMedia(normalizedMediaIndex.value + direction)
-}
-function onMediaTouchStart(event: TouchEvent): void {
-  const touch = event.touches[0]
-  if (props.layout !== 'reel' || !touch) return
-
-  touchStartX = touch.clientX
-  touchStartY = touch.clientY
-}
-function onMediaTouchEnd(event: TouchEvent): void {
-  const touch = event.changedTouches[0]
-  if (touchStartX === null || touchStartY === null || !touch) return
-
-  const deltaX = touchStartX - touch.clientX
-  const deltaY = touchStartY - touch.clientY
-  touchStartX = null
-  touchStartY = null
-  if (Math.abs(deltaX) <= Math.abs(deltaY)) return
-  if (Math.abs(deltaX) < MEDIA_SWIPE_THRESHOLD) return
-
-  changeMedia(normalizedMediaIndex.value + Math.sign(deltaX))
-}
-
-const { imageLoading, mediaIsTimed, videoPreload } = useMediaLoading({ active: () => props.active, fetchPriority: () => props.fetchPriority, layout: () => props.layout, mediaSource: () => mediaSrc.value, mediaType: () => mediaType.value, videoElement })
+const { imageLoading, mediaIsTimed, timedMediaPreload } = useMediaLoading({ active: () => props.active, fetchPriority: () => props.fetchPriority, layout: () => props.layout, mediaSource: () => mediaSrc.value, mediaType: () => mediaType.value, mediaElement })
 const usesStationaryReelControls = computed(() => props.layout === 'reel'
   && props.stationaryReelControls === true)
 const mediaControlsVisible = computed(() => (
   mediaIsTimed.value
+  && (!isAudio.value || props.layout === 'reel')
   && effectivePreviewState.value === 'ready'
   && (
     !usesStationaryReelControls.value
@@ -242,57 +193,28 @@ const mediaControlsKey = computed(() => (
   `${props.item.postId}:${normalizedMediaIndex.value}:${mediaSrc.value}`
 ))
 
-function onVideoClick(event: MouseEvent): void {
+function onTimedMediaClick(event: MouseEvent): void {
   if (props.layout !== 'reel') return
 
   event.stopPropagation()
-  void toggleVideoPlayback()
+  void toggleTimedMediaPlayback()
 }
-async function toggleVideoPlayback(): Promise<void> {
-  if (!videoElement.value || !videoPlaybackAllowed.value) return
-
-  if (videoIsPlaying.value) {
-    videoElement.value.pause()
-    return
-  }
-
-  try {
-    await videoElement.value.play()
-  } catch {
-    videoIsPlaying.value = false
-  }
-}
-function finiteMediaValue(value: number): number {
-  return Number.isFinite(value) ? Math.max(0, value) : 0
-}
-function syncVideoState(event?: Event): void {
-  const video = (event?.currentTarget as HTMLVideoElement | null) ?? videoElement.value
-  if (!video) return
-
-  videoCurrentTime.value = finiteMediaValue(video.currentTime)
-  videoDuration.value = finiteMediaValue(video.duration)
-  syncVideoAudioState(video, videoPlaybackAllowed.value)
-}
-function onVideoLoadedMetadata(event: Event): void {
-  applyReelAudioState()
-  syncVideoState(event)
-  markSourceReady(event)
-}
-function onMediaEnded(): void {
-  videoIsPlaying.value = false
-  emit('ended', normalizedMediaIndex.value)
-}
-function seekVideo(time: number): void {
-  const video = videoElement.value
-  if (!video || !Number.isFinite(time)) return
-
-  video.currentTime = Math.min(finiteMediaValue(video.duration), Math.max(0, time))
-  videoCurrentTime.value = video.currentTime
+function onAudioCoverError(): void {
+  audioCoverFailed.value = true
+  if (props.layout === 'masonry') markSourceReady()
 }
 
-onBeforeUnmount(() => {
-  resetWheelGesture()
+watch(() => audioCover.value?.src, () => {
+  audioCoverFailed.value = false
 })
+watch(
+  [isAudio, () => props.layout, visibleAudioCover],
+  ([audio, layout, cover]) => {
+    if (audio && layout === 'masonry' && !cover) void nextTick(() => markSourceReady())
+  },
+  { immediate: true },
+)
+
 </script>
 <template>
   <article
@@ -369,9 +291,60 @@ onBeforeUnmount(() => {
               @retry="retrySource"
             />
 
+            <audio
+              v-if="isAudio && layout === 'reel'"
+              ref="mediaElement"
+              :data-source-generation="sourceGeneration"
+              class="media-audio-element"
+              :src="mediaSrc"
+              :autoplay="timedMediaPlaybackAllowed"
+              :loop="!advanceOnMediaEnd"
+              :muted="effectiveTimedMediaMuted"
+              :preload="timedMediaPreload"
+              @loadedmetadata="onTimedMediaLoadedMetadata"
+              @progress="noteSourceActivity" @loadeddata="noteSourceActivity"
+              @canplay="noteSourceActivity"
+              @durationchange="syncTimedMediaState"
+              @timeupdate="syncTimedMediaState"
+              @volumechange="syncTimedMediaState"
+              @playing="onTimedMediaPlaying"
+              @pause="timedMediaIsPlaying = false"
+              @ended="onTimedMediaEnded"
+              @error="failSourceAttempt"
+            />
+
+            <button
+              v-if="isAudio"
+              type="button"
+              class="media-audio-artwork media-preview"
+              :class="{ 'media-preview--ready': effectivePreviewState === 'ready' }"
+              :aria-label="layout === 'reel'
+                ? (timedMediaIsPlaying ? 'Pause audio' : 'Play audio')
+                : 'Audio'"
+              :disabled="layout !== 'reel'"
+              @click="onTimedMediaClick"
+            >
+              <img
+                v-if="visibleAudioCover"
+                class="media-audio-cover"
+                :src="visibleAudioCover.src"
+                :width="visibleAudioCover.width ?? undefined"
+                :height="visibleAudioCover.height ?? undefined"
+                :fetchpriority="fetchPriority"
+                alt=""
+                decoding="async"
+                :loading="imageLoading"
+                @load="layout === 'masonry' && markSourceReady($event)"
+                @error="onAudioCoverError"
+              >
+              <span v-else class="media-audio-fallback" aria-hidden="true">
+                <Disc3 :size="64" :stroke-width="1.5" />
+              </span>
+            </button>
+
             <video
-              v-if="mediaIsTimed"
-              ref="videoElement"
+              v-else-if="mediaIsTimed"
+              ref="mediaElement"
               :data-source-generation="sourceGeneration"
               class="media-preview"
               :class="{
@@ -381,26 +354,26 @@ onBeforeUnmount(() => {
               :src="mediaSrc"
               :width="mediaWidth ?? undefined"
               :height="mediaHeight ?? undefined"
-              :autoplay="videoPlaybackAllowed"
+              :autoplay="timedMediaPlaybackAllowed"
               :loop="!advanceOnMediaEnd"
-              :muted="effectiveVideoMuted"
+              :muted="effectiveTimedMediaMuted"
               playsinline
-              :preload="videoPreload"
-              @loadedmetadata="onVideoLoadedMetadata"
+              :preload="timedMediaPreload"
+              @loadedmetadata="onTimedMediaLoadedMetadata"
               @progress="noteSourceActivity" @loadeddata="noteSourceActivity"
               @canplay="noteSourceActivity"
-              @durationchange="syncVideoState"
-              @timeupdate="syncVideoState"
-              @volumechange="syncVideoState"
-              @playing="onVideoPlaying"
-              @pause="videoIsPlaying = false"
-              @ended="onMediaEnded"
-              @click="onVideoClick"
+              @durationchange="syncTimedMediaState"
+              @timeupdate="syncTimedMediaState"
+              @volumechange="syncTimedMediaState"
+              @playing="onTimedMediaPlaying"
+              @pause="timedMediaIsPlaying = false"
+              @ended="onTimedMediaEnded"
+              @click="onTimedMediaClick"
               @error="failSourceAttempt"
             />
 
             <img
-              v-else
+              v-else-if="!isAudio"
               ref="imageElement"
               :data-source-generation="sourceGeneration"
               class="media-preview"
@@ -431,17 +404,18 @@ onBeforeUnmount(() => {
             <MediaControls
               v-if="mediaControlsVisible"
               :key="mediaControlsKey"
-              :current-time="videoCurrentTime"
+              :current-time="timedMediaCurrentTime"
               :data-control-post-id="usesStationaryReelControls ? item.postId : undefined"
-              :duration="videoDuration"
+              :duration="timedMediaDuration"
               :layout="layout"
-              :muted="videoIsMuted"
-              :playing="videoIsPlaying"
-              :volume="videoVolume"
-              @seek="seekVideo"
-              @toggle-mute="toggleVideoMute"
-              @toggle-playback="toggleVideoPlayback"
-              @volume-change="setVideoVolume"
+              :media-type="isAudio ? 'audio' : 'video'"
+              :muted="timedMediaIsMuted"
+              :playing="timedMediaIsPlaying"
+              :volume="timedMediaVolume"
+              @seek="seekTimedMedia"
+              @toggle-mute="toggleTimedMediaMute"
+              @toggle-playback="toggleTimedMediaPlayback"
+              @volume-change="setTimedMediaVolume"
             />
           </Transition>
         </Teleport>

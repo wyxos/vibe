@@ -1,7 +1,7 @@
 export interface MasonryMediaDimensions {
   width: number | null
   height: number | null
-  preview: {
+  preview?: {
     width: number | null
     height: number | null
   }
@@ -38,8 +38,8 @@ interface MasonryOptions {
 }
 
 function itemAspectRatio(item: MasonryMediaDimensions): number {
-  const width = item.preview.width ?? item.width
-  const height = item.preview.height ?? item.height
+  const width = item.preview?.width ?? item.width
+  const height = item.preview?.height ?? item.height
 
   if (!width || !height || width <= 0 || height <= 0) return 1
 

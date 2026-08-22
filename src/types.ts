@@ -34,7 +34,7 @@ export type VibeFillStatus =
   | 'restoring'
   | 'waiting'
 export type VibeFillTarget = { items: number } | { pages: number } | { until: 'end' }
-export type VibeMediaType = 'image' | 'video'
+export type VibeMediaType = 'audio' | 'image' | 'video'
 export interface VibeAutoScrollOptions { enabled?: boolean; maxSpeedPxPerSecond?: number; minSpeedPxPerSecond?: number; speedPxPerSecond?: number }
 export interface VibeAutoScrollState {
   enabled: boolean
@@ -71,7 +71,7 @@ export type VibePreview = VibeMediaVariant
 export interface VibeMediaAsset {
   mediaId?: VibeItemId
   src: string
-  preview: VibePreview
+  preview?: VibePreview
   mobile?: VibeMediaVariant
   width: number | null
   height: number | null

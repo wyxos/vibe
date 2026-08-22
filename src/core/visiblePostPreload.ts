@@ -3,11 +3,12 @@ import type {
   VibeMediaSource,
 } from '../types'
 import {
+  audioCoverVariant,
   clampMediaIndex,
   mediaAssets,
   mediaVariantForSource,
 } from './mediaAsset'
-import { isTimedMedia } from './mediaType'
+import { isTimedMedia, resolveMediaType } from './mediaType'
 
 export const VISIBLE_POST_PRELOAD_CONCURRENCY = 6
 export const VISIBLE_POST_TIMED_PRELOAD_CONCURRENCY = 2
@@ -57,7 +58,11 @@ export function visiblePostPreloadTargets(
   return indices.flatMap((index) => {
     const asset = assets[index]
     if (!asset) return []
-    const variant = mediaVariantForSource(asset, mediaSource)
+    const assetType = resolveMediaType(asset.type, asset.src)
+    const variant = assetType === 'audio'
+      ? audioCoverVariant(asset)
+      : mediaVariantForSource(asset, mediaSource)
+    if (!variant) return []
     const timed = isTimedMedia(variant.type, variant.src)
     const key = targetKey(variant.src, timed)
     if (seen.has(key)) return []

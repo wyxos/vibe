@@ -1,7 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, markRaw } from 'vue'
-
 import ReelFeed from '@/components/ReelFeed.vue'
 
 function feedItem(postId: number) {
@@ -455,7 +454,8 @@ describe('ReelFeed', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('[data-test="reel-auto-advance"]').exists()).toBe(false)
-    const media = wrapper.get('[data-post-id="10"] video')
+    const tag = extension === 'mp3' ? 'audio' : 'video'
+    const media = wrapper.get(`[data-post-id="10"] ${tag}`)
     expect(media.attributes('loop')).toBeUndefined()
     await media.trigger('ended')
 

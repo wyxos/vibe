@@ -18,6 +18,12 @@ const emit = defineEmits<{
     <aside class="demos-aside" aria-label="Demos">
       <RouterLink
         class="demos-aside-link"
+        to="/demos/audio-media"
+      >
+        Audio media
+      </RouterLink>
+      <RouterLink
+        class="demos-aside-link"
         to="/demos/auto-scroll"
       >
         Auto scroll

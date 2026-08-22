@@ -50,7 +50,7 @@ function identityKey(value: VibeItemId): string {
 
 function mediaKey(item: VibeItem['items'][number]): string {
   return item.mediaId === undefined
-    ? `source:${item.src}\u0000${item.preview.src}`
+    ? `source:${item.src}\u0000${item.preview?.src ?? ''}`
     : `id:${identityKey(item.mediaId)}`
 }
 

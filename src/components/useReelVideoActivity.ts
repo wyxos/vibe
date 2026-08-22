@@ -7,50 +7,50 @@ import {
 
 import type { VibeLayout } from '../types'
 
-interface ReelVideoActivityOptions {
+interface ReelTimedMediaActivityOptions {
   active: () => boolean | undefined
   layout: () => VibeLayout
-  videoElement: Ref<HTMLVideoElement | null>
-  videoIsMuted: Ref<boolean>
-  videoIsPlaying: Ref<boolean>
+  mediaElement: Ref<HTMLMediaElement | null>
+  mediaIsMuted: Ref<boolean>
+  mediaIsPlaying: Ref<boolean>
 }
 
-export function useReelVideoActivity(options: ReelVideoActivityOptions) {
+export function useReelTimedMediaActivity(options: ReelTimedMediaActivityOptions) {
   const playbackAllowed = computed(() => (
     options.layout() !== 'reel' || options.active() === true
   ))
   const effectiveMuted = computed(() => (
-    playbackAllowed.value ? options.videoIsMuted.value : true
+    playbackAllowed.value ? options.mediaIsMuted.value : true
   ))
 
   function onPlaying(): void {
     if (!playbackAllowed.value) {
-      options.videoElement.value?.pause()
-      options.videoIsPlaying.value = false
+      options.mediaElement.value?.pause()
+      options.mediaIsPlaying.value = false
       return
     }
 
-    options.videoIsPlaying.value = true
+    options.mediaIsPlaying.value = true
   }
 
   watch(playbackAllowed, (allowed) => {
-    const video = options.videoElement.value
+    const media = options.mediaElement.value
     if (!allowed) {
-      video?.pause()
-      if (video) video.muted = true
-      options.videoIsPlaying.value = false
+      media?.pause()
+      if (media) media.muted = true
+      options.mediaIsPlaying.value = false
       return
     }
 
     void nextTick().then(async () => {
-      const activeVideo = options.videoElement.value
-      if (!activeVideo || !playbackAllowed.value) return
+      const activeMedia = options.mediaElement.value
+      if (!activeMedia || !playbackAllowed.value) return
 
-      activeVideo.muted = options.videoIsMuted.value
+      activeMedia.muted = options.mediaIsMuted.value
       try {
-        await activeVideo.play()
+        await activeMedia.play()
       } catch {
-        options.videoIsPlaying.value = false
+        options.mediaIsPlaying.value = false
       }
     })
   })
