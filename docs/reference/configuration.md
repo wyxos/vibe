@@ -22,7 +22,9 @@ const vibe = createVibe(options)
 | `initialPage` | `VibePage` | — | Items and cursor restored before mounting. |
 | `loadPage` | `VibePageLoader` | — | Asynchronous cursor page loader. |
 | `infiniteScroll` | `boolean` | `true` | Loads forward when the feed reaches its boundary; the default footer offers manual loading when the feed is underfilled. |
+| `onMediaFullyVisible` | `(context: VibeMediaLifecycleContext) => void` | — | Runs once per layout and media during a mount when masonry reaches its full visibility threshold or ready media is active in a reel. |
 | `onMediaReady` | `(context: VibeMediaLifecycleContext) => void` | — | Runs when an image loads or a video has enough metadata to render. |
+| `onMediaVisible` | `(context: VibeMediaLifecycleContext) => void` | — | Runs once per ready masonry media during a mount when it first intersects the viewport. |
 | `onReelMediaChange` | `(context: VibeMediaLifecycleContext) => void` | — | Runs for the initial reel selection and each parent, nested, or single-item media change. |
 | `onStateChange` | `(state: VibeState) => void` | — | Receives the initial state and every public state change. |
 | `masonry` | `VibeMasonryOptions` | Current behavior | Optionally tunes masonry column width and the virtualized overscan window. |
@@ -33,7 +35,7 @@ At least one of `initialPage` or `loadPage` is needed to display content.
 
 ### Media lifecycle context
 
-`onMediaReady` and `onReelMediaChange` receive the same typed context:
+Media lifecycle callbacks receive the same typed context:
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -48,6 +50,10 @@ At least one of `initialPage` or `loadPage` is needed to display content.
 
 Readiness may be reported again after a media remount. Reel media changes are
 selection events and do not imply that the selected media has finished loading.
+Masonry visibility requires a positive intersection. Full visibility requires
+the entire height of a card that fits in the viewport, or 80% of the maximum
+attainable visible height for a taller card. Reel full visibility is based on
+active-and-ready state, not intersection geometry.
 
 ## Presentation options
 

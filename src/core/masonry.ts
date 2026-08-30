@@ -31,6 +31,11 @@ export interface MasonryViewportOptions {
   overscan: number
 }
 
+export interface MasonryVisibilityOptions {
+  scrollTop: number
+  viewportHeight: number
+}
+
 interface MasonryOptions {
   additionalHeight?: number
   gap: number
@@ -81,6 +86,34 @@ export function calculateVisibleMasonryIndices(
 
     return indices
   }, [])
+}
+
+const TALL_ITEM_VISIBLE_RATIO = 0.8
+const VISIBILITY_EPSILON = 0.5
+
+export function calculateFullyVisibleMasonryIndices(
+  items: readonly MasonryPosition[],
+  candidates: readonly number[],
+  options: MasonryVisibilityOptions,
+): number[] {
+  const viewportHeight = Math.max(0, options.viewportHeight)
+  if (viewportHeight === 0) return []
+
+  const viewportTop = options.scrollTop
+  const viewportBottom = viewportTop + viewportHeight
+  return candidates.filter((index) => {
+    const item = items[index]
+    if (!item || item.height <= 0) return false
+
+    const visibleHeight = Math.max(0, Math.min(
+      item.y + item.height,
+      viewportBottom,
+    ) - Math.max(item.y, viewportTop))
+    const requiredHeight = item.height <= viewportHeight
+      ? item.height
+      : viewportHeight * TALL_ITEM_VISIBLE_RATIO
+    return visibleHeight + VISIBILITY_EPSILON >= requiredHeight
+  })
 }
 
 export function calculateMasonryLayout(

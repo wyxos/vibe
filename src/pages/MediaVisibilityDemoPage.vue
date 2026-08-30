@@ -19,6 +19,7 @@ const emit = defineEmits<{
 const target = shallowRef<HTMLElement | null>(null)
 const readyIds = shallowRef<string[]>([])
 const visibleIds = shallowRef<string[]>([])
+const fullyVisibleIds = shallowRef<string[]>([])
 let vibe: VibeInstance | null = null
 
 const items: VibeItem[] = Array.from({ length: 18 }, (_, index) => {
@@ -46,6 +47,10 @@ function recordVisible(context: VibeMediaLifecycleContext): void {
   visibleIds.value = [...visibleIds.value, identity(context)]
 }
 
+function recordFullyVisible(context: VibeMediaLifecycleContext): void {
+  fullyVisibleIds.value = [...fullyVisibleIds.value, identity(context)]
+}
+
 watch(() => props.infiniteScroll, (enabled) => vibe?.setInfiniteScroll(enabled))
 
 onMounted(async () => {
@@ -54,6 +59,7 @@ onMounted(async () => {
     infiniteScroll: props.infiniteScroll,
     initialPage: { items, next: null, total: items.length },
     layout: 'masonry',
+    onMediaFullyVisible: recordFullyVisible,
     onMediaReady: recordReady,
     onMediaVisible: recordVisible,
     onStateChange: (state) => emit('vibeStateChange', state),
@@ -76,8 +82,13 @@ onBeforeUnmount(() => {
       <strong>Ready {{ readyIds.length }}</strong>
       <span>Assets may load in the virtual overscan.</span>
       <strong>Visible {{ visibleIds.length }}</strong>
-      <span>Visibility records only cards entering the real viewport.</span>
+      <span>Records each ready card once when it enters the real viewport.</span>
       <output data-test="visible-media-log">{{ visibleIds.join(', ') || 'Scroll the feed' }}</output>
+      <strong>Fully visible {{ fullyVisibleIds.length }}</strong>
+      <span>Records each ready card once after it reaches the full-height threshold.</span>
+      <output data-test="fully-visible-media-log">
+        {{ fullyVisibleIds.join(', ') || 'Scroll the feed' }}
+      </output>
     </aside>
     <div ref="target" class="vibe-host visibility-demo-vibe" />
   </section>

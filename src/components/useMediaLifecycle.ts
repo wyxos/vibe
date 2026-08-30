@@ -12,12 +12,14 @@ import type {
 } from '../types'
 
 interface MediaLifecycleEvents {
+  fullyVisible: (context: VibeMediaLifecycleContext) => void
   ready: (context: VibeMediaLifecycleContext) => void
   reelChange: (context: VibeMediaLifecycleContext) => void
   visible: (context: VibeMediaLifecycleContext) => void
 }
 
 export function useMediaLifecycle(state: VibeRuntimeState, events: MediaLifecycleEvents) {
+  const fullyVisibleMedia = new Set<string>()
   const previewStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
   const originalStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
   const mobileStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
@@ -27,6 +29,7 @@ export function useMediaLifecycle(state: VibeRuntimeState, events: MediaLifecycl
     return originalStates
   }
   const reelStates = computed(() => reelStateTarget().value)
+  const visibleMedia = new Set<string>()
 
   function setState(
     target: typeof previewStates,
@@ -76,8 +79,30 @@ export function useMediaLifecycle(state: VibeRuntimeState, events: MediaLifecycl
   }
 
   function markMasonryVisible(postId: VibeItemId, mediaIndex: number): void {
+    const key = mediaStateKey(postId, mediaIndex)
+    if (visibleMedia.has(key)) return
     const value = context(postId, mediaIndex, 'masonry', null)
-    if (value) events.visible(value)
+    if (!value) return
+    visibleMedia.add(key)
+    events.visible(value)
+  }
+
+  function emitFullyVisible(
+    postId: VibeItemId,
+    mediaIndex: number,
+    layout: VibeLayout,
+    origin: VibeReelOrigin | null,
+  ): void {
+    const key = [layout, mediaStateKey(postId, mediaIndex)].join(':')
+    if (fullyVisibleMedia.has(key)) return
+    const value = context(postId, mediaIndex, layout, origin)
+    if (!value) return
+    fullyVisibleMedia.add(key)
+    events.fullyVisible(value)
+  }
+
+  function markMasonryFullyVisible(postId: VibeItemId, mediaIndex: number): void {
+    emitFullyVisible(postId, mediaIndex, 'masonry', null)
   }
 
   useReelMediaChangeLifecycle(state, events.reelChange)
@@ -99,13 +124,13 @@ export function useMediaLifecycle(state: VibeRuntimeState, events: MediaLifecycl
       if (previous?.ready && previous.postId === current.postId
         && previous.mediaIndex === current.mediaIndex
         && previous.origin === current.origin) return
-      const value = context(current.postId, current.mediaIndex, 'reel', current.origin)
-      if (value) events.visible(value)
+      emitFullyVisible(current.postId, current.mediaIndex, 'reel', current.origin)
     },
     { flush: 'post' },
   )
 
   return {
+    markMasonryFullyVisible,
     markMasonryVisible,
     markPreviewError,
     markPreviewReady,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  calculateFullyVisibleMasonryIndices,
   calculateMasonryEntryOffset,
   calculateMasonryLayout,
   calculateVisibleMasonryIndices,
@@ -42,6 +43,36 @@ describe('calculated masonry layout', () => {
       viewportHeight: 100,
       overscan: 0,
     })).toEqual([1])
+  })
+
+  it('requires the full height of cards that fit inside the viewport', () => {
+    const positions = [
+      { x: 0, y: 100, width: 100, height: 200 },
+      { x: 0, y: 250, width: 100, height: 200 },
+    ]
+
+    expect(calculateFullyVisibleMasonryIndices(
+      positions,
+      [0, 1],
+      { scrollTop: 100, viewportHeight: 300 },
+    )).toEqual([0])
+  })
+
+  it('requires 80 percent of attainable height for cards taller than the viewport', () => {
+    const positions = [
+      { x: 0, y: -100, width: 100, height: 1_000 },
+    ]
+
+    expect(calculateFullyVisibleMasonryIndices(
+      positions,
+      [0],
+      { scrollTop: -200, viewportHeight: 500 },
+    )).toEqual([0])
+    expect(calculateFullyVisibleMasonryIndices(
+      positions,
+      [0],
+      { scrollTop: -201, viewportHeight: 500 },
+    )).toEqual([])
   })
 
   it('offsets the entering layout below the full container', () => {

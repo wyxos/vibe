@@ -47,6 +47,7 @@ const emit = defineEmits<{
   activeReelChange: [postId: VibeItemId]
   closeReel: []
   loadMore: []
+  mediaFullyVisible: [context: VibeMediaLifecycleContext]
   mediaReady: [context: VibeMediaLifecycleContext]
   mediaVisible: [context: VibeMediaLifecycleContext]
   openReel: [postId: VibeItemId]
@@ -68,6 +69,7 @@ const removalDelays = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
 const footerItems = computed(() => Object.freeze([...props.state.items]))
 const footerState = computed(() => snapshotState(props.state, footerItems.value))
 const {
+  markMasonryFullyVisible,
   markMasonryVisible,
   markPreviewError,
   markPreviewReady,
@@ -77,6 +79,7 @@ const {
   previewStates: mediaPreviewStates,
   reelStates: reelMediaStates,
 } = useMediaLifecycle(props.state, {
+  fullyVisible: (context) => emit('mediaFullyVisible', context),
   ready: (context) => emit('mediaReady', context),
   reelChange: (context) => emit('reelMediaChange', context),
   visible: (context) => emit('mediaVisible', context),
@@ -371,6 +374,7 @@ defineExpose({
         :total="state.total"
         @activate="activateMasonryItem"
         @error="markPreviewError"
+        @fully-visible="markMasonryFullyVisible"
         @load-more="emit('loadMore')"
         @media-change="setMediaIndex"
         @ready="markPreviewReady"

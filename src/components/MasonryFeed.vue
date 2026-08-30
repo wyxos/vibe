@@ -12,6 +12,7 @@ import type { MasonryFeedProps } from '../core/feed'
 import { isNearFeedBottom } from '../core/feed'
 import { mediaStateKey } from '../core/mediaAsset'
 import {
+  calculateFullyVisibleMasonryIndices,
   calculateMasonryEntryOffset,
   calculateMasonryLayout,
   type MasonryLayout,
@@ -28,6 +29,7 @@ import type { VibeItemId } from '../types'
 import GalleryScrollbar from './GalleryScrollbar.vue'
 import FeedFooter from './FeedFooter.vue'
 import MediaCard from './MediaCard.vue'
+import { useMasonryMediaVisibility } from './useMasonryMediaVisibility'
 
 const MIN_GAP = 6
 const MAX_GAP = 12
@@ -41,6 +43,7 @@ const props = withDefaults(defineProps<MasonryFeedProps>(), {
 const emit = defineEmits<{
   activate: [postId: VibeItemId, input: 'keyboard' | 'pointer']
   error: [postId: VibeItemId, mediaIndex: number]
+  fullyVisible: [postId: VibeItemId, mediaIndex: number]
   loadMore: []
   mediaChange: [postId: VibeItemId, mediaIndex: number]
   ready: [postId: VibeItemId, mediaIndex: number]
@@ -56,6 +59,7 @@ const masonryGap = shallowRef(MIN_GAP)
 const galleryViewportHeight = shallowRef(0)
 const galleryContentHeight = shallowRef(0)
 const masonryContentTop = shallowRef(0)
+const fullyVisibleIndexSnapshot = shallowRef<readonly number[]>([])
 const viewportIndexSnapshot = shallowRef<readonly number[]>([])
 const overscanIndexSnapshot = shallowRef<readonly number[]>([])
 let galleryScrollTop = 0
@@ -204,6 +208,20 @@ function updateIndexSnapshots(): void {
   if (!indexSnapshotsMatch(viewportIndexSnapshot.value, viewport)) {
     viewportIndexSnapshot.value = viewport
   }
+  const fullyVisible = calculateFullyVisibleMasonryIndices(
+    masonryLayout.value.items,
+    viewport.filter((index) => {
+      const item = props.items[index]
+      return item && !props.leavingPostIds.has(item.postId)
+    }),
+    {
+      scrollTop: galleryScrollTop - masonryContentTop.value,
+      viewportHeight: galleryViewportHeight.value,
+    },
+  )
+  if (!indexSnapshotsMatch(fullyVisibleIndexSnapshot.value, fullyVisible)) {
+    fullyVisibleIndexSnapshot.value = fullyVisible
+  }
   if (!indexSnapshotsMatch(overscanIndexSnapshot.value, overscan)) {
     overscanIndexSnapshot.value = overscan
   }
@@ -220,26 +238,15 @@ function scheduleIndexSnapshotUpdate(): void {
   if (viewportFrame !== null) viewportFrame = requestedFrame
 }
 
-let visibleReadyMedia = new Set<string>()
-watch(
-  () => [...viewportIndices.value].flatMap((index) => {
-    const item = props.items[index]
-    if (!item) return []
-    const mediaIndex = props.mediaIndices.get(item.postId) ?? 0
-    const key = mediaStateKey(item.postId, mediaIndex)
-    return props.previewStates.get(key) === 'ready'
-      ? [{ key, mediaIndex, postId: item.postId }]
-      : []
-  }),
-  (visibleMedia) => {
-    const next = new Set(visibleMedia.map(({ key }) => key))
-    visibleMedia.forEach(({ key, mediaIndex, postId }) => {
-      if (!visibleReadyMedia.has(key)) emit('visible', postId, mediaIndex)
-    })
-    visibleReadyMedia = next
-  },
-  { immediate: true, flush: 'post' },
-)
+useMasonryMediaVisibility({
+  fullyVisibleIndices: () => fullyVisibleIndexSnapshot.value,
+  items: () => props.items,
+  mediaIndices: () => props.mediaIndices,
+  onFullyVisible: (postId, mediaIndex) => emit('fullyVisible', postId, mediaIndex),
+  onVisible: (postId, mediaIndex) => emit('visible', postId, mediaIndex),
+  previewStates: () => props.previewStates,
+  visibleIndices: () => viewportIndexSnapshot.value,
+})
 
 function itemStyle(index: number): CSSProperties {
   const position = masonryLayout.value.items[index]

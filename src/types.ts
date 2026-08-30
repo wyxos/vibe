@@ -413,6 +413,7 @@ export interface CreateVibeOptions {
   loadPage?: VibePageLoader
   mediaCard?: VibeMediaCardOptions
   masonry?: import('./core/masonryOptions').VibeMasonryOptions
+  onMediaFullyVisible?: (context: VibeMediaLifecycleContext) => void
   onMediaReady?: (context: VibeMediaLifecycleContext) => void
   onMediaVisible?: (context: VibeMediaLifecycleContext) => void
   onReelMediaChange?: (context: VibeMediaLifecycleContext) => void
