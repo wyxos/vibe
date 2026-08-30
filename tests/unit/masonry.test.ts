@@ -32,6 +32,18 @@ describe('calculated masonry layout', () => {
     expect(indices).toEqual([2, 3])
   })
 
+  it('excludes items that only touch a viewport boundary', () => {
+    expect(calculateVisibleMasonryIndices([
+      { x: 0, y: 0, width: 100, height: 100 },
+      { x: 0, y: 100, width: 100, height: 100 },
+      { x: 0, y: 200, width: 100, height: 100 },
+    ], {
+      scrollTop: 100,
+      viewportHeight: 100,
+      overscan: 0,
+    })).toEqual([1])
+  })
+
   it('offsets the entering layout below the full container', () => {
     expect(calculateMasonryEntryOffset({
       containerHeight: 700,

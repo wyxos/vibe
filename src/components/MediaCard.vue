@@ -148,6 +148,7 @@ const {
   volume: timedMediaVolume,
 } = useTimedMediaCard({
   active: () => props.active,
+  inViewport: () => props.inViewport === true,
   layout: () => props.layout,
   mediaCard: () => props.mediaCard,
   mediaElement,

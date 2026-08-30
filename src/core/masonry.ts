@@ -75,7 +75,7 @@ export function calculateVisibleMasonryIndices(
   return items.reduce<number[]>((indices, item, index) => {
     const itemBottom = item.y + item.height
 
-    if (itemBottom >= viewportTop && item.y <= viewportBottom) {
+    if (itemBottom > viewportTop && item.y < viewportBottom) {
       indices.push(index)
     }
 

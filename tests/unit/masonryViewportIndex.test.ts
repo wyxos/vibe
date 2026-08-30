@@ -74,6 +74,19 @@ describe('masonry viewport index', () => {
     ).indices).toEqual(expected)
   })
 
+  it('excludes entries that only touch a viewport boundary', () => {
+    const positions = [
+      { x: 0, y: 0, width: 100, height: 100 },
+      { x: 0, y: 100, width: 100, height: 100 },
+      { x: 0, y: 200, width: 100, height: 100 },
+    ]
+
+    expect(queryMasonryViewportIndex(
+      createMasonryViewportIndex(positions),
+      { overscan: 0, scrollTop: 100, viewportHeight: 100 },
+    ).indices).toEqual([1])
+  })
+
   it('inspects only column boundaries and nearby items in an 8,000-item feed', () => {
     const layout = calculateMasonryLayout(
       Array.from({ length: 8_000 }, () => media(600, 800)),

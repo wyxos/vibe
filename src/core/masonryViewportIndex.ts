@@ -54,7 +54,7 @@ function firstIntersectingEntry(
   while (lower < upper) {
     const middle = Math.floor((lower + upper) / 2)
     inspected += 1
-    if (entries[middle]!.bottom < viewportTop) lower = middle + 1
+    if (entries[middle]!.bottom <= viewportTop) lower = middle + 1
     else upper = middle
   }
 
@@ -80,7 +80,7 @@ export function queryMasonryViewportIndex(
     for (let entryIndex = first.index; entryIndex < entries.length; entryIndex += 1) {
       const entry = entries[entryIndex]!
       inspected += 1
-      if (entry.top > viewportBottom) break
+      if (entry.top >= viewportBottom) break
       indices.push(entry.index)
     }
   })

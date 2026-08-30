@@ -10,6 +10,7 @@ import { useReelTimedMediaActivity } from './useReelVideoActivity'
 
 interface TimedMediaCardOptions {
   active: () => boolean | undefined
+  inViewport: () => boolean
   layout: () => VibeLayout
   mediaCard: () => VibeMediaCardOptions | undefined
   mediaElement: Ref<HTMLMediaElement | null>
@@ -48,6 +49,7 @@ export function useTimedMediaCard(options: TimedMediaCardOptions) {
     playbackAllowed,
   } = useReelTimedMediaActivity({
     active: options.active,
+    inViewport: options.inViewport,
     layout: options.layout,
     mediaElement: options.mediaElement,
     mediaIsMuted: isMuted,

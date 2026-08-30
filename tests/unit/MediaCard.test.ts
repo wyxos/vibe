@@ -357,6 +357,7 @@ describe('MediaCard', () => {
     const masonryWrapper = mount(MediaCard, {
       props: {
         ...props(),
+        inViewport: true,
         layout: 'masonry',
         item: {
           postId: 12,
@@ -379,6 +380,7 @@ describe('MediaCard', () => {
     const configuredMasonryWrapper = mount(MediaCard, {
       props: {
         ...props(),
+        inViewport: true,
         layout: 'masonry',
         item: {
           postId: 13,

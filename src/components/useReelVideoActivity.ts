@@ -9,6 +9,7 @@ import type { VibeLayout } from '../types'
 
 interface ReelTimedMediaActivityOptions {
   active: () => boolean | undefined
+  inViewport: () => boolean
   layout: () => VibeLayout
   mediaElement: Ref<HTMLMediaElement | null>
   mediaIsMuted: Ref<boolean>
@@ -17,7 +18,9 @@ interface ReelTimedMediaActivityOptions {
 
 export function useReelTimedMediaActivity(options: ReelTimedMediaActivityOptions) {
   const playbackAllowed = computed(() => (
-    options.layout() !== 'reel' || options.active() === true
+    options.layout() === 'reel'
+      ? options.active() === true
+      : options.inViewport()
   ))
   const effectiveMuted = computed(() => (
     playbackAllowed.value ? options.mediaIsMuted.value : true
