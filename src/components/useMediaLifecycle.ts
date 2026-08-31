@@ -31,6 +31,14 @@ export function useMediaLifecycle(state: VibeRuntimeState, events: MediaLifecycl
   const reelStates = computed(() => reelStateTarget().value)
   const visibleMedia = new Set<string>()
 
+  function resetMediaLifecycle(): void {
+    fullyVisibleMedia.clear()
+    visibleMedia.clear()
+    previewStates.value = new Map()
+    originalStates.value = new Map()
+    mobileStates.value = new Map()
+  }
+
   function setState(
     target: typeof previewStates,
     postId: VibeItemId,
@@ -139,5 +147,6 @@ export function useMediaLifecycle(state: VibeRuntimeState, events: MediaLifecycl
     originalStates,
     previewStates,
     reelStates,
+    resetMediaLifecycle,
   }
 }

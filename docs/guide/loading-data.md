@@ -106,6 +106,8 @@ console.log(state.lifecycle, state.error, state.nextPageError)
 
 Both methods require `loadPage`. `refresh()` requests the current `next` cursor,
 or the cursor that produced the last loaded page when `next` is `null`.
-`reload()` always starts over with a `null` cursor.
+`reload()` always starts over with a `null` cursor. Both replacements begin a
+new feed visit, allowing visibility callbacks for returned media to run again.
+Loading or retrying the next page does not restart the visit.
 
 For batch collection beyond ordinary pagination, see the `autofill` and `fill` options in the [configuration reference](../reference/configuration).

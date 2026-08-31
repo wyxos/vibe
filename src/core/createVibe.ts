@@ -280,6 +280,7 @@ class VibeController implements VibeInstance {
     this.exactMediaRemoval.reset()
     this.itemRemoval.reset()
     this.removalReconciliation.reset()
+    this.surface?.resetMediaLifecycle()
     this.state.error = null
     this.state.current = null
     this.state.isLoading = true
@@ -482,7 +483,6 @@ class VibeController implements VibeInstance {
   private startStateNotifications(): void {
     const onStateChange = this.options.onStateChange
     if (!onStateChange || this.stopStateWatcher) return
-
     onStateChange(snapshotState(this.state, this.notificationItems.value))
     this.stopStateWatcher = watch(
       this.state,

@@ -17,7 +17,9 @@
 back to the cursor that produced the last successfully loaded page so an
 exhausted feed can still be refreshed. `reload()` always requests the initial
 `null` cursor. Both methods replace the currently visible items and reset
-feed-owned fill, autofill, error, and removal-history state before loading.
+feed-owned fill, autofill, error, removal-history, and media-visibility state
+before loading. Each replacement therefore begins a new feed visit. Ordinary
+pagination and its retries remain in the current visit.
 
 ## Item removal and restoration
 

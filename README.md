@@ -171,9 +171,10 @@ need to select exact grouped media independently of its array position.
 
 Use `onMediaReady` when an image has loaded or a video has enough metadata for
 Vibe to render it. `onMediaVisible` reports each ready masonry media item once
-per mount when it first intersects the viewport. `onMediaFullyVisible` reports
-each ready media item once per layout: after the masonry card reaches its full
-visibility threshold, or after the media is active and ready in a reel.
+per feed visit when it first intersects the viewport. `onMediaFullyVisible`
+reports each ready media item once per layout and feed visit: after the masonry
+card reaches its full visibility threshold, or after the media is active and
+ready in a reel.
 `onReelMediaChange` reports reel selection changes:
 
 ```ts
@@ -201,7 +202,10 @@ and `mediaId` identity, zero-based `postIndex` and `mediaIndex`, the complete
 `null` when the source asset does not define one. `origin` is `null` for the
 masonry grid, `reel` for the base reel, and `masonry` for a reel opened from a
 masonry card. The readiness hook may run again if media remounts and becomes
-ready again. Visibility callbacks are deduplicated for the lifetime of a mount.
+ready again. A feed visit begins when Vibe mounts and restarts whenever
+`refresh()` or `reload()` replaces the feed. Visibility callbacks stay
+deduplicated while scrolling, loading more, or retrying pagination within that
+visit.
 Normal masonry cards require their complete height; cards taller than the
 viewport require 80% of their maximum attainable visible height. Reel fully
 visible events depend on active-and-ready state rather than intersection.
@@ -803,6 +807,7 @@ vibe.destroy()
 `refresh()` replaces the visible feed from its current continuation cursor. At
 the end of the feed, it requests the cursor that produced the last loaded page
 again. Use `reload()` to replace the feed from its initial `null` cursor instead.
+Both operations begin a new feed visit for media visibility callbacks.
 
 Destroying an instance unmounts its Vue tree and aborts its active page request.
 

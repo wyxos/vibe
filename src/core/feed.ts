@@ -80,6 +80,7 @@ export interface VibeSurfaceExpose {
   loadIfNearBottom: () => Promise<void>
   moveActiveReelPost: (direction: -1 | 1) => boolean
   navigateToReelItem: (target: VibeReelItemTarget) => VibeReelNavigationResult
+  resetMediaLifecycle: () => void
   startItemRemoval: (
     postIds: readonly VibeItemId[],
     options?: VibeItemRemovalOptions,

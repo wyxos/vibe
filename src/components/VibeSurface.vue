@@ -78,6 +78,7 @@ const {
   originalStates: mediaOriginalStates,
   previewStates: mediaPreviewStates,
   reelStates: reelMediaStates,
+  resetMediaLifecycle,
 } = useMediaLifecycle(props.state, {
   fullyVisible: (context) => emit('mediaFullyVisible', context),
   ready: (context) => emit('mediaReady', context),
@@ -285,6 +286,7 @@ defineExpose({
   loadIfNearBottom,
   moveActiveReelPost,
   navigateToReelItem,
+  resetMediaLifecycle,
   startItemRemoval,
   transitionActiveReelMedia: (direction: -1 | 1) => reelRenderer.value?.transitionActiveMedia?.(direction) ?? Promise.resolve(false),
   transitionActiveReelPost: (postId: VibeItemId) => reelRenderer.value?.transitionActivePost?.(postId) ?? Promise.resolve(false),
