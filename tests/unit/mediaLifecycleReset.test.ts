@@ -135,4 +135,70 @@ describe('media lifecycle feed visits', () => {
     expect(onMediaVisible.mock.calls.map(([context]) => context.postId))
       .toEqual([1, 2])
   })
+
+  it('keeps lifecycle deduplication while filling additional pages', async () => {
+    const onMediaFullyVisible = vi.fn<(context: VibeMediaLifecycleContext) => void>()
+    const onMediaVisible = vi.fn<(context: VibeMediaLifecycleContext) => void>()
+    instance = createVibe({
+      fill: { strategy: 'frontend', delayStepMs: 0 },
+      infiniteScroll: false,
+      initialPage: { items: [item(1)], next: 'page-2' },
+      loadPage: vi.fn().mockResolvedValue({ items: [item(2)], next: null }),
+      onMediaFullyVisible,
+      onMediaVisible,
+      target,
+    })
+    await instance.mount()
+    await flushPromises()
+
+    loadImage(1)
+    await flushPromises()
+    await instance.fill({ pages: 1 })
+    await flushPromises()
+    loadImage(1)
+    loadImage(2)
+    await flushPromises()
+
+    expect(onMediaFullyVisible.mock.calls.map(([context]) => context.postId))
+      .toEqual([1, 2])
+    expect(onMediaVisible.mock.calls.map(([context]) => context.postId))
+      .toEqual([1, 2])
+  })
+
+  it('keeps lifecycle deduplication across a failed load-more retry', async () => {
+    const onMediaFullyVisible = vi.fn<(context: VibeMediaLifecycleContext) => void>()
+    const onMediaVisible = vi.fn<(context: VibeMediaLifecycleContext) => void>()
+    const loadPage = vi.fn()
+      .mockRejectedValueOnce(new Error('temporary fixture outage'))
+      .mockResolvedValueOnce({ items: [item(2)], next: null })
+    instance = createVibe({
+      infiniteScroll: false,
+      initialPage: { items: [item(1)], next: 'page-2' },
+      loadPage,
+      onMediaFullyVisible,
+      onMediaVisible,
+      target,
+    })
+    await instance.mount()
+    await flushPromises()
+
+    loadImage(1)
+    await flushPromises()
+    await instance.loadNext()
+    await flushPromises()
+    expect(instance.getState().nextPageError).toBeInstanceOf(Error)
+
+    await instance.loadNext()
+    await flushPromises()
+    loadImage(1)
+    loadImage(2)
+    await flushPromises()
+
+    expect(loadPage.mock.calls.map(([request]) => request.cursor))
+      .toEqual(['page-2', 'page-2'])
+    expect(onMediaFullyVisible.mock.calls.map(([context]) => context.postId))
+      .toEqual([1, 2])
+    expect(onMediaVisible.mock.calls.map(([context]) => context.postId))
+      .toEqual([1, 2])
+  })
 })
