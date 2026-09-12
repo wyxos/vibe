@@ -97,6 +97,7 @@ class VibeController implements VibeInstance {
     const removals = createRemovalControllers({
       historyLimit: options.removalHistoryLimit,
       onActivate: (postId) => this.setActiveReelPost(postId),
+      onCloseReel: () => this.closeMasonryReel(),
       onItemsRemoved: (postIds) => this.removalReconciliation.remove(postIds),
       onItemsRestored: (postIds) => this.removalReconciliation.restore(postIds),
       replenishAfterRemoval: () => this.replenishAfterRemoval(),
@@ -495,6 +496,4 @@ class VibeController implements VibeInstance {
     this.state.current = cursor
   }
 }
-export function createVibe(options: CreateVibeOptions): VibeInstance {
-  return new VibeController(options)
-}
+export const createVibe = (options: CreateVibeOptions): VibeInstance => new VibeController(options)

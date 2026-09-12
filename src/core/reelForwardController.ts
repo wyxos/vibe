@@ -3,6 +3,7 @@ import type { VibeItem, VibeItemId } from '../types'
 
 interface ReelForwardControllerOptions {
   onActivate: (postId: VibeItemId) => void
+  onCloseReel: () => void
   replenishAfterRemoval: () => Promise<void>
   state: VibeRuntimeState
 }
@@ -69,6 +70,17 @@ export class ReelForwardController {
     this.state.reelForwardItem = null
   }
 
+  private stopAtLock(): boolean {
+    if (!this.state.loadMoreLocked) return false
+    if (this.state.reelOrigin === 'masonry') {
+      this.reset()
+      this.options.onCloseReel()
+    } else {
+      this.state.reelForward = { error: null, status: 'end' }
+    }
+    return true
+  }
+
   private startForwardRequest(): Promise<void> {
     if (this.forwardPromise) return this.forwardPromise
     const request = this.loadForward()
@@ -94,6 +106,7 @@ export class ReelForwardController {
         this.options.onActivate(replacement.postId)
         return
       }
+      if (this.stopAtLock()) return
       if (this.state.nextPageError) {
         this.state.reelForward = { error: this.state.nextPageError, status: 'error' }
         return
@@ -101,11 +114,13 @@ export class ReelForwardController {
       const previousCursor = this.state.next
       const previousLength = this.state.items.length
       await this.options.replenishAfterRemoval()
+      if (this.forward !== target || target.version !== this.forwardVersion) return
+      if (this.state.items[target.postIndex]) continue
+      if (this.stopAtLock()) return
       if (this.state.nextPageError) {
         this.state.reelForward = { error: this.state.nextPageError, status: 'error' }
         return
       }
-      if (this.state.items[target.postIndex]) continue
       if (this.state.next === null) {
         this.state.reelForward = { error: null, status: 'end' }
         return

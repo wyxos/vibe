@@ -95,6 +95,13 @@ the next page, an error, or the end of the feed. `removeMedia()` remains the
 immediate, backward-compatible primitive for consumers that own their own
 transition.
 
+When loading is locked, removing the last available post from a reel opened in
+masonry returns to the source feed. The lock, remaining items, pagination cursor,
+and removal token are preserved, and no forward request is started. A standalone
+reel uses its normal end state; unlocking and retrying can continue at the saved
+cursor. Already loaded successors remain navigable while locked. This applies to
+exact-media, animated-media, and whole-post removals, including batches.
+
 ## Layout and navigation
 
 | Method | Purpose |
