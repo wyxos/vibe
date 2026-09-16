@@ -240,6 +240,7 @@ describe('calculated masonry layout', () => {
     const retained = mediaItems.filter((_, index) => !skip(index))
     const packed = calculateMasonryLayout(retained, 600, options)
 
+    expect(projected.fromIndex).toBe(3)
     expect(projected.items.slice(0, 3)).toEqual(settled.items.slice(0, 3))
     expect(projected.items[3]).toEqual(settled.items[3])
     expect(projected.retainedIndices).toEqual([0, 1, 2, 4, 5, 7, 8, 9])

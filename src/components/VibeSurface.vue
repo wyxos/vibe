@@ -248,8 +248,12 @@ useReelKeyboard({
 })
 
 watch(
-  () => props.state.items.map((item) => item.postId),
-  (postIds) => {
+  () => {
+    const items = props.state.items
+    return [items, items.length] as const
+  },
+  ([items]) => {
+    const postIds = items.map((item) => item.postId)
     const addedPostIds = postIds.filter((postId) => !previousPostIds.has(postId))
     const currentPostIds = new Set(postIds)
     previousPostIds = new Set(postIds)

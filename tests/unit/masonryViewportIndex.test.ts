@@ -3,10 +3,13 @@ import { describe, expect, it } from 'vitest'
 import {
   calculateMasonryLayout,
   calculateVisibleMasonryIndices,
+  projectMasonryLayout,
   type MasonryMediaDimensions,
 } from '@/core/masonry'
 import {
+  continueMasonryViewportIndex,
   createMasonryViewportIndex,
+  projectMasonryViewportIndex,
   queryMasonryViewportIndex,
 } from '@/core/masonryViewportIndex'
 
@@ -103,6 +106,43 @@ describe('masonry viewport index', () => {
     expect(result.indices).toEqual(calculateVisibleMasonryIndices(
       layout.items,
       { overscan: 1_000, scrollTop: 250_000, viewportHeight: 1_200 },
+    ))
+  })
+
+  it('continues a 9,000-item index from the first changed card', () => {
+    const mediaItems = Array.from({ length: 9_000 }, () => media(600, 800))
+    const options = { gap: 10, minColumnWidth: 320 }
+    const previousLayout = calculateMasonryLayout(mediaItems, 1_440, options)
+    const remaining = mediaItems.filter((_, index) => index !== 24)
+    const layout = calculateMasonryLayout(remaining, 1_440, options)
+    const previous = createMasonryViewportIndex(previousLayout.items)
+    const continued = continueMasonryViewportIndex(layout.items, previous, 24)
+    const viewport = { overscan: 800, scrollTop: 4_500, viewportHeight: 900 }
+
+    expect(continued).toEqual(createMasonryViewportIndex(layout.items))
+    expect(queryMasonryViewportIndex(continued, viewport).indices)
+      .toEqual(calculateVisibleMasonryIndices(layout.items, viewport))
+  })
+
+  it('projects a removal index without rebuilding cards above the leaving item', () => {
+    const mediaItems = Array.from({ length: 40 }, (_, index) => media(
+      400,
+      500 + ((index % 3) * 80),
+    ))
+    const options = { gap: 10, minColumnWidth: 320 }
+    const settled = calculateMasonryLayout(mediaItems, 1_000, options)
+    const skip = (index: number) => index === 6
+    const projected = projectMasonryLayout(mediaItems, 1_000, options, settled, skip)
+    const previous = createMasonryViewportIndex(settled.items)
+
+    expect(projectMasonryViewportIndex(
+      projected.items,
+      projected.retainedIndices,
+      previous,
+      projected.fromIndex,
+    )).toEqual(createMasonryViewportIndex(
+      projected.retainedIndices.map((index) => projected.items[index]!),
+      projected.retainedIndices,
     ))
   })
 })

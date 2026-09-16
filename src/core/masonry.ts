@@ -241,10 +241,10 @@ export function projectMasonryLayout(
   options: MasonryOptions,
   settled: MasonryLayout,
   skip: (index: number) => boolean,
-): MasonryLayout & { retainedIndices: number[] } {
+): MasonryLayout & { fromIndex: number, retainedIndices: number[] } {
   const grid = resolveMasonryGrid(containerWidth, options)
   if (!grid || media.length === 0) {
-    return { columns: 0, height: 0, items: [], retainedIndices: [] }
+    return { columns: 0, fromIndex: 0, height: 0, items: [], retainedIndices: [] }
   }
 
   if (settled.items.length !== media.length || settled.columns !== grid.columns) {
@@ -265,6 +265,7 @@ export function projectMasonryLayout(
     })
     return {
       columns: packed.columns,
+      fromIndex: 0,
       height: packed.height,
       items,
       retainedIndices,
@@ -276,6 +277,7 @@ export function projectMasonryLayout(
   if (fromIndex >= media.length) {
     return {
       ...settled,
+      fromIndex,
       retainedIndices: media.map((_, index) => index),
     }
   }
@@ -291,6 +293,7 @@ export function projectMasonryLayout(
   }
   return {
     columns: grid.columns,
+    fromIndex,
     height: masonryHeight(columnHeights, grid.gap),
     items,
     retainedIndices,

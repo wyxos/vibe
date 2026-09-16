@@ -18,22 +18,9 @@ export interface MasonryViewportQuery {
   inspected: number
 }
 
-export function createMasonryViewportIndex(
-  items: readonly MasonryPosition[],
-  sourceIndices?: readonly number[],
+function finalizeColumns(
+  columns: Map<number, MasonryViewportIndexEntry[]>,
 ): MasonryViewportIndex {
-  const columns = new Map<number, MasonryViewportIndexEntry[]>()
-
-  items.forEach((item, index) => {
-    const column = columns.get(item.x) ?? []
-    column.push({
-      bottom: item.y + item.height,
-      index: sourceIndices?.[index] ?? index,
-      top: item.y,
-    })
-    columns.set(item.x, column)
-  })
-
   return {
     columns: [...columns.entries()]
       .sort(([left], [right]) => left - right)
@@ -41,6 +28,87 @@ export function createMasonryViewportIndex(
         left.top - right.top || left.index - right.index
       ))),
   }
+}
+
+function pushEntry(
+  columns: Map<number, MasonryViewportIndexEntry[]>,
+  item: MasonryPosition,
+  index: number,
+): void {
+  const column = columns.get(item.x) ?? []
+  column.push({
+    bottom: item.y + item.height,
+    index,
+    top: item.y,
+  })
+  columns.set(item.x, column)
+}
+
+export function createMasonryViewportIndex(
+  items: readonly MasonryPosition[],
+  sourceIndices?: readonly number[],
+): MasonryViewportIndex {
+  const columns = new Map<number, MasonryViewportIndexEntry[]>()
+  items.forEach((item, index) => {
+    pushEntry(columns, item, sourceIndices?.[index] ?? index)
+  })
+  return finalizeColumns(columns)
+}
+
+export function continueMasonryViewportIndex(
+  items: readonly MasonryPosition[],
+  previous: MasonryViewportIndex,
+  fromIndex: number,
+  sourceIndices?: readonly number[],
+): MasonryViewportIndex {
+  if (fromIndex <= 0) return createMasonryViewportIndex(items, sourceIndices)
+
+  const columns = new Map<number, MasonryViewportIndexEntry[]>()
+  previous.columns.forEach((entries) => {
+    entries.forEach((entry) => {
+      if (entry.index >= fromIndex) return
+      const item = items[entry.index]
+      if (!item) return
+      const column = columns.get(item.x) ?? []
+      column.push(entry)
+      columns.set(item.x, column)
+    })
+  })
+  for (let index = fromIndex; index < items.length; index += 1) {
+    pushEntry(columns, items[index]!, sourceIndices?.[index] ?? index)
+  }
+  return finalizeColumns(columns)
+}
+
+export function projectMasonryViewportIndex(
+  items: readonly MasonryPosition[],
+  retainedIndices: readonly number[],
+  previous: MasonryViewportIndex,
+  fromIndex: number,
+): MasonryViewportIndex {
+  if (fromIndex <= 0) {
+    return createMasonryViewportIndex(
+      retainedIndices.map((index) => items[index]!),
+      retainedIndices,
+    )
+  }
+
+  const columns = new Map<number, MasonryViewportIndexEntry[]>()
+  previous.columns.forEach((entries) => {
+    entries.forEach((entry) => {
+      if (entry.index >= fromIndex) return
+      const item = items[entry.index]
+      if (!item) return
+      const column = columns.get(item.x) ?? []
+      column.push(entry)
+      columns.set(item.x, column)
+    })
+  })
+  retainedIndices.forEach((index) => {
+    if (index < fromIndex) return
+    pushEntry(columns, items[index]!, index)
+  })
+  return finalizeColumns(columns)
 }
 
 function firstIntersectingEntry(

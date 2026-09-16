@@ -56,6 +56,58 @@ describe('createVibe state notifications', () => {
     expect(instance.getState().lifecycle).toBe('loaded')
   })
 
+  it('notifies nested auto-scroll and in-place media edits without copying item contents', async () => {
+    const target = document.createElement('div')
+    const onStateChange = vi.fn()
+    instance = createVibe({
+      initialPage: {
+        items: [{
+          ...item(1),
+          items: [{
+            src: 'https://example.com/1-extra.jpg',
+            preview: {
+              src: 'https://example.com/1-extra-preview.jpg',
+              width: 450,
+              height: 600,
+            },
+            width: 900,
+            height: 1200,
+          }],
+        }],
+        next: null,
+        total: 1,
+      },
+      loadPage: vi.fn(),
+      onStateChange,
+      target,
+    })
+
+    instance.setAutoScroll(true)
+    await flushPromises()
+    expect(onStateChange.mock.lastCall?.[0]).toMatchObject({
+      autoScroll: expect.objectContaining({ enabled: true, paused: false }),
+    })
+
+    instance.pauseAutoScroll()
+    await flushPromises()
+    expect(onStateChange.mock.lastCall?.[0]).toMatchObject({
+      autoScroll: expect.objectContaining({ paused: true }),
+    })
+
+    const beforeMedia = onStateChange.mock.calls.length
+    const removal = instance.removeMedia({ mediaIndex: 1, postId: 1 })
+    await flushPromises()
+    expect(removal).not.toBeNull()
+    expect(onStateChange.mock.calls.length).toBeGreaterThan(beforeMedia)
+    expect(onStateChange.mock.lastCall?.[0].items[0]).toMatchObject({ postId: 1 })
+
+    const beforeNested = onStateChange.mock.calls.length
+    const current = instance.getState().items[0]!
+    current.width = 42
+    await flushPromises()
+    expect(onStateChange).toHaveBeenCalledTimes(beforeNested)
+  })
+
   it('reuses notification item snapshots until the collection changes', async () => {
     const target = document.createElement('div')
     const states: Parameters<NonNullable<Parameters<typeof createVibe>[0]['onStateChange']>>[0][] = []

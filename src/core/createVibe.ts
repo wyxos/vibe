@@ -486,9 +486,9 @@ class VibeController implements VibeInstance {
     if (!onStateChange || this.stopStateWatcher) return
     onStateChange(snapshotState(this.state, this.notificationItems.value))
     this.stopStateWatcher = watch(
-      this.state,
-      () => onStateChange(snapshotState(this.state, this.notificationItems.value)),
-      { deep: true, flush: 'post' },
+      () => snapshotState(this.state, this.notificationItems.value),
+      (state) => onStateChange(state),
+      { flush: 'post' },
     )
   }
   private setCurrentCursor(cursor: VibeCursor): void {

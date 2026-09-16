@@ -20,8 +20,11 @@ import {
   type MasonryLayout,
 } from '../core/masonry'
 import {
+  continueMasonryViewportIndex,
   createMasonryViewportIndex,
+  projectMasonryViewportIndex,
   queryMasonryViewportIndex,
+  type MasonryViewportIndex,
 } from '../core/masonryViewportIndex'
 import {
   resolveMasonryMinColumnWidth,
@@ -75,6 +78,7 @@ let settledLayoutWidth = 0
 let settledLayoutGap = 0
 let settledLayoutAdditionalHeight = 0
 let settledLayoutMinColumnWidth = 0
+let settledViewportIndexCache: MasonryViewportIndex | null = null
 
 const masonryLayoutOptions = computed(() => ({
   additionalHeight:
@@ -106,6 +110,11 @@ const settledMasonryLayout = computed(() => {
     const layout = continueMasonryLayout(media, width, options, cached, fromIndex)
     settledLayoutCache = layout
     settledLayoutSource = media
+    settledViewportIndexCache = continueMasonryViewportIndex(
+      layout.items,
+      settledViewportIndexCache ?? createMasonryViewportIndex(cached.items),
+      fromIndex,
+    )
     return layout
   }
 
@@ -116,22 +125,21 @@ const settledMasonryLayout = computed(() => {
   settledLayoutGap = options.gap
   settledLayoutAdditionalHeight = options.additionalHeight
   settledLayoutMinColumnWidth = options.minColumnWidth
+  settledViewportIndexCache = createMasonryViewportIndex(layout.items)
   return layout
 })
 
-const projectedMasonry = computed(() => {
-  if (props.leavingPostIds.size === 0) return null
-
-  const media = props.items
-  const leaving = props.leavingPostIds
-  return projectMasonryLayout(
-    media,
-    masonryWidth.value,
-    masonryLayoutOptions.value,
-    settledMasonryLayout.value,
-    (index) => leaving.has(media[index]!.postId),
-  )
-})
+const projectedMasonry = computed(() => (
+  props.leavingPostIds.size === 0
+    ? null
+    : projectMasonryLayout(
+      props.items,
+      masonryWidth.value,
+      masonryLayoutOptions.value,
+      settledMasonryLayout.value,
+      (index) => props.leavingPostIds.has(props.items[index]!.postId),
+    )
+))
 
 const masonryLayout = computed<MasonryLayout>(() => {
   const projected = projectedMasonry.value
@@ -143,15 +151,18 @@ const masonryLayout = computed<MasonryLayout>(() => {
   }
 })
 
-const settledViewportIndex = computed(() => createMasonryViewportIndex(
-  settledMasonryLayout.value.items,
+const settledViewportIndex = computed(() => (
+  void settledMasonryLayout.value,
+  settledViewportIndexCache ?? createMasonryViewportIndex(settledMasonryLayout.value.items)
 ))
 const projectedViewportIndex = computed(() => {
   const projected = projectedMasonry.value
   if (!projected) return null
-  return createMasonryViewportIndex(
-    projected.retainedIndices.map((index) => projected.items[index]!),
+  return projectMasonryViewportIndex(
+    projected.items,
     projected.retainedIndices,
+    settledViewportIndex.value,
+    projected.fromIndex,
   )
 })
 
