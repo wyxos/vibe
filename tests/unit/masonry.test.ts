@@ -228,6 +228,66 @@ describe('calculated masonry layout', () => {
       .toEqual(full)
   })
 
+  it('stops a tail pack at the visible bottom and finishes in later chunks', () => {
+    const mediaItems = Array.from({ length: 9_000 }, (_, index) => media(
+      800,
+      800 + ((index % 5) * 120),
+    ))
+    const options = { gap: 10, minColumnWidth: 320 }
+    const previous = calculateMasonryLayout(mediaItems, 1_440, options)
+    const remaining = mediaItems.filter((_, index) => index !== 24)
+    const full = calculateMasonryLayout(remaining, 1_440, options)
+    const visible = continueMasonryLayout(
+      remaining,
+      1_440,
+      options,
+      previous,
+      24,
+      { untilBottom: 5_400 },
+    )
+
+    expect(visible.items.length).toBeLessThan(remaining.length)
+    expect(visible.items).toEqual(full.items.slice(0, visible.items.length))
+
+    const finished = continueMasonryLayout(
+      remaining,
+      1_440,
+      options,
+      visible,
+      visible.items.length,
+    )
+    expect(finished).toEqual(full)
+  })
+
+  it('projects a visible-window removal without packing the whole tail', () => {
+    const mediaItems = Array.from({ length: 9_000 }, (_, index) => media(
+      800,
+      800 + ((index % 5) * 120),
+    ))
+    const options = { gap: 10, minColumnWidth: 320 }
+    const previous = calculateMasonryLayout(mediaItems, 1_440, options)
+    const skip = (index: number) => index === 24
+    const projected = projectMasonryLayout(
+      mediaItems,
+      1_440,
+      options,
+      previous,
+      skip,
+      5_400,
+    )
+    const full = projectMasonryLayout(mediaItems, 1_440, options, previous, skip)
+
+    expect(projected.retainedIndices.length).toBeLessThan(full.retainedIndices.length)
+    expect(projected.items.slice(0, 24)).toEqual(previous.items.slice(0, 24))
+    expect(
+      projected.retainedIndices.map((index) => projected.items[index]),
+    ).toEqual(
+      full.retainedIndices
+        .slice(0, projected.retainedIndices.length)
+        .map((index) => full.items[index]),
+    )
+  })
+
   it('projects a removal without packing items above the first leaving card', () => {
     const mediaItems = Array.from({ length: 10 }, (_, index) => media(
       100,

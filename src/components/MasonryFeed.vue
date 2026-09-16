@@ -14,17 +14,12 @@ import { mediaStateKey } from '../core/mediaAsset'
 import {
   calculateFullyVisibleMasonryIndices,
   calculateMasonryEntryOffset,
-  calculateMasonryLayout,
-  continueMasonryLayout,
   projectMasonryLayout,
   type MasonryLayout,
 } from '../core/masonry'
 import {
-  continueMasonryViewportIndex,
-  createMasonryViewportIndex,
   projectMasonryViewportIndex,
   queryMasonryViewportIndex,
-  type MasonryViewportIndex,
 } from '../core/masonryViewportIndex'
 import {
   resolveMasonryMinColumnWidth,
@@ -35,6 +30,7 @@ import GalleryScrollbar from './GalleryScrollbar.vue'
 import FeedFooter from './FeedFooter.vue'
 import MediaCard from './MediaCard.vue'
 import { useMasonryMediaVisibility } from './useMasonryMediaVisibility'
+import { useSettledMasonryFeedLayout } from './useSettledMasonryFeedLayout'
 
 const MIN_GAP = 6
 const MAX_GAP = 12
@@ -72,13 +68,6 @@ let masonryResizeObserver: ResizeObserver | null = null
 let galleryResizeObserver: ResizeObserver | null = null
 let resizeFrame: number | null = null
 let viewportFrame: number | null = null
-let settledLayoutCache: MasonryLayout | null = null
-let settledLayoutSource: MasonryFeedProps['items'] | null = null
-let settledLayoutWidth = 0
-let settledLayoutGap = 0
-let settledLayoutAdditionalHeight = 0
-let settledLayoutMinColumnWidth = 0
-let settledViewportIndexCache: MasonryViewportIndex | null = null
 
 const masonryLayoutOptions = computed(() => ({
   additionalHeight:
@@ -87,47 +76,23 @@ const masonryLayoutOptions = computed(() => ({
   minColumnWidth: resolveMasonryMinColumnWidth(props.masonry),
 }))
 
-const settledMasonryLayout = computed(() => {
-  const media = props.items
-  const width = masonryWidth.value
-  const options = masonryLayoutOptions.value
-  const cached = settledLayoutCache
-  if (
-    cached
-    && settledLayoutSource
-    && settledLayoutWidth === width
-    && settledLayoutGap === options.gap
-    && settledLayoutAdditionalHeight === options.additionalHeight
-    && settledLayoutMinColumnWidth === options.minColumnWidth
-  ) {
-    let fromIndex = 0
-    const previous = settledLayoutSource
-    const limit = Math.min(previous.length, media.length)
-    while (fromIndex < limit && previous[fromIndex] === media[fromIndex]) {
-      fromIndex += 1
-    }
-    if (fromIndex === media.length && fromIndex === previous.length) return cached
-    const layout = continueMasonryLayout(media, width, options, cached, fromIndex)
-    settledLayoutCache = layout
-    settledLayoutSource = media
-    settledViewportIndexCache = continueMasonryViewportIndex(
-      layout.items,
-      settledViewportIndexCache ?? createMasonryViewportIndex(cached.items),
-      fromIndex,
-    )
-    return layout
-  }
+function packUntilBottom(): number {
+  return galleryScrollTop
+    - masonryContentTop.value
+    + galleryViewportHeight.value
+    + resolveMasonryOverscan(props.masonry, galleryViewportHeight.value)
+}
 
-  const layout = calculateMasonryLayout(media, width, options)
-  settledLayoutCache = layout
-  settledLayoutSource = media
-  settledLayoutWidth = width
-  settledLayoutGap = options.gap
-  settledLayoutAdditionalHeight = options.additionalHeight
-  settledLayoutMinColumnWidth = options.minColumnWidth
-  settledViewportIndexCache = createMasonryViewportIndex(layout.items)
-  return layout
+const settledMasonry = useSettledMasonryFeedLayout({
+  additionalHeight: computed(() => masonryLayoutOptions.value.additionalHeight),
+  gap: masonryGap,
+  items: () => props.items,
+  minColumnWidth: computed(() => masonryLayoutOptions.value.minColumnWidth),
+  packUntilBottom,
+  width: masonryWidth,
 })
+const settledMasonryLayout = settledMasonry.layout
+const settledViewportIndex = settledMasonry.viewportIndex
 
 const projectedMasonry = computed(() => (
   props.leavingPostIds.size === 0
@@ -138,6 +103,7 @@ const projectedMasonry = computed(() => (
       masonryLayoutOptions.value,
       settledMasonryLayout.value,
       (index) => props.leavingPostIds.has(props.items[index]!.postId),
+      packUntilBottom(),
     )
 ))
 
@@ -151,10 +117,6 @@ const masonryLayout = computed<MasonryLayout>(() => {
   }
 })
 
-const settledViewportIndex = computed(() => (
-  void settledMasonryLayout.value,
-  settledViewportIndexCache ?? createMasonryViewportIndex(settledMasonryLayout.value.items)
-))
 const projectedViewportIndex = computed(() => {
   const projected = projectedMasonry.value
   if (!projected) return null
@@ -166,12 +128,16 @@ const projectedViewportIndex = computed(() => {
   )
 })
 
-const effectiveMasonryHeight = computed(() => Math.max(
-  galleryContentHeight.value,
-  props.leavingPostIds.size === 0
-    ? masonryLayout.value.height
-    : settledMasonryLayout.value.height,
-))
+const effectiveMasonryHeight = computed(() => {
+  settledMasonryLayout.value
+  return Math.max(
+    galleryContentHeight.value,
+    settledMasonry.reservedHeight(),
+    props.leavingPostIds.size === 0
+      ? masonryLayout.value.height
+      : settledMasonryLayout.value.height,
+  )
+})
 
 const masonryStyle = computed<CSSProperties>(() => ({
   height: `${effectiveMasonryHeight.value}px`,
@@ -347,6 +313,7 @@ function onScroll(event: Event): void {
   if (!element) return
 
   galleryScrollTop = element.scrollTop
+  settledMasonry.ensurePackedThrough(packUntilBottom())
   scheduleIndexSnapshotUpdate()
   if (Date.now() >= suppressAutomaticLoadUntil
     && !props.loadMoreLocked && props.infiniteScroll && isNearFeedBottom(element)) {

@@ -36,6 +36,11 @@ export interface MasonryVisibilityOptions {
   viewportHeight: number
 }
 
+export interface MasonryPackLimit {
+  untilBottom?: number
+  untilIndex?: number
+}
+
 interface MasonryOptions {
   additionalHeight?: number
   gap: number
@@ -210,22 +215,32 @@ export function continueMasonryLayout(
   options: MasonryOptions,
   previous: MasonryLayout,
   fromIndex: number,
+  limit?: MasonryPackLimit,
 ): MasonryLayout {
   const grid = resolveMasonryGrid(containerWidth, options)
   if (!grid || media.length === 0) {
     return { columns: 0, height: 0, items: [] }
   }
   if (
-    fromIndex <= 0
-    || previous.columns !== grid.columns
-    || previous.items.length < fromIndex
+    previous.columns !== grid.columns
+    || (fromIndex > 0 && previous.items.length < fromIndex)
   ) {
     return calculateMasonryLayout(media, containerWidth, options)
   }
 
-  const items = previous.items.slice(0, fromIndex)
-  const columnHeights = columnHeightsFromPrefix(items, grid)
-  for (let index = fromIndex; index < media.length; index += 1) {
+  const start = Math.max(0, fromIndex)
+  const untilIndex = limit?.untilIndex ?? media.length
+  const untilBottom = limit?.untilBottom
+  const items = start === 0 ? [] : previous.items.slice(0, start)
+  const columnHeights = start === 0
+    ? Array.from({ length: grid.columns }, () => 0)
+    : columnHeightsFromPrefix(items, grid)
+  for (let index = start; index < media.length && index < untilIndex; index += 1) {
+    if (
+      untilBottom !== undefined
+      && index > start
+      && columnHeights.every((height) => height >= untilBottom)
+    ) break
     items.push(packMasonryItem(media[index]!, columnHeights, grid))
   }
   return {
@@ -241,6 +256,7 @@ export function projectMasonryLayout(
   options: MasonryOptions,
   settled: MasonryLayout,
   skip: (index: number) => boolean,
+  untilBottom?: number,
 ): MasonryLayout & { fromIndex: number, retainedIndices: number[] } {
   const grid = resolveMasonryGrid(containerWidth, options)
   if (!grid || media.length === 0) {
@@ -288,6 +304,11 @@ export function projectMasonryLayout(
   const columnHeights = columnHeightsFromPrefix(items.slice(0, fromIndex), grid)
   for (let index = fromIndex; index < media.length; index += 1) {
     if (skip(index)) continue
+    if (
+      untilBottom !== undefined
+      && retainedIndices.length > fromIndex
+      && columnHeights.every((height) => height >= untilBottom)
+    ) break
     items[index] = packMasonryItem(media[index]!, columnHeights, grid)
     retainedIndices.push(index)
   }
