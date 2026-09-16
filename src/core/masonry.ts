@@ -116,14 +116,18 @@ export function calculateFullyVisibleMasonryIndices(
   })
 }
 
-export function calculateMasonryLayout(
-  media: readonly MasonryMediaDimensions[],
+interface MasonryGrid {
+  additionalHeight: number
+  columns: number
+  gap: number
+  itemWidth: number
+}
+
+function resolveMasonryGrid(
   containerWidth: number,
   options: MasonryOptions,
-): MasonryLayout {
-  if (containerWidth <= 0 || media.length === 0) {
-    return { columns: 0, height: 0, items: [] }
-  }
+): MasonryGrid | null {
+  if (containerWidth <= 0) return null
 
   const gap = Math.max(0, options.gap)
   const additionalHeight = Number.isFinite(options.additionalHeight)
@@ -134,27 +138,161 @@ export function calculateMasonryLayout(
     1,
     Math.floor((containerWidth + gap) / (minColumnWidth + gap)),
   )
-  const itemWidth = (containerWidth - gap * (columns - 1)) / columns
-  const columnHeights = Array.from({ length: columns }, () => 0)
-
-  const items = media.map((item) => {
-    const column = shortestColumn(columnHeights)
-    const height = itemWidth * itemAspectRatio(item) + additionalHeight
-    const position = {
-      x: column * (itemWidth + gap),
-      y: columnHeights[column],
-      width: itemWidth,
-      height,
-    }
-
-    columnHeights[column] += height + gap
-
-    return position
-  })
-
   return {
+    additionalHeight,
     columns,
-    height: Math.max(...columnHeights) - gap,
+    gap,
+    itemWidth: (containerWidth - gap * (columns - 1)) / columns,
+  }
+}
+
+function packMasonryItem(
+  item: MasonryMediaDimensions,
+  columnHeights: number[],
+  grid: MasonryGrid,
+): MasonryPosition {
+  const column = shortestColumn(columnHeights)
+  const height = grid.itemWidth * itemAspectRatio(item) + grid.additionalHeight
+  const position = {
+    x: column * (grid.itemWidth + grid.gap),
+    y: columnHeights[column]!,
+    width: grid.itemWidth,
+    height,
+  }
+  columnHeights[column]! += height + grid.gap
+  return position
+}
+
+function columnHeightsFromPrefix(
+  prefix: readonly MasonryPosition[],
+  grid: MasonryGrid,
+): number[] {
+  const columnHeights = Array.from({ length: grid.columns }, () => 0)
+  const stride = grid.itemWidth + grid.gap
+  prefix.forEach((position) => {
+    const column = stride === 0 ? 0 : Math.round(position.x / stride)
+    if (column < 0 || column >= grid.columns) return
+    columnHeights[column] = Math.max(
+      columnHeights[column]!,
+      position.y + position.height + grid.gap,
+    )
+  })
+  return columnHeights
+}
+
+function masonryHeight(columnHeights: readonly number[], gap: number): number {
+  if (columnHeights.length === 0) return 0
+  return Math.max(0, Math.max(...columnHeights) - gap)
+}
+
+export function calculateMasonryLayout(
+  media: readonly MasonryMediaDimensions[],
+  containerWidth: number,
+  options: MasonryOptions,
+): MasonryLayout {
+  const grid = resolveMasonryGrid(containerWidth, options)
+  if (!grid || media.length === 0) {
+    return { columns: 0, height: 0, items: [] }
+  }
+
+  const columnHeights = Array.from({ length: grid.columns }, () => 0)
+  const items = media.map((item) => packMasonryItem(item, columnHeights, grid))
+  return {
+    columns: grid.columns,
+    height: masonryHeight(columnHeights, grid.gap),
     items,
+  }
+}
+
+export function continueMasonryLayout(
+  media: readonly MasonryMediaDimensions[],
+  containerWidth: number,
+  options: MasonryOptions,
+  previous: MasonryLayout,
+  fromIndex: number,
+): MasonryLayout {
+  const grid = resolveMasonryGrid(containerWidth, options)
+  if (!grid || media.length === 0) {
+    return { columns: 0, height: 0, items: [] }
+  }
+  if (
+    fromIndex <= 0
+    || previous.columns !== grid.columns
+    || previous.items.length < fromIndex
+  ) {
+    return calculateMasonryLayout(media, containerWidth, options)
+  }
+
+  const items = previous.items.slice(0, fromIndex)
+  const columnHeights = columnHeightsFromPrefix(items, grid)
+  for (let index = fromIndex; index < media.length; index += 1) {
+    items.push(packMasonryItem(media[index]!, columnHeights, grid))
+  }
+  return {
+    columns: grid.columns,
+    height: masonryHeight(columnHeights, grid.gap),
+    items,
+  }
+}
+
+export function projectMasonryLayout(
+  media: readonly MasonryMediaDimensions[],
+  containerWidth: number,
+  options: MasonryOptions,
+  settled: MasonryLayout,
+  skip: (index: number) => boolean,
+): MasonryLayout & { retainedIndices: number[] } {
+  const grid = resolveMasonryGrid(containerWidth, options)
+  if (!grid || media.length === 0) {
+    return { columns: 0, height: 0, items: [], retainedIndices: [] }
+  }
+
+  if (settled.items.length !== media.length || settled.columns !== grid.columns) {
+    const retainedIndices = media.map((_, index) => index).filter((index) => !skip(index))
+    const packed = calculateMasonryLayout(
+      retainedIndices.map((index) => media[index]!),
+      containerWidth,
+      options,
+    )
+    const items = media.map((_, index) => settled.items[index] ?? {
+      height: 0,
+      width: 0,
+      x: 0,
+      y: 0,
+    })
+    retainedIndices.forEach((index, packedIndex) => {
+      items[index] = packed.items[packedIndex]!
+    })
+    return {
+      columns: packed.columns,
+      height: packed.height,
+      items,
+      retainedIndices,
+    }
+  }
+
+  let fromIndex = 0
+  while (fromIndex < media.length && !skip(fromIndex)) fromIndex += 1
+  if (fromIndex >= media.length) {
+    return {
+      ...settled,
+      retainedIndices: media.map((_, index) => index),
+    }
+  }
+
+  const items = settled.items.slice()
+  const retainedIndices: number[] = []
+  for (let index = 0; index < fromIndex; index += 1) retainedIndices.push(index)
+  const columnHeights = columnHeightsFromPrefix(items.slice(0, fromIndex), grid)
+  for (let index = fromIndex; index < media.length; index += 1) {
+    if (skip(index)) continue
+    items[index] = packMasonryItem(media[index]!, columnHeights, grid)
+    retainedIndices.push(index)
+  }
+  return {
+    columns: grid.columns,
+    height: masonryHeight(columnHeights, grid.gap),
+    items,
+    retainedIndices,
   }
 }

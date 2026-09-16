@@ -5,6 +5,8 @@ import {
   calculateMasonryEntryOffset,
   calculateMasonryLayout,
   calculateVisibleMasonryIndices,
+  continueMasonryLayout,
+  projectMasonryLayout,
   type MasonryMediaDimensions,
 } from '@/core/masonry'
 
@@ -200,5 +202,66 @@ describe('calculated masonry layout', () => {
       { x: 0, y: 416, width: 320, height: 728 },
     ])
     expect(layout.height).toBe(1144)
+  })
+
+  it('continues packing from a prefix after an item is removed', () => {
+    const mediaItems = Array.from({ length: 12 }, (_, index) => media(
+      100,
+      80 + ((index % 5) * 40),
+    ))
+    const options = { gap: 10, minColumnWidth: 200 }
+    const full = calculateMasonryLayout(mediaItems, 500, options)
+
+    ;[0, 1, 5, 11].forEach((removed) => {
+      const remaining = mediaItems.filter((_, index) => index !== removed)
+      const previous = calculateMasonryLayout(mediaItems, 500, options)
+      expect(continueMasonryLayout(
+        remaining,
+        500,
+        options,
+        previous,
+        removed,
+      )).toEqual(calculateMasonryLayout(remaining, 500, options))
+    })
+
+    expect(continueMasonryLayout(mediaItems, 500, options, full, 0))
+      .toEqual(full)
+  })
+
+  it('projects a removal without packing items above the first leaving card', () => {
+    const mediaItems = Array.from({ length: 10 }, (_, index) => media(
+      100,
+      90 + ((index % 4) * 30),
+    ))
+    const options = { gap: 8, minColumnWidth: 180 }
+    const settled = calculateMasonryLayout(mediaItems, 600, options)
+    const skip = (index: number) => index === 3 || index === 6
+    const projected = projectMasonryLayout(mediaItems, 600, options, settled, skip)
+    const retained = mediaItems.filter((_, index) => !skip(index))
+    const packed = calculateMasonryLayout(retained, 600, options)
+
+    expect(projected.items.slice(0, 3)).toEqual(settled.items.slice(0, 3))
+    expect(projected.items[3]).toEqual(settled.items[3])
+    expect(projected.retainedIndices).toEqual([0, 1, 2, 4, 5, 7, 8, 9])
+    expect(projected.retainedIndices.map((index) => projected.items[index]))
+      .toEqual(packed.items)
+    expect(projected.height).toBe(packed.height)
+  })
+
+  it('matches a full 9,000-item relayout after removing an early card', () => {
+    const mediaItems = Array.from({ length: 9_000 }, (_, index) => media(
+      800,
+      800 + ((index % 5) * 120),
+    ))
+    const options = { gap: 10, minColumnWidth: 320 }
+    const previous = calculateMasonryLayout(mediaItems, 1_440, options)
+    const remaining = mediaItems.filter((_, index) => index !== 24)
+    expect(continueMasonryLayout(
+      remaining,
+      1_440,
+      options,
+      previous,
+      24,
+    )).toEqual(calculateMasonryLayout(remaining, 1_440, options))
   })
 })

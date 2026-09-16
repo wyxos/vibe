@@ -15,6 +15,8 @@ import {
   calculateFullyVisibleMasonryIndices,
   calculateMasonryEntryOffset,
   calculateMasonryLayout,
+  continueMasonryLayout,
+  projectMasonryLayout,
   type MasonryLayout,
 } from '../core/masonry'
 import {
@@ -67,57 +69,77 @@ let masonryResizeObserver: ResizeObserver | null = null
 let galleryResizeObserver: ResizeObserver | null = null
 let resizeFrame: number | null = null
 let viewportFrame: number | null = null
+let settledLayoutCache: MasonryLayout | null = null
+let settledLayoutSource: MasonryFeedProps['items'] | null = null
+let settledLayoutWidth = 0
+let settledLayoutGap = 0
+let settledLayoutAdditionalHeight = 0
+let settledLayoutMinColumnWidth = 0
 
-const settledMasonryLayout = computed(() => calculateMasonryLayout(
-  props.items,
-  masonryWidth.value,
-  {
-    additionalHeight:
-      (props.cardHeader?.height ?? 0) + (props.cardFooter?.height ?? 0),
-    gap: masonryGap.value,
-    minColumnWidth: resolveMasonryMinColumnWidth(props.masonry),
-  },
-))
+const masonryLayoutOptions = computed(() => ({
+  additionalHeight:
+    (props.cardHeader?.height ?? 0) + (props.cardFooter?.height ?? 0),
+  gap: masonryGap.value,
+  minColumnWidth: resolveMasonryMinColumnWidth(props.masonry),
+}))
+
+const settledMasonryLayout = computed(() => {
+  const media = props.items
+  const width = masonryWidth.value
+  const options = masonryLayoutOptions.value
+  const cached = settledLayoutCache
+  if (
+    cached
+    && settledLayoutSource
+    && settledLayoutWidth === width
+    && settledLayoutGap === options.gap
+    && settledLayoutAdditionalHeight === options.additionalHeight
+    && settledLayoutMinColumnWidth === options.minColumnWidth
+  ) {
+    let fromIndex = 0
+    const previous = settledLayoutSource
+    const limit = Math.min(previous.length, media.length)
+    while (fromIndex < limit && previous[fromIndex] === media[fromIndex]) {
+      fromIndex += 1
+    }
+    if (fromIndex === media.length && fromIndex === previous.length) return cached
+    const layout = continueMasonryLayout(media, width, options, cached, fromIndex)
+    settledLayoutCache = layout
+    settledLayoutSource = media
+    return layout
+  }
+
+  const layout = calculateMasonryLayout(media, width, options)
+  settledLayoutCache = layout
+  settledLayoutSource = media
+  settledLayoutWidth = width
+  settledLayoutGap = options.gap
+  settledLayoutAdditionalHeight = options.additionalHeight
+  settledLayoutMinColumnWidth = options.minColumnWidth
+  return layout
+})
 
 const projectedMasonry = computed(() => {
   if (props.leavingPostIds.size === 0) return null
 
-  const retained = props.items.flatMap((item, index) => (
-    props.leavingPostIds.has(item.postId) ? [] : [{ index, item }]
-  ))
-  const layout = calculateMasonryLayout(
-    retained.map(({ item }) => item),
+  const media = props.items
+  const leaving = props.leavingPostIds
+  return projectMasonryLayout(
+    media,
     masonryWidth.value,
-    {
-      additionalHeight:
-        (props.cardHeader?.height ?? 0) + (props.cardFooter?.height ?? 0),
-      gap: masonryGap.value,
-      minColumnWidth: resolveMasonryMinColumnWidth(props.masonry),
-    },
+    masonryLayoutOptions.value,
+    settledMasonryLayout.value,
+    (index) => leaving.has(media[index]!.postId),
   )
-
-  return {
-    indices: retained.map(({ index }) => index),
-    layout,
-    positions: new Map(retained.map(({ item }, index) => [
-      item.postId,
-      layout.items[index]!,
-    ])),
-  }
 })
 
 const masonryLayout = computed<MasonryLayout>(() => {
-  const settledLayout = settledMasonryLayout.value
   const projected = projectedMasonry.value
-  if (!projected) return settledLayout
-
+  if (!projected) return settledMasonryLayout.value
   return {
-    ...projected.layout,
-    items: props.items.map((item, index) => (
-      props.leavingPostIds.has(item.postId)
-        ? settledLayout.items[index]!
-        : projected.positions.get(item.postId) ?? settledLayout.items[index]!
-    )),
+    columns: projected.columns,
+    height: projected.height,
+    items: projected.items,
   }
 })
 
@@ -126,9 +148,11 @@ const settledViewportIndex = computed(() => createMasonryViewportIndex(
 ))
 const projectedViewportIndex = computed(() => {
   const projected = projectedMasonry.value
-  return projected
-    ? createMasonryViewportIndex(projected.layout.items, projected.indices)
-    : null
+  if (!projected) return null
+  return createMasonryViewportIndex(
+    projected.retainedIndices.map((index) => projected.items[index]!),
+    projected.retainedIndices,
+  )
 })
 
 const effectiveMasonryHeight = computed(() => Math.max(
