@@ -98,6 +98,25 @@ export class MasonryCadenceTracker {
     this.lastMountedSignature = signature
   }
 
+  reset(): void {
+    this.frameHistogram.fill(0)
+    this.frameCount = 0
+    this.lastMountedSignature = null
+    this.lastProgressAt = null
+    this.lastScrollTop = null
+    this.lastTimestamp = null
+    this.metrics.longTaskCount = 0
+    this.metrics.longTaskDurationMs = 0
+    this.metrics.longestPlateauMs = 0
+    this.metrics.mediaReadyCount = 0
+    this.metrics.mediaVisibleCount = 0
+    this.metrics.mountedWindowChanges = 0
+    this.metrics.p95FrameMs = 0
+    this.metrics.requestedDistancePx = 0
+    this.metrics.travelledDistancePx = 0
+    this.metrics.worstFrameMs = 0
+  }
+
   snapshot(): MasonryCadenceSnapshot {
     return { ...this.metrics, p95FrameMs: this.calculateP95FrameMs() }
   }

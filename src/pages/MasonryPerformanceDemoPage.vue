@@ -22,9 +22,14 @@ import {
   createVibe,
   type VibeInstance,
   type VibeItem,
+  type VibeItemId,
   type VibeState,
 } from '@/index'
 import { MasonryCadenceTracker } from './masonryPerformanceMetrics'
+import {
+  createSyntheticMasonryItems,
+  releaseSyntheticMasonryMedia,
+} from './syntheticMasonryMedia'
 
 const props = defineProps<{ infiniteScroll: boolean }>()
 const emit = defineEmits<{
@@ -32,18 +37,10 @@ const emit = defineEmits<{
   vibeStateChange: [state: VibeState]
 }>()
 
-function syntheticImage(index?: number): string {
-  const accent = index === undefined ? '#d9a441' : `hsl(${index % 360} 55% 55%)`
-  const marker = index === undefined ? 'shared' : `unique-${index}`
-  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000"><metadata>${marker}</metadata><rect width="100%" height="100%" fill="#172033"/><path d="M0 760L260 410l170 220 130-160 240 290v240H0z" fill="#365b7d"/><circle cx="620" cy="210" r="90" fill="${accent}"/></svg>`,
-  )
-}
-
-const SYNTHETIC_IMAGE = syntheticImage()
 const target = shallowRef<HTMLElement | null>(null)
-const itemCount = ref<80 | 8000>(80)
-const mediaMode = ref<'shared' | 'unique'>('shared')
+const itemCount = ref<100 | 9000>(100)
+const mediaMode = ref<'shared' | 'unique'>('unique')
+const removing = ref(false)
 const metrics = reactive({
   inspected: 0,
   loaded: 0,
@@ -52,9 +49,15 @@ const metrics = reactive({
   longestPlateauMs: 0,
   mediaReadyCount: 0,
   mediaVisibleCount: 0,
+  mountMs: 0,
   mounted: 0,
   mountedWindowChanges: 0,
   p95FrameMs: 0,
+  removalLongTasks: '0 / 0.0ms',
+  removalMs: 0,
+  removalP95FrameMs: 0,
+  removalPlateauMs: 0,
+  removalWorstFrameMs: 0,
   requestedDistancePx: 0,
   travelledDistancePx: 0,
   visible: 0,
@@ -71,21 +74,31 @@ let fixtureResizeObserver: ResizeObserver | null = null
 let lastMetricsPublishedAt = 0
 let longTaskObserver: PerformanceObserver | null = null
 let measureFrame: number | null = null
+let mountGeneration = 0
 let vibe: VibeInstance | null = null
 
-function syntheticItems(count: number, mode: 'shared' | 'unique'): VibeItem[] {
-  return Array.from({ length: count }, (_, index) => {
-    const width = 800
-    const height = 800 + ((index % 5) * 120)
-    const source = mode === 'shared' ? SYNTHETIC_IMAGE : syntheticImage(index)
-    return {
-      height,
-      items: [],
-      postId: index + 1,
-      preview: { height, src: source, width },
-      src: source,
-      width,
-    }
+function emptyMetrics(): void {
+  Object.assign(metrics, {
+    inspected: 0,
+    loaded: 0,
+    longTaskCount: 0,
+    longTaskDurationMs: 0,
+    longestPlateauMs: 0,
+    mediaReadyCount: 0,
+    mediaVisibleCount: 0,
+    mountMs: 0,
+    mounted: 0,
+    mountedWindowChanges: 0,
+    p95FrameMs: 0,
+    removalLongTasks: '0 / 0.0ms',
+    removalMs: 0,
+    removalP95FrameMs: 0,
+    removalPlateauMs: 0,
+    removalWorstFrameMs: 0,
+    requestedDistancePx: 0,
+    travelledDistancePx: 0,
+    visible: 0,
+    worstFrameMs: 0,
   })
 }
 
@@ -157,34 +170,40 @@ function scheduleInspection(): void {
   measureFrame = requestAnimationFrame(inspectWindow)
 }
 
+function visiblePostId(): VibeItemId | null {
+  const host = target.value
+  const gallery = fixtureGallery
+  if (!host || !gallery) return null
+  const galleryRect = gallery.getBoundingClientRect()
+  const card = [...host.querySelectorAll<HTMLElement>('.masonry-item')].find((element) => {
+    const rect = element.getBoundingClientRect()
+    return rect.bottom >= galleryRect.top && rect.top <= galleryRect.bottom
+  })
+  const value = card?.dataset.postId
+  if (!value) return null
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : value
+}
+
 async function mountFixture(): Promise<void> {
   const host = target.value
   if (!host) return
+  const generation = ++mountGeneration
   detachFixture()
   vibe?.destroy()
   emit('vibeInstanceChange', null)
   cadence = new MasonryCadenceTracker()
   autoScrollState = null
   lastMetricsPublishedAt = 0
-  Object.assign(metrics, {
-    inspected: 0,
-    loaded: 0,
-    longTaskCount: 0,
-    longTaskDurationMs: 0,
-    longestPlateauMs: 0,
-    mediaReadyCount: 0,
-    mediaVisibleCount: 0,
-    mounted: 0,
-    mountedWindowChanges: 0,
-    p95FrameMs: 0,
-    requestedDistancePx: 0,
-    travelledDistancePx: 0,
-    visible: 0,
-    worstFrameMs: 0,
-  })
+  emptyMetrics()
 
-  const items = syntheticItems(itemCount.value, mediaMode.value)
+  const items = await createSyntheticMasonryItems(itemCount.value, mediaMode.value)
+  if (generation !== mountGeneration) {
+    releaseSyntheticMasonryMedia()
+    return
+  }
   fixtureItems = items
+  const mountedAt = performance.now()
   vibe = createVibe({
     autoScroll: { maxSpeedPxPerSecond: 320 },
     infiniteScroll: props.infiniteScroll,
@@ -197,6 +216,7 @@ async function mountFixture(): Promise<void> {
     onMediaReady: () => cadence.recordMediaReady(),
     onMediaVisible: () => cadence.recordMediaVisible(),
     onStateChange: (state) => {
+      if (state.autoScroll.enabled && !autoScrollState?.enabled) cadence.reset()
       autoScrollState = state.autoScroll
       emit('vibeStateChange', state)
     },
@@ -204,7 +224,10 @@ async function mountFixture(): Promise<void> {
   })
   emit('vibeInstanceChange', vibe)
   await vibe.mount()
+  if (generation !== mountGeneration) return
   await nextTick()
+  metrics.mountMs = performance.now() - mountedAt
+  cadence.reset()
   autoScrollState = vibe.getState().autoScroll
   fixtureGallery = host.querySelector<HTMLElement>('.masonry-feed')
   fixtureMasonry = host.querySelector<HTMLElement>('.masonry')
@@ -231,7 +254,7 @@ function detachFixture(): void {
   autoScrollState = null
 }
 
-function useFixture(count: 80 | 8000): void {
+function useFixture(count: 100 | 9000): void {
   if (itemCount.value === count) return
   itemCount.value = count
   void mountFixture()
@@ -241,6 +264,35 @@ function useMediaMode(mode: 'shared' | 'unique'): void {
   if (mediaMode.value === mode) return
   mediaMode.value = mode
   void mountFixture()
+}
+
+async function removeVisibleItem(): Promise<void> {
+  const instance = vibe
+  const postId = visiblePostId()
+  if (!instance || postId == null || removing.value) return
+  removing.value = true
+  const scrollCadence = cadence
+  cadence = new MasonryCadenceTracker()
+  const started = performance.now()
+  try {
+    await instance.removeItems([postId])
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, 500)
+    })
+    const snapshot = cadence.snapshot()
+    metrics.removalMs = performance.now() - started
+    metrics.removalLongTasks = `${snapshot.longTaskCount} / ${snapshot.longTaskDurationMs.toFixed(1)}ms`
+    metrics.removalP95FrameMs = snapshot.p95FrameMs
+    metrics.removalPlateauMs = snapshot.longestPlateauMs
+    metrics.removalWorstFrameMs = snapshot.worstFrameMs
+    fixtureItems = [...instance.getState().items]
+    rebuildInspectionIndex()
+    scheduleInspection()
+  }
+  finally {
+    cadence = scrollCadence
+    removing.value = false
+  }
 }
 
 watch(() => props.infiniteScroll, (enabled) => vibe?.setInfiniteScroll(enabled))
@@ -253,6 +305,7 @@ onMounted(() => {
     && PerformanceObserver.supportedEntryTypes?.includes('longtask')
   ) {
     longTaskObserver = new PerformanceObserver((entries) => {
+      if (!fixtureGallery) return
       entries.getEntries().forEach((entry) => cadence.recordLongTask(entry.duration))
     })
     longTaskObserver.observe({ entryTypes: ['longtask'] })
@@ -260,10 +313,12 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  mountGeneration += 1
   if (animationFrame !== null) cancelAnimationFrame(animationFrame)
   if (measureFrame !== null) cancelAnimationFrame(measureFrame)
   longTaskObserver?.disconnect()
   detachFixture()
+  releaseSyntheticMasonryMedia()
   emit('vibeInstanceChange', null)
   vibe?.destroy()
   vibe = null
@@ -275,29 +330,45 @@ onBeforeUnmount(() => {
     <aside class="masonry-performance-diagnostics" aria-label="Masonry performance diagnostics">
       <strong>Synthetic feed</strong>
       <div class="masonry-performance-actions">
-        <button type="button" :aria-pressed="itemCount === 80" @click="useFixture(80)">80</button>
-        <button type="button" :aria-pressed="itemCount === 8000" @click="useFixture(8000)">8,000</button>
+        <button type="button" :aria-pressed="itemCount === 100" @click="useFixture(100)">100</button>
+        <button type="button" :aria-pressed="itemCount === 9000" @click="useFixture(9000)">9,000</button>
       </div>
       <div class="masonry-performance-actions">
-        <button type="button" :aria-pressed="mediaMode === 'shared'" @click="useMediaMode('shared')">Shared media</button>
-        <button type="button" :aria-pressed="mediaMode === 'unique'" @click="useMediaMode('unique')">Unique media</button>
+        <button type="button" :aria-pressed="mediaMode === 'shared'" @click="useMediaMode('shared')">Shared JPEG</button>
+        <button type="button" :aria-pressed="mediaMode === 'unique'" @click="useMediaMode('unique')">Unique JPEG</button>
+      </div>
+      <div class="masonry-performance-actions">
+        <button
+          type="button"
+          data-test="performance-remove-visible"
+          :disabled="removing || metrics.visible === 0"
+          @click="removeVisibleItem"
+        >
+          Remove visible
+        </button>
       </div>
       <dl>
         <div><dt>Loaded</dt><dd data-test="performance-loaded">{{ metrics.loaded }}</dd></div>
         <div><dt>Mounted</dt><dd data-test="performance-mounted">{{ metrics.mounted }}</dd></div>
-        <div><dt>Visible</dt><dd>{{ metrics.visible }}</dd></div>
+        <div><dt>Visible</dt><dd data-test="performance-visible">{{ metrics.visible }}</dd></div>
+        <div><dt>Mount</dt><dd data-test="performance-mount">{{ metrics.mountMs.toFixed(0) }}ms</dd></div>
         <div><dt>Indexed inspections</dt><dd data-test="performance-inspected">{{ metrics.inspected }}</dd></div>
         <div><dt>Requested distance</dt><dd data-test="performance-requested">{{ metrics.requestedDistancePx.toFixed(1) }}px</dd></div>
         <div><dt>Travelled distance</dt><dd data-test="performance-travelled">{{ metrics.travelledDistancePx.toFixed(1) }}px</dd></div>
         <div><dt>Longest plateau</dt><dd data-test="performance-plateau">{{ metrics.longestPlateauMs.toFixed(1) }}ms</dd></div>
-        <div><dt>Frame p95</dt><dd>{{ metrics.p95FrameMs.toFixed(1) }}ms</dd></div>
-        <div><dt>Worst frame</dt><dd>{{ metrics.worstFrameMs.toFixed(1) }}ms</dd></div>
-        <div><dt>Long tasks</dt><dd>{{ metrics.longTaskCount }} / {{ metrics.longTaskDurationMs.toFixed(1) }}ms</dd></div>
-        <div><dt>Mount window changes</dt><dd>{{ metrics.mountedWindowChanges }}</dd></div>
-        <div><dt>Media ready</dt><dd>{{ metrics.mediaReadyCount }}</dd></div>
-        <div><dt>Media visible</dt><dd>{{ metrics.mediaVisibleCount }}</dd></div>
+        <div><dt>Frame p95</dt><dd data-test="performance-p95">{{ metrics.p95FrameMs.toFixed(1) }}ms</dd></div>
+        <div><dt>Worst frame</dt><dd data-test="performance-worst">{{ metrics.worstFrameMs.toFixed(1) }}ms</dd></div>
+        <div><dt>Long tasks</dt><dd data-test="performance-long-tasks">{{ metrics.longTaskCount }} / {{ metrics.longTaskDurationMs.toFixed(1) }}ms</dd></div>
+        <div><dt>Mount window changes</dt><dd data-test="performance-window-changes">{{ metrics.mountedWindowChanges }}</dd></div>
+        <div><dt>Media ready</dt><dd data-test="performance-media-ready">{{ metrics.mediaReadyCount }}</dd></div>
+        <div><dt>Media visible</dt><dd data-test="performance-media-visible">{{ metrics.mediaVisibleCount }}</dd></div>
+        <div><dt>Removal</dt><dd data-test="performance-removal">{{ metrics.removalMs.toFixed(0) }}ms</dd></div>
+        <div><dt>Removal p95</dt><dd data-test="performance-removal-p95">{{ metrics.removalP95FrameMs.toFixed(1) }}ms</dd></div>
+        <div><dt>Removal worst</dt><dd data-test="performance-removal-worst">{{ metrics.removalWorstFrameMs.toFixed(1) }}ms</dd></div>
+        <div><dt>Removal plateau</dt><dd data-test="performance-removal-plateau">{{ metrics.removalPlateauMs.toFixed(1) }}ms</dd></div>
+        <div><dt>Removal long tasks</dt><dd data-test="performance-removal-long-tasks">{{ metrics.removalLongTasks }}</dd></div>
       </dl>
-      <p>Use the header controls to test 1× through 4× automatic scrolling.</p>
+      <p>Unique JPEGs are 450px Atlas-sized rasters. Remove a visible card after scrolling to measure reflow.</p>
     </aside>
     <div ref="target" class="vibe-host masonry-performance-vibe" />
   </section>

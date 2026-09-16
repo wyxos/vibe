@@ -67,4 +67,17 @@ describe('masonry performance cadence metrics', () => {
       p95FrameMs: 17,
     })
   })
+
+  it('clears accumulated cadence when reset', () => {
+    const tracker = new MasonryCadenceTracker()
+    tracker.recordLongTask(40)
+    tracker.recordMediaReady()
+    tracker.reset()
+    expect(tracker.snapshot()).toMatchObject({
+      longTaskCount: 0,
+      longTaskDurationMs: 0,
+      mediaReadyCount: 0,
+      worstFrameMs: 0,
+    })
+  })
 })
