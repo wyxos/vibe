@@ -124,6 +124,17 @@ describe('MasonryFeed', () => {
     expect(wrapper.findAll('.masonry-item').length).toBeLessThan(100)
   })
 
+  it('does not schedule endless tail packing before the gallery has a width', async () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(0)
+    const wrapper = mount(MasonryFeed, { props: props(Array.from({ length: 40 }, (_, i) => feedItem(i + 1))) })
+    await wrapper.vm.$nextTick()
+    flushAnimationFrames()
+    const queued = animationFrames.length
+    flushAnimationFrames()
+    expect(animationFrames.length).toBeLessThanOrEqual(queued)
+    wrapper.unmount()
+  })
+
   it('coalesces scroll-window updates and retains cards within one window', async () => {
     const items = Array.from({ length: 5000 }, (_, index) => feedItem(index + 1))
     const wrapper = mount(MasonryFeed, { props: props(items) })

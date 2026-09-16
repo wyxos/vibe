@@ -61,7 +61,9 @@ export function useSettledMasonryFeedLayout(options: {
     reservedHeight = layout.items.length < media.length
       ? Math.max(reservedHeight, previous.height, layout.height)
       : 0
-    if (layout.items.length < media.length) scheduleTailPack()
+    if (layout.items.length < media.length && layout.items.length > fromIndex) {
+      scheduleTailPack()
+    }
     return layout
   }
 
@@ -119,7 +121,9 @@ export function useSettledMasonryFeedLayout(options: {
         fromIndex += 1
       }
       if (fromIndex === media.length && fromIndex === previousItems.length) {
-        if (cached.items.length < media.length) scheduleTailPack()
+        if (cached.items.length > 0 && cached.items.length < media.length) {
+          scheduleTailPack()
+        }
         return cached
       }
       cancelPack()
