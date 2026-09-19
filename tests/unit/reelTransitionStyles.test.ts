@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest'
 
 describe('masonry reel transition styles', () => {
   it('uses a reversible left sheet transition', async () => {
-    const styles = await readFile(resolve(process.cwd(), 'src/vibe.css'), 'utf8')
+    const styles = (await readFile(resolve(process.cwd(), 'src/vibe.css'), 'utf8'))
+      .replace(/\r\n/g, '\n')
 
     expect(styles).toContain(`.vibe-reel-viewer-enter-active,
 .vibe-reel-viewer-leave-active {
@@ -21,7 +22,8 @@ describe('masonry reel transition styles', () => {
   })
 
   it('removes the sheet travel for reduced motion', async () => {
-    const styles = await readFile(resolve(process.cwd(), 'src/vibe.css'), 'utf8')
+    const styles = (await readFile(resolve(process.cwd(), 'src/vibe.css'), 'utf8'))
+      .replace(/\r\n/g, '\n')
     const reducedMotion = styles.slice(styles.indexOf(
       '@media (prefers-reduced-motion: reduce)',
     ))
