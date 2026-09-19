@@ -37,6 +37,7 @@ export interface MasonryVisibilityOptions {
 }
 
 export interface MasonryPackLimit {
+  throughIndex?: number
   untilBottom?: number
   untilIndex?: number
 }
@@ -231,6 +232,7 @@ export function continueMasonryLayout(
   const start = Math.max(0, fromIndex)
   const untilIndex = limit?.untilIndex ?? media.length
   const untilBottom = limit?.untilBottom
+  const throughIndex = limit?.throughIndex ?? start
   const items = start === 0 ? [] : previous.items.slice(0, start)
   const columnHeights = start === 0
     ? Array.from({ length: grid.columns }, () => 0)
@@ -239,6 +241,7 @@ export function continueMasonryLayout(
     if (
       untilBottom !== undefined
       && index > start
+      && index > throughIndex
       && columnHeights.every((height) => height >= untilBottom)
     ) break
     items.push(packMasonryItem(media[index]!, columnHeights, grid))
@@ -256,7 +259,7 @@ export function projectMasonryLayout(
   options: MasonryOptions,
   settled: MasonryLayout,
   skip: (index: number) => boolean,
-  untilBottom?: number,
+  limit?: MasonryPackLimit,
 ): MasonryLayout & { fromIndex: number, retainedIndices: number[] } {
   const grid = resolveMasonryGrid(containerWidth, options)
   if (!grid || media.length === 0) {
@@ -301,16 +304,24 @@ export function projectMasonryLayout(
   const items = settled.items.slice()
   const retainedIndices: number[] = []
   for (let index = 0; index < fromIndex; index += 1) retainedIndices.push(index)
+  const untilBottom = limit?.untilBottom
+  const throughIndex = limit?.throughIndex ?? fromIndex
   const columnHeights = columnHeightsFromPrefix(items.slice(0, fromIndex), grid)
   for (let index = fromIndex; index < media.length; index += 1) {
     if (skip(index)) continue
     if (
       untilBottom !== undefined
       && retainedIndices.length > fromIndex
+      && index > throughIndex
       && columnHeights.every((height) => height >= untilBottom)
     ) break
     items[index] = packMasonryItem(media[index]!, columnHeights, grid)
     retainedIndices.push(index)
+  }
+  const packed = new Set(retainedIndices)
+  for (let index = fromIndex; index < media.length; index += 1) {
+    if (skip(index) || packed.has(index)) continue
+    items[index] = { height: 0, width: 0, x: 0, y: 0 }
   }
   return {
     columns: grid.columns,

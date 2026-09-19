@@ -25,6 +25,7 @@ export function useSettledMasonryFeedLayout(options: {
   gap: Ref<number>
   items: () => MasonryFeedProps['items']
   minColumnWidth: ComputedRef<number>
+  packThroughIndex: () => number
   packUntilBottom: () => number
   width: Ref<number>
 }) {
@@ -86,7 +87,10 @@ export function useSettledMasonryFeedLayout(options: {
           },
           previous,
           fromIndex,
-          { untilIndex: fromIndex + TAIL_PACK_CHUNK },
+          {
+            throughIndex: options.packThroughIndex(),
+            untilIndex: fromIndex + TAIL_PACK_CHUNK,
+          },
         ),
         media,
         fromIndex,
@@ -134,7 +138,10 @@ export function useSettledMasonryFeedLayout(options: {
           nextOptions,
           cached,
           fromIndex,
-          { untilBottom: options.packUntilBottom() },
+          {
+            throughIndex: options.packThroughIndex(),
+            untilBottom: options.packUntilBottom(),
+          },
         ),
         media,
         fromIndex,
@@ -181,7 +188,10 @@ export function useSettledMasonryFeedLayout(options: {
           },
           previous,
           fromIndex,
-          { untilBottom: bottom },
+          {
+            throughIndex: options.packThroughIndex(),
+            untilBottom: bottom,
+          },
         ),
         media,
         fromIndex,

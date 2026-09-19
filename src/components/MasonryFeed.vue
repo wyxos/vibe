@@ -76,11 +76,25 @@ const masonryLayoutOptions = computed(() => ({
   minColumnWidth: resolveMasonryMinColumnWidth(props.masonry),
 }))
 
+let lastLayoutItems: MasonryLayout['items'] = []
+
 function packUntilBottom(): number {
-  return galleryScrollTop
+  const viewportBottom = galleryScrollTop
     - masonryContentTop.value
     + galleryViewportHeight.value
     + resolveMasonryOverscan(props.masonry, galleryViewportHeight.value)
+  const mountedBottom = overscanIndexSnapshot.value.reduce((bottom, index) => {
+    const position = lastLayoutItems[index]
+    return position ? Math.max(bottom, position.y + position.height) : bottom
+  }, 0)
+  return Math.max(viewportBottom, mountedBottom)
+}
+
+function packThroughIndex(): number {
+  return overscanIndexSnapshot.value.reduce(
+    (highest, index) => Math.max(highest, index),
+    -1,
+  )
 }
 
 const settledMasonry = useSettledMasonryFeedLayout({
@@ -88,6 +102,7 @@ const settledMasonry = useSettledMasonryFeedLayout({
   gap: masonryGap,
   items: () => props.items,
   minColumnWidth: computed(() => masonryLayoutOptions.value.minColumnWidth),
+  packThroughIndex,
   packUntilBottom,
   width: masonryWidth,
 })
@@ -103,7 +118,10 @@ const projectedMasonry = computed(() => (
       masonryLayoutOptions.value,
       settledMasonryLayout.value,
       (index) => props.leavingPostIds.has(props.items[index]!.postId),
-      packUntilBottom(),
+      {
+        throughIndex: packThroughIndex(),
+        untilBottom: packUntilBottom(),
+      },
     )
 ))
 
@@ -157,12 +175,14 @@ const viewportIndices = computed(() => new Set(viewportIndexSnapshot.value))
 const visibleItems = computed(() => {
   return overscanIndexSnapshot.value.flatMap((index) => {
     const item = props.items[index]
+    const position = masonryLayout.value.items[index]
+    if (!item || !position || position.width <= 0 || position.height <= 0) return []
 
-    return item ? [{
+    return [{
       fetchPriority: viewportIndices.value.has(index) ? 'high' as const : 'low' as const,
       index,
       item,
-    }] : []
+    }]
   })
 })
 
@@ -194,7 +214,10 @@ function calculateIndexSnapshot(overscan: number): number[] {
     : queryMasonryViewportIndex(
         settledViewportIndex.value,
         { ...viewport, overscan },
-      ).indices
+      ).indices.filter((index) => {
+        const item = props.items[index]
+        return item !== undefined && props.leavingPostIds.has(item.postId)
+      })
 
   return mergeOrderedIndices(target, settled)
 }
@@ -248,11 +271,10 @@ useMasonryMediaVisibility({
   previewStates: () => props.previewStates,
   visibleIndices: () => viewportIndexSnapshot.value,
 })
-
 function itemStyle(index: number): CSSProperties {
   const position = masonryLayout.value.items[index]
   const postId = props.items[index]?.postId
-  if (!position) return {}
+  if (!position || position.width <= 0 || position.height <= 0) return {}
 
   const entering = postId !== undefined && props.enteringPostIds.has(postId)
   const leaving = postId !== undefined && props.leavingPostIds.has(postId)
@@ -369,6 +391,10 @@ watch(galleryElement, (element) => {
   galleryResizeObserver = new ResizeObserver(measureViewport)
   galleryResizeObserver.observe(element)
 })
+
+watch(masonryLayout, (layout) => {
+  lastLayoutItems = layout.items
+}, { flush: 'sync' })
 
 watch(
   [settledMasonryLayout, masonryLayout, () => props.masonry],

@@ -372,8 +372,6 @@
   border-radius: 0.5rem;
   background: #171717;
   transition:
-    width 160ms ease,
-    height 160ms ease,
     transform 420ms cubic-bezier(0.22, 1, 0.36, 1) var(--masonry-entry-delay, 0ms);
 }
 

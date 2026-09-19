@@ -273,7 +273,7 @@ describe('calculated masonry layout', () => {
       options,
       previous,
       skip,
-      5_400,
+      { untilBottom: 5_400 },
     )
     const full = projectMasonryLayout(mediaItems, 1_440, options, previous, skip)
 
@@ -324,5 +324,74 @@ describe('calculated masonry layout', () => {
       previous,
       24,
     )).toEqual(calculateMasonryLayout(remaining, 1_440, options))
+  })
+
+  it('keeps packing through mounted cards after the prefix already fills the viewport', () => {
+    const mediaItems = Array.from({ length: 40 }, (_, index) => media(
+      800,
+      1_200 + ((index % 4) * 200),
+    ))
+    const options = { additionalHeight: 70, gap: 6, minColumnWidth: 320 }
+    const previous = calculateMasonryLayout(mediaItems, 1_400, options)
+    const remaining = mediaItems.filter((_, index) => index !== 4)
+    const full = calculateMasonryLayout(remaining, 1_400, options)
+    const stopped = continueMasonryLayout(
+      remaining,
+      1_400,
+      options,
+      previous,
+      4,
+      { untilBottom: 800 },
+    )
+    const throughMounted = continueMasonryLayout(
+      remaining,
+      1_400,
+      options,
+      previous,
+      4,
+      { throughIndex: 23, untilBottom: 800 },
+    )
+
+    expect(stopped.items.length).toBeLessThan(24)
+    expect(throughMounted.items.slice(0, 24)).toEqual(full.items.slice(0, 24))
+  })
+
+  it('projects a visible removal through mounted cards when the prefix already fills the viewport', () => {
+    const mediaItems = Array.from({ length: 40 }, (_, index) => media(
+      800,
+      1_200 + ((index % 4) * 200),
+    ))
+    const options = { additionalHeight: 70, gap: 6, minColumnWidth: 320 }
+    const settled = calculateMasonryLayout(mediaItems, 1_400, options)
+    const skip = (index: number) => index === 4
+    const stopped = projectMasonryLayout(
+      mediaItems,
+      1_400,
+      options,
+      settled,
+      skip,
+      { untilBottom: 800 },
+    )
+    const throughMounted = projectMasonryLayout(
+      mediaItems,
+      1_400,
+      options,
+      settled,
+      skip,
+      { throughIndex: 23, untilBottom: 800 },
+    )
+    const full = projectMasonryLayout(mediaItems, 1_400, options, settled, skip)
+
+    expect(stopped.retainedIndices.at(-1)).toBeLessThan(23)
+    expect(throughMounted.retainedIndices).toEqual(
+      full.retainedIndices.filter((index) => index <= 23),
+    )
+    expect(
+      throughMounted.retainedIndices.map((index) => throughMounted.items[index]),
+    ).toEqual(
+      full.retainedIndices
+        .filter((index) => index <= 23)
+        .map((index) => full.items[index]),
+    )
   })
 })
