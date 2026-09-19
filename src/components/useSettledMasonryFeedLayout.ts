@@ -53,7 +53,7 @@ export function useSettledMasonryFeedLayout(options: {
     previous: MasonryLayout,
   ): MasonryLayout {
     cache = layout
-    source = media
+    source = media.slice()
     viewportIndex = continueMasonryViewportIndex(
       layout.items,
       viewportIndex ?? createMasonryViewportIndex(previous.items),
@@ -152,7 +152,7 @@ export function useSettledMasonryFeedLayout(options: {
     cancelPack()
     const next = calculateMasonryLayout(media, nextWidth, nextOptions)
     cache = next
-    source = media
+    source = media.slice()
     width = nextWidth
     gap = nextOptions.gap
     additionalHeight = nextOptions.additionalHeight

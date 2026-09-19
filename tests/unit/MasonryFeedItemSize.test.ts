@@ -1,7 +1,9 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick, reactive } from 'vue'
 
 import MasonryFeed from '@/components/MasonryFeed.vue'
+import { createVibe, type VibeInstance } from '@/index'
 
 function feedItem(
   postId: number,
@@ -20,7 +22,7 @@ function feedItem(
   }
 }
 
-function props(items: ReturnType<typeof feedItem>[]) {
+function props(items: Array<ReturnType<typeof feedItem> & { items?: unknown[] }>) {
   return {
     canRetryEnd: false,
     enteringPostIds: new Set<number>(),
@@ -105,6 +107,91 @@ describe('MasonryFeed item size', () => {
 
     expect(after.width).toBe(before.width)
     expect(after.height).not.toBe(before.height)
+  })
+
+  it('resizes after an in-place grouped promotion to a taller preview', async () => {
+    const items = reactive([{
+      ...feedItem(7, { height: 400, width: 450 }),
+      items: [{
+        height: 1_800,
+        preview: {
+          height: 900,
+          src: 'https://example.com/7-tall-preview.jpg',
+          width: 450,
+        },
+        src: 'https://example.com/7-tall.jpg',
+        width: 900,
+      }],
+    }])
+    const wrapper = mount(MasonryFeed, { props: props(items) })
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+    const before = cardBox(wrapper, 7)
+
+    const current = items[0]!
+    const promoted = current.items[0]!
+    items[0] = {
+      ...current,
+      ...promoted,
+      items: [],
+      postId: current.postId,
+    }
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+    const after = cardBox(wrapper, 7)
+
+    expect(after.width).toBe(before.width)
+    expect(Number.parseFloat(after.height))
+      .toBeGreaterThan(Number.parseFloat(before.height))
+  })
+
+  it('resizes after removeMedia promotes a taller grouped child', async () => {
+    const target = document.createElement('div')
+    document.body.append(target)
+    let instance: VibeInstance | null = null
+    try {
+      instance = createVibe({
+        initialPage: {
+          items: [{
+            ...feedItem(8, { height: 400, width: 450 }),
+            items: [{
+              height: 1_800,
+              preview: {
+                height: 900,
+                src: 'https://example.com/8-tall-preview.jpg',
+                width: 450,
+              },
+              src: 'https://example.com/8-tall.jpg',
+              width: 900,
+            }],
+          }],
+          next: null,
+        },
+        target,
+      })
+      await instance.mount()
+      await flushPromises()
+      await nextTick()
+      await nextTick()
+
+      const card = () => target.querySelector('[data-post-id="8"]') as HTMLElement
+      const beforeHeight = card().style.height
+      expect(instance.getState().items[0]?.preview?.height).toBe(400)
+
+      instance.removeMedia({ mediaIndex: 0, postId: 8 })
+      await flushPromises()
+      await nextTick()
+      await nextTick()
+
+      expect(instance.getState().items[0]?.preview?.height).toBe(900)
+      expect(card().querySelector('img')?.getAttribute('src'))
+        .toContain('8-tall')
+      expect(Number.parseFloat(card().style.height))
+        .toBeGreaterThan(Number.parseFloat(beforeHeight))
+    } finally {
+      instance?.destroy()
+      target.remove()
+    }
   })
 
   it('closes holes after a neighbor is removed without changing remaining sizes', async () => {
