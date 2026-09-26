@@ -103,9 +103,12 @@ const showAutoAdvance = computed(() => (
   && !activeMediaWaitsForEnd.value
 ))
 const showLoadMore = computed(() => !props.infiniteScroll || props.items.length <= 1)
+const canManuallyContinueForward = computed(() => props.reelForward.status === 'end'
+  && props.hasNext && !props.infiniteScroll && !props.loadMoreLocked)
 const forwardMessage = computed(() => {
   if (props.reelForward.status === 'loading') return 'Loading the next media…'
   if (props.reelForward.status === 'error') return 'Unable to load the next media.'
+  if (canManuallyContinueForward.value) return 'Load the next page to continue.'
   return 'You reached the end of this feed.'
 })
 
@@ -281,7 +284,7 @@ function onAutoAdvanceComplete(): void {
   const nextIndex = activeIndex.value + 1
   const nextItem = props.items[nextIndex]
   if (!nextItem) {
-    if (props.hasNext && !props.loadMoreLocked) emit('loadMore')
+    if (props.hasNext && props.infiniteScroll && !props.loadMoreLocked) emit('loadMore')
     return
   }
 
@@ -402,9 +405,10 @@ defineExpose({
             v-if="reelForward.status === 'error' || reelForward.status === 'end'"
             class="reel-forward-retry"
             type="button"
+            :disabled="loadMoreLocked"
             @click="emit('retryForward')"
           >
-            Retry
+            {{ canManuallyContinueForward ? 'Load more' : 'Retry' }}
           </button>
         </div>
 

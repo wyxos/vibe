@@ -4,7 +4,7 @@ import type { VibeItem, VibeItemId } from '../types'
 interface ReelForwardControllerOptions {
   onActivate: (postId: VibeItemId) => void
   onCloseReel: () => void
-  replenishAfterRemoval: () => Promise<void>
+  replenishAfterRemoval: (allowManualPaging: boolean) => Promise<void>
   state: VibeRuntimeState
 }
 
@@ -59,9 +59,10 @@ export class ReelForwardController {
 
   retry(): Promise<void> {
     if (!this.forward || this.state.reelForward.status === 'idle') return Promise.resolve()
+    if (this.forwardPromise) return this.forwardPromise.then(() => this.retry())
     this.state.nextPageError = null
     this.state.reelForward = { error: null, status: 'loading' }
-    return this.startForwardRequest()
+    return this.startForwardRequest(true)
   }
 
   private clearState(): void {
@@ -70,8 +71,8 @@ export class ReelForwardController {
     this.state.reelForwardItem = null
   }
 
-  private stopAtLock(): boolean {
-    if (!this.state.loadMoreLocked) return false
+  private stopAtPaginationBoundary(allowManualPaging: boolean): boolean {
+    if (!this.state.loadMoreLocked && (this.state.infiniteScroll || allowManualPaging)) return false
     if (this.state.reelOrigin === 'masonry') {
       this.reset()
       this.options.onCloseReel()
@@ -81,20 +82,20 @@ export class ReelForwardController {
     return true
   }
 
-  private startForwardRequest(): Promise<void> {
+  private startForwardRequest(allowManualPaging = false): Promise<void> {
     if (this.forwardPromise) return this.forwardPromise
-    const request = this.loadForward()
+    const request = this.loadForward(allowManualPaging)
     this.forwardPromise = request
     return request.finally(() => {
       if (this.forwardPromise !== request) return
       this.forwardPromise = null
       if (this.forward && this.state.reelForward.status === 'loading') {
-        void this.startForwardRequest()
+        void this.startForwardRequest(allowManualPaging)
       }
     })
   }
 
-  private async loadForward(): Promise<void> {
+  private async loadForward(allowManualPaging: boolean): Promise<void> {
     const target = this.forward
     if (!target) return
 
@@ -106,17 +107,17 @@ export class ReelForwardController {
         this.options.onActivate(replacement.postId)
         return
       }
-      if (this.stopAtLock()) return
+      if (this.stopAtPaginationBoundary(allowManualPaging)) return
       if (this.state.nextPageError) {
         this.state.reelForward = { error: this.state.nextPageError, status: 'error' }
         return
       }
       const previousCursor = this.state.next
       const previousLength = this.state.items.length
-      await this.options.replenishAfterRemoval()
+      await this.options.replenishAfterRemoval(allowManualPaging)
       if (this.forward !== target || target.version !== this.forwardVersion) return
       if (this.state.items[target.postIndex]) continue
-      if (this.stopAtLock()) return
+      if (this.stopAtPaginationBoundary(allowManualPaging)) return
       if (this.state.nextPageError) {
         this.state.reelForward = { error: this.state.nextPageError, status: 'error' }
         return

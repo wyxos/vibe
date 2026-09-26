@@ -100,7 +100,7 @@ class VibeController implements VibeInstance {
       onCloseReel: () => this.closeMasonryReel(),
       onItemsRemoved: (postIds) => this.removalReconciliation.remove(postIds),
       onItemsRestored: (postIds) => this.removalReconciliation.restore(postIds),
-      replenishAfterRemoval: () => this.replenishAfterRemoval(),
+      replenishAfterRemoval: (allowManualPaging) => this.replenishAfterRemoval(allowManualPaging),
       state: this.state,
       surface: () => this.surface,
     })
@@ -248,8 +248,8 @@ class VibeController implements VibeInstance {
   appendPage(pageValue: VibePage): void {
     appendPageToState(pageValue, this.state, this.removalReconciliation, (cursor) => this.setCurrentCursor(cursor))
   }
-  replenishAfterRemoval(): Promise<void> {
-    return this.startLoadMore(() => this.replenishAfterRemovalSequence())
+  replenishAfterRemoval(allowManualPaging = true): Promise<void> {
+    return this.startLoadMore(() => this.replenishAfterRemovalSequence(allowManualPaging))
   }
   private async startLoadMore(operation: () => Promise<void>): Promise<void> {
     if (this.pendingRequest) return this.pendingRequest
@@ -302,20 +302,20 @@ class VibeController implements VibeInstance {
       const reconciled = await this.reconcileBeforeNext()
       if (!reconciled) return
     }
-    if (this.state.loadMoreLocked) return
-    if (this.state.next === null) return
-    await this.fetchPage(this.state.next, true)
-  }
-  private async replenishAfterRemovalSequence(): Promise<void> {
-    const itemCount = this.state.items.length
-    if (this.removalReconciliation.needsReconciliation(this.state.items)) {
-      const reconciled = await this.reconcileBeforeNext()
-      if (!reconciled || this.state.items.length > itemCount) return
-    }
     if (this.state.loadMoreLocked || this.state.next === null) return
     await this.fetchPage(this.state.next, true)
   }
-  private async reconcileBeforeNext(): Promise<boolean> {
+  private async replenishAfterRemovalSequence(allowManualPaging: boolean): Promise<void> {
+    if (!allowManualPaging && !this.state.infiniteScroll) return
+    const itemCount = this.state.items.length
+    if (this.removalReconciliation.needsReconciliation(this.state.items)) {
+      const reconciled = await this.reconcileBeforeNext(!allowManualPaging)
+      if (!reconciled || this.state.items.length > itemCount) return
+    }
+    if (this.state.loadMoreLocked || (!allowManualPaging && !this.state.infiniteScroll) || this.state.next === null) return
+    await this.fetchPage(this.state.next, true)
+  }
+  private async reconcileBeforeNext(pauseWhenManual = false): Promise<boolean> {
     const loadPage = this.options.loadPage
     if (!loadPage) return false
     const requestVersion = ++this.requestVersion
@@ -327,6 +327,7 @@ class VibeController implements VibeInstance {
         isCurrent: () => requestVersion === this.requestVersion,
         loadPage,
         onDelayChange: () => undefined,
+        pauseWhenManual,
         setLastCursor: (cursor) => this.setCurrentCursor(cursor),
         signal: abortController.signal,
         state: this.state,

@@ -14,7 +14,7 @@ interface RemovalControllerOptions {
   onCloseReel: () => void
   onItemsRemoved: (postIds: readonly VibeItemId[]) => void
   onItemsRestored: (postIds: readonly VibeItemId[]) => void
-  replenishAfterRemoval: () => Promise<void>
+  replenishAfterRemoval: (allowManualPaging: boolean) => Promise<void>
   state: VibeRuntimeState
   surface: () => VibeSurfaceExpose | null
 }

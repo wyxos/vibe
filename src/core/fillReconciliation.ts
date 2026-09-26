@@ -11,6 +11,7 @@ interface FillReconciliationOptions {
   isCurrent: () => boolean
   loadPage: VibePageLoader
   onDelayChange: (snapshot: RequestDelaySnapshot) => void
+  pauseWhenManual?: boolean
   setLastCursor: (cursor: VibeCursor) => void
   signal: AbortSignal
   state: VibeRuntimeState
@@ -21,6 +22,7 @@ export async function reconcileBeforeFill({
   isCurrent,
   loadPage,
   onDelayChange,
+  pauseWhenManual = false,
   setLastCursor,
   signal,
   state,
@@ -31,7 +33,7 @@ export async function reconcileBeforeFill({
     existingItems: state.items,
     loadPage,
     onDelayChange,
-    shouldPause: () => state.loadMoreLocked,
+    shouldPause: () => state.loadMoreLocked || (pauseWhenManual && !state.infiniteScroll),
     signal,
   })
   if (!isCurrent()) return result.status
