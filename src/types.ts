@@ -452,7 +452,6 @@ export interface VibeState {
   reelOrigin: 'masonry' | null
   total: number | null
 }
-
 export interface VibeInstance {
   appendPage: (page: VibePage) => void
   applyAutofillUpdate: (update: VibeBackendAutofillUpdate) => boolean
@@ -475,6 +474,7 @@ export interface VibeInstance {
   replenishAfterRemoval: () => Promise<void>
   refresh: () => Promise<void>
   reload: () => Promise<void>
+  replacePage: (page: VibePage, options?: import('./core/pageReplacement').VibePageReplacementOptions) => Promise<void>
   removeMedia: (target: VibeMediaTarget) => VibeMediaRemoval | null
   removeMediaAnimated?: (target: VibeMediaTarget) => Promise<VibeMediaRemoval | null>
   removeItems: (postIds: readonly VibeItemId[], options?: import('./core/itemRemovalOptions').VibeItemRemovalOptions) => Promise<VibeRemoval>

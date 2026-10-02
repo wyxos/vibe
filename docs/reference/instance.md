@@ -12,6 +12,22 @@
 | `refresh()` | Replaces the visible feed from its current continuation boundary. |
 | `reload()` | Reloads the feed from its initial boundary. |
 | `loadNext()` | Requests the next ordinary cursor page. |
+| `replacePage(page, options?)` | Replaces completed results in place using native exits and entries. |
+
+Use `replacePage()` when your application already has the next search or filter
+result. Keep the feed mounted while that request is pending, then pass its
+completed `VibePage`. Matching `postId` values retain their mounted card keys
+and adopt the supplied data and order. Removed mounted cards finish their native
+exit before the incoming page is committed; new cards use Vibe's entry motion.
+Reduced motion skips these spatial transitions.
+
+The replacement aborts stale page loads and begins a new feed visit, clearing
+removal tokens, tombstones, fill sessions, and prior page contributions. Its
+`current`, `next`, and `total` come from the supplied page. Duplicate identities
+are ignored after their first occurrence. The loading lock and scroll position
+are preserved; pass `{ resetScroll: true }` to return masonry to the top for a
+new search. A newer replacement or `cancelLoading()` cancels an unfinished
+replacement. No provider request is made by `replacePage()`.
 
 `refresh()` requests the current `next` cursor. When `next` is `null`, it falls
 back to the cursor that produced the last successfully loaded page so an

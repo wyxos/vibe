@@ -1,4 +1,4 @@
-import { computed, type ComputedRef } from 'vue'
+import { computed, watch, type ComputedRef, type WatchHandle } from 'vue'
 
 import type {
   VibeAutoScrollState,
@@ -47,6 +47,19 @@ export function createItemSnapshot(
   state: VibeRuntimeState,
 ): ComputedRef<readonly VibeItem[]> {
   return computed(() => Object.freeze([...state.items]))
+}
+
+export function watchStateSnapshots(
+  state: VibeRuntimeState,
+  items: ComputedRef<readonly VibeItem[]>,
+  onStateChange: (state: VibeState) => void,
+): WatchHandle {
+  onStateChange(snapshotState(state, items.value))
+  return watch(
+    () => snapshotState(state, items.value),
+    onStateChange,
+    { flush: 'post' },
+  )
 }
 
 export function snapshotState(

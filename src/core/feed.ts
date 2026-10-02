@@ -75,6 +75,8 @@ export interface ReelLayoutProps extends ReelFeedProps {
 }
 
 export interface VibeSurfaceExpose {
+  animateItemRemoval: (postIds: readonly VibeItemId[], signal: AbortSignal) => Promise<void>
+  cancelItemRemoval: () => void
   changeActiveReelMedia: (direction: -1 | 1) => boolean
   getAutoScrollElement: () => HTMLElement | null
   loadIfNearBottom: () => Promise<void>

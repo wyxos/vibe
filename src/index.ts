@@ -79,6 +79,7 @@ export type {
 } from './types'
 export type { VibeMediaError, VibeMediaErrorProps } from './core/mediaPreview'
 export type { VibeItemRemovalOptions } from './core/itemRemovalOptions'
+export type { VibePageReplacementOptions } from './core/pageReplacement'
 export type {
   VibeMasonryOptions,
   VibeMasonryOverscanOptions,

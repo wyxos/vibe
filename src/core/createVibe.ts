@@ -1,4 +1,4 @@
-import { createApp, nextTick, reactive, watch, type App, type WatchHandle } from 'vue'
+import { createApp, nextTick, reactive, type App, type WatchHandle } from 'vue'
 import VibeSurface from '../components/VibeSurface.vue'
 import { appendPageToState } from './appendPage'
 import { createAutofillState, isAutofillActive } from './autofill'
@@ -15,6 +15,8 @@ import { createInitialRuntimeState } from './initialRuntimeState'
 import { resolveVibeTarget, validateOptions } from './options'
 import { pageCurrentCursor, validatePage } from './page'
 import { performPageRequest } from './pageRequest'
+import { PageReplacementController, type VibePageReplacementOptions } from './pageReplacement'
+import { setLoadingLock } from './loadingLock'
 import { RemovalReconciliationController } from './removalReconciliationController'
 import { createRemovalControllers, type RemovalControllers } from './removalControllers'
 import { ResponsiveLayoutController } from './responsiveLayoutController'
@@ -22,7 +24,7 @@ import { updateReelAutoAdvanceState } from './reelAutoAdvance'
 import { VibeReelAudioController } from './reelAudioController'
 import { setReelInfoSheetEnabled } from './reelInfoSheet'
 import { VibeRouteSync } from './vibeRouting'
-import { createItemSnapshot, snapshotState, type VibeRuntimeState } from './runtime'
+import { createItemSnapshot, snapshotState, watchStateSnapshots, type VibeRuntimeState } from './runtime'
 import { applyItemUpdates } from './updateItems'
 import type {
   CreateVibeOptions, VibeAutofillSessionSnapshot, VibeBackendAutofillUpdate,
@@ -54,6 +56,7 @@ class VibeController implements VibeInstance {
   private readonly notificationItems: ReturnType<typeof createItemSnapshot>
   private readonly reelAudio: VibeReelAudioController
   private readonly state: VibeRuntimeState
+  private readonly pageReplacement: PageReplacementController
   constructor(private readonly options: CreateVibeOptions) {
     validateOptions(options)
     const layoutMode = options.layout ?? 'masonry'
@@ -66,7 +69,7 @@ class VibeController implements VibeInstance {
       state: this.state.autoScroll,
     })
     this.autofillController = new VibeAutofillController({
-      cancelRequest: () => this.cancelRequest(),
+      cancelRequest: () => this.cancelRequest(!this.pageReplacement?.isActive()),
       onLastCursor: (cursor) => this.setCurrentCursor(cursor),
       onPages: (pages) => this.removalReconciliation.recordPages(pages),
       options: options.autofill,
@@ -108,6 +111,20 @@ class VibeController implements VibeInstance {
     this.itemRemoval = removals.itemRemoval
     this.reelForward = removals.reelForward
     this.reelRemoval = removals.reelRemoval
+    this.pageReplacement = new PageReplacementController({
+      state: this.state, surface: () => this.surface,
+      prepare: async () => {
+        this.cancelRequest(false)
+        if (isAutofillActive(this.state.autofill)) await this.cancelAutofill()
+        if (this.fillController.isActive()) await this.cancelFill()
+      },
+      commit: (page) => {
+        this.resetFeedVisit()
+        this.setCurrentCursor(pageCurrentCursor(page))
+        this.removalReconciliation.recordInitialPage(page)
+        if (this.state.reelOrigin === null) this.routing.syncFeed()
+      },
+    })
     this.responsiveLayout = new ResponsiveLayoutController(layoutMode, this.state, () => {
       this.routing.syncFeed()
     })
@@ -211,6 +228,7 @@ class VibeController implements VibeInstance {
   cancelAutofill(): Promise<void> { return this.autofillController.cancel() }
   async cancelLoading(): Promise<void> {
     this.state.loadMoreLocked = false
+    this.cancelRequest()
     if (this.fillController.isActive()) {
       await this.cancelFill()
       return
@@ -219,7 +237,6 @@ class VibeController implements VibeInstance {
       await this.cancelAutofill()
       return
     }
-    this.cancelRequest()
   }
   applyFillUpdate(update: VibeBackendFillUpdate): boolean {
     return this.fillController.applyUpdate(update)
@@ -228,7 +245,7 @@ class VibeController implements VibeInstance {
     return this.fillController.cancel()
   }
   async fill(target: VibeFillTarget): Promise<void> {
-    if (this.state.loadMoreLocked) return
+    if (this.state.loadMoreLocked || this.pageReplacement.isActive()) return
     if (this.pendingRequest || isAutofillActive(this.state.autofill)) {
       throw new Error('Vibe cannot fill while another page operation is active.')
     }
@@ -242,16 +259,11 @@ class VibeController implements VibeInstance {
   restoreFillSession(snapshot: VibeFillSessionSnapshot): boolean {
     return this.fillController.restoreSession(snapshot)
   }
-  loadNext(): Promise<void> {
-    return this.startLoadMore(() => this.loadNextSequence())
-  }
-  appendPage(pageValue: VibePage): void {
-    appendPageToState(pageValue, this.state, this.removalReconciliation, (cursor) => this.setCurrentCursor(cursor))
-  }
-  replenishAfterRemoval(allowManualPaging = true): Promise<void> {
-    return this.startLoadMore(() => this.replenishAfterRemovalSequence(allowManualPaging))
-  }
+  loadNext(): Promise<void> { return this.startLoadMore(() => this.loadNextSequence()) }
+  appendPage(pageValue: VibePage): void { appendPageToState(pageValue, this.state, this.removalReconciliation, (cursor) => this.setCurrentCursor(cursor)) }
+  replenishAfterRemoval(allowManualPaging = true): Promise<void> { return this.startLoadMore(() => this.replenishAfterRemovalSequence(allowManualPaging)) }
   private async startLoadMore(operation: () => Promise<void>): Promise<void> {
+    if (this.pageReplacement.isActive()) return
     if (this.pendingRequest) return this.pendingRequest
     if (this.state.loadMoreLocked) return
     if (isAutofillActive(this.state.autofill) || this.fillController.isActive()) return
@@ -263,24 +275,20 @@ class VibeController implements VibeInstance {
     const request = operation()
     this.pendingRequest = request
     return request.finally(() => {
-      if (this.pendingRequest === request) this.pendingRequest = null
+      if (this.pendingRequest !== request) return
+      this.pendingRequest = null
       this.state.isLoadingMore = false
     })
   }
   async refresh(): Promise<void> { return this.replaceFeed(this.lastLoadedCursor, 'refresh') }
   async reload(): Promise<void> { return this.replaceFeed(null, 'reload') }
+  replacePage(page: VibePage, options?: VibePageReplacementOptions): Promise<void> { return this.pageReplacement.replace(page, options) }
   private async replaceFeed(cursor: VibeCursor, action: 'refresh' | 'reload'): Promise<void> {
     if (!this.options.loadPage) throw new Error(`Vibe cannot ${action} without loadPage.`)
     if (isAutofillActive(this.state.autofill)) await this.cancelAutofill()
     if (this.fillController.isActive()) await this.cancelFill()
     this.cancelRequest()
-    this.state.autofill = createAutofillState(this.options.autofill, undefined, false)
-    this.fillController.reset()
-    this.reelForward.reset()
-    this.reelRemoval.reset()
-    this.exactMediaRemoval.reset()
-    this.itemRemoval.reset()
-    this.removalReconciliation.reset()
+    this.resetFeedVisit()
     this.surface?.resetMediaLifecycle()
     this.state.error = null
     this.state.current = null
@@ -290,6 +298,15 @@ class VibeController implements VibeInstance {
     this.state.nextPageError = null
     this.state.total = null
     return this.startRequest(cursor, false)
+  }
+  private resetFeedVisit(): void {
+    this.state.autofill = createAutofillState(this.options.autofill, undefined, false)
+    this.fillController.reset()
+    this.reelForward.reset()
+    this.reelRemoval.reset()
+    this.exactMediaRemoval.reset()
+    this.itemRemoval.reset()
+    this.removalReconciliation.reset()
   }
   private async loadFilteredPage(request: VibePageRequest): Promise<VibePage> {
     const loadPage = this.options.loadPage
@@ -344,6 +361,7 @@ class VibeController implements VibeInstance {
     }
   }
   async retryEnd(): Promise<void> {
+    if (this.pageReplacement.isActive()) return
     if (this.pendingRequest) return this.pendingRequest
     if (this.state.loadMoreLocked) return
     if (isAutofillActive(this.state.autofill) || this.fillController.isActive()) return
@@ -359,26 +377,13 @@ class VibeController implements VibeInstance {
     }
   }
   setLoadMoreLocked(locked: boolean): void {
-    if (this.state.loadMoreLocked === locked) return
-    this.state.loadMoreLocked = locked
-    if (!locked) {
-      const pausedFill = this.state.fill.status === 'paused'
-        ? this.state.fill.target
-        : null
-      if (pausedFill) {
-        void this.fillController.resume(this.removalReconciliation.hasPendingSession())
-        return
-      }
-      const resumesPaging = this.state.autofill.status === 'paused'
-        || this.removalReconciliation.hasPendingSession()
-      if (resumesPaging) {
-        const pending = this.pendingRequest
-        if (pending) void pending.finally(() => { void this.loadNext() })
-        else void this.loadNext()
-      } else if (this.state.infiniteScroll) {
-        void nextTick(() => this.surface?.loadIfNearBottom())
-      }
-    }
+    setLoadingLock(this.state, locked, {
+      getPending: () => this.pendingRequest,
+      hasPendingSession: () => this.removalReconciliation.hasPendingSession(),
+      loadNext: () => this.loadNext(),
+      resumeFill: () => this.fillController.resume(this.removalReconciliation.hasPendingSession()),
+      loadIfNearBottom: () => this.surface?.loadIfNearBottom(),
+    })
   }
   setTotal(total: number | null): void {
     if (total !== null && (!Number.isInteger(total) || total < 0)) {
@@ -413,7 +418,8 @@ class VibeController implements VibeInstance {
     this.state.activeReelPostId = postId
     this.routing.syncReel(postId)
   }
-  private cancelRequest(): void {
+  private cancelRequest(cancelReplacement = true): void {
+    if (cancelReplacement) this.pageReplacement.cancel()
     this.autofillController.clearCountdown()
     this.requestVersion += 1
     this.abortController?.abort()
@@ -485,16 +491,8 @@ class VibeController implements VibeInstance {
   private startStateNotifications(): void {
     const onStateChange = this.options.onStateChange
     if (!onStateChange || this.stopStateWatcher) return
-    onStateChange(snapshotState(this.state, this.notificationItems.value))
-    this.stopStateWatcher = watch(
-      () => snapshotState(this.state, this.notificationItems.value),
-      (state) => onStateChange(state),
-      { flush: 'post' },
-    )
+    this.stopStateWatcher = watchStateSnapshots(this.state, this.notificationItems, onStateChange)
   }
-  private setCurrentCursor(cursor: VibeCursor): void {
-    this.lastLoadedCursor = cursor
-    this.state.current = cursor
-  }
+  private setCurrentCursor(cursor: VibeCursor): void { this.lastLoadedCursor = this.state.current = cursor }
 }
 export const createVibe = (options: CreateVibeOptions): VibeInstance => new VibeController(options)

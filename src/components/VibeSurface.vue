@@ -188,7 +188,11 @@ function startItemRemoval(
   ) return 0
 
   const removalPostIds = [...new Set(postIds)]
-  const visiblePostIds = removalPostIds.filter(findMasonryCard)
+  const mountedIds = new Set(Array.from(
+    surfaceElement.value?.querySelectorAll<HTMLElement>('.masonry-feed [data-post-id]') ?? [],
+    (card) => card.dataset.postId,
+  ))
+  const visiblePostIds = removalPostIds.filter((postId) => mountedIds.has(String(postId)))
   if (visiblePostIds.length === 0) return 0
 
   const nextDelays = new Map(removalDelays.value)
@@ -202,6 +206,30 @@ function startItemRemoval(
   leavingPostIds.value = new Set([...leavingPostIds.value, ...removalPostIds])
   removalDelays.value = nextDelays
   return ITEM_MOTION_MS + ((visiblePostIds.length - 1) * staggerMs)
+}
+
+function cancelItemRemoval(): void {
+  leavingPostIds.value = new Set()
+  removalDelays.value = new Map()
+}
+
+async function animateItemRemoval(postIds: readonly VibeItemId[], signal: AbortSignal): Promise<void> {
+  if (signal.aborted || startItemRemoval(postIds, { staggerMs: 0 }) === 0) return
+  await nextTick()
+  if (signal.aborted) return
+  // Wait for native transitions on mounted cards, with event-driven cancellation.
+  const cards = surfaceElement.value?.querySelectorAll<HTMLElement>('.masonry-feed .media-card--leaving') ?? []
+  const animations = Array.from(cards).flatMap((card) => {
+    // Flush the newly applied leaving style before inspecting CSS transitions.
+    void getComputedStyle(card).opacity
+    return card.getAnimations?.().filter((animation) => animation.effect?.getTiming().iterations !== Infinity) ?? []
+  })
+  await new Promise<void>((resolve) => {
+    const finish = () => { signal.removeEventListener('abort', finish); resolve() }
+    signal.addEventListener('abort', finish, { once: true })
+    if (signal.aborted) finish()
+    else void Promise.allSettled(animations.map((animation) => animation.finished)).then(finish)
+  })
 }
 
 function focusMasonryCard(postId: VibeItemId, showFocusRing: boolean): void {
@@ -285,6 +313,8 @@ onBeforeUnmount(() => {
 })
 
 defineExpose({
+  animateItemRemoval,
+  cancelItemRemoval,
   changeActiveReelMedia,
   getAutoScrollElement,
   loadIfNearBottom,
