@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { MediaFailure } from '../core/mediaFailure'
 import {
   computed,
   nextTick,
@@ -34,6 +35,7 @@ const emit = defineEmits<{
   activeChange: [postId: VibeItemId]
   closeInfoSheet: []
   error: [postId: VibeItemId, mediaIndex: number]
+  mediaError: [postId: VibeItemId, failure: MediaFailure]
   loadMore: []
   mediaChange: [postId: VibeItemId, mediaIndex: number]
   ready: [postId: VibeItemId, mediaIndex: number]
@@ -198,6 +200,7 @@ defineExpose({
         :total="total"
         @active-change="emit('activeChange', $event)"
         @error="relayError"
+        @media-error="(postId, failure) => emit('mediaError', postId, failure)"
         @load-more="emit('loadMore')"
         @media-change="relayMediaChange"
         @ready="relayReady"

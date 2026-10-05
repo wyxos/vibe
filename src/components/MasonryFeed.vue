@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { MediaFailure } from '../core/mediaFailure'
 import {
   computed,
   onBeforeUnmount,
@@ -44,6 +45,7 @@ const props = withDefaults(defineProps<MasonryFeedProps>(), {
 const emit = defineEmits<{
   activate: [postId: VibeItemId, input: 'keyboard' | 'pointer']
   error: [postId: VibeItemId, mediaIndex: number]
+  mediaError: [postId: VibeItemId, failure: MediaFailure]
   fullyVisible: [postId: VibeItemId, mediaIndex: number]
   loadMore: []
   mediaChange: [postId: VibeItemId, mediaIndex: number]
@@ -458,6 +460,7 @@ defineExpose({ getScrollElement, loadIfNearBottom })
           @media-change="emit('mediaChange', item.postId, $event)"
           @ready="emit('ready', item.postId, $event)"
           @error="emit('error', item.postId, $event)"
+          @media-error="emit('mediaError', item.postId, $event)"
         />
       </section>
 

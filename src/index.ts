@@ -49,6 +49,7 @@ export type {
   VibeFrontendAutofillOptions,
   VibeMediaAsset,
   VibeMediaCardOptions,
+  VibeMediaErrorContext,
   VibeMediaLifecycleContext,
   VibeMediaOverlayProps,
   VibeMediaPlacement,

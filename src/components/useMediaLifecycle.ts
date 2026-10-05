@@ -1,5 +1,6 @@
 import { computed, shallowRef, watch } from 'vue'
 
+import type { MediaFailure } from '../core/mediaFailure'
 import { mediaStateKey } from '../core/mediaAsset'
 import { mediaLifecycleContext, useReelMediaChangeLifecycle } from '../core/mediaLifecycle'
 import type { MediaPreviewState } from '../core/mediaPreview'
@@ -7,11 +8,13 @@ import type { VibeRuntimeState } from '../core/runtime'
 import type {
   VibeItemId,
   VibeLayout,
+  VibeMediaErrorContext,
   VibeMediaLifecycleContext,
   VibeReelOrigin,
 } from '../types'
 
 interface MediaLifecycleEvents {
+  error: (context: VibeMediaErrorContext) => void
   fullyVisible: (context: VibeMediaLifecycleContext) => void
   ready: (context: VibeMediaLifecycleContext) => void
   reelChange: (context: VibeMediaLifecycleContext) => void
@@ -66,6 +69,11 @@ export function useMediaLifecycle(state: VibeRuntimeState, events: MediaLifecycl
   ): void {
     const value = context(postId, mediaIndex, layout, origin)
     if (value) events.ready(value)
+  }
+
+  function markMediaError(postId: VibeItemId, failure: MediaFailure, layout: VibeLayout): void {
+    const value = context(postId, failure.mediaIndex, layout, layout === 'reel' ? state.reelOrigin ?? 'reel' : null)
+    if (value && failure.src) events.error({ ...value, ...failure })
   }
 
   function markPreviewError(postId: VibeItemId, mediaIndex: number): void {
@@ -138,6 +146,7 @@ export function useMediaLifecycle(state: VibeRuntimeState, events: MediaLifecycl
   )
 
   return {
+    markMediaError,
     markMasonryFullyVisible,
     markMasonryVisible,
     markPreviewError,

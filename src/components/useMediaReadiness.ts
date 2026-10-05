@@ -11,7 +11,7 @@ import type { MediaPreviewState } from '../core/mediaPreview'
 interface MediaReadinessOptions {
   identity: () => string
   mediaIndex: () => number
-  onError: (mediaIndex: number) => void
+  onError: (mediaIndex: number, confirmedFailure: boolean) => void
   onReady: (mediaIndex: number) => void
   previewState: () => MediaPreviewState
 }
@@ -26,6 +26,8 @@ export function useMediaReadiness(options: MediaReadinessOptions) {
   const retrying = shallowRef(false)
   let watchdog: ReturnType<typeof setTimeout> | null = null
   let initialized = false
+  let failureReported = false
+  let disposed = false
 
   const effectivePreviewState = computed<MediaPreviewState>(() => {
     if (retrying.value) return 'error'
@@ -59,10 +61,11 @@ export function useMediaReadiness(options: MediaReadinessOptions) {
   }
 
   function reconcileCachedSource(): void {
+    if (disposed) return
     const image = imageElement.value
     if (image?.complete) {
       if (image.naturalWidth > 0) markSourceReady()
-      else failSourceAttempt()
+      else failSourceAttempt(undefined, true)
       return
     }
     const media = mediaElement.value
@@ -73,8 +76,10 @@ export function useMediaReadiness(options: MediaReadinessOptions) {
     armWatchdog()
   }
 
-  function failSourceAttempt(event?: Event): void {
+  function failSourceAttempt(event?: Event, confirmedFailure = false): void {
+    if (disposed) return
     if (event && !eventIsCurrent(event)) return
+    if (terminalError.value && !retrying.value && (!event || failureReported)) return
     clearWatchdog()
     if (!event && sourceRetry.value === 0) {
       sourceRetry.value = 1
@@ -86,12 +91,15 @@ export function useMediaReadiness(options: MediaReadinessOptions) {
     sourcePending.value = false
     terminalError.value = true
     retrying.value = false
-    options.onError(options.mediaIndex())
+    // Lazy media may not have started: watchdog expiry alone must not request host repair.
+    failureReported = Boolean(event) || confirmedFailure
+    options.onError(options.mediaIndex(), failureReported)
   }
 
   function retrySource(): void {
     if (retrying.value || effectivePreviewState.value !== 'error') return
 
+    failureReported = false
     sourceRetry.value = 0
     terminalError.value = true
     sourcePending.value = true
@@ -107,6 +115,7 @@ export function useMediaReadiness(options: MediaReadinessOptions) {
   watch(options.identity, () => {
     clearWatchdog()
     sourceGeneration.value += 1
+    failureReported = false
     sourceRetry.value = 0
     sourcePending.value = initialized || options.previewState() === 'loading'
     terminalError.value = false
@@ -115,7 +124,7 @@ export function useMediaReadiness(options: MediaReadinessOptions) {
     void nextTick(reconcileCachedSource)
   }, { immediate: true })
 
-  onBeforeUnmount(clearWatchdog)
+  onBeforeUnmount(() => { disposed = true; clearWatchdog() })
 
   return {
     effectivePreviewState,

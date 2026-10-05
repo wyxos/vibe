@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, shallowRef, watch,
-  type CSSProperties } from 'vue'
+import type { MediaFailure } from '../core/mediaFailure'
+import { computed, nextTick, onBeforeUnmount, onMounted, shallowRef, watch, type CSSProperties } from 'vue'
 import { isNearFeedBottom, type ReelFeedProps } from '../core/feed'
 import { mediaAssetAt, mediaAssets, mediaPlaybackVariantForSource,
   mediaStateKey } from '../core/mediaAsset'
@@ -20,6 +20,7 @@ const props = withDefaults(defineProps<ReelFeedProps>(), {
 const emit = defineEmits<{
   activeChange: [postId: VibeItemId]
   error: [postId: VibeItemId, mediaIndex: number]
+  mediaError: [postId: VibeItemId, failure: MediaFailure]
   loadMore: []
   mediaChange: [postId: VibeItemId, mediaIndex: number]
   ready: [postId: VibeItemId, mediaIndex: number]
@@ -447,6 +448,7 @@ defineExpose({
             @ready="emit('ready', item.postId, $event)"
             @reel-audio-change="emit('reelAudioChange', $event)"
             @error="emit('error', item.postId, $event)"
+            @media-error="emit('mediaError', item.postId, $event)"
           />
         </section>
 

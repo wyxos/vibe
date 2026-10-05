@@ -16,6 +16,7 @@ import type {
   VibeFeedFooterActions,
   VibeItemId,
   VibeMediaCardOptions,
+  VibeMediaErrorContext,
   VibeMediaLifecycleContext,
   VibeReelInfoSheetOptions,
   VibeReelAudioState,
@@ -48,6 +49,7 @@ const emit = defineEmits<{
   closeReel: []
   loadMore: []
   mediaFullyVisible: [context: VibeMediaLifecycleContext]
+  mediaError: [context: VibeMediaErrorContext]
   mediaReady: [context: VibeMediaLifecycleContext]
   mediaVisible: [context: VibeMediaLifecycleContext]
   openReel: [postId: VibeItemId]
@@ -69,6 +71,7 @@ const removalDelays = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
 const footerItems = computed(() => Object.freeze([...props.state.items]))
 const footerState = computed(() => snapshotState(props.state, footerItems.value))
 const {
+  markMediaError,
   markMasonryFullyVisible,
   markMasonryVisible,
   markPreviewError,
@@ -80,6 +83,7 @@ const {
   reelStates: reelMediaStates,
   resetMediaLifecycle,
 } = useMediaLifecycle(props.state, {
+  error: (context) => emit('mediaError', context),
   fullyVisible: (context) => emit('mediaFullyVisible', context),
   ready: (context) => emit('mediaReady', context),
   reelChange: (context) => emit('reelMediaChange', context),
@@ -365,6 +369,7 @@ defineExpose({
       @active-change="emit('activeReelChange', $event)"
       @close-info-sheet="emit('reelInfoSheetChange', false)"
       @error="markReelError"
+      @media-error="(postId, failure) => markMediaError(postId, failure, 'reel')"
       @load-more="emit('loadMore')"
       @media-change="setMediaIndex"
       @ready="markReelReady"
@@ -410,6 +415,7 @@ defineExpose({
         :total="state.total"
         @activate="activateMasonryItem"
         @error="markPreviewError"
+        @media-error="(postId, failure) => markMediaError(postId, failure, 'masonry')"
         @fully-visible="markMasonryFullyVisible"
         @load-more="emit('loadMore')"
         @media-change="setMediaIndex"
@@ -463,6 +469,7 @@ defineExpose({
             @active-change="emit('activeReelChange', $event)"
             @close-info-sheet="emit('reelInfoSheetChange', false)"
             @error="markReelError"
+            @media-error="(postId, failure) => markMediaError(postId, failure, 'reel')"
             @load-more="emit('loadMore')"
             @media-change="setMediaIndex"
             @ready="markReelReady"

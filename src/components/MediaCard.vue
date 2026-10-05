@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { MediaFailure } from '../core/mediaFailure'
 import {
   ChevronLeft,
   ChevronRight,
@@ -73,6 +74,7 @@ const emit = defineEmits<{
   activate: [input: 'keyboard' | 'pointer']
   ended: [mediaIndex: number]
   error: [mediaIndex: number]
+  mediaError: [failure: MediaFailure]
   mediaChange: [mediaIndex: number]
   ready: [mediaIndex: number]
   reelAudioChange: [state: VibeReelAudioState]
@@ -110,6 +112,7 @@ const mediaType = computed(() => resolveMediaType(
 const mediaWidth = computed(() => mediaVariant.value.width)
 const mediaHeight = computed(() => mediaVariant.value.height)
 const audioCover = computed(() => audioCoverVariant(mediaItem.value))
+const audioCoverIdentity = computed(() => `${props.item.postId}:${normalizedMediaIndex.value}:${audioCover.value?.src ?? ''}`)
 const audioCoverFailed = shallowRef(false)
 const visibleAudioCover = computed(() => audioCoverFailed.value ? null : audioCover.value)
 const { effectivePreviewState, failSourceAttempt, imageElement, markSourceReady,
@@ -117,7 +120,15 @@ const { effectivePreviewState, failSourceAttempt, imageElement, markSourceReady,
   = useMediaReadiness({
   identity: () => `${props.item.postId}:${normalizedMediaIndex.value}:${props.mediaSource ?? 'preview'}:${mediaSrc.value}:${mediaType.value ?? ''}`,
   mediaIndex: () => normalizedMediaIndex.value,
-  onError: (mediaIndex) => emit('error', mediaIndex),
+  onError: (mediaIndex, confirmedFailure) => {
+    emit('error', mediaIndex)
+    if (!confirmedFailure) return
+    const requested = props.mediaSource ?? 'preview'
+    const source = requested === 'preview' && !isAudio.value && mediaItem.value.preview
+      ? 'preview' : requested === 'mobile' && mediaSrc.value === mediaItem.value.mobile?.src
+        ? 'mobile' : 'original'
+    emit('mediaError', { mediaIndex, source, src: mediaSrc.value })
+  },
   onReady: (mediaIndex) => emit('ready', mediaIndex),
   previewState: () => props.previewState,
 })
@@ -200,12 +211,15 @@ function onTimedMediaClick(event: MouseEvent): void {
   event.stopPropagation()
   void toggleTimedMediaPlayback()
 }
-function onAudioCoverError(): void {
+function onAudioCoverError(event: Event): void {
+  const target = event.currentTarget as HTMLImageElement
+  if (target.dataset.coverIdentity !== audioCoverIdentity.value || audioCoverFailed.value) return
+  emit('mediaError', { mediaIndex: normalizedMediaIndex.value, source: 'preview', src: audioCover.value?.src ?? '' })
   audioCoverFailed.value = true
   if (props.layout === 'masonry') markSourceReady()
 }
 
-watch(() => audioCover.value?.src, () => {
+watch(audioCoverIdentity, () => {
   audioCoverFailed.value = false
 })
 watch(
@@ -327,6 +341,9 @@ watch(
             >
               <img
                 v-if="visibleAudioCover"
+                :key="audioCoverIdentity"
+                :data-cover-identity="audioCoverIdentity"
+                :data-source-generation="sourceGeneration"
                 class="media-audio-cover"
                 :src="visibleAudioCover.src"
                 :width="visibleAudioCover.width ?? undefined"

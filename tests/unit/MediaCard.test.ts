@@ -170,7 +170,10 @@ describe('MediaCard', () => {
     await vi.advanceTimersByTimeAsync(30_000)
 
     expect(wrapper.emitted('error')).toEqual([[0]])
+    expect(wrapper.emitted('mediaError')).toBeUndefined()
     expect(wrapper.get('[data-test="media-retry"]').text()).toBe('Retry')
+    await wrapper.get('img').trigger('error')
+    expect(wrapper.emitted('mediaError')).toHaveLength(1)
   })
 
   it('clears the card backdrop behind transparent chrome regions', async () => {

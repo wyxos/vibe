@@ -23,6 +23,7 @@ const vibe = createVibe(options)
 | `loadPage` | `VibePageLoader` | — | Asynchronous cursor page loader. |
 | `infiniteScroll` | `boolean` | `true` | Loads forward when the feed reaches its boundary; the default footer offers manual loading when the feed is underfilled. |
 | `onMediaFullyVisible` | `(context: VibeMediaLifecycleContext) => void` | — | Runs once per layout and media during a feed visit when masonry reaches its full visibility threshold or ready media is active in a reel. |
+| `onMediaError` | `(context: VibeMediaErrorContext) => void` | � | Reports a terminal load failure with the actual attempted `src` and `source` (`preview`, `original`, or `mobile`). |
 | `onMediaReady` | `(context: VibeMediaLifecycleContext) => void` | — | Runs when an image loads or a video has enough metadata to render. |
 | `onMediaVisible` | `(context: VibeMediaLifecycleContext) => void` | — | Runs once per ready masonry media during a feed visit when it first intersects the viewport. |
 | `onReelMediaChange` | `(context: VibeMediaLifecycleContext) => void` | — | Runs for the initial reel selection and each parent, nested, or single-item media change. |
@@ -32,6 +33,12 @@ const vibe = createVibe(options)
 | `removalReconciliation` | `VibeRemovalReconciliationOptions` | — | Replays recent provider pages whose unique surviving contribution is below configured capacity. |
 
 At least one of `initialPage` or `loadPage` is needed to display content.
+
+### Media failure recovery
+
+`onMediaError` runs after a media load attempt fails, with the lifecycle identity plus `src` (the exact configured URL attempted) and `source`. Source describes the asset actually attempted: missing previews that fall back to the original report `original`; audio artwork reports `preview` independently of audio playback. Browser media error events do not provide a reliable HTTP status. Watchdog-only timeouts do not notify the host because a lazy image may not have started loading.
+
+The callback is a notification, not a feed-loading dependency. Hosts can diagnose a failure, deduplicate concurrent repair requests, and display repair progress through their card content. After repair, call `updateItems()` with refreshed asset references (use a new version in the URL when replacing bytes at the same location). Vibe attempts that source again. Errors from replaced media generations are ignored. A user retry can emit another failure for the same URL; hosts should bound automatic repair attempts. Vibe does not perform storage checks or repairs.
 
 ### Media lifecycle context
 

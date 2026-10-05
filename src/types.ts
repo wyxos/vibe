@@ -81,19 +81,16 @@ export interface VibeItem extends VibeMediaAsset {
   postId: VibeItemId
   items: VibeMediaAsset[]
 }
-
 export interface VibeMediaOverlayProps {
   item: VibeItem
   mediaIndex: number
   mediaItem: VibeMediaAsset
   mediaSource: VibeMediaSource
 }
-
 export interface VibeItemPlacement {
   index: number
   item: VibeItem
 }
-
 export interface VibeMediaTarget { mediaIndex: number; postId: VibeItemId }
 
 export interface VibeReelItemTarget {
@@ -115,6 +112,8 @@ export interface VibeMediaLifecycleContext extends VibeMediaPlacement {
   origin: VibeReelOrigin | null
   phoneMode: boolean
 }
+export type { VibeMediaErrorContext } from './core/mediaFailure'
+import type { VibeMediaErrorContext } from './core/mediaFailure'
 declare const vibeRemovalBrand: unique symbol
 declare const vibeMediaRemovalBrand: unique symbol
 
@@ -414,6 +413,7 @@ export interface CreateVibeOptions {
   mediaCard?: VibeMediaCardOptions
   masonry?: import('./core/masonryOptions').VibeMasonryOptions
   onMediaFullyVisible?: (context: VibeMediaLifecycleContext) => void
+  onMediaError?: (context: VibeMediaErrorContext) => void
   onMediaReady?: (context: VibeMediaLifecycleContext) => void
   onMediaVisible?: (context: VibeMediaLifecycleContext) => void
   onReelMediaChange?: (context: VibeMediaLifecycleContext) => void

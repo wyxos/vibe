@@ -144,6 +144,7 @@ class VibeController implements VibeInstance {
       mediaCard: this.options.mediaCard,
       masonry: this.options.masonry,
       onMediaFullyVisible: this.options.onMediaFullyVisible,
+      onMediaError: this.options.onMediaError,
       onMediaReady: this.options.onMediaReady,
       onMediaVisible: this.options.onMediaVisible,
       onReelMediaChange: this.options.onReelMediaChange,
