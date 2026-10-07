@@ -684,6 +684,28 @@ active reel. A nested masonry-origin reel therefore closes back to its nested
 feed without also closing the parent sheet or reel. Single-instance Escape
 behavior is unchanged.
 
+## Masonry scroll space and pagination
+
+```ts
+masonry: {
+  bottomSpacePx: 200,
+  loadMoreThresholdPx: 100,
+},
+```
+
+`bottomSpacePx` adds empty scrollable space after the cards (default `0`). It
+extends the real scroll height without changing card layout or the virtualization
+window. A custom footer remains an overlay and does not reserve this space itself.
+
+`loadMoreThresholdPx` triggers automatic masonry pagination when the remaining
+scroll distance is at most this number of CSS pixels (default `240`). The distance
+is measured from the actual bottom, including bottom space and existing padding.
+For 1,000px of content plus 200px of extra space, a 100px threshold triggers when
+the viewport bottom reaches 1,100px. Zero loads only upon reaching the bottom.
+Both values must be finite and non-negative; fractions are allowed. They apply
+per instance to masonry only. Reel pagination retains its existing 240px threshold.
+`infiniteScroll` and load-more locks retain their usual behavior.
+
 ## Custom feed footer
 
 Set `feedFooter.component` to replace the built-in `GalleryFooter`. Consumers

@@ -340,7 +340,7 @@ function onScroll(event: Event): void {
   settledMasonry.ensurePackedThrough(packUntilBottom())
   scheduleIndexSnapshotUpdate()
   if (Date.now() >= suppressAutomaticLoadUntil
-    && !props.loadMoreLocked && props.infiniteScroll && isNearFeedBottom(element)) {
+    && !props.loadMoreLocked && props.infiniteScroll && isNearFeedBottom(element, props.masonry?.loadMoreThresholdPx)) {
     emit('loadMore')
   }
 }
@@ -348,7 +348,7 @@ function onScroll(event: Event): void {
 function loadIfNearBottom(): void {
   const element = galleryElement.value
   if (Date.now() >= suppressAutomaticLoadUntil
-    && !props.loadMoreLocked && element && isNearFeedBottom(element)) emit('loadMore')
+    && !props.loadMoreLocked && element && isNearFeedBottom(element, props.masonry?.loadMoreThresholdPx)) emit('loadMore')
 }
 
 watch(() => props.items.length, (count, previous) => {
@@ -463,7 +463,8 @@ defineExpose({ getScrollElement, loadIfNearBottom })
           @media-error="emit('mediaError', item.postId, $event)"
         />
       </section>
-
+      <div v-if="masonry?.bottomSpacePx" class="masonry-bottom-space" aria-hidden="true"
+        :style="{ flex: `0 0 ${masonry.bottomSpacePx}px` }" />
     </main>
 
     <div

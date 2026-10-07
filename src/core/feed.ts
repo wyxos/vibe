@@ -93,7 +93,7 @@ export interface VibeSurfaceExpose {
 
 export const LOAD_MORE_THRESHOLD = 240
 
-export function isNearFeedBottom(element: HTMLElement): boolean {
+export function isNearFeedBottom(element: HTMLElement, thresholdPx = LOAD_MORE_THRESHOLD): boolean {
   return element.scrollHeight - element.scrollTop - element.clientHeight
-    <= LOAD_MORE_THRESHOLD
+    <= thresholdPx
 }

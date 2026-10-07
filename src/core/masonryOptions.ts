@@ -5,6 +5,10 @@ export interface VibeMasonryOverscanOptions {
 }
 
 export interface VibeMasonryOptions {
+  /** Extra scrollable space after the cards, in CSS pixels. Defaults to zero. */
+  bottomSpacePx?: number
+  /** Remaining scroll distance that triggers pagination. Defaults to 240. */
+  loadMoreThresholdPx?: number
   minColumnWidth?: number
   overscan?: VibeMasonryOverscanOptions
 }
@@ -33,6 +37,12 @@ export function resolveMasonryOverscan(
 }
 
 export function validateMasonryOptions(options?: VibeMasonryOptions): void {
+  for (const property of ['bottomSpacePx', 'loadMoreThresholdPx'] as const) {
+    const value = options?.[property]
+    if (value !== undefined && (!Number.isFinite(value) || value < 0)) {
+      throw new TypeError(`Vibe masonry ${property} must be a finite non-negative number.`)
+    }
+  }
   if (options?.minColumnWidth !== undefined
     && (!Number.isFinite(options.minColumnWidth) || options.minColumnWidth <= 0)) {
     throw new TypeError(

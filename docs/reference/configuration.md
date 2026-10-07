@@ -28,7 +28,7 @@ const vibe = createVibe(options)
 | `onMediaVisible` | `(context: VibeMediaLifecycleContext) => void` | — | Runs once per ready masonry media during a feed visit when it first intersects the viewport. |
 | `onReelMediaChange` | `(context: VibeMediaLifecycleContext) => void` | — | Runs for the initial reel selection and each parent, nested, or single-item media change. |
 | `onStateChange` | `(state: VibeState) => void` | — | Receives the initial state and every public state change. |
-| `masonry` | `VibeMasonryOptions` | Current behavior | Optionally tunes masonry column width and the virtualized overscan window. |
+| `masonry` | `VibeMasonryOptions` | Current behavior | Tunes column width, virtualized overscan, bottom scroll space, and the load-more threshold. |
 | `removalHistoryLimit` | `number` | `20` | Maximum recent removal transactions retained for `undoLastRemoval()`; use `0` to disable automatic history. |
 | `removalReconciliation` | `VibeRemovalReconciliationOptions` | — | Replays recent provider pages whose unique surviving contribution is below configured capacity. |
 
@@ -183,6 +183,28 @@ masonry: {
 Images mounted only in the overscan window use native lazy loading. Masonry
 videos defer metadata until they enter the real viewport. Active viewport media
 remains high priority, and reel preload behavior is unchanged.
+
+## Masonry scroll space and pagination
+
+```ts
+masonry: {
+  bottomSpacePx: 200,
+  loadMoreThresholdPx: 100,
+},
+```
+
+`bottomSpacePx` adds empty scrollable space after the cards (default `0`). It
+extends the real scroll height without changing card layout or the virtualization
+window. A custom footer remains an overlay and does not reserve this space itself.
+
+`loadMoreThresholdPx` triggers automatic masonry pagination when the remaining
+scroll distance is at most this number of CSS pixels (default `240`). The distance
+is measured from the actual bottom, including bottom space and existing padding.
+For 1,000px of content plus 200px of extra space, a 100px threshold triggers when
+the viewport bottom reaches 1,100px. Zero loads only upon reaching the bottom.
+Both values must be finite and non-negative; fractions are allowed. They apply
+per instance to masonry only. Reel pagination retains its existing 240px threshold.
+`infiniteScroll` and load-more locks retain their usual behavior.
 
 ## State changes
 

@@ -7,8 +7,31 @@ import {
   validateMasonryOptions,
 } from '@/core/masonryOptions'
 import { createVibe } from '@/index'
+import { isNearFeedBottom } from '@/core/feed'
 
 describe('masonry options', () => {
+  it.each(['bottomSpacePx', 'loadMoreThresholdPx'] as const)('validates %s through the public API', property => {
+    for (const value of [-1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => createVibe({ target: document.createElement('div'), masonry: { [property]: value } }))
+        .toThrow(`Vibe masonry ${property} must be a finite non-negative number.`)
+    }
+    expect(() => validateMasonryOptions({ [property]: 0 })).not.toThrow()
+    expect(() => validateMasonryOptions({ [property]: 200 })).not.toThrow()
+  })
+
+  it('measures thresholds from the actual padded bottom and preserves the reel default', () => {
+    const element = { scrollHeight: 1_200, clientHeight: 500, scrollTop: 599 } as HTMLElement
+    expect(isNearFeedBottom(element, 100)).toBe(false)
+    element.scrollTop = 600
+    expect(isNearFeedBottom(element, 100)).toBe(true)
+    expect(isNearFeedBottom(element, 0)).toBe(false)
+    element.scrollTop = 700
+    expect(isNearFeedBottom(element, 0)).toBe(true)
+    element.scrollTop = 460
+    expect(isNearFeedBottom(element)).toBe(true)
+    element.scrollTop = 459
+    expect(isNearFeedBottom(element)).toBe(false)
+  })
   it('resolves an opt-in minimum column width without changing the default', () => {
     expect(resolveMasonryMinColumnWidth(undefined))
       .toBe(DEFAULT_MASONRY_MIN_COLUMN_WIDTH)
