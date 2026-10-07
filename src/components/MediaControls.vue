@@ -48,6 +48,11 @@ function inputValue(event: Event): number {
   return Number((event.target as HTMLInputElement).value)
 }
 
+function onKeydown(event: KeyboardEvent): void {
+  // Escape belongs to the reel; other keys stay with the focused media control.
+  if (event.key !== 'Escape') event.stopPropagation()
+}
+
 const safeDuration = computed(() => Math.max(0, props.duration))
 const mediaLabel = computed(() => props.mediaType === 'audio' ? 'audio' : 'video')
 const mediaLabelTitle = computed(() => props.mediaType === 'audio' ? 'Audio' : 'Video')
@@ -70,7 +75,7 @@ const volumeStyle = computed<CSSProperties>(() => ({
     :aria-label="`${mediaLabelTitle} controls`"
     @click.stop
     @dblclick.stop
-    @keydown.stop
+    @keydown="onKeydown"
     @wheel.stop
   >
     <input
