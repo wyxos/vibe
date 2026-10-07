@@ -58,6 +58,9 @@ const emit = defineEmits<{
       >
         Masonry performance
       </RouterLink>
+      <RouterLink class="demos-aside-link" to="/demos/masonry-scroll-options">
+        Masonry scroll options
+      </RouterLink>
       <RouterLink
         class="demos-aside-link"
         to="/demos/item-removal"

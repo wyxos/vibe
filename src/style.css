@@ -1384,3 +1384,27 @@ body {
     grid-column: 1 / -1;
   }
 }
+
+.masonry-scroll-demo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 300px));
+  gap: 1rem;
+  align-content: start;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.masonry-scroll-demo-example {
+  min-width: 0;
+}
+
+.masonry-scroll-demo-example h2,
+.masonry-scroll-demo-example p {
+  margin: 0.5rem 0;
+  font-size: 0.8125rem;
+}
+
+.masonry-scroll-demo-feed {
+  width: 100%;
+  height: 300px;
+}

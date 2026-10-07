@@ -18,6 +18,7 @@ import ItemRemovalDemoPage from './pages/ItemRemovalDemoPage.vue'
 import ItemRemovalReconciliationDemoPage from './pages/ItemRemovalReconciliationDemoPage.vue'
 import MediaVisibilityDemoPage from './pages/MediaVisibilityDemoPage.vue'
 import MasonryPerformanceDemoPage from './pages/MasonryPerformanceDemoPage.vue'
+import MasonryScrollOptionsDemoPage from './pages/MasonryScrollOptionsDemoPage.vue'
 import ReelUrlDemoPage from './pages/ReelUrlDemoPage.vue'
 import ReelAutoAdvanceDemoPage from './pages/ReelAutoAdvanceDemoPage.vue'
 import ReelInfoSheetDemoPage from './pages/ReelInfoSheetDemoPage.vue'
@@ -36,6 +37,11 @@ export function createDemoRouter(
         component: DemosPage,
         redirect: { name: 'demo-card-header-footer' },
         children: [
+          {
+            path: 'masonry-scroll-options',
+            name: 'demo-masonry-scroll-options',
+            component: MasonryScrollOptionsDemoPage,
+          },
           {
             path: 'audio-media',
             name: 'demo-audio-media',
