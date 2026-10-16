@@ -2,7 +2,13 @@
 
 Vibe is an initializable Vue 3 media feed with virtualized masonry and reel layouts.
 
+Try the [live demo](https://vibe.wyxos.com/) to explore the feed and its controls.
 Read the [full documentation](./docs/index.md) for guided setup, layout and data-loading concepts, and the API reference.
+
+[![Vibe demo: scroll a masonry feed, open a card in the reel, and press Escape to return to the same scroll position.](https://raw.githubusercontent.com/wyxos/vibe/master/docs/assets/vibe-demo.gif)](https://vibe.wyxos.com/)
+
+The preview uses synthetic sample media. Open a masonry card to view it in a reel,
+scroll to move between posts, and press Escape to return to the feed.
 
 ## Installation
 
