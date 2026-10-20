@@ -36,6 +36,7 @@ export interface FrontendFillResult extends FrontendFillCollection {
 
 interface CollectFrontendFillOptions {
   existingItems: readonly VibeItem[]
+  getLoadedItemCount?: () => number
   initialCursor: VibeCursor
   loadPage: VibePageLoader
   onCollection?: (collection: FrontendFillCollection) => void
@@ -129,6 +130,7 @@ export function isFillActive(state: VibeFillState): boolean {
 
 export async function collectFrontendFill({
   existingItems,
+  getLoadedItemCount,
   initialCursor,
   loadPage,
   onCollection = () => undefined,
@@ -150,7 +152,8 @@ export async function collectFrontendFill({
   let received = 0
   let total: number | undefined
 
-  if ('items' in target && knownItems.length >= target.items) {
+  const loadedCount = () => getLoadedItemCount?.() ?? knownItems.length
+  if ('items' in target && loadedCount() >= target.items) {
     return { completedPages, items, lastCursor, next, pages, received, status: 'complete' }
   }
 
@@ -204,7 +207,7 @@ export async function collectFrontendFill({
       total,
     })
 
-    if ('items' in target && knownItems.length >= target.items) {
+    if ('items' in target && loadedCount() >= target.items) {
       return {
         completedPages,
         items,

@@ -22,10 +22,12 @@ import type {
   VibeFrontendFillOptions,
   VibeFillSessionSnapshot,
   VibeFillTarget,
+  VibeItem,
   VibePageLoader,
 } from '../types'
 
 interface FillControllerOptions {
+  filterItems?: (items: readonly VibeItem[]) => VibeItem[]
   fill?: VibeFillOptions
   loadPage?: VibePageLoader
   needsFrontendPreparation?: () => boolean
@@ -290,6 +292,7 @@ export class VibeFillController {
     }
     const result = await collectFrontendFill({
       existingItems: state.items,
+      getLoadedItemCount: () => state.items.length,
       initialCursor: state.next,
       loadPage,
       onCollection: (collection) => {
@@ -321,7 +324,7 @@ export class VibeFillController {
     })
     if (!this.isCurrent(requestVersion)) return
 
-    state.items = appendUniqueItems(state.items, result.items)
+    state.items = appendUniqueItems(state.items, this.filterItems(result.items))
     state.next = result.next
     if (result.total !== undefined) state.total = result.total
     this.options.onLastCursor(result.lastCursor)
@@ -339,7 +342,9 @@ export class VibeFillController {
     if (!collection || this.options.fill?.strategy !== 'frontend') return
 
     const state = this.options.state
-    state.items = appendUniqueItems(state.items, collection.items)
+    // Collections include earlier pages. Recheck removals made while a later
+    // request was pending, rather than resurrecting those earlier cards.
+    state.items = appendUniqueItems(state.items, this.filterItems(collection.items))
     state.next = collection.next
     if (collection.total !== undefined) state.total = collection.total
     this.options.onLastCursor(collection.lastCursor)
@@ -348,6 +353,10 @@ export class VibeFillController {
       completedPages: collection.completedPages,
       received: collection.received,
     })
+  }
+
+  private filterItems(items: readonly VibeItem[]): readonly VibeItem[] {
+    return this.options.filterItems?.(items) ?? items
   }
 
   private syncBackendCountdown(): void {

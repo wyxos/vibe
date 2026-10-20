@@ -78,6 +78,7 @@ class VibeController implements VibeInstance {
     this.removalReconciliation = new RemovalReconciliationController(options)
     this.removalReconciliation.recordInitialPage(options.initialPage)
     this.fillController = new VibeFillController({
+      filterItems: (items) => this.removalReconciliation.filterItems(items),
       fill: options.fill,
       loadPage: options.loadPage
         ? (request) => this.loadFilteredPage(request)
