@@ -38,7 +38,7 @@ export function scrollbarPlaybackMutation(
   const seek = target instanceof HTMLInputElement && target.type === 'range'
     && target.classList.contains('media-control-seek') && target.closest('.media-controls')
   const opacity = target instanceof HTMLVideoElement && target.classList.contains('media-preview')
-  if (!(seek && record.attributeName === 'aria-valuetext')) {
+  if (!(seek && (record.attributeName === 'aria-valuetext' || record.attributeName === 'value'))) {
     if (record.attributeName !== 'style' || (!seek && !opacity)) return false
     const property = seek ? '--media-range-progress' : 'opacity'
     const before = previousStyle()
