@@ -43,10 +43,17 @@ export interface VibeRuntimeState {
   total: number | null
 }
 
+const itemSnapshots = new WeakMap<VibeRuntimeState, ComputedRef<readonly VibeItem[]>>()
+
 export function createItemSnapshot(
   state: VibeRuntimeState,
 ): ComputedRef<readonly VibeItem[]> {
-  return computed(() => Object.freeze([...state.items]))
+  let snapshot = itemSnapshots.get(state)
+  if (!snapshot) {
+    snapshot = computed(() => Object.freeze([...state.items]))
+    itemSnapshots.set(state, snapshot)
+  }
+  return snapshot
 }
 
 export function watchStateSnapshots(

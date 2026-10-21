@@ -7,9 +7,10 @@ import {
   watch,
 } from 'vue'
 import { clampMediaIndex, mediaAssets } from '../core/mediaAsset'
+import { itemIds } from '../core/itemIds'
 import type { FeedRendererExpose } from '../core/feed'
 import type { VibeMasonryOptions } from '../core/masonryOptions'
-import { snapshotState, type VibeRuntimeState } from '../core/runtime'
+import { createItemSnapshot, snapshotState, type VibeRuntimeState } from '../core/runtime'
 import type {
   VibeCardRegion,
   VibeFeedFooter,
@@ -68,7 +69,7 @@ const enteringPostIds = shallowRef<ReadonlySet<VibeItemId>>(new Set())
 const entryDelays = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
 const leavingPostIds = shallowRef<ReadonlySet<VibeItemId>>(new Set())
 const removalDelays = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
-const footerItems = computed(() => Object.freeze([...props.state.items]))
+const footerItems = computed(() => createItemSnapshot(props.state).value)
 const footerState = computed(() => snapshotState(props.state, footerItems.value))
 const {
   markMediaError,
@@ -90,7 +91,7 @@ const {
   visible: (context) => emit('mediaVisible', context),
 })
 let previousPostIds = new Set<VibeItemId>(
-  props.state.items.map((item) => item.postId),
+  itemIds(props.state.items),
 )
 let enterReleaseFrame: number | null = null
 let restoreFocusPostId: VibeItemId | null = null
@@ -285,10 +286,10 @@ watch(
     return [items, items.length] as const
   },
   ([items]) => {
-    const postIds = items.map((item) => item.postId)
+    const postIds = itemIds(items)
     const addedPostIds = postIds.filter((postId) => !previousPostIds.has(postId))
     const currentPostIds = new Set(postIds)
-    previousPostIds = new Set(postIds)
+    previousPostIds = currentPostIds
     leavingPostIds.value = new Set(
       [...leavingPostIds.value].filter((postId) => currentPostIds.has(postId)),
     )
