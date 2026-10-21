@@ -30,6 +30,9 @@ export function useSettledMasonryFeedLayout(options: {
   width: Ref<number>
 }) {
   const epoch = shallowRef(0)
+  // Read the reactive sequence once per membership change. Packing another tail
+  // chunk or comparing a retained prefix must not resubscribe to every index.
+  const mediaSnapshot = computed(() => [...options.items()])
   let additionalHeight = 0
   let cache: MasonryLayout | null = null
   let gap = 0
@@ -53,7 +56,7 @@ export function useSettledMasonryFeedLayout(options: {
     previous: MasonryLayout,
   ): MasonryLayout {
     cache = layout
-    source = media.slice()
+    source = media
     viewportIndex = continueMasonryViewportIndex(
       layout.items,
       viewportIndex ?? createMasonryViewportIndex(previous.items),
@@ -72,7 +75,7 @@ export function useSettledMasonryFeedLayout(options: {
     if (packFrame !== null) return
     packFrame = requestAnimationFrame(() => {
       packFrame = null
-      const media = options.items()
+      const media = mediaSnapshot.value
       const previous = cache
       if (!previous || previous.items.length >= media.length) return
       const fromIndex = previous.items.length
@@ -102,7 +105,7 @@ export function useSettledMasonryFeedLayout(options: {
 
   const layout = computed(() => {
     void epoch.value
-    const media = options.items()
+    const media = mediaSnapshot.value
     const nextWidth = options.width.value
     const nextOptions = {
       additionalHeight: options.additionalHeight.value,
@@ -118,7 +121,7 @@ export function useSettledMasonryFeedLayout(options: {
       && additionalHeight === nextOptions.additionalHeight
       && minColumnWidth === nextOptions.minColumnWidth
     ) {
-      let fromIndex = 0
+      let fromIndex = source === media ? media.length : 0
       const previousItems = source
       const limit = Math.min(previousItems.length, media.length)
       while (fromIndex < limit && previousItems[fromIndex] === media[fromIndex]) {
@@ -152,7 +155,7 @@ export function useSettledMasonryFeedLayout(options: {
     cancelPack()
     const next = calculateMasonryLayout(media, nextWidth, nextOptions)
     cache = next
-    source = media.slice()
+    source = media
     width = nextWidth
     gap = nextOptions.gap
     additionalHeight = nextOptions.additionalHeight
@@ -171,7 +174,7 @@ export function useSettledMasonryFeedLayout(options: {
 
   return {
     ensurePackedThrough(bottom: number): void {
-      const media = options.items()
+      const media = mediaSnapshot.value
       const previous = cache
       if (!previous || previous.items.length >= media.length) return
       if (previous.height >= bottom) return
