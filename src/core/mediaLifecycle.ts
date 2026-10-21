@@ -1,6 +1,7 @@
-import { computed, isReactive, watch, type ComputedRef } from 'vue'
+import { isReactive, watch } from 'vue'
 
 import { clampMediaIndex, mediaAssetAt } from './mediaAsset'
+import { createMediaLifecycleIndex } from './mediaLifecycleIndex'
 import type { VibeRuntimeState } from './runtime'
 import type {
   VibeItemId,
@@ -9,7 +10,7 @@ import type {
   VibeReelOrigin,
 } from '../types'
 
-const itemIndices = new WeakMap<VibeRuntimeState, ComputedRef<ReadonlyMap<VibeItemId, number>>>()
+const itemIndices = new WeakMap<VibeRuntimeState, ReturnType<typeof createMediaLifecycleIndex>>()
 
 function postIndexFor(state: VibeRuntimeState, postId: VibeItemId): number {
   // Map uses SameValueZero; lifecycle identity historically uses strict equality.
@@ -19,20 +20,12 @@ function postIndexFor(state: VibeRuntimeState, postId: VibeItemId): number {
   if (!isReactive(state) || !isReactive(state.items)) {
     return state.items.findIndex((item) => item.postId === postId)
   }
-  let indices = itemIndices.get(state)
-  if (!indices) {
-    indices = computed(() => {
-      const result = new Map<VibeItemId, number>()
-      state.items.forEach((item, index) => {
-        // Match findIndex's first placement if a caller supplied duplicates.
-        const id = item.postId
-        if (!result.has(id)) result.set(id, index)
-      })
-      return result
-    })
-    itemIndices.set(state, indices)
+  let find = itemIndices.get(state)
+  if (!find) {
+    find = createMediaLifecycleIndex(state)
+    itemIndices.set(state, find)
   }
-  return indices.value.get(postId) ?? -1
+  return find(postId)
 }
 
 export function mediaLifecycleContext(
