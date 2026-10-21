@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   calculateMasonryLayout,
@@ -145,4 +145,111 @@ describe('masonry viewport index', () => {
       projected.retainedIndices,
     ))
   })
+  it('appends 250 cards without reading retained geometry or sorting retained columns', () => {
+    const dimensions = Array.from({ length: 9_250 }, (_, index) => media(400, 200 + index % 1_100))
+    const options = { gap: 10, minColumnWidth: 320 }
+    const layout = calculateMasonryLayout(dimensions, 1_440, options)
+    const previous = createMasonryViewportIndex(layout.items.slice(0, 9_000))
+    const before = previous.columns.map(column => column.map(entry => ({ ...entry })))
+    let positionReads = 0
+    let entryReads = 0
+    const guarded = new Proxy(layout.items, {
+      get(target, key, receiver) {
+        if (typeof key === 'string' && /^\d+$/.test(key) && Number(key) < 9_000) positionReads++
+        return Reflect.get(target, key, receiver)
+      },
+    })
+    const restore: Array<() => void> = []
+    for (const column of previous.columns) for (const entry of column) {
+      for (const key of ['index', 'top', 'bottom'] as const) {
+        const value = entry[key]
+        Object.defineProperty(entry, key, { configurable: true, enumerable: true,
+          get() { entryReads++; return value } })
+        restore.push(() => Object.defineProperty(entry, key, { configurable: true, enumerable: true, writable: true, value }))
+      }
+    }
+    const sort = vi.spyOn(Array.prototype, 'sort')
+    let continued: ReturnType<typeof continueMasonryViewportIndex>
+    let sorts: number
+    try {
+      continued = continueMasonryViewportIndex(guarded, previous, 9_000)
+      sorts = sort.mock.calls.length
+    } finally {
+      sort.mockRestore()
+      restore.forEach(reset => reset())
+    }
+    expect(positionReads).toBe(0)
+    expect(entryReads).toBe(0)
+    expect(sorts!).toBe(0)
+    expect(previous.columns).toEqual(before)
+    expect(continued!).toEqual(createMasonryViewportIndex(layout.items))
+    const viewport = { overscan: 600, scrollTop: layout.height - 1_500, viewportHeight: 900 }
+    expect(queryMasonryViewportIndex(continued!, viewport).indices)
+      .toEqual(calculateVisibleMasonryIndices(layout.items, viewport))
+  })
+
+  it('retains untouched columns and keeps older snapshots immutable across repeated appends', () => {
+    const positions = [
+      { x: 0, y: 0, width: 100, height: 80 },
+      { x: 110, y: 0, width: 100, height: 500 },
+      { x: 0, y: 90, width: 100, height: 700 },
+      { x: 110, y: 510, width: 100, height: 80 },
+    ]
+    const first = createMasonryViewportIndex(positions.slice(0, 2))
+    const second = continueMasonryViewportIndex(positions.slice(0, 3), first, 2)
+    const third = continueMasonryViewportIndex(positions, second, 3)
+    expect(second.columns[1]).toBe(first.columns[1])
+    expect(third.columns[0]).toBe(second.columns[0])
+    expect(first).toEqual(createMasonryViewportIndex(positions.slice(0, 2)))
+    expect(second).toEqual(createMasonryViewportIndex(positions.slice(0, 3)))
+    expect(third).toEqual(createMasonryViewportIndex(positions))
+    expect(continueMasonryViewportIndex(positions, third, positions.length)).toBe(third)
+    for (const scrollTop of [0, 80, 100, 490, 590, 790]) {
+      const viewport = { overscan: 0, scrollTop, viewportHeight: 100 }
+      expect(queryMasonryViewportIndex(third, viewport).indices)
+        .toEqual(calculateVisibleMasonryIndices(positions, viewport))
+    }
+  })
+
+  it('falls back for a tail inserted before retained geometry and for newly introduced columns', () => {
+    const prefix = [
+      { x: 0, y: 100, width: 100, height: 100 },
+      { x: 110, y: 100, width: 100, height: 200 },
+    ]
+    const previous = createMasonryViewportIndex(prefix)
+    for (const tail of [
+      { x: 0, y: 0, width: 100, height: 50 },
+      { x: 220, y: 0, width: 100, height: 50 },
+      { x: 0, y: 150, width: 100, height: 100 },
+    ]) {
+      const positions = [...prefix, tail]
+      const continued = continueMasonryViewportIndex(positions, previous, prefix.length)
+      expect(continued).toEqual(createMasonryViewportIndex(positions))
+      for (const scrollTop of [0, 100, 160, 210, 290]) {
+        const viewport = { overscan: 0, scrollTop, viewportHeight: 40 }
+        expect(queryMasonryViewportIndex(continued, viewport).indices)
+          .toEqual(calculateVisibleMasonryIndices(positions, viewport))
+      }
+    }
+  })
+
+  it('preserves custom source indexes and rebuilds changed widths and middle replacements', () => {
+    const dimensions = Array.from({ length: 30 }, (_, index) => media(400, 200 + index * 40))
+    const options = { gap: 10, minColumnWidth: 320 }
+    const initial = calculateMasonryLayout(dimensions, 1_440, options)
+    const previous = createMasonryViewportIndex(initial.items.slice(0, 20))
+    const sourceIndices = dimensions.map((_, index) => index < 20 ? index : index * 2 + 1)
+    const customPrevious = createMasonryViewportIndex(initial.items.slice(0, 20), sourceIndices.slice(0, 20))
+    const custom = continueMasonryViewportIndex(initial.items, customPrevious, 20, sourceIndices)
+    expect(custom).toEqual(createMasonryViewportIndex(initial.items, sourceIndices))
+    const resized = calculateMasonryLayout(dimensions, 900, options)
+    expect(continueMasonryViewportIndex(resized.items, previous, 0))
+      .toEqual(createMasonryViewportIndex(resized.items))
+    const replacement = dimensions.slice()
+    replacement[5] = media(400, 1_800)
+    const changed = calculateMasonryLayout(replacement, 1_440, options)
+    expect(continueMasonryViewportIndex(changed.items, previous, 5))
+      .toEqual(createMasonryViewportIndex(changed.items))
+  })
+
 })
