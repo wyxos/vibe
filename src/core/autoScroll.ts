@@ -2,6 +2,7 @@ import type {
   VibeAutoScrollOptions,
   VibeAutoScrollState,
 } from '../types'
+import { cancelScrollFrame, claimScrollFrameWriter, requestScrollFrame, type ScrollFrameContext } from './scrollFrame'
 
 export const DEFAULT_AUTO_SCROLL_MIN_SPEED = 20
 export const DEFAULT_AUTO_SCROLL_MAX_SPEED = 240
@@ -68,6 +69,8 @@ export class VibeAutoScrollController {
   private scrollOwner: HTMLElement | null = null
   private lastWrittenTop: number | null = null
   private fractionalRemainder = 0
+  private releaseWriter: (() => void) | undefined
+  private version = 0
   private mounted = false
 
   constructor(private readonly options: VibeAutoScrollControllerOptions) {}
@@ -87,6 +90,7 @@ export class VibeAutoScrollController {
     this.options.state.enabled = enabled
     this.options.state.paused = false
     this.lastTimestamp = null
+    this.version++
     this.resetPosition()
     if (enabled) this.schedule()
     else this.cancelFrame()
@@ -96,6 +100,7 @@ export class VibeAutoScrollController {
     if (!this.options.state.enabled) return
     this.options.state.paused = paused
     this.lastTimestamp = null
+    this.version++
     this.resetPosition()
     if (paused) this.cancelFrame()
     else this.schedule()
@@ -111,7 +116,12 @@ export class VibeAutoScrollController {
     )
   }
 
-  private readonly tick = (timestamp: number): void => {
+  private readonly tick = (timestamp: number, frame: ScrollFrameContext) => {
+    try { return this.readFrame(timestamp, frame) }
+    catch (error) { this.cancelFrame(); throw error }
+  }
+
+  private readFrame(timestamp: number, frame: ScrollFrameContext) {
     this.frame = null
     const state = this.options.state
     if (!this.mounted || !state.enabled) return
@@ -127,15 +137,19 @@ export class VibeAutoScrollController {
     if (this.scrollOwner !== element) {
       this.resetPosition()
       this.scrollOwner = element
+      this.releaseWriter = claimScrollFrameWriter(element)
     }
 
+    const version = this.version
+    let write: (() => void) | undefined
     if (this.lastTimestamp !== null) {
       const elapsed = Math.min(
         MAX_FRAME_DELTA_MS,
         Math.max(0, timestamp - this.lastTimestamp),
       )
-      const maximumScrollTop = Math.max(0, element.scrollHeight - element.clientHeight)
-      const actualTop = element.scrollTop
+      const extent = frame.extent(element)
+      const maximumScrollTop = Math.max(0, extent.contentSize - extent.viewportSize)
+      const actualTop = frame.position(element)
       // Compare the browser's exact last read-back, never an assumed rounding
       // quantum. Manual input, scroll anchoring and bounds changes rebase us.
       if (this.lastWrittenTop !== null && actualTop !== this.lastWrittenTop) {
@@ -144,25 +158,34 @@ export class VibeAutoScrollController {
       const desiredTop = actualTop + this.fractionalRemainder
         + state.speedPxPerSecond * elapsed / 1_000
       const nextTop = Math.min(maximumScrollTop, Math.max(0, desiredTop))
-      element.scrollTop = nextTop
-      // Native scroll offsets can quantize a fractional assignment. Carry only
-      // its exact unapplied remainder, instead of feeding rounding into speed.
-      const writtenTop = element.scrollTop
-      this.lastWrittenTop = writtenTop
-      this.fractionalRemainder = desiredTop <= 0 || desiredTop >= maximumScrollTop
-        || writtenTop >= maximumScrollTop ? 0 : nextTop - writtenTop
+      write = () => {
+        if (version !== this.version || !this.mounted || !state.enabled || state.paused || this.scrollOwner !== element) return
+        try {
+          element.scrollTop = nextTop
+          // Carry the exact native unapplied fraction; share its readback with
+          // the thumb instead of reading a potentially stale requested offset.
+          const writtenTop = element.scrollTop
+          frame.written(element, writtenTop)
+          this.lastWrittenTop = writtenTop
+          this.fractionalRemainder = desiredTop <= 0 || desiredTop >= maximumScrollTop
+            || writtenTop >= maximumScrollTop ? 0 : nextTop - writtenTop
+        } catch (error) { this.cancelFrame(); throw error }
+      }
     }
     this.lastTimestamp = timestamp
     this.schedule()
+    return { write }
   }
 
   private schedule(): void {
     if (!this.mounted || !this.options.state.enabled || this.frame !== null) return
     if (typeof requestAnimationFrame !== 'function') return
-    this.frame = requestAnimationFrame(this.tick)
+    this.frame = requestScrollFrame(this.tick)
   }
 
   private resetPosition(): void {
+    this.releaseWriter?.()
+    this.releaseWriter = undefined
     this.scrollOwner = null
     this.lastWrittenTop = null
     this.fractionalRemainder = 0
@@ -170,10 +193,11 @@ export class VibeAutoScrollController {
 
   private cancelFrame(): void {
     if (this.frame !== null && typeof cancelAnimationFrame === 'function') {
-      cancelAnimationFrame(this.frame)
+      cancelScrollFrame(this.frame)
     }
     this.frame = null
     this.lastTimestamp = null
+    this.version++
     this.resetPosition()
   }
 }

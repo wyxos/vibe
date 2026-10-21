@@ -8,11 +8,9 @@ import {
   type CSSProperties,
 } from 'vue'
 
-import {
-  calculateScrollbarGeometry,
-  type ScrollbarGeometry,
-} from '../core/scrollbar'
+import type { ScrollbarGeometry } from '../core/scrollbar'
 import { scrollbarCommentMutation, scrollbarMotionMask, scrollbarPlaybackMutation, type PlaybackMutation } from './scrollbarPlaybackMutation'
+import { cancelScrollFrame, emptyScrollFrameGeometry as emptyGeometry, hasScrollFrameWriter, readScrollFrameGeometry, requestScrollFrame, type ScrollFrameContext } from '../core/scrollFrame'
 
 const MINIMUM_THUMB_SIZE = 32
 const SCROLL_STEP = 40
@@ -26,16 +24,9 @@ const props = defineProps<{
   suspended?: boolean
 }>()
 
-const emptyGeometry: ScrollbarGeometry = {
-  maximumScrollPosition: 0,
-  scrollable: false,
-  thumbOffset: 0,
-  thumbSize: 0,
-  thumbTravel: 0,
-}
-
 const trackElement = shallowRef<HTMLElement | null>(null)
 const geometry = shallowRef<ScrollbarGeometry>(emptyGeometry)
+const scrollPosition = shallowRef(0)
 const isDragging = shallowRef(false)
 const isInteracting = shallowRef(false)
 const isReady = shallowRef(false)
@@ -49,6 +40,7 @@ let contentResizeObserver: ResizeObserver | null = null
 let pendingMeasurement = false
 let viewportResizeObserver: ResizeObserver | null = null
 let measurementFrame: number | null = null
+let measurementReason: 'content' | 'resize' | 'mutation' | 'scroll' = 'mutation'
 let disposed = false
 let sizesDirty = true
 let sizes: { contentSize: number, trackSize: number, viewportSize: number } | null = null
@@ -83,8 +75,9 @@ function markInteraction(): void {
 
 function cancelMeasurement(): void {
   if (measurementFrame === null) return
-  cancelAnimationFrame(measurementFrame)
+  cancelScrollFrame(measurementFrame)
   measurementFrame = null
+  measurementReason = 'mutation'
 }
 
 function invalidate(reason: 'content' | 'resize'): void {
@@ -94,14 +87,17 @@ function invalidate(reason: 'content' | 'resize'): void {
   scheduleMeasurement(reason)
 }
 
-function scheduleMeasurement(reason: 'content' | 'resize' | 'mutation'): void {
-  if (disposed) return
+function scheduleMeasurement(reason: 'content' | 'resize' | 'mutation' | 'scroll'): void {
+  if (disposed || props.suspended) return
   if (isDragging.value) { pendingMeasurement = true; return }
+  if (reason !== 'mutation') measurementReason = reason
   if (measurementFrame !== null) return
   measurementFrame = -1
-  const frame = requestAnimationFrame(() => {
+  const frame = requestScrollFrame((_timestamp, context) => {
     measurementFrame = null
-    if (sizesDirty || pendingMutations.length || mutationOverflow) measure(reason)
+    const currentReason = measurementReason
+    measurementReason = 'mutation'
+    if (currentReason === 'scroll' || sizesDirty || pendingMutations.length || mutationOverflow) return measure(currentReason, context)
   })
   if (measurementFrame !== null) measurementFrame = frame
 }
@@ -181,30 +177,20 @@ function drainMutations(element: HTMLElement): void {
 function clearMutations(): void {
   pendingMutations = []; mutationOverflow = reconnectContent = prunePlaybackTargets = false
 }
-
-function calculateGeometry(refresh: boolean): ScrollbarGeometry {
+function calculateGeometry(refresh: boolean, frame?: ScrollFrameContext) {
   const scrollElement = props.scrollElement
   const track = trackElement.value
-  if (!scrollElement || !track) return emptyGeometry
-
+  if (!scrollElement || !track) return () => ({ geometry: emptyGeometry, position: 0 })
+  const measured = readScrollFrameGeometry(scrollElement, track, refresh ? null : sizes, MINIMUM_THUMB_SIZE, frame)
   if (refresh || !sizes) {
-    sizes = {
-      contentSize: scrollElement.scrollHeight,
-      trackSize: track.clientHeight,
-      viewportSize: scrollElement.clientHeight,
-    }
+    sizes = measured.sizes
     sizesDirty = false
     pendingMeasurement = false
     cancelMeasurement()
   }
-  return calculateScrollbarGeometry({
-    ...sizes,
-    minimumThumbSize: MINIMUM_THUMB_SIZE,
-    scrollPosition: scrollElement.scrollTop,
-  })
+  return measured.sample
 }
-
-function measure(reason: 'content' | 'resize' | 'scroll' | 'mutation'): void {
+function measure(reason: 'content' | 'resize' | 'scroll' | 'mutation', frame?: ScrollFrameContext) {
   if (disposed) return
   const element = props.scrollElement
   if (!contentMutationObserver) prunePlaybackTargets = true
@@ -221,14 +207,16 @@ function measure(reason: 'content' | 'resize' | 'scroll' | 'mutation'): void {
   if (isDragging.value) {
     const scrollElement = props.scrollElement
     if (!scrollElement || geometry.value.maximumScrollPosition <= 0) return
+    const position = frame?.position(scrollElement) ?? scrollElement.scrollTop
     const progress = Math.min(
       1,
-      Math.max(0, scrollElement.scrollTop / geometry.value.maximumScrollPosition),
+      Math.max(0, position / geometry.value.maximumScrollPosition),
     )
     geometry.value = {
       ...geometry.value,
       thumbOffset: geometry.value.thumbTravel * progress,
     }
+    scrollPosition.value = position
     return
   }
 
@@ -236,19 +224,28 @@ function measure(reason: 'content' | 'resize' | 'scroll' | 'mutation'): void {
   // the previous live-size read on every scroll, including overflow changes.
   const observed = contentMutationObserver && contentResizeObserver && viewportResizeObserver
   const refresh = reason !== 'scroll' || sizesDirty || !observed
-  geometry.value = calculateGeometry(refresh || motionNeedsLiveSizes())
+  const measured = calculateGeometry(refresh || motionNeedsLiveSizes(), frame)
   // Prime mask checks after a required size read, while styles are already clean.
   if (refresh) motionNeedsLiveSizes()
-  if (isReady.value || readyFrame !== null) return
-  readyFrame = requestAnimationFrame(() => {
-    readyFrame = null
-    isReady.value = true
-  })
+  const publish = () => {
+    if (disposed || element !== props.scrollElement || frame && props.suspended) return
+    const current = measured()
+    geometry.value = current.geometry
+    scrollPosition.value = current.position
+    if (isReady.value || readyFrame !== null) return
+    readyFrame = requestAnimationFrame(() => {
+      readyFrame = null
+      isReady.value = true
+    })
+  }
+  if (frame) return { publish }
+  publish()
 }
 
 function onScroll(): void {
   markInteraction()
-  measure('scroll')
+  if (props.scrollElement && hasScrollFrameWriter(props.scrollElement) && !isDragging.value) scheduleMeasurement('scroll')
+  else measure('scroll')
 }
 
 function setScrollPosition(value: number): void {
@@ -440,6 +437,10 @@ watch(trackElement, (element, previous) => {
   if (element) viewportResizeObserver?.observe(element)
   invalidate('resize')
 }, { flush: 'post' })
+watch(() => props.suspended, suspended => {
+  if (suspended) cancelMeasurement()
+  else invalidate('resize')
+})
 
 watch(
   () => props.contentSize,
@@ -485,7 +486,7 @@ onBeforeUnmount(() => {
       aria-orientation="vertical"
       :aria-valuemax="Math.round(geometry.maximumScrollPosition)"
       aria-valuemin="0"
-      :aria-valuenow="Math.round(scrollElement?.scrollTop ?? 0)"
+      :aria-valuenow="Math.round(scrollPosition)"
       role="scrollbar"
       :style="thumbStyle"
       :tabindex="isVisible ? 0 : -1"
