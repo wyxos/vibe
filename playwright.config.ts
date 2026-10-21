@@ -3,6 +3,8 @@ import { defineConfig } from '@playwright/test'
 const host = '127.0.0.1'
 const port = 4173
 const baseURL = `http://${host}:${port}`
+// Keep all interaction checks available when a task forbids visual capture.
+const noVisuals = process.env.VIBE_TEST_NO_VISUALS === '1'
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -15,9 +17,9 @@ export default defineConfig({
   },
   use: {
     baseURL,
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    trace: noVisuals ? 'off' : 'on-first-retry',
+    screenshot: noVisuals ? 'off' : 'only-on-failure',
+    video: noVisuals ? 'off' : 'retain-on-failure',
     viewport: {
       width: 1440,
       height: 900,

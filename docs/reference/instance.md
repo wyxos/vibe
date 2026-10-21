@@ -14,6 +14,12 @@
 | `loadNext()` | Requests the next ordinary cursor page. |
 | `replacePage(page, options?)` | Replaces completed results in place using native exits and entries. |
 
+`getState()` returns a fresh state object and reuses its readonly, frozen `items`
+array until the loaded collection changes. Adding, removing, replacing or
+reordering items produces a new array synchronously, so a retained snapshot keeps
+its original membership. Item objects and their metadata remain shared; this is
+not a deep copy. Use the instance methods to change collection membership.
+
 Use `replacePage()` when your application already has the next search or filter
 result. Keep the feed mounted while that request is pending, then pass its
 completed `VibePage`. Matching `postId` values retain their mounted card keys

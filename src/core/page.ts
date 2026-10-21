@@ -33,15 +33,27 @@ export function appendUniqueItems(
   incoming: readonly VibeItem[],
 ): VibeItem[] {
   const postIds = new Set(current.map((item) => item.postId))
+  return [...current, ...takeUniqueItems(postIds, incoming)]
+}
 
-  return [
-    ...current,
-    ...incoming.filter((item) => {
-      if (postIds.has(item.postId)) return false
-      postIds.add(item.postId)
-      return true
-    }),
-  ]
+export function takeUniqueItems(
+  postIds: Set<VibeItemId>,
+  incoming: readonly VibeItem[],
+): VibeItem[] {
+  return incoming.filter((item) => {
+    if (postIds.has(item.postId)) return false
+    postIds.add(item.postId)
+    return true
+  })
+}
+
+export function appendUniqueItemsIfChanged(
+  current: VibeItem[],
+  incoming: readonly VibeItem[],
+): VibeItem[] {
+  if (incoming.length === 0) return current
+  const additions = takeUniqueItems(new Set(current.map((item) => item.postId)), incoming)
+  return additions.length > 0 ? [...current, ...additions] : current
 }
 
 function identityKey(value: VibeItemId): string {

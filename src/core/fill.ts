@@ -1,4 +1,4 @@
-import { appendUniqueItems, validatePage, type LoadedPageRecord } from './page'
+import { takeUniqueItems, validatePage, type LoadedPageRecord } from './page'
 import type {
   VibeFillOptions,
   VibeFillSessionSnapshot,
@@ -40,6 +40,7 @@ interface CollectFrontendFillOptions {
   initialCursor: VibeCursor
   loadPage: VibePageLoader
   onCollection?: (collection: FrontendFillCollection) => void
+  onPage?: (collection: FrontendFillCollection) => void
   onDelayChange: (snapshot: RequestDelaySnapshot) => void
   onProgress: (progress: FrontendFillProgress) => void
   options: VibeFrontendFillOptions
@@ -133,7 +134,8 @@ export async function collectFrontendFill({
   getLoadedItemCount,
   initialCursor,
   loadPage,
-  onCollection = () => undefined,
+  onCollection,
+  onPage,
   onDelayChange,
   onProgress,
   options,
@@ -143,7 +145,8 @@ export async function collectFrontendFill({
 }: CollectFrontendFillOptions): Promise<FrontendFillResult> {
   const items: VibeItem[] = []
   const pages: LoadedPageRecord[] = []
-  const knownItems = [...existingItems]
+  const existingCount = existingItems.length
+  const knownPostIds = new Set(existingItems.map(({ postId }) => postId))
   const seenCursors = new Set<string>()
   let completedPages = 0
   let cursor = initialCursor
@@ -152,7 +155,7 @@ export async function collectFrontendFill({
   let received = 0
   let total: number | undefined
 
-  const loadedCount = () => getLoadedItemCount?.() ?? knownItems.length
+  const loadedCount = () => getLoadedItemCount?.() ?? existingCount + items.length
   if ('items' in target && loadedCount() >= target.items) {
     return { completedPages, items, lastCursor, next, pages, received, status: 'complete' }
   }
@@ -183,29 +186,30 @@ export async function collectFrontendFill({
     const page = validatePage(await loadPage({ cursor, signal }))
     completedPages += 1
     lastCursor = cursor
-    const combined = appendUniqueItems(knownItems, page.items)
-    const additions = combined.slice(knownItems.length)
-    pages.push({
+    const additions = takeUniqueItems(knownPostIds, page.items)
+    const record = {
       contributionIds: additions.map(({ postId }) => postId),
       cursor,
       next: page.next,
       returnedIds: page.items.map(({ postId }) => postId),
-    })
-    knownItems.push(...additions)
+    }
+    pages.push(record)
     items.push(...additions)
     received = items.length
     next = page.next
     if (page.total !== undefined) total = page.total
     onProgress({ completedPages, next, received })
-    onCollection({
+    const progress = {
       completedPages,
-      items: [...items],
       lastCursor: cursor,
       next,
-      pages: [...pages],
       received,
       total,
-    })
+    }
+    // The controller commits only the arriving page. Keep cumulative snapshots
+    // available to other collectors without copying them for incremental users.
+    onPage?.({ ...progress, items: additions, pages: [record] })
+    onCollection?.({ ...progress, items: [...items], pages: [...pages] })
 
     if ('items' in target && loadedCount() >= target.items) {
       return {

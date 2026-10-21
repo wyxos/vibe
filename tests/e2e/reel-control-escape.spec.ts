@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 
 const video = readFileSync(new URL('../fixtures/synthetic-video.mp4', import.meta.url))
+const noVisuals = process.env.VIBE_TEST_NO_VISUALS === '1'
 
 for (const width of [1440, 700]) {
   test(`Escape exits a feed-opened reel after seeking at ${width}px`, async ({ page }) => {
@@ -37,11 +38,11 @@ for (const width of [1440, 700]) {
     expect(Number(await seek.inputValue())).toBeGreaterThan(previous)
     await expect(overlay).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
-    await page.screenshot({ path: test.info().outputPath(`focused-seek-${width}.png`) })
+    if (!noVisuals) await page.screenshot({ path: test.info().outputPath(`focused-seek-${width}.png`) })
     await seek.press('Escape')
     await expect(overlay).toHaveCount(0)
     await expect(card).toBeFocused()
-    await page.screenshot({ path: test.info().outputPath(`returned-feed-${width}.png`) })
+    if (!noVisuals) await page.screenshot({ path: test.info().outputPath(`returned-feed-${width}.png`) })
     expect(errors).toEqual([])
   })
 }

@@ -190,7 +190,7 @@ class VibeController implements VibeInstance {
     this.app = null
     this.surface = null
   }
-  getState(): VibeState { return snapshotState(this.state) }
+  getState(): VibeState { return snapshotState(this.state, this.notificationItems.value) }
   getReelAudioState(): VibeReelAudioState { return this.reelAudio.get() }
   setReelAudioState(state: VibeReelAudioState): void { this.reelAudio.set(state) }
   removeMedia(target: VibeMediaTarget): VibeMediaRemoval | null {
