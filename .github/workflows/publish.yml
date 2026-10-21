@@ -1,5 +1,8 @@
 name: Publish Package
 
+env:
+  VIBE_TEST_NO_VISUALS: '1'
+
 on:
   push:
     tags:
