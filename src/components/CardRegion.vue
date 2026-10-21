@@ -18,7 +18,7 @@ const props = defineProps<{
   index: number
   item: VibeItem
   layout: VibeLayout
-  loadedCount: number
+  loadedCount: number | (() => number)
   mediaIndex: number
   mediaSource?: VibeMediaSource
   placement: 'footer' | 'header'
@@ -30,6 +30,10 @@ const props = defineProps<{
 const normalizedMediaIndex = computed(() => (
   clampMediaIndex(props.item, props.mediaIndex)
 ))
+// Resolve the internal source here so count changes update numeric custom-region
+// props without subscribing the whole MediaCard render to collection length.
+const regionLoadedCount = computed(() => typeof props.loadedCount === 'function'
+  ? props.loadedCount() : props.loadedCount)
 const mediaItems = computed(() => mediaAssets(props.item))
 const mediaItem = computed(() => (
   mediaAssetAt(props.item, normalizedMediaIndex.value)
@@ -66,7 +70,7 @@ const background = computed(() => (
       :index="index"
       :item="item"
       :layout="layout"
-      :loaded-count="loadedCount"
+      :loaded-count="regionLoadedCount"
       :media-count="mediaItems.length"
       :media-index="normalizedMediaIndex"
       :media-item="mediaItem"

@@ -175,6 +175,7 @@ const showLoadMore = computed(() => (
 
 const viewportIndices = computed(() => new Set(viewportIndexSnapshot.value))
 const itemStyleCache = createMasonryItemStyleCache()
+const loadedCountSource = () => props.items.length
 
 const visibleItems = computed(() => {
   const rows = overscanIndexSnapshot.value.flatMap((index) => {
@@ -448,7 +449,7 @@ defineExpose({ getScrollElement, loadIfNearBottom })
           :item-style="itemStyle(index)"
           interactive
           layout="masonry"
-          :loaded-count="items.length"
+          :loaded-count="loadedCountSource"
           :media-index="mediaIndices.get(item.postId) ?? 0"
           :preview-state="previewStates.get(mediaStateKey(
             item.postId,

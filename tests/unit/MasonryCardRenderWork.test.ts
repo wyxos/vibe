@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, h, markRaw, nextTick } from 'vue'
+import { defineComponent, h, markRaw, nextTick, toRef, watch, type Ref } from 'vue'
 
 import MasonryFeed from '@/components/MasonryFeed.vue'
 import MediaCard from '@/components/MediaCard.vue'
@@ -28,18 +28,25 @@ async function flushFrames() {
   await nextTick()
 }
 
-function fixture() {
+function fixture(withChrome = true) {
   const updates: number[] = [], chrome: number[] = []
-  const region = markRaw(defineComponent({ props: ['item'], setup: props => () => {
-    chrome.push(props.item.postId)
-    return h('span', `Synthetic ${props.item.postId}`)
+  const countChanges: Array<{ id: number; before: number; after: number }> = []
+  const countRefs: Array<{ id: number; count: Ref<number> }> = []
+  const region = markRaw(defineComponent({ props: ['item', 'loadedCount'], setup: props => {
+    const count = toRef(props, 'loadedCount')
+    countRefs.push({ id: props.item.postId, count })
+    watch(count, (after, before) => countChanges.push({ id: props.item.postId, before, after }))
+    return () => {
+      chrome.push(props.item.postId)
+      return h('span', `Synthetic ${props.item.postId} / ${props.loadedCount}`)
+    }
   } }))
   const wrapper = mount(MasonryFeed, {
     props: {
       canRetryEnd: false, enteringPostIds: new Set<number>(), entryDelays: new Map(),
       hasNext: false, infiniteScroll: false, isLoadingMore: false, loadMoreLocked: false,
       mediaIndices: new Map(), nextPageError: false, previewStates: new Map(), total: null,
-      cardHeader: { component: region, height: 24 }, cardFooter: { component: region, height: 24 },
+      ...(withChrome ? { cardHeader: { component: region, height: 24 }, cardFooter: { component: region, height: 24 } } : {}),
       items: Array.from({ length: 100 }, (_, index) => ({
         postId: index + 1, src: `https://example.test/${index + 1}.jpg`, width: 400, height: 400, items: [],
       })),
@@ -52,10 +59,64 @@ function fixture() {
     },
   })
   const cards = () => new Map(wrapper.findAllComponents(MediaCard).map(card => [card.props('item').postId, card]))
-  return { wrapper, updates, chrome, cards }
+  return { wrapper, updates, chrome, cards, region, countChanges, countRefs }
 }
 
 describe('MasonryFeed retained card render work', () => {
+  it('retains direct numeric MediaCard counts and reactive custom-region props in reel layout', async () => {
+    const changes: number[] = []
+    const region = markRaw(defineComponent({ props: { loadedCount: { type: Number, required: true } }, setup: props => {
+      const count = toRef(props, 'loadedCount')
+      watch(count, value => changes.push(value))
+      return () => h('span', count.value)
+    } }))
+    const wrapper = mount(MediaCard, { props: {
+      active: true, entering: false, fetchPriority: 'high', index: 0,
+      item: { postId: 1, src: 'https://example.test/1.jpg', width: 400, height: 400, items: [] },
+      layout: 'reel', loadedCount: 7, mediaIndex: 0, previewState: 'ready', total: null,
+      cardHeader: { component: region, height: 24 }, cardFooter: { component: region, height: 24 },
+    } })
+    try {
+      expect(wrapper.findAllComponents(region).map(value => value.props('loadedCount'))).toEqual([7, 7])
+      await wrapper.setProps({ loadedCount: 9 })
+      expect(wrapper.findAllComponents(region).map(value => value.props('loadedCount'))).toEqual([9, 9])
+      expect(changes).toEqual([9, 9])
+    } finally { wrapper.unmount() }
+  })
+
+  it.each([true, false])('appends without rerendering unchanged retained cards while preserving numeric chrome count watches (chrome=%s)', async withChrome => {
+    const f = fixture(withChrome)
+    try {
+      await nextTick(); await nextTick(); await flushFrames()
+      const before = new Map([...f.cards()].map(([id, card]) => [id, { element: card.element, style: card.props('itemStyle') }]))
+      expect(before.size).toBeGreaterThan(0)
+      f.updates.length = 0; f.chrome.length = 0
+      await f.wrapper.setProps({ items: [...f.wrapper.props('items'), ...Array.from({ length: 25 }, (_, index) => ({
+        postId: 101 + index, src: `https://example.test/${101 + index}.jpg`, width: 400, height: 400, items: [],
+      }))] })
+      await nextTick()
+      for (const [id, previous] of before) {
+        const card = f.cards().get(id)!
+        expect(card.element).toBe(previous.element)
+        expect(card.props('itemStyle')).toBe(previous.style)
+        if (withChrome) {
+          const regions = card.findAllComponents(f.region)
+          expect(regions).toHaveLength(2)
+          for (const region of regions) {
+            expect(region.props('loadedCount')).toBe(125)
+            expect(typeof region.props('loadedCount')).toBe('number')
+            expect(region.text()).toBe(`Synthetic ${id} / 125`)
+          }
+          expect(f.countChanges.filter(value => value.id === id)).toEqual([
+            { id, before: 100, after: 125 }, { id, before: 100, after: 125 },
+          ])
+          expect(f.countRefs.filter(value => value.id === id).map(value => value.count.value)).toEqual([125, 125])
+        }
+      }
+      expect(f.updates).toHaveLength(0)
+      if (!withChrome) { expect(f.countRefs).toHaveLength(0); expect(f.chrome).toHaveLength(0) }
+    } finally { f.wrapper.unmount() }
+  })
   it('preserves unchanged retained card styles when the mounted row window moves', async () => {
     const f = fixture()
     try {
@@ -117,7 +178,7 @@ describe('MasonryFeed retained card render work', () => {
       expect(f.updates).toContain(1)
       f.chrome.length = 0
       await f.wrapper.setProps({ items: [...f.wrapper.props('items'), { postId: 101, src: 'https://example.test/101.jpg', width: 400, height: 400, items: [] }] })
-      expect(card().props('loadedCount')).toBe(101)
+      expect(card().findAllComponents(f.region).map(region => region.props('loadedCount'))).toEqual([101, 101])
       expect(f.chrome).toContain(1)
     } finally { f.wrapper.unmount() }
   })
