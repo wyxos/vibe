@@ -12,10 +12,12 @@ import {
   calculateScrollbarGeometry,
   type ScrollbarGeometry,
 } from '../core/scrollbar'
+import { scrollbarCommentMutation, scrollbarMotionMask, scrollbarPlaybackMutation, type PlaybackMutation } from './scrollbarPlaybackMutation'
 
 const MINIMUM_THUMB_SIZE = 32
 const SCROLL_STEP = 40
 const INTERACTION_RELEASE_MS = 120
+const MAX_PENDING_MUTATIONS = 512
 
 const props = defineProps<{
   contentSize: number
@@ -51,6 +53,13 @@ let disposed = false
 let sizesDirty = true
 let sizes: { contentSize: number, trackSize: number, viewportSize: number } | null = null
 const movingContent = new Map<Element, Map<string, number>>()
+const playbackResizeTargets = new Set<HTMLElement>()
+let clippedPlaybackCards = new WeakMap<HTMLElement, boolean>()
+let previousPlaybackStyle: CSSStyleDeclaration | undefined
+let pendingMutations: MutationRecord[] = []
+let mutationOverflow = false
+let reconnectContent = false
+let prunePlaybackTargets = false
 
 const isVisible = computed(() => geometry.value.scrollable && !props.suspended)
 
@@ -81,19 +90,96 @@ function cancelMeasurement(): void {
 function invalidate(reason: 'content' | 'resize'): void {
   if (disposed) return
   sizesDirty = true
+  clippedPlaybackCards = new WeakMap()
+  scheduleMeasurement(reason)
+}
+
+function scheduleMeasurement(reason: 'content' | 'resize' | 'mutation'): void {
+  if (disposed) return
   if (isDragging.value) { pendingMeasurement = true; return }
   if (measurementFrame !== null) return
   measurementFrame = -1
   const frame = requestAnimationFrame(() => {
     measurementFrame = null
-    if (sizesDirty) measure(reason)
+    if (sizesDirty || pendingMutations.length || mutationOverflow) measure(reason)
   })
   if (measurementFrame !== null) measurementFrame = frame
 }
 
-function acceptMutations(records: MutationRecord[], element: HTMLElement): void {
-  if (records.some(record => record.type === 'childList' && record.target === element)) observeContent(element)
-  if (records.length > 0) sizesDirty = true
+function clipsContent(node: HTMLElement): boolean {
+  let clipped = clippedPlaybackCards.get(node)
+  if (clipped === undefined) {
+    const style = node.ownerDocument.defaultView?.getComputedStyle(node)
+    const clips = (value: string | undefined) => value === 'hidden' || value === 'clip'
+    clipped = !!style && clips(style.overflowX || style.overflow) && clips(style.overflowY || style.overflow)
+    clippedPlaybackCards.set(node, clipped)
+  }
+  return clipped
+}
+
+function observePlayback(nodes: readonly HTMLElement[]): void {
+  for (const node of nodes) if (!playbackResizeTargets.has(node)) {
+    playbackResizeTargets.add(node)
+    contentResizeObserver?.observe(node, { box: 'border-box' })
+  }
+}
+
+function playbackPaintOnly({ target, card }: PlaybackMutation): boolean {
+  if (!contentResizeObserver || !clipsContent(card)) return false
+  observePlayback([target, card])
+  return true
+}
+
+function motionNeedsLiveSizes(): boolean {
+  for (const [target, active] of movingContent) {
+    const mask = scrollbarMotionMask(target, active.keys())
+    if (!mask || !contentResizeObserver || !clipsContent(mask)) return true
+    observePlayback([mask])
+  }
+  return false
+}
+
+function queueMutations(records: MutationRecord[], element: HTMLElement): void {
+  for (const record of records) {
+    if (scrollbarCommentMutation(record)) continue
+    if (record.type === 'childList') {
+      prunePlaybackTargets = true
+      if (record.target === element) reconnectContent = true
+    }
+    if (mutationOverflow) continue
+    if (pendingMutations.length === MAX_PENDING_MUTATIONS) {
+      mutationOverflow = true
+      pendingMutations = []
+    } else pendingMutations.push(record)
+  }
+}
+
+function drainMutations(element: HTMLElement): void {
+  queueMutations(contentMutationObserver?.takeRecords() ?? [], element)
+  if (reconnectContent) observeContent(element)
+  if (prunePlaybackTargets) for (const target of playbackResizeTargets) {
+    if (!element.contains(target)) { contentResizeObserver?.unobserve(target); playbackResizeTargets.delete(target) }
+  }
+  const records = pendingMutations, overflow = mutationOverflow
+  pendingMutations = []; mutationOverflow = reconnectContent = prunePlaybackTargets = false
+  if (!records.length && !overflow) return
+  const candidates: PlaybackMutation[] = []
+  let changed = overflow || sizesDirty || !contentResizeObserver
+  // An unknown record already requires geometry. Check every cheap candidate
+  // first, avoiding computed clipping reads for earlier neutral records.
+  for (const record of records) {
+    if (changed) break
+    const candidate = scrollbarPlaybackMutation(record, element,
+      () => previousPlaybackStyle ??= document.createElement('span').style)
+    if (candidate === false) changed = true
+    else if (candidate) candidates.push(candidate)
+  }
+  if (!changed) changed = candidates.some(candidate => !playbackPaintOnly(candidate))
+  if (changed) { sizesDirty = true; clippedPlaybackCards = new WeakMap() }
+}
+
+function clearMutations(): void {
+  pendingMutations = []; mutationOverflow = reconnectContent = prunePlaybackTargets = false
 }
 
 function calculateGeometry(refresh: boolean): ScrollbarGeometry {
@@ -118,10 +204,14 @@ function calculateGeometry(refresh: boolean): ScrollbarGeometry {
   })
 }
 
-function measure(reason: 'content' | 'resize' | 'scroll'): void {
+function measure(reason: 'content' | 'resize' | 'scroll' | 'mutation'): void {
   if (disposed) return
   const element = props.scrollElement
-  if (element) acceptMutations(contentMutationObserver?.takeRecords() ?? [], element)
+  if (!contentMutationObserver) prunePlaybackTargets = true
+  if (element) drainMutations(element)
+  // Playback-only batches do not change the thumb. onScroll owns position;
+  // even a redundant scrollTop read can flush otherwise pending styles.
+  if (reason === 'mutation' && !sizesDirty) return
   for (const target of movingContent.keys()) if (!element?.contains(target)) movingContent.delete(target)
   if (isDragging.value && reason !== 'scroll') {
     pendingMeasurement = true
@@ -144,8 +234,11 @@ function measure(reason: 'content' | 'resize' | 'scroll'): void {
 
   // Size reuse is safe only with both observer types. Missing observers retain
   // the previous live-size read on every scroll, including overflow changes.
-  const observed = contentMutationObserver && contentResizeObserver && viewportResizeObserver && movingContent.size === 0
-  geometry.value = calculateGeometry(reason !== 'scroll' || sizesDirty || !observed)
+  const observed = contentMutationObserver && contentResizeObserver && viewportResizeObserver
+  const refresh = reason !== 'scroll' || sizesDirty || !observed
+  geometry.value = calculateGeometry(refresh || motionNeedsLiveSizes())
+  // Prime mask checks after a required size read, while styles are already clean.
+  if (refresh) motionNeedsLiveSizes()
   if (isReady.value || readyFrame !== null) return
   readyFrame = requestAnimationFrame(() => {
     readyFrame = null
@@ -251,6 +344,7 @@ function observeContent(element: HTMLElement): void {
     if (element === props.scrollElement) invalidate('content')
   })
   for (const child of element.children) contentResizeObserver.observe(child)
+  for (const target of playbackResizeTargets) if (element.contains(target)) contentResizeObserver.observe(target, { box: 'border-box' })
 }
 
 function onResourceLoad(): void { invalidate('content') }
@@ -262,6 +356,7 @@ function motionKey(event: Event): string {
 }
 
 function onMotionStart(event: Event): void {
+  if (event.type.startsWith('transition') && (event as TransitionEvent).propertyName === 'opacity') return
   const target = event.target
   if (!(target instanceof Element) || !props.scrollElement?.contains(target)) return
   const active = movingContent.get(target) ?? new Map<string, number>()
@@ -272,6 +367,7 @@ function onMotionStart(event: Event): void {
 }
 
 function onMotionEnd(event: Event): void {
+  if (event.type.startsWith('transition') && (event as TransitionEvent).propertyName === 'opacity') return
   const target = event.target
   if (!(target instanceof Element)) return
   const active = movingContent.get(target)
@@ -302,6 +398,9 @@ watch(
     previous?.removeEventListener('scroll', onScroll)
     contentListeners(previous, false)
     movingContent.clear()
+    playbackResizeTargets.clear()
+    clearMutations()
+    clippedPlaybackCards = new WeakMap()
     cancelMeasurement()
     sizes = null
     sizesDirty = true
@@ -326,10 +425,10 @@ watch(
     if (element && typeof MutationObserver !== 'undefined') {
       contentMutationObserver = new MutationObserver(records => {
         if (element !== props.scrollElement || disposed) return
-        acceptMutations(records, element)
-        invalidate('content')
+        queueMutations(records, element)
+        scheduleMeasurement('mutation')
       })
-      contentMutationObserver.observe(element, { childList: true, subtree: true, attributes: true, characterData: true })
+      contentMutationObserver.observe(element, { childList: true, subtree: true, attributes: true, attributeOldValue: true, characterData: true })
     }
     void nextTick(() => measure('resize'))
   },
@@ -356,6 +455,8 @@ onBeforeUnmount(() => {
   props.scrollElement?.removeEventListener('scroll', onScroll)
   contentListeners(props.scrollElement, false)
   movingContent.clear()
+  playbackResizeTargets.clear()
+  clearMutations()
   contentMutationObserver?.disconnect()
   contentResizeObserver?.disconnect()
   viewportResizeObserver?.disconnect()
