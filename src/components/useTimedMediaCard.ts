@@ -7,6 +7,7 @@ import type {
 } from '../types'
 import { useMediaCardAudio } from './useMediaCardAudio'
 import { useReelTimedMediaActivity } from './useReelVideoActivity'
+import { emitMediaPlaybackDiagnostic } from './mediaPlaybackDiagnostic'
 
 interface TimedMediaCardOptions {
   active: () => boolean | undefined
@@ -91,8 +92,11 @@ export function useTimedMediaCard(options: TimedMediaCardOptions) {
       return
     }
     try {
+      emitMediaPlaybackDiagnostic(media, 'play-requested')
       await media.play()
-    } catch {
+      emitMediaPlaybackDiagnostic(media, 'play-resolved')
+    } catch (error) {
+      emitMediaPlaybackDiagnostic(media, 'play-rejected', error)
       isPlaying.value = false
     }
   }

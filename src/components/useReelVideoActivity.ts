@@ -6,6 +6,7 @@ import {
 } from 'vue'
 
 import type { VibeLayout } from '../types'
+import { emitMediaPlaybackDiagnostic } from './mediaPlaybackDiagnostic'
 
 interface ReelTimedMediaActivityOptions {
   active: () => boolean | undefined
@@ -51,8 +52,11 @@ export function useReelTimedMediaActivity(options: ReelTimedMediaActivityOptions
 
       activeMedia.muted = options.mediaIsMuted.value
       try {
+        emitMediaPlaybackDiagnostic(activeMedia, 'play-requested')
         await activeMedia.play()
-      } catch {
+        emitMediaPlaybackDiagnostic(activeMedia, 'play-resolved')
+      } catch (error) {
+        emitMediaPlaybackDiagnostic(activeMedia, 'play-rejected', error)
         options.mediaIsPlaying.value = false
       }
     })

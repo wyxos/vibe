@@ -2,6 +2,7 @@ import { computed, nextTick, watch, type ShallowRef } from 'vue'
 
 import { isTimedMedia } from '../core/mediaType'
 import type { VibeLayout, VibeMediaType } from '../types'
+import { emitMediaPlaybackDiagnostic } from './mediaPlaybackDiagnostic'
 
 interface MediaLoadingOptions {
   active: () => boolean | undefined
@@ -27,7 +28,12 @@ export function useMediaLoading(options: MediaLoadingOptions) {
 
   watch(timedMediaPreload, (preload, previous) => {
     if (previous !== 'none' || preload === 'none') return
-    void nextTick(() => options.mediaElement.value?.load())
+    void nextTick(() => {
+      const media = options.mediaElement.value
+      if (!media) return
+      emitMediaPlaybackDiagnostic(media, 'load-requested')
+      media.load()
+    })
   })
 
   return { imageLoading, mediaIsTimed, timedMediaPreload }
