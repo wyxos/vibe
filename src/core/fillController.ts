@@ -11,7 +11,7 @@ import {
   type FrontendFillProgress,
   validateFillTarget,
 } from './fill'
-import { appendUniqueItemsIfChanged } from './page'
+import { appendUniqueItems } from './page'
 import type { LoadedPageRecord } from './page'
 import { RequestDelayCountdown, type RequestDelaySnapshot } from './requestDelay'
 import type { VibeRuntimeState } from './runtime'
@@ -295,7 +295,7 @@ export class VibeFillController {
       getLoadedItemCount: () => state.items.length,
       initialCursor: state.next,
       loadPage,
-      onPage: (collection) => {
+      onCollection: (collection) => {
         if (this.isCurrent(requestVersion)) {
           this.collection = {
             ...collection,
@@ -324,9 +324,7 @@ export class VibeFillController {
     })
     if (!this.isCurrent(requestVersion)) return
 
-    // Every successful page was committed by onPage, including its removals
-    // filter and history. Re-merging the cumulative result would repeat that
-    // work and notify consumers of a collection change without new items.
+    state.items = appendUniqueItems(state.items, this.filterItems(result.items))
     state.next = result.next
     if (result.total !== undefined) state.total = result.total
     this.options.onLastCursor(result.lastCursor)
@@ -344,9 +342,9 @@ export class VibeFillController {
     if (!collection || this.options.fill?.strategy !== 'frontend') return
 
     const state = this.options.state
-    // Filter each new page at commit time so reactions made while its request
-    // was pending stay excluded. Earlier committed pages are never re-added.
-    state.items = appendUniqueItemsIfChanged(state.items, this.filterItems(collection.items))
+    // Collections include earlier pages. Recheck removals made while a later
+    // request was pending, rather than resurrecting those earlier cards.
+    state.items = appendUniqueItems(state.items, this.filterItems(collection.items))
     state.next = collection.next
     if (collection.total !== undefined) state.total = collection.total
     this.options.onLastCursor(collection.lastCursor)

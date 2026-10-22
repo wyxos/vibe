@@ -114,7 +114,6 @@ describe('custom feed footer', () => {
     expect(footerProps!.canRetryEnd).toBe(true)
     expect(footerProps!.showLoadMore).toBe(true)
     expect(footerProps!.state.items.map(({ postId }) => postId)).toEqual([1])
-    expect(footerProps!.state.items).toBe(instance.getState().items)
 
     target.querySelector<HTMLButtonElement>('[data-test="consumer-feed-footer"]')!.click()
     await flushPromises()
@@ -123,7 +122,6 @@ describe('custom feed footer', () => {
       expect.objectContaining({ cursor: 'two' }),
     )
     expect(footerProps!.state.items.map(({ postId }) => postId)).toEqual([1, 2])
-    expect(footerProps!.state.items).toBe(instance.getState().items)
 
     await footerProps!.actions.retryEnd()
     expect(loadPage).toHaveBeenNthCalledWith(

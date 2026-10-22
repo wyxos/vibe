@@ -32,7 +32,6 @@ import FeedFooter from './FeedFooter.vue'
 import MediaCard from './MediaCard.vue'
 import { useMasonryMediaVisibility } from './useMasonryMediaVisibility'
 import { useSettledMasonryFeedLayout } from './useSettledMasonryFeedLayout'
-import { createMasonryItemStyleCache } from './masonryItemStyleCache'
 
 const MIN_GAP = 6
 const MAX_GAP = 12
@@ -174,11 +173,9 @@ const showLoadMore = computed(() => (
 ))
 
 const viewportIndices = computed(() => new Set(viewportIndexSnapshot.value))
-const itemStyleCache = createMasonryItemStyleCache()
-const loadedCountSource = () => props.items.length
 
 const visibleItems = computed(() => {
-  const rows = overscanIndexSnapshot.value.flatMap((index) => {
+  return overscanIndexSnapshot.value.flatMap((index) => {
     const item = props.items[index]
     const position = masonryLayout.value.items[index]
     if (!item || !position || position.width <= 0 || position.height <= 0) return []
@@ -189,8 +186,6 @@ const visibleItems = computed(() => {
       item,
     }]
   })
-  itemStyleCache.retain(rows.map(row => row.index))
-  return rows
 })
 
 function mergeOrderedIndices(first: readonly number[], second: readonly number[]): number[] {
@@ -302,7 +297,12 @@ function itemStyle(index: number): CSSProperties {
         ? props.entryDelays.get(postId) ?? 0
         : 0
 
-  return itemStyleCache.get(index, position, entryOffset, motionDelay)
+  return {
+    '--masonry-entry-delay': `${motionDelay}ms`,
+    width: `${position.width}px`,
+    height: `${position.height}px`,
+    transform: `translate3d(${position.x}px, ${position.y + entryOffset}px, 0)`,
+  }
 }
 
 function measureViewport(): void {
@@ -449,7 +449,7 @@ defineExpose({ getScrollElement, loadIfNearBottom })
           :item-style="itemStyle(index)"
           interactive
           layout="masonry"
-          :loaded-count="loadedCountSource"
+          :loaded-count="items.length"
           :media-index="mediaIndices.get(item.postId) ?? 0"
           :preview-state="previewStates.get(mediaStateKey(
             item.postId,

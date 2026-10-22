@@ -1,5 +1,4 @@
 import { watch, type WatchHandle } from 'vue'
-import { itemIds } from './itemIds'
 
 import {
   collectItemPlacements,
@@ -50,7 +49,7 @@ export class ItemRemovalController {
   constructor(private readonly options: ItemRemovalControllerOptions) {
     this.historyLimit = options.historyLimit ?? DEFAULT_REMOVAL_HISTORY_LIMIT
     this.state = options.state
-    this.itemOrder = itemIds(this.state.items)
+    this.itemOrder = this.state.items.map(({ postId }) => postId)
     this.stopItemsWatcher = watch(
       () => this.state.items,
       (items) => this.appendUnknownItems(items),
@@ -117,7 +116,7 @@ export class ItemRemovalController {
       return
     }
 
-    const knownPostIds = new Set(itemIds(this.state.items))
+    const knownPostIds = new Set(this.state.items.map(({ postId }) => postId))
     const restoredPlacements = placements.filter(({ item }) => {
       if (knownPostIds.has(item.postId)) return false
       knownPostIds.add(item.postId)
@@ -156,7 +155,7 @@ export class ItemRemovalController {
 
   private appendUnknownItems(items: readonly VibeItem[]): void {
     const knownPostIds = new Set(this.itemOrder)
-    itemIds(items).forEach((postId) => {
+    items.forEach(({ postId }) => {
       if (knownPostIds.has(postId)) return
       this.itemOrder.push(postId)
       knownPostIds.add(postId)
@@ -216,7 +215,7 @@ export class ItemRemovalController {
   private restoreOrderedPlacements(
     placements: readonly VibeItemPlacement[],
   ): boolean {
-    const loadedPostIds = new Set(itemIds(this.state.items))
+    const loadedPostIds = new Set(this.state.items.map(({ postId }) => postId))
     const missingItems = placements
       .map(({ item }) => item)
       .filter(({ postId }) => !loadedPostIds.has(postId))

@@ -123,39 +123,12 @@ describe('createVibe state notifications', () => {
     instance.setTotal(10)
     await flushPromises()
     expect(states.at(-1)!.items).toBe(initialItems)
-    expect(instance.getState().items).toBe(firstPublicItems)
+    expect(instance.getState().items).not.toBe(firstPublicItems)
 
     await instance.loadNext()
     await flushPromises()
     expect(states.at(-1)!.items).not.toBe(initialItems)
     expect(states.at(-1)!.items.map(({ postId }) => postId)).toEqual([1, 2])
-  })
-
-  it('reuses readonly item snapshots for lookups and refreshes them synchronously after edits', async () => {
-    instance = createVibe({
-      initialPage: { items: [item(1), item(2)], next: 'next' },
-      loadPage: vi.fn().mockResolvedValue({ items: [item(3)], next: null }),
-      target: document.createElement('div'),
-    })
-    const first = instance.getState()
-    expect(Object.isFrozen(first.items)).toBe(true)
-    for (let lookup = 0; lookup < 100; lookup++) {
-      const current = instance.getState()
-      expect(current).not.toBe(first)
-      expect(current.items).toBe(first.items)
-    }
-    instance.updateItems([{ ...item(1), width: 123 }])
-    const updated = instance.getState().items
-    expect(updated).not.toBe(first.items)
-    expect(updated[0]?.width).toBe(123)
-    expect(first.items[0]?.width).toBe(900)
-    const removal = instance.removeMedia({ postId: 2, mediaIndex: 0 })
-    expect(removal).not.toBeNull()
-    expect(instance.getState().items.map(value => value.postId)).toEqual([1])
-    expect(updated.map(value => value.postId)).toEqual([1, 2])
-    await instance.loadNext()
-    expect(instance.getState().items.map(value => value.postId)).toEqual([1, 3])
-    expect(first.items.map(value => value.postId)).toEqual([1, 2])
   })
 
   it('exposes pagination failures through the public lifecycle', async () => {

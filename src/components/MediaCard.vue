@@ -59,7 +59,7 @@ const props = defineProps<{
   interactive?: boolean
   leaving?: boolean
   layout: VibeLayout
-  loadedCount: number | (() => number)
+  loadedCount: number
   mediaIndex: number
   mediaCard?: VibeMediaCardOptions
   mediaSource?: VibeMediaSource

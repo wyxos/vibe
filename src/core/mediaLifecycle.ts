@@ -1,7 +1,6 @@
-import { isReactive, watch } from 'vue'
+import { watch } from 'vue'
 
 import { clampMediaIndex, mediaAssetAt } from './mediaAsset'
-import { createMediaLifecycleIndex } from './mediaLifecycleIndex'
 import type { VibeRuntimeState } from './runtime'
 import type {
   VibeItemId,
@@ -10,24 +9,6 @@ import type {
   VibeReelOrigin,
 } from '../types'
 
-const itemIndices = new WeakMap<VibeRuntimeState, ReturnType<typeof createMediaLifecycleIndex>>()
-
-function postIndexFor(state: VibeRuntimeState, postId: VibeItemId): number {
-  // Map uses SameValueZero; lifecycle identity historically uses strict equality.
-  if (typeof postId === 'number' && Number.isNaN(postId)) return -1
-  // Runtime items are reactive. Keep the standalone helper correct for plain
-  // caller-owned state too, where in-place mutations cannot invalidate a cache.
-  if (!isReactive(state) || !isReactive(state.items)) {
-    return state.items.findIndex((item) => item.postId === postId)
-  }
-  let find = itemIndices.get(state)
-  if (!find) {
-    find = createMediaLifecycleIndex(state)
-    itemIndices.set(state, find)
-  }
-  return find(postId)
-}
-
 export function mediaLifecycleContext(
   state: VibeRuntimeState,
   postId: VibeItemId,
@@ -35,7 +16,7 @@ export function mediaLifecycleContext(
   layout: VibeLayout,
   origin: VibeReelOrigin | null,
 ): VibeMediaLifecycleContext | null {
-  const postIndex = postIndexFor(state, postId)
+  const postIndex = state.items.findIndex((item) => item.postId === postId)
   const item = state.items[postIndex]
   if (!item) return null
 

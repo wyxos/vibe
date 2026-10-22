@@ -1,5 +1,4 @@
 import type { VibeCursor, VibeItem, VibeItemId, VibePage } from '../types'
-import { itemIds } from './itemIds'
 
 export interface LoadedPageRecord {
   contributionIds: VibeItemId[]
@@ -33,28 +32,16 @@ export function appendUniqueItems(
   current: readonly VibeItem[],
   incoming: readonly VibeItem[],
 ): VibeItem[] {
-  const postIds = new Set(itemIds(current))
-  return [...current, ...takeUniqueItems(postIds, incoming)]
-}
+  const postIds = new Set(current.map((item) => item.postId))
 
-export function takeUniqueItems(
-  postIds: Set<VibeItemId>,
-  incoming: readonly VibeItem[],
-): VibeItem[] {
-  return incoming.filter((item) => {
-    if (postIds.has(item.postId)) return false
-    postIds.add(item.postId)
-    return true
-  })
-}
-
-export function appendUniqueItemsIfChanged(
-  current: VibeItem[],
-  incoming: readonly VibeItem[],
-): VibeItem[] {
-  if (incoming.length === 0) return current
-  const additions = takeUniqueItems(new Set(itemIds(current)), incoming)
-  return additions.length > 0 ? [...current, ...additions] : current
+  return [
+    ...current,
+    ...incoming.filter((item) => {
+      if (postIds.has(item.postId)) return false
+      postIds.add(item.postId)
+      return true
+    }),
+  ]
 }
 
 function identityKey(value: VibeItemId): string {
@@ -72,7 +59,7 @@ export function reconcilePageItems(
   incoming: readonly VibeItem[],
 ): VibeItem[] {
   const result = [...current]
-  const indices = new Map(itemIds(current).map((postId, index) => [identityKey(postId), index]))
+  const indices = new Map(current.map((item, index) => [identityKey(item.postId), index]))
 
   incoming.forEach((item) => {
     const key = identityKey(item.postId)

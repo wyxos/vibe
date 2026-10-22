@@ -1,4 +1,4 @@
-import { computed, shallowReactive, shallowRef, watch } from 'vue'
+import { computed, shallowRef, watch } from 'vue'
 
 import type { MediaFailure } from '../core/mediaFailure'
 import { mediaStateKey } from '../core/mediaAsset'
@@ -21,18 +21,11 @@ interface MediaLifecycleEvents {
   visible: (context: VibeMediaLifecycleContext) => void
 }
 
-function createMediaStates() {
-  // These maps are internal live component state, not public VibeState snapshots.
-  // Reactive entries notify keyed/iteration consumers without copying the visit's
-  // complete media history for each ready/error event.
-  return shallowRef(shallowReactive(new Map<string, MediaPreviewState>()))
-}
-
 export function useMediaLifecycle(state: VibeRuntimeState, events: MediaLifecycleEvents) {
   const fullyVisibleMedia = new Set<string>()
-  const previewStates = createMediaStates()
-  const originalStates = createMediaStates()
-  const mobileStates = createMediaStates()
+  const previewStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
+  const originalStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
+  const mobileStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
   const reelStateTarget = () => {
     if (state.reelMediaSource === 'preview') return previewStates
     if (state.reelMediaSource === 'mobile') return mobileStates
@@ -44,9 +37,9 @@ export function useMediaLifecycle(state: VibeRuntimeState, events: MediaLifecycl
   function resetMediaLifecycle(): void {
     fullyVisibleMedia.clear()
     visibleMedia.clear()
-    previewStates.value = shallowReactive(new Map())
-    originalStates.value = shallowReactive(new Map())
-    mobileStates.value = shallowReactive(new Map())
+    previewStates.value = new Map()
+    originalStates.value = new Map()
+    mobileStates.value = new Map()
   }
 
   function setState(
@@ -56,7 +49,7 @@ export function useMediaLifecycle(state: VibeRuntimeState, events: MediaLifecycl
     value: MediaPreviewState,
   ): void {
     const key = mediaStateKey(postId, mediaIndex)
-    target.value.set(key, value)
+    if (target.value.get(key) !== value) target.value = new Map(target.value).set(key, value)
   }
 
   function context(
