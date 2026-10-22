@@ -11,6 +11,7 @@ interface MediaLoadingOptions {
   mediaSource: () => string
   mediaType: () => VibeMediaType | undefined
   mediaElement: ShallowRef<HTMLMediaElement | null>
+  playbackAllowed: () => boolean
 }
 
 export function useMediaLoading(options: MediaLoadingOptions) {
@@ -30,7 +31,11 @@ export function useMediaLoading(options: MediaLoadingOptions) {
     if (previous !== 'none' || preload === 'none') return
     void nextTick(() => {
       const media = options.mediaElement.value
-      if (!media) return
+      // play() selects/loads an active source itself, even from preload=none.
+      // A second load() resets that selection and aborts its pending play
+      // promise. Recheck after the DOM flush in case activation followed the
+      // preload change in this same turn; background preloading still loads.
+      if (!media || options.playbackAllowed() || timedMediaPreload.value === 'none') return
       emitMediaPlaybackDiagnostic(media, 'load-requested')
       media.load()
     })

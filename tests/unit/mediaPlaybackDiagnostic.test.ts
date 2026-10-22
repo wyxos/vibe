@@ -72,7 +72,7 @@ describe('development media lifecycle diagnostics', () => {
     })
     scoped(() => useMediaLoading({
       active: () => true, fetchPriority: () => priority.value, layout: () => 'masonry',
-      mediaSource: () => 'fixture.mp4', mediaType: () => 'video', mediaElement: shallowRef(media),
+      mediaSource: () => 'fixture.mp4', mediaType: () => 'video', mediaElement: shallowRef(media), playbackAllowed: () => false,
     }))
     priority.value = 'high'
     await nextTick(); await nextTick()

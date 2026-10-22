@@ -189,7 +189,7 @@ const {
   onChange: (mediaIndex) => emit('mediaChange', mediaIndex),
 })
 
-const { imageLoading, mediaIsTimed, timedMediaPreload } = useMediaLoading({ active: () => props.active, fetchPriority: () => props.fetchPriority, layout: () => props.layout, mediaSource: () => mediaSrc.value, mediaType: () => mediaType.value, mediaElement })
+const { imageLoading, mediaIsTimed, timedMediaPreload } = useMediaLoading({ active: () => props.active, fetchPriority: () => props.fetchPriority, layout: () => props.layout, mediaSource: () => mediaSrc.value, mediaType: () => mediaType.value, mediaElement, playbackAllowed: () => timedMediaPlaybackAllowed.value })
 const usesStationaryReelControls = computed(() => props.layout === 'reel'
   && props.stationaryReelControls === true)
 const mediaControlsVisible = computed(() => (
