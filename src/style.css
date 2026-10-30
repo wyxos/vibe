@@ -1,4 +1,5 @@
 @import './vibe.css';
+@import './pages/controlled-reel-demo.css';
 
 * {
   box-sizing: border-box;

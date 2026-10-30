@@ -1,6 +1,16 @@
 import './vibe.css'
 
 export { createVibe } from './core/createVibe'
+export { default as VibeControlledReel } from './components/VibeControlledReel.vue'
+export type {
+  VibeControlledReelDirection,
+  VibeControlledReelExpose,
+  VibeControlledReelItem,
+  VibeControlledReelProps,
+  VibeControlledReelRequest,
+  VibeControlledReelSlotProps,
+  VibeControlledReelState,
+} from './core/controlledReel'
 export type {
   CreateVibeOptions,
   VibeAutoScrollOptions,

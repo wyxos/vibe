@@ -5,7 +5,8 @@ import { isNearFeedBottom, type ReelFeedProps } from '../core/feed'
 import { mediaAssetAt, mediaAssets, mediaPlaybackVariantForSource,
   mediaStateKey } from '../core/mediaAsset'
 import { isTimedMedia } from '../core/mediaType'
-import { transitionReelScroll } from '../core/reelScrollTransition'
+import { transitionReelScroll, prefersReducedReelMotion } from '../core/reelScrollTransition'
+import { reelIndexAtScrollOffset } from '../core/reelViewport'
 import type { VibeItemId, VibeReelAudioState } from '../types'
 import CardRegion from './CardRegion.vue'
 import FeedFooter from './FeedFooter.vue'
@@ -119,12 +120,7 @@ function itemStyle(index: number): CSSProperties {
 
 function nearestIndex(element: HTMLElement): number {
   const height = viewportHeight || element.clientHeight
-  if (height <= 0 || props.items.length === 0) return 0
-
-  return Math.min(
-    props.items.length - 1,
-    Math.max(0, Math.round(element.scrollTop / height)),
-  )
+  return reelIndexAtScrollOffset(element.scrollTop, height, props.items.length)
 }
 
 function onScroll(event: Event): void {
@@ -236,18 +232,13 @@ function navigateToItem(postId: VibeItemId, mediaIndex: number): boolean {
   return true
 }
 
-function prefersReducedMotion(): boolean {
-  return typeof window.matchMedia === 'function'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
 function scrollToPost(index: number): Promise<void> {
   const element = galleryElement.value
   if (!element) return Promise.resolve()
 
   const top = index * (viewportHeight || element.clientHeight)
   activeIndex.value = index
-  return transitionReelScroll(element, top, prefersReducedMotion())
+  return transitionReelScroll(element, top, prefersReducedReelMotion())
 }
 
 function advanceToPost(index: number): void {
@@ -263,7 +254,7 @@ async function transitionActivePost(postId: VibeItemId): Promise<boolean> {
 
 async function transitionActiveMedia(direction: -1 | 1): Promise<boolean> {
   if (!changeActiveMedia(direction)) return false
-  if (!prefersReducedMotion()) {
+  if (!prefersReducedReelMotion()) {
     await new Promise((resolve) => setTimeout(resolve, MEDIA_TRANSITION_MS))
   }
   return true
