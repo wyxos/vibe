@@ -22,7 +22,6 @@ import MasonryScrollOptionsDemoPage from './pages/MasonryScrollOptionsDemoPage.v
 import ReelUrlDemoPage from './pages/ReelUrlDemoPage.vue'
 import ReelAutoAdvanceDemoPage from './pages/ReelAutoAdvanceDemoPage.vue'
 import ReelInfoSheetDemoPage from './pages/ReelInfoSheetDemoPage.vue'
-import ControlledReelDemoPage from './pages/ControlledReelDemoPage.vue'
 
 const EmptyRouteView = { render: () => null }
 
@@ -38,11 +37,6 @@ export function createDemoRouter(
         component: DemosPage,
         redirect: { name: 'demo-card-header-footer' },
         children: [
-          {
-            path: 'controlled-reel',
-            name: 'demo-controlled-reel',
-            component: ControlledReelDemoPage,
-          },
           {
             path: 'masonry-scroll-options',
             name: 'demo-masonry-scroll-options',

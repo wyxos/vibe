@@ -38,7 +38,6 @@ export default defineConfig({
         items: [
           { text: 'Configuration', link: '/reference/configuration' },
           { text: 'Instance methods', link: '/reference/instance' },
-          { text: 'Host-controlled reel', link: '/reference/controlled-reel' },
         ],
       },
     ],

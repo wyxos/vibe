@@ -16,9 +16,6 @@ const emit = defineEmits<{
 <template>
   <main class="demos-page">
     <aside class="demos-aside" aria-label="Demos">
-      <RouterLink class="demos-aside-link" to="/demos/controlled-reel">
-        Controlled reel
-      </RouterLink>
       <RouterLink
         class="demos-aside-link"
         to="/demos/audio-media"
