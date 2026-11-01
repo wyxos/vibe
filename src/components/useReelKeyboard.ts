@@ -25,6 +25,13 @@ export function useReelKeyboard(options: ReelKeyboardOptions): void {
   let unregister: (() => void) | null = null
 
   function onKeydown(event: KeyboardEvent): void {
+    if (event.defaultPrevented) return
+    const target = event.target
+    const hostDialog = target instanceof Element
+      ? target.closest('dialog, [role="dialog"], [role="alertdialog"]') : null
+    // Host sheets may be portaled outside the feed and dismiss later in the
+    // window event phase. Let their focused controls own Escape first.
+    if (event.key === 'Escape' && hostDialog && !options.element()?.contains(hostDialog)) return
     const reelActive = participant.isActive()
     if (event.key === 'Escape' && reelActive && !isTopmostActiveReel(participant)) return
 
@@ -42,8 +49,7 @@ export function useReelKeyboard(options: ReelKeyboardOptions): void {
       return
     }
     if (
-      event.defaultPrevented
-      || event.altKey
+      event.altKey
       || event.ctrlKey
       || event.metaKey
       || event.shiftKey
@@ -51,7 +57,6 @@ export function useReelKeyboard(options: ReelKeyboardOptions): void {
       || !reelActive
     ) return
 
-    const target = event.target
     if (
       target instanceof HTMLElement
       && (target.isContentEditable || ['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName))

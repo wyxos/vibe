@@ -27,6 +27,47 @@ describe('Escape from focused reel controls', () => {
     vi.unstubAllGlobals()
   })
 
+  it('leaves a feed-opened reel mounted when a nested control has handled Escape', async () => {
+    instance = createVibe({ target, initialPage: { items: [{ postId: 1,
+      src: 'https://example.test/image.jpg', width: 400, height: 600, items: [] }], next: null } })
+    await instance.mount()
+    await flushPromises()
+    target.querySelector<HTMLElement>('[data-post-id="1"]')!
+      .dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+    await flushPromises()
+    const overlay = target.querySelector<HTMLElement>('.vibe-reel-overlay')!
+    const escape = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Escape' })
+    escape.preventDefault()
+    overlay.dispatchEvent(escape)
+    await flushPromises()
+    expect(instance.getState().reelOrigin).toBe('masonry')
+    expect(target.querySelector('.vibe-reel-overlay')).not.toBeNull()
+  })
+
+  it('lets a focused host dialog outside the feed own Escape', async () => {
+    instance = createVibe({ target, initialPage: { items: [{ postId: 1,
+      src: 'https://example.test/image.jpg', width: 400, height: 600, items: [] }], next: null } })
+    await instance.mount()
+    await flushPromises()
+    target.querySelector<HTMLElement>('[data-post-id="1"]')!
+      .dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+    await flushPromises()
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'dialog')
+    dialog.setAttribute('aria-modal', 'true')
+    const control = document.createElement('button')
+    dialog.append(control)
+    document.body.append(dialog)
+    try {
+      control.focus()
+      const escape = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Escape' })
+      control.dispatchEvent(escape)
+      await flushPromises()
+      expect(escape.defaultPrevented).toBe(false)
+      expect(instance.getState().reelOrigin).toBe('masonry')
+    } finally { dialog.remove() }
+  })
+
   it.each([
     '.media-control-seek',
     '.media-control-volume',
