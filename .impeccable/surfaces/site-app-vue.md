@@ -17,13 +17,13 @@ Experience: let visitors explore the actual library rather than read a feature p
 
 **THESIS:** The working infinite feed is the primary demonstration; a large marketing introduction must not push it out of the first viewport.
 
-**OWN-WORLD:** The implemented gallery frame uses warm paper, ink, restrained coral, small rectangular controls, and a dark media stage. Preserve the current baseline unless the user requests a visual change.
+**OWN-WORLD:** Use the original blue/cyan masonry-block logo with a restrained navy and blue interface. The user has rejected warm paper/coral framing. Keep small rectangular controls and leave visual variety to the media.
 
 **STORY:** Visitors scroll, observe loading, optionally start automatic scrolling, and explore other media/layouts. Repeated original fixtures and simulated page latency remain explicit.
 
-**FIRST VIEWPORT:** Compact navigation and introduction lead directly to the feed controls and a dominant media stage. Phone controls wrap and keep accessible targets.
+**FIRST VIEWPORT:** A compact brand-and-controls bar leads directly into a viewport-filling feed. No marketing heading, introductory paragraphs, install section, or promotional footer. Phone controls wrap and keep accessible targets.
 
-**FORM:** Document the existing gallery-exhibition implementation; initialization is not a new concept choice or approval of publication.
+**FORM:** Follow the user's specified blue branding and minimal demo frame. Use the saved comp-first workflow to visualize the correction before implementation; publication still requires review.
 
 **FINISH:** unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 

@@ -1,139 +1,126 @@
 ---
 name: Vibe showcase
-description: Existing Vibe showcase design baseline
+description: Blue branding and a demo-first frame
 colors:
-  coral: "#e86b49"
-  paper: "#f4f2ec"
-  ink: "#191b1b"
-  muted: "#676962"
-  line: "#d9d8d1"
-  stage: "#101313"
-  stage-panel: "#171b1b"
-  hover: "#e9e7df"
+  page: "#071321"
+  surface: "#0c1e33"
+  supporting: "#152e4a"
+  text: "#e9f2ff"
+  muted: "#adc4de"
+  primary: "#3b82f6"
+  cyan: "#06b6d4"
+  line: "#234260"
+  action: "#2563d4"
+  selected: "#1b3d63"
+  selected-text: "#b9d7ff"
+  selection: "#245b9c"
+  scrollbar: "#45688d"
+  action-hover: "#1d56bc"
+  action-pressed: "#1e4d8b"
+  busy: "#76b0ff"
+  white: "#ffffff"
+  error-surface: "#48212c"
+  error-border: "#d17b8f"
 typography:
-  display:
+  sheet-title:
+    fontSize: "21px"
+  phone-brand:
+    fontSize: "22px"
+  phone-label:
+    fontSize: "11px"
+  disclosure:
+    fontSize: "9px"
+  error:
+    fontSize: "13px"
+  brand:
     fontFamily: "Space Grotesk, system-ui, sans-serif"
-    fontSize: "clamp(31px, 3.65vw, 58px)"
-    fontWeight: 500
-    lineHeight: 1.06
-    letterSpacing: "-.035em"
-  title:
-    fontFamily: "Space Grotesk, system-ui, sans-serif"
-    fontSize: "25px"
-    fontWeight: 500
-    letterSpacing: "-.025em"
+    fontSize: "23px"
+    fontWeight: 600
+    letterSpacing: "-.03em"
   body:
     fontFamily: "Space Grotesk, system-ui, sans-serif"
-    fontSize: "13px"
-    lineHeight: 1.6
+    fontSize: "14px"
+    lineHeight: 1.75
   label:
     fontFamily: "Space Grotesk, system-ui, sans-serif"
     fontSize: "12px"
+  status:
+    fontFamily: "Space Grotesk, system-ui, sans-serif"
+    fontSize: "10px"
+    lineHeight: 1.4
 rounded:
+  indicator: "1px"
   detail: "2px"
   control: "3px"
-  stage: "4px"
 spacing:
-  page-gutter: "clamp(16px, 3vw, 48px)"
-  control-gap: "12px"
+  desktop-toolbar: "10px 18px"
+  phone-toolbar: "8px 10px"
   gallery-padding: "10px"
 components:
-  filter:
-    backgroundColor: "transparent"
-    textColor: "{colors.muted}"
-    rounded: "{rounded.control}"
-    padding: "0 15px"
-    typography: "{typography.label}"
   filter-selected:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.paper}"
+    backgroundColor: "{colors.selected}"
+    textColor: "{colors.text}"
     rounded: "{rounded.control}"
-  filter-hover:
-    backgroundColor: "{colors.hover}"
-    textColor: "{colors.ink}"
-  header-install:
-    backgroundColor: "transparent"
-    textColor: "{colors.ink}"
+    height: "44px"
+  auto-scroll:
+    backgroundColor: "{colors.action}"
+    textColor: "#ffffff"
     rounded: "{rounded.control}"
-    padding: "0 14px"
-    typography: "{typography.label}"
+    height: "44px"
   stage:
-    backgroundColor: "{colors.stage}"
-    textColor: "{colors.paper}"
-    rounded: "{rounded.stage}"
+    backgroundColor: "{colors.page}"
+    textColor: "{colors.text}"
 ---
 
 # Design System: Vibe showcase
 
 ## Overview
 
-**Creative North Star: "The Gallery Exhibition"**
+The working demo leads. A compact blue control bar and the original blue/cyan masonry logo frame a viewport-filling media feed. The user explicitly rejected the earlier warm paper/coral palette and prominent promotional copy.
 
-This records the current showcase implementation as the baseline for future work; it does not approve publication. A warm paper surround, ink typography and restrained coral punctuation frame a dense, dark media exhibition. Space Grotesk keeps the frame direct and compact; the actual library feed carries the visual variety.
-
-The product priority is graceful loading, animation and infinite-scroll performance. The visible implementation makes these behaviors inspectable with real library state and DOM counts. See [PRODUCT.md](PRODUCT.md) for scope. Publication to vibe.wyxos.com remains pending explicit user review.
-
-**Key Characteristics:**
-
-- Compact introduction and a dominant interactive media stage.
-- Flat paper-and-ink frame with small corners and thin dividers.
-- Honest live state, with original repeated fixtures and disclosed simulated latency.
+This records the implemented correction and confirmed brand requirements; publication still requires user review. PRODUCT.md owns product constraints, and the showcase surface brief owns page strategy.
 
 ## Colors
 
-### Primary
+Use navy for the page, deeper blue surfaces for controls and card footers, and lighter blue for supporting surfaces. Primary blue and cyan come from the original logo. Pale blue text provides contrast. Active actions use the stronger action blue; selected filters use the selected blue surface.
 
-Coral marks the wordmark punctuation, headline punctuation and keyboard focus. Ink, rather than coral, fills the selected collection control.
-
-### Neutral
-
-Paper is the page ground; ink carries primary text; muted handles supporting copy; line separates sections. Stage and stage-panel establish a dark exhibition surface and its footer. Hover gives quiet feedback to controls on paper.
+Media retains its original colors. Interface branding must not recolor the displayed artwork.
 
 ## Typography
 
-The locally hosted Space Grotesk variable face supplies display, body and controls. The install command uses the platform monospace stack. The frontmatter records the desktop roles; these are observed values rather than a newly imposed modular scale.
-
-On phones the headline uses `clamp(35px, 8.8vw, 48px)`, line height (1.07), and a maximum width of (12ch). Intro copy becomes (11px); controls become (11px). Small card metadata and status labels currently reach (9px); that density is recorded as a review concern, not a recommended text floor.
+Use the locally hosted Space Grotesk face. The largest visible text is the compact brand name; there is no display headline. Controls and card titles use small, readable labels. The provenance sheet uses 14px body copy and a 21px title. Status text is subordinate to the feed, never a promotional heading.
 
 ## Layout
 
-The header, intro, feed toolbar, bounded media stage, caption, install strip and footer form one vertical sequence. Shared fluid page gutters align the frame. The desktop stage height is `max(440px, calc(100dvh - 315px))`; at widths above (1700px), it is capped with `min(760px, calc(100dvh - 315px))`.
+The page is a 100dvh flex column: a compact toolbar followed immediately by a feed filling the remaining space. The feed owns scrolling. There is no marketing introduction, install section, or promotional footer.
 
-At (850px) and below, the header caption, intro note and scroll hint disappear. At (600px) and below, the toolbar becomes two rows, icon controls grow to (44px), the integration strip stacks, gallery padding becomes (6px), and the stage uses `max(420px, calc(100dvh - 390px))`. The phone frame therefore leaves a smaller share of its first viewport for media than desktop; the stage continues below the fold.
-
-The library receives masonry minimum column widths of (240px) on desktop and (145px) on phones, with overscan bounded between (350px) and (650px). These settings are implementation details, not a measured throughput guarantee.
-
-Responsive regression coverage lives in `tests/site/showcase.spec.ts`. Review captures are generated artifacts, not design tokens.
+Desktop toolbar minimum height is 68px. At 700px and below, the brand and actions occupy the first row and filters the second; controls retain 44px targets. At 900px and below, spacing tightens and the secondary GitHub link hides. The status strip stays at the bottom of the stage, with the fixture disclosure wrapping to its own row on phones.
 
 ## Elevation & Depth
 
-The showcase stylesheet uses no box shadows. Thin rules, surface changes and the dark stage establish depth. The information sheet uses a constrained column with fixed header and footer; its body scrolls.
+Use flat blue surfaces and thin blue dividers. No decorative shadows, glow, or glass effects are needed. The original logo's existing gradient remains part of the brand asset.
 
 ## Shapes
 
-Corners remain small: detail controls, cards and the stage use the observed frontmatter radii. Media clips inside the stage. Buttons are rectangular and use thin borders or quiet fills; no pill silhouette appears in the showcase frame.
+Keep controls and media corners small: 2px for detail controls and 3px for ordinary controls and cards. The stage fills its container without a decorative outer card.
 
 ## Components
 
-- **Collection filters:** transparent at rest, ink-filled when pressed, muted surface on hover. Pressed state is exposed through `aria-pressed`.
-- **Layout and restart controls:** compact icon buttons; selected layout has a muted fill. Keyboard focus uses the shared coral outline (2px) with (4px) offset.
-- **Auto scroll:** outlined text-and-icon button, changing to Pause while enabled, with a warm pressed fill. It is user controlled.
-- **Media stage:** actual Vibe masonry and reel layouts, card footer (56px), provenance information, and a fixed status bar. Opening card information switches to reel and opens its sheet.
-- **Status bar:** loaded derives from library item state; rendered counts current masonry items or reel shells. No FPS figure is synthesized. Page fixtures repeat in batches of (12); first load waits (180ms), later pages (450ms). The caption discloses repetition and page latency.
-- **Install controls:** header shortcut and a monospace command button share clipboard feedback. Copy failure exposes a selectable command and an alert.
+- Original logo: use site/public/logo.svg, restored from project history; do not replace it with an invented mark.
+- Filters: transparent at rest, supporting-blue hover, selected-blue pressed state, aria-pressed semantics.
+- Auto scroll: one clear blue action; Pause appears while enabled.
+- Layout, reset, and project controls: compact icons with accessible names and 44px targets.
+- Card footer: title and information action; omit repeated collection text from the visible frame.
+- Status: actual loaded and rendered counts, request state, and a quiet disclosure of repeated fixtures and simulated latency.
+- Information sheet: blue surfaces, fixed header/footer, scrolling body, and media provenance.
 
-Control transitions use (140ms). The stylesheet reduces transition and animation duration under reduced-motion preference; the underlying library owns feed/media animation.
+Control transitions use 140ms; focus uses a 2px cyan outline. Respect reduced motion. Vibe itself owns feed and media animation.
 
 ## Do's and Don'ts
 
-### Do:
-
-- **Do** preserve the quiet paper frame and dark media stage when revising this candidate.
-- **Do** keep loading and rendered counts tied to actual state and keep fixture simulation disclosed.
-- **Do** review desktop, phone and tablet compositions before approving this direction.
-
-### Don't:
-
-- **Don't** describe this candidate as user-approved or publicly deployed.
-- **Don't** present fixture repetition, simulated latency or DOM counts as a production performance benchmark.
-- **Don't** treat the current tiny metadata sizes as a typography standard for future surfaces.
+- Do preserve the original logo and variations of blue.
+- Do give the feed the overwhelming share of the viewport.
+- Do keep essential controls, source disclosure, and performance observations honest.
+- Don't restore warm paper/coral framing, large marketing headings, taglines, or promotional sections.
+- Don't convert fixture counts or simulated latency into production-performance claims.
+- Don't publish the showcase before the user's review and explicit instruction.

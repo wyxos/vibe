@@ -30,7 +30,7 @@ The reusable package lives in `src/`; its public API is `src/index.ts`. The show
 
 ## Brand Commitments
 
-The product name is Vibe and the package is `@wyxos/vibe`. Document the current showcase's visual implementation in `DESIGN.md`; initialization does not constitute approval of a redesign or publication.
+The product name is Vibe and the package is `@wyxos/vibe`. Preserve the original blue/cyan masonry-block logo at `site/public/logo.svg`, recovered from the earlier project branding. The user specifies variations of blue for the interface and a quiet frame focused on the working demo. Warm paper/coral styling and prominent promotional copy were explicitly rejected. Document the implementation in `DESIGN.md`; initialization does not constitute approval of publication.
 
 ## Evidence on Hand
 
