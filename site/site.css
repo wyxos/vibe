@@ -123,6 +123,23 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   .auto-scroll-button { min-width: 44px; padding: 0; }
   .auto-label { display: none; }
 }
+.showcase-feed .vibe-reel-overlay[data-demo-reel-entry='waiting'] .reel-layout-main {
+  opacity: 0;
+  transition: none;
+}
+.showcase-feed .vibe-reel-overlay[data-demo-reel-entry='revealing'] .reel-layout-main {
+  opacity: 1;
+  transition: opacity 160ms ease-out;
+}
+.showcase-feed .vibe-reel-overlay[data-demo-reel-entry]:not([data-demo-reel-entry='ready']) .media-preview--ready {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+.demo-reel-spinner { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.demo-reel-spinner[hidden] { display: none; }
+.demo-reel-spinner-ring { width: 28px; height: 28px; border: 2px solid var(--line); border-top-color: var(--cyan); border-radius: 50%; animation: demo-reel-loading 700ms linear infinite; }
+@keyframes demo-reel-loading { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }

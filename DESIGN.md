@@ -116,6 +116,8 @@ Keep controls and media corners small: 2px for detail controls and 3px for ordin
 
 Control transitions use 140ms; focus uses a 2px cyan outline. Feed-to-reel opening preserves the original 160ms slide from the left. Keep the existing reel image fade and zoom, with both settling together over 160ms instead of running at different speeds. Post navigation uses elapsed-time animation so its duration stays consistent across refresh rates. Respect reduced motion. Vibe itself owns feed and media animation.
 
+The showcase is testing a demo-only sequence: slide the viewer with a spinner, then fade the whole item in after both the slide and active media readiness complete. Errors reveal their recovery state after the slide. This experiment awaits review before any library change.
+
 ## Do's and Don'ts
 
 - Do preserve the original logo and variations of blue.

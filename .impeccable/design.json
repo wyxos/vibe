@@ -107,6 +107,11 @@
         "name": "reel-navigation",
         "value": "300ms elapsed time",
         "purpose": "Consistent timing across display refresh rates"
+      },
+      {
+        "name": "demo-reel-staging-experiment",
+        "value": "existing 160ms slide, then 160ms item fade after readiness",
+        "purpose": "Demo-only review: spinner until both slide completion and media readiness; library entry remains unchanged"
       }
     ],
     "breakpoints": [

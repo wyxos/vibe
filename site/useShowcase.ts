@@ -6,6 +6,7 @@ import { getShowcaseItems } from './fixtures'
 import type { ShowcaseItem } from './fixtures'
 import ShowcaseCardFooter from './components/ShowcaseCardFooter.vue'
 import ShowcaseInfoSheet from './components/ShowcaseInfoSheet.vue'
+import { attachReelEntryReveal } from './reelEntryReveal'
 
 export type ShowcaseFilter = 'all' | 'image' | 'video' | 'audio'
 type ShowcaseLayout = 'masonry' | 'reel'
@@ -52,6 +53,7 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
   const error = ref('')
   let vibe: VibeInstance | null = null
   let observer: MutationObserver | null = null
+  let stopReelReveal: (() => void) | undefined
   let viewport: MediaQueryList | null = null
   let request: AbortController | null = null
   let generation = 0
@@ -182,6 +184,7 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
   }
 
   onMounted(() => {
+    if (target.value) stopReelReveal = attachReelEntryReveal(target.value)
     viewport = window.matchMedia('(max-width: 600px)')
     viewport.addEventListener('change', resize)
     observer = new MutationObserver(countRendered)
@@ -192,6 +195,7 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
     generation++
     request?.abort()
     observer?.disconnect()
+    stopReelReveal?.()
     viewport?.removeEventListener('change', resize)
     vibe?.destroy()
     vibe = null
