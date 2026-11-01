@@ -136,7 +136,7 @@ function onScroll(event: Event): void {
   isFooterVisible.value = props.items.length > 0
     && element.scrollTop > lastItemAnchor + 1
 
-  if (!isResizing.value) activeIndex.value = nearestIndex(element)
+  if (!isResizing.value && !element.hasAttribute('data-transitioning')) activeIndex.value = nearestIndex(element)
   if (Date.now() >= suppressAutomaticLoadUntil
     && !props.loadMoreLocked && props.infiniteScroll && isNearFeedBottom(element)) {
     emit('loadMore')
