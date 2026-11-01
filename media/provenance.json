@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Original media fixtures for the Vibe public showcase",
+  "generatedOn": "2026-11-01",
+  "thirdPartyMediaUsed": false,
+  "curatedCivitaiMediaUsed": false,
+  "rightsBasis": "Media created specifically for this showcase using original procedural generators and original AI image prompts, without third-party source media.",
+  "proceduralSource": "scripts/generate-showcase-media.mjs",
+  "notes": [
+    "Geometric artwork, motion studies and audio are authored specifically for this showcase.",
+    "Motion studies are generated from deterministic mathematical functions and encoded locally with FFmpeg.",
+    "Audio is synthesized from sine waves; no music recording or sound sample is used.",
+    "No stock artwork, identifiable person, brand, logo or copyrighted fictional character is used as a media source.",
+    "AI stills were generated specifically for this showcase without input or reference images; exact prompts and output dimensions are recorded below.",
+    "Provenance records the production method and sources; it does not assert exclusive rights or provide a legal clearance opinion."
+  ],
+  "assets": [
+    {
+      "file": "orbital-study.svg",
+      "kind": "original-procedural-vector",
+      "source": "Circle, ring and twenty-four radial lines"
+    },
+    {
+      "file": "ribbon-grid.svg",
+      "kind": "original-procedural-vector",
+      "source": "Twenty-four exact Bézier curves"
+    },
+    {
+      "file": "solar-stack.svg",
+      "kind": "original-procedural-vector",
+      "source": "Five intersecting circles"
+    },
+    {
+      "file": "blueprint-bloom.svg",
+      "kind": "original-procedural-vector",
+      "source": "Eighteen rotations of an ellipse"
+    },
+    {
+      "file": "color-field.svg",
+      "kind": "original-procedural-vector",
+      "source": "Twenty squares and twenty circles in a modular colour field"
+    },
+    {
+      "file": "signal-noon.svg",
+      "kind": "original-procedural-vector",
+      "source": "Thirteen displaced vertical marks and nested circles"
+    },
+    {
+      "file": "night-index.svg",
+      "kind": "original-procedural-vector",
+      "source": "Forty-two circles with deterministic radii"
+    },
+    {
+      "file": "quiet-frequency.svg",
+      "kind": "original-procedural-vector",
+      "source": "Circular waveform-style cover drawn from exact lines"
+    },
+    {
+      "file": "chromatic-orbit.mp4",
+      "kind": "original-procedural-motion",
+      "source": "Deterministic polar-coordinate wave field",
+      "width": 576,
+      "height": 768,
+      "durationSeconds": 6,
+      "audio": false
+    },
+    {
+      "file": "phase-shift.mp4",
+      "kind": "original-procedural-motion",
+      "source": "Deterministic Cartesian-coordinate wave field",
+      "width": 960,
+      "height": 540,
+      "durationSeconds": 6,
+      "audio": false
+    },
+    {
+      "file": "quiet-frequency.wav",
+      "kind": "original-synthesized-audio",
+      "source": "Original harmonic composition synthesized at 24000Hz from sine waves",
+      "durationSeconds": 10,
+      "sampledAudio": false
+    },
+    {
+      "file": "image-01.png",
+      "kind": "original-ai-generated-image",
+      "status": "generated",
+      "source": "Generated specifically for this showcase with the built-in OpenAI image generation tool; no input or reference image used.",
+      "title": "Solstice",
+      "prompt": "Use case: photorealistic-natural. Asset type: original media gallery photograph, titled Solstice. Create a professional cinematic architectural photograph of a completely invented smooth orange-clay arched stairwell with precise architectural shadows in desert light, with a small cobalt-blue circular pool in the foreground. Portrait composition, 3:4 aspect ratio. Warm tactile clay surfaces, deliberate negative space, remarkable natural sunlight. No existing landmark, no identifiable architect's building, no people, no brand, no text, no watermark, no UI or borders. This must be one standalone original photograph, not a collage.",
+      "tool": "image_gen.imagegen (built-in)",
+      "width": 1086,
+      "height": 1448,
+      "generatedOn": "2026-11-01"
+    },
+    {
+      "file": "image-02.png",
+      "kind": "original-ai-generated-image",
+      "status": "generated",
+      "source": "Generated specifically for this showcase with the built-in OpenAI image generation tool; no input or reference image used.",
+      "title": "Blue hour",
+      "prompt": "Use case: photorealistic-natural. Asset type: original media gallery photograph, titled Blue hour. Create a beautifully photographed still life of translucent ultramarine sculptural glass with a single orange citrus on a cream table. Strong late-afternoon refractions and delicate caustic light. Landscape composition, 3:2 aspect ratio. Museum-quality tabletop photography, precise materials, brilliant blue and warm orange against quiet cream. Unbranded invented objects only; no people, no text, no watermark, no UI or borders. One standalone original photograph, not a collage.",
+      "tool": "image_gen.imagegen (built-in)",
+      "width": 1536,
+      "height": 1024,
+      "generatedOn": "2026-11-01"
+    },
+    {
+      "file": "image-03.png",
+      "kind": "original-ai-generated-image",
+      "status": "generated",
+      "source": "Generated specifically for this showcase with the built-in OpenAI image generation tool; no input or reference image used.",
+      "title": "Quiet bloom",
+      "prompt": "Use case: photorealistic-natural. Asset type: original botanical gallery photograph, titled Quiet bloom. Create a macro photographic ivory calla lily against a deep charcoal-green backdrop, elegant petal folds and suspended dew. Atmospheric studio light with exquisite botanical texture, restrained composition and profound shadow. Portrait composition, 3:4 aspect ratio. No people, no brand, no text, no watermark, no UI or borders. One standalone original photograph, not a collage.",
+      "tool": "image_gen.imagegen (built-in)",
+      "width": 1086,
+      "height": 1448,
+      "generatedOn": "2026-11-01"
+    },
+    {
+      "file": "image-04.png",
+      "kind": "original-ai-generated-image",
+      "status": "generated",
+      "source": "Generated specifically for this showcase with the built-in OpenAI image generation tool; no input or reference image used.",
+      "title": "Tidal study",
+      "prompt": "Use case: photorealistic-natural. Asset type: original aerial gallery photograph, titled Tidal study. Create an aerial photograph of an imaginary turquoise sea meeting black volcanic sand. Pale foamy waves and small warm mineral textures form a remarkable natural abstract composition. Square composition, 1:1 aspect ratio. Rich realistic water and mineral detail, clear directional light. No identifiable location, no existing artwork reference, no people, no boats, no brand, no text, no watermark, no UI or borders. One standalone original photograph, not a collage.",
+      "tool": "image_gen.imagegen (built-in)",
+      "width": 1254,
+      "height": 1254,
+      "generatedOn": "2026-11-01"
+    }
+  ],
+  "deliveryDerivatives": [
+    {
+      "file": "image-01.webp",
+      "source": "image-01.png",
+      "kind": "delivery-encoding",
+      "encoding": "WebP quality82; original dimensions preserved",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 126872
+    },
+    {
+      "file": "image-02.webp",
+      "source": "image-02.png",
+      "kind": "delivery-encoding",
+      "encoding": "WebP quality82; original dimensions preserved",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 114324
+    },
+    {
+      "file": "image-03.webp",
+      "source": "image-03.png",
+      "kind": "delivery-encoding",
+      "encoding": "WebP quality82; original dimensions preserved",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 56382
+    },
+    {
+      "file": "image-04.webp",
+      "source": "image-04.png",
+      "kind": "delivery-encoding",
+      "encoding": "WebP quality82; original dimensions preserved",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 420744
+    }
+  ]
+}

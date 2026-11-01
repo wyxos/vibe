@@ -1,0 +1,16 @@
+{
+  "media": "media/provenance.json",
+  "fonts": [
+    {
+      "family": "Space Grotesk",
+      "file": "fonts/space-grotesk.ttf",
+      "source": "https://github.com/google/fonts/tree/main/ofl/spacegrotesk",
+      "license": "SIL Open Font License 1.1",
+      "licenseFile": "fonts/OFL-SpaceGrotesk.txt"
+    }
+  ],
+  "branding": {
+    "file": "logo.svg",
+    "origin": "Original Vibe blue/cyan masonry logo restored from project history: 403d5bc, public/logo.svg"
+  }
+}
