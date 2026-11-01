@@ -82,8 +82,9 @@ describe('reel audio integration', () => {
   it('shares user changes through the Vibe instance without echoing external sync', async () => {
     const target = document.createElement('div')
     document.body.append(target)
+    let frameTime = performance.now()
     vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
-      callback(0)
+      callback(frameTime += 1000 / 60)
       return 1
     }))
     vi.stubGlobal('cancelAnimationFrame', vi.fn())

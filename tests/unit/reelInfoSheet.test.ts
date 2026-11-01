@@ -69,8 +69,9 @@ describe('reel information sheet', () => {
   beforeEach(() => {
     target = document.createElement('div')
     document.body.append(target)
+    let frameTime = performance.now()
     vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
-      callback(0)
+      callback(frameTime += 1000 / 60)
       return 1
     }))
     vi.stubGlobal('cancelAnimationFrame', vi.fn())

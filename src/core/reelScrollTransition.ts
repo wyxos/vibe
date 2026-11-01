@@ -13,12 +13,10 @@ export function transitionReelScroll(
 
   element.setAttribute('data-transitioning', '')
   const startedAt = performance.now()
-  let frame = 0
 
   return new Promise((resolve) => {
     const step = (now: number) => {
-      frame += 1
-      const elapsed = Math.max(now - startedAt, frame * (1_000 / 60))
+      const elapsed = Math.max(0, now - startedAt)
       const progress = Math.min(1, elapsed / REEL_SCROLL_DURATION_MS)
       const eased = 1 - (1 - progress) ** 3
       element.scrollTop = start + ((top - start) * eased)

@@ -27,6 +27,7 @@ export function useMediaLifecycle(state: VibeRuntimeState, events: MediaLifecycl
   const originalStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
   const mobileStates = shallowRef<ReadonlyMap<string, MediaPreviewState>>(new Map())
   const reelStateTarget = () => {
+    if (state.reelOrigin === 'masonry') return originalStates
     if (state.reelMediaSource === 'preview') return previewStates
     if (state.reelMediaSource === 'mobile') return mobileStates
     return originalStates

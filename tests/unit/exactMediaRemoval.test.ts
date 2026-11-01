@@ -49,8 +49,9 @@ describe('exact media removal', () => {
     target = document.createElement('div')
     document.body.append(target)
     vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(800)
+    let frameTime = performance.now()
     vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
-      callback(0)
+      callback(frameTime += 1000 / 60)
       return 1
     }))
     vi.stubGlobal('cancelAnimationFrame', vi.fn())

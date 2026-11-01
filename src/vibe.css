@@ -944,6 +944,7 @@
 
 .reel-item .media-preview {
   object-fit: contain;
+  transition: opacity 160ms ease-out, transform 160ms ease-out;
 }
 
 .reel-feed .gallery-footer {

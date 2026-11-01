@@ -114,7 +114,7 @@ Keep controls and media corners small: 2px for detail controls and 3px for ordin
 - Status: actual loaded and rendered counts, request state, and a quiet disclosure of repeated fixtures and simulated latency.
 - Information sheet: blue surfaces, fixed header/footer, scrolling body, and media provenance.
 
-Control transitions use 140ms; focus uses a 2px cyan outline. Respect reduced motion. Vibe itself owns feed and media animation.
+Control transitions use 140ms; focus uses a 2px cyan outline. Feed-to-reel opening preserves the original 160ms slide from the left. Keep the existing reel image fade and zoom, with both settling together over 160ms instead of running at different speeds. Post navigation uses elapsed-time animation so its duration stays consistent across refresh rates. Respect reduced motion. Vibe itself owns feed and media animation.
 
 ## Do's and Don'ts
 
