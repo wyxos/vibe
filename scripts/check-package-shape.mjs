@@ -43,6 +43,8 @@ try {
   ]
 
   const forbiddenPatterns = [
+    /^package\/site\//,
+    /^package\/dist-site\//,
     /^package\/dist\//,
     /^package\/tests\//,
     /^package\/public\//,

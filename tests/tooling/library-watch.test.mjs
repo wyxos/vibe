@@ -20,7 +20,7 @@ test('library watch retains package declarations and rebuilds type-only edits', 
     await symlink(resolve(project, 'node_modules'), resolve(root, 'node_modules'), 'junction')
     const npm = process.env.npm_execpath
       ?? resolve(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js')
-    child = spawn(process.execPath, [npm, 'run', 'dev'], {
+    child = spawn(process.execPath, [npm, 'run', 'dev:lib'], {
       cwd: root, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
       detached: process.platform !== 'win32',
     })

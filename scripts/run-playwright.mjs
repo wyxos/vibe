@@ -4,9 +4,10 @@ import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
 
 const args = process.argv.slice(2)
+const site = args.includes('--site')
 process.env.VIBE_TEST_BUILT = args.includes('--built') ? '1' : '0'
 const server = await createServer({
-  configFile: fileURLToPath(new URL('../tests/browser/vite.config.ts', import.meta.url)),
+  configFile: fileURLToPath(new URL(site ? '../site/vite.config.ts' : '../tests/browser/vite.config.ts', import.meta.url)),
   server: { host: '127.0.0.1', port: 0 },
 })
 let child
@@ -26,8 +27,8 @@ try {
     child = spawn(process.execPath, [
       '--import', new URL('./playwright-guard.mjs', import.meta.url).href,
       fileURLToPath(import.meta.resolve('@playwright/test/cli')), 'test',
-      '--config', 'tests/browser/playwright.config.ts',
-      ...args.filter((arg) => arg !== '--built'),
+      '--config', site ? 'tests/site/playwright.config.ts' : 'tests/browser/playwright.config.ts',
+      ...args.filter((arg) => arg !== '--built' && arg !== '--site'),
     ], {
       stdio: ['inherit', 'inherit', 'inherit', 'ipc'], windowsHide: true,
       detached: process.platform !== 'win32',

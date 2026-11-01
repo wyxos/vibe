@@ -35,7 +35,7 @@
     "lib"
   ],
   "scripts": {
-    "dev": "npm run build:lib && concurrently --kill-others --names bundle,types \"vite build --watch --mode development --config vite.config.lib.ts\" \"vue-tsc --watch -p tsconfig.lib.json\"",
+    "dev": "vite --config site/vite.config.ts --host 127.0.0.1 --port 5175",
     "build": "npm run build:lib",
     "build:lib": "vite build --config vite.config.lib.ts && npm run build:types",
     "build:types": "vue-tsc -p tsconfig.lib.json",
@@ -55,8 +55,12 @@
     "check": "npm run lint && npm run typecheck",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
-    "typecheck": "vue-tsc --noEmit --pretty false && vue-tsc --noEmit -p tests/browser/tsconfig.json --pretty false",
-    "test:runner": "node --test tests/tooling/playwright-guard.test.mjs tests/tooling/library-watch.test.mjs"
+    "typecheck": "vue-tsc --noEmit --pretty false && vue-tsc --noEmit -p tests/browser/tsconfig.json --pretty false && vue-tsc --noEmit -p site/tsconfig.json --pretty false",
+    "test:runner": "node --test tests/tooling/playwright-guard.test.mjs tests/tooling/library-watch.test.mjs",
+    "dev:lib": "npm run build:lib && concurrently --kill-others --names bundle,types \"vite build --watch --mode development --config vite.config.lib.ts\" \"vue-tsc --watch -p tsconfig.lib.json\"",
+    "build:site": "vite build --config site/vite.config.ts",
+    "build:site:dev": "vite build --config site/vite.config.ts --mode development",
+    "test:site": "node scripts/run-playwright.mjs --site"
   },
   "peerDependencies": {
     "vue": "^3.5.0",

@@ -45,5 +45,11 @@ jobs:
       - name: Verify package shape
         run: npm run check:package
 
+      - name: Build showcase
+        run: npm run build:site:dev
+
+      - name: Check showcase journeys
+        run: npm run test:site
+
       - name: Dry-run package
         run: npm pack --dry-run
