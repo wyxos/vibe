@@ -31,3 +31,9 @@ dist-ssr
 
 test-results/
 .playwright-cli/
+
+# Impeccable project configuration is tracked; local runtime state is not.
+/.impeccable/config.local.json
+/.impeccable/live/*
+!/.impeccable/live/config.json
+/.impeccable/mocks/

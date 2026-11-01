@@ -21,6 +21,7 @@ npm run verify:published -- --wait
 
 ## Universal Conventions
 
+- Read `PRODUCT.md` for product constraints and `DESIGN.md` with `.impeccable/design.json` for the existing showcase design before interface work. These project-specific Impeccable records live in this repository; personal and infrastructure guidance remains external.
 - **Never edit `lib/`** (generated output). Source of truth is `src/`.
 - Use relative imports within library source to keep generated declarations portable. Unit tests use the configured `@/` alias.
 - Keep reusable library code in `src/components/`; keep the public package surface in `src/index.ts`.

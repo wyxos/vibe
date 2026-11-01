@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-01T16:05:16.322Z",
+  "title": "Design System: Vibe showcase",
+  "extensions": {
+    "status": "Observed showcase baseline; publication remains subject to user review.",
+    "sourceFiles": [
+      "site/site.css",
+      "site/App.vue",
+      "site/useShowcase.ts",
+      "PRODUCT.md"
+    ],
+    "colorMeta": {
+      "coral": {
+        "role": "primary",
+        "displayName": "Coral punctuation"
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Warm paper"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink"
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted olive grey"
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Paper divider"
+      },
+      "stage": {
+        "role": "neutral",
+        "displayName": "Exhibition dark"
+      },
+      "stage-panel": {
+        "role": "neutral",
+        "displayName": "Media footer"
+      },
+      "hover": {
+        "role": "neutral",
+        "displayName": "Paper hover"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Compact display",
+        "purpose": "Main invitation; phone clamp is documented in DESIGN.md."
+      },
+      "title": {
+        "displayName": "Integration title",
+        "purpose": "Secondary invitation below the feed."
+      },
+      "body": {
+        "displayName": "Intro copy",
+        "purpose": "Brief supporting explanation."
+      },
+      "label": {
+        "displayName": "Control label",
+        "purpose": "Desktop toolbar and navigation controls."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "control-transition",
+        "value": "140ms",
+        "purpose": "Filter, layout and auto-scroll color/background changes."
+      },
+      {
+        "name": "reduced-motion",
+        "value": ".01ms",
+        "purpose": "Stylesheet override under prefers-reduced-motion: reduce, with one animation iteration."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "600px"
+      },
+      {
+        "name": "compact",
+        "value": "850px"
+      },
+      {
+        "name": "wide",
+        "value": "1700px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Collection filter",
+      "kind": "button",
+      "refersTo": "filter",
+      "description": "Unselected collection control.",
+      "html": "<button class=\"ds-filter\" aria-pressed=\"false\">Images</button>",
+      "css": ".ds-filter{font-family:'Space Grotesk',system-ui,sans-serif;font-size:12px;min-height:40px;padding:0 15px;border:0;border-radius:3px;background:transparent;color:var(--muted,#676962);cursor:pointer;transition:color 140ms,background 140ms}.ds-filter:hover{background:#e9e7df;color:var(--ink,#191b1b)}.ds-filter:focus-visible{outline:2px solid var(--coral,#e86b49);outline-offset:4px}"
+    },
+    {
+      "name": "Selected collection filter",
+      "kind": "button",
+      "refersTo": "filter-selected",
+      "description": "Current collection, indicated with aria-pressed.",
+      "html": "<button class=\"ds-selected\" aria-pressed=\"true\">All media</button>",
+      "css": ".ds-selected{font-family:'Space Grotesk',system-ui,sans-serif;font-size:12px;min-height:40px;padding:0 15px;border:0;border-radius:3px;background:var(--ink,#191b1b);color:var(--paper,#f4f2ec);cursor:pointer;transition:color 140ms,background 140ms}.ds-selected:hover{background:var(--ink,#191b1b);color:var(--paper,#f4f2ec)}.ds-selected:focus-visible{outline:2px solid var(--coral,#e86b49);outline-offset:4px}"
+    },
+    {
+      "name": "Get Vibe",
+      "kind": "button",
+      "refersTo": "header-install",
+      "description": "Header clipboard shortcut.",
+      "html": "<button class=\"ds-install\">Get Vibe</button>",
+      "css": ".ds-install{font-family:'Space Grotesk',system-ui,sans-serif;font-size:12px;min-height:44px;padding:0 14px;border:1px solid var(--line,#d9d8d1);border-radius:3px;background:transparent;color:var(--ink,#191b1b);cursor:pointer}.ds-install:hover{background:#e9e7df}.ds-install:focus-visible{outline:2px solid var(--coral,#e86b49);outline-offset:4px}"
+    },
+    {
+      "name": "Auto scroll",
+      "kind": "button",
+      "description": "User-controlled playback-style feed movement.",
+      "html": "<button class=\"ds-auto\" aria-pressed=\"false\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><polygon points=\"6 3 20 12 6 21 6 3\"/></svg>Auto scroll</button>",
+      "css": ".ds-auto{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-family:'Space Grotesk',system-ui,sans-serif;font-size:12px;min-height:40px;min-width:107px;padding:0 12px;border:1px solid var(--line,#d9d8d1);border-radius:3px;background:transparent;color:var(--ink,#191b1b);cursor:pointer;transition:background 140ms}.ds-auto:hover{background:#e9e7df}.ds-auto[aria-pressed=true]{background:#f0cbbb;border-color:#d98c70}.ds-auto:focus-visible{outline:2px solid var(--coral,#e86b49);outline-offset:4px}"
+    },
+    {
+      "name": "Install command",
+      "kind": "button",
+      "description": "Full-width phone command control with copy action.",
+      "html": "<button class=\"ds-command\"><code>npm install @wyxos/vibe</code><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><rect x=\"9\" y=\"9\" width=\"13\" height=\"13\" rx=\"2\"/><path d=\"M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\"/></svg></button>",
+      "css": ".ds-command{display:flex;align-items:center;justify-content:space-between;gap:35px;min-height:54px;padding:14px 18px;border:1px solid var(--line,#d9d8d1);border-radius:3px;background:#eae8df;color:var(--ink,#191b1b);cursor:pointer}.ds-command code{font:12px ui-monospace,SFMono-Regular,Consolas,monospace}.ds-command:hover{background:#e3e0d5}.ds-command:focus-visible{outline:2px solid var(--coral,#e86b49);outline-offset:4px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Gallery Exhibition",
+    "overview": "This records the current showcase implementation as the baseline for future work; it does not approve publication. A warm paper surround, ink typography and restrained coral punctuation frame a dense, dark media exhibition. Space Grotesk keeps the frame direct and compact; the actual library feed carries the visual variety.\n\nThe product priority is graceful loading, animation and infinite-scroll performance. The visible implementation makes these behaviors inspectable with real library state and DOM counts. See [PRODUCT.md](PRODUCT.md) for scope. Publication to vibe.wyxos.com remains pending explicit user review.",
+    "keyCharacteristics": [
+      "Compact introduction and a dominant interactive media stage.",
+      "Flat paper-and-ink frame with small corners and thin dividers.",
+      "Honest live state, with original repeated fixtures and disclosed simulated latency."
+    ],
+    "rules": [],
+    "dos": [
+      "Do preserve the quiet paper frame and dark media stage when revising this candidate.",
+      "Do keep loading and rendered counts tied to actual state and keep fixture simulation disclosed.",
+      "Do review desktop, phone and tablet compositions before approving this direction."
+    ],
+    "donts": [
+      "Don't describe this candidate as user-approved or publicly deployed.",
+      "Don't present fixture repetition, simulated latency or DOM counts as a production performance benchmark.",
+      "Don't treat the current tiny metadata sizes as a typography standard for future surfaces."
+    ]
+  }
+}
