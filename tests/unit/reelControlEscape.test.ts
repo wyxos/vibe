@@ -68,6 +68,31 @@ describe('Escape from focused reel controls', () => {
     } finally { dialog.remove() }
   })
 
+  it('lets the focused viewer own Escape over an unrelated later mounted reel', async () => {
+    const items = [{ postId: 1, src: 'https://example.test/image.jpg', width: 400, height: 600, items: [] }]
+    instance = createVibe({ target, initialPage: { items, next: null } })
+    await instance.mount()
+    await flushPromises()
+    target.querySelector<HTMLElement>('[data-post-id="1"]')!
+      .dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+    await flushPromises()
+    const otherTarget = document.createElement('div')
+    document.body.append(otherTarget)
+    const other = createVibe({ target: otherTarget, layout: 'reel', initialPage: { items, next: null } })
+    try {
+      await other.mount()
+      await flushPromises()
+      const overlay = target.querySelector<HTMLElement>('.vibe-reel-overlay')!
+      overlay.focus()
+      const escape = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Escape' })
+      overlay.dispatchEvent(escape)
+      await flushPromises()
+      expect(escape.defaultPrevented).toBe(true)
+      expect(instance.getState().reelOrigin).toBeNull()
+      expect(other.getState().layout).toBe('reel')
+    } finally { other.destroy(); otherTarget.remove() }
+  })
+
   it.each([
     '.media-control-seek',
     '.media-control-volume',

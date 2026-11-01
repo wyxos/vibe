@@ -39,5 +39,8 @@ export function isTopmostActiveReel(
     })
   })
 
-  return topLevel.at(-1) === participant
+  // Independent embedded reels can mount after a viewer has opened. Keyboard
+  // focus identifies the owning reel before falling back to registration order.
+  const focused = topLevel.filter((candidate) => candidate.element()?.contains(document.activeElement))
+  return (focused.at(-1) ?? topLevel.at(-1)) === participant
 }
