@@ -101,7 +101,7 @@ describe('completed page replacement', () => {
   })
 
   it('skips exit waiting for reduced motion and resets scroll only when requested', async () => {
-    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })))
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
     const vibe = await mount()
     const scroller = target.querySelector<HTMLElement>('.gallery-shell')!
     scroller.scrollTop = 200

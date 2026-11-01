@@ -66,6 +66,7 @@ export interface ReelFeedProps extends FeedRendererProps {
 }
 
 export interface ReelLayoutProps extends ReelFeedProps {
+  entryPending?: boolean
   forwardIndex?: number | null
   forwardItem?: VibeItem | null
   infoSheet?: VibeReelInfoSheetOptions

@@ -173,7 +173,7 @@ defineExpose({
     <div
       class="reel-layout-main"
       :aria-hidden="infoSheetOverlay && sheetVisible || undefined"
-      :inert="infoSheetOverlay && sheetVisible || undefined"
+      :inert="entryPending || infoSheetOverlay && sheetVisible || undefined"
     >
       <ReelFeed
         ref="reelFeed"

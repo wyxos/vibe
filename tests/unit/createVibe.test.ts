@@ -225,7 +225,7 @@ describe('createVibe', () => {
       .mockImplementation(() => viewportWidth)
     vi.spyOn(document.documentElement, 'clientHeight', 'get')
       .mockImplementation(() => viewportHeight)
-    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })))
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
     const instance = track(createVibe({
       target,
       layout: 'responsive',

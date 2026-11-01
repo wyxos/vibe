@@ -27,8 +27,10 @@ import type { VibeItemRemovalOptions } from '../core/itemRemovalOptions'
 import FeedStatus from './FeedStatus.vue'
 import MasonryFeed from './MasonryFeed.vue'
 import ReelLayout from './ReelLayout.vue'
+import ReelEntrySpinner from './ReelEntrySpinner.vue'
 import { useMediaLifecycle } from './useMediaLifecycle'
 import { useReelKeyboard } from './useReelKeyboard'
+import { useReelEntryReveal } from './useReelEntryReveal'
 const ENTRY_STAGGER_MS = 35
 const ITEM_MOTION_MS = 420
 
@@ -89,6 +91,9 @@ const {
   reelChange: (context) => emit('reelMediaChange', context),
   visible: (context) => emit('mediaVisible', context),
 })
+const { phase: reelEntryPhase, finishSlide, finishFade, markSettled } = useReelEntryReveal(
+  props.state, reelOverlay,
+)
 let previousPostIds = new Set<VibeItemId>(
   props.state.items.map((item) => item.postId),
 )
@@ -426,19 +431,24 @@ defineExpose({
 
       <Transition
         name="vibe-reel-viewer"
+        @after-enter="finishSlide"
         @after-leave="finishReelLeave"
       >
         <section
           v-if="state.reelOrigin === 'masonry'"
           ref="reelOverlay"
           class="vibe-reel-overlay"
+          :data-reel-entry="reelEntryPhase"
           role="dialog"
           aria-label="Media viewer"
           aria-modal="true"
           tabindex="-1"
+          @transitionend="finishFade"
+          @transitioncancel="finishFade"
         >
           <ReelLayout
             ref="reelRenderer"
+            :entry-pending="reelEntryPhase !== 'ready'"
             :can-retry-end="canRetryEnd"
             :card-footer="cardFooter"
             :card-header="cardHeader"
@@ -468,15 +478,16 @@ defineExpose({
             :total="state.total"
             @active-change="emit('activeReelChange', $event)"
             @close-info-sheet="emit('reelInfoSheetChange', false)"
-            @error="markReelError"
+            @error="(postId, index) => { markReelError(postId, index); markSettled(postId, index) }"
             @media-error="(postId, failure) => markMediaError(postId, failure, 'reel')"
             @load-more="emit('loadMore')"
             @media-change="setMediaIndex"
-            @ready="markReelReady"
+            @ready="(postId, index) => { markReelReady(postId, index); markSettled(postId, index) }"
             @retry-end="emit('retryEnd')"
             @retry-forward="emit('retryForward')"
             @reel-audio-change="emit('reelAudioChange', $event)"
           />
+          <ReelEntrySpinner v-if="reelEntryPhase === 'waiting'" />
         </section>
       </Transition>
     </template>

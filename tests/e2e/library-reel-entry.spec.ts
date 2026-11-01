@@ -73,14 +73,19 @@ for (const width of [1440, 390]) {
       expect(sample.overflow).toBe(false)
       const overlay = page.locator('.vibe-reel-overlay')
       const image = overlay.locator('.reel-item[data-post-id="1"] img')
-      await expect(overlay.locator('[data-post-id="1"] [data-test=media-loading]')).toBeVisible()
+      await expect(overlay).toHaveAttribute('data-reel-entry', 'waiting')
+      await expect(overlay.locator('[data-post-id="1"] [data-test=media-loading]')).toBeAttached()
+      await expect(overlay.getByRole('status', { name: 'Loading media', exact: true })).toBeVisible()
+      await expect(overlay.locator('.reel-layout-main')).toHaveCSS('opacity', '0')
       await expect(image).toHaveCSS('transform', 'matrix(1.01, 0, 0, 1.01, 0, 0)')
       await expect(image).toHaveCSS('opacity', '0')
       await expect(image).toHaveCSS('transition-property', 'opacity, transform')
       await expect(image).toHaveCSS('transition-duration', '0.16s, 0.16s')
       await expect(image).toHaveCSS('transition-timing-function', 'ease-out, ease-out')
       await finishTransition(page)
+      await expect(overlay).toHaveAttribute('data-reel-entry', 'waiting')
       release()
+      await expect(overlay).toHaveAttribute('data-reel-entry', 'ready')
       await expect(image).toHaveClass(/media-preview--ready/)
       await expect(image).toHaveCSS('opacity', '1')
       await expect(image).toHaveCSS('transform', 'none')
@@ -98,6 +103,7 @@ for (const width of [1440, 390]) {
       await expect(page.locator('.masonry-item').first()).toBeFocused()
 
       await midpoint(page, 'enter')
+      await expect(overlay).toHaveAttribute('data-reel-entry', 'waiting')
       await expect(image).toHaveCSS('opacity', '1')
       await expect(image).toHaveCSS('transform', 'none')
       expect(await image.evaluate((element) => element.getAnimations().length)).toBe(0)
@@ -127,9 +133,85 @@ for (const width of [1440, 390]) {
     await expect(overlay).toBeVisible()
     await expect(overlay).toHaveCSS('opacity', '1')
     await expect(overlay).toHaveCSS('transform', 'none')
+    await expect(overlay).toHaveAttribute('data-reel-entry', 'ready')
     expect(await overlay.evaluate((element) => element.getAnimations().length)).toBe(0)
     await page.keyboard.press('Escape')
     await expect(overlay).toHaveCount(0)
     await expect(card).toBeFocused()
+  })
+}
+
+test('direct reel keeps its existing loading surface without an overlay entry gate', async ({ page }) => {
+  let release!: () => void
+  const held = new Promise<void>((resolve) => { release = resolve })
+  await page.route('**/media/1-0-original.svg', async (route) => {
+    await held
+    await route.fulfill({ contentType: 'image/svg+xml', body:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600"><rect width="400" height="600" fill="#64748b"/></svg>',
+    })
+  })
+  try {
+    await page.goto('/?layout=reel&chrome', { waitUntil: 'domcontentloaded' })
+    await expect(page.locator('body')).toHaveAttribute('data-ready', 'true')
+    await expect(page.locator('.reel-layout-main')).toHaveCSS('opacity', '1')
+    await expect(page.locator('.reel-layout-main')).not.toHaveAttribute('inert')
+    await expect(page.locator('.reel-item[data-post-id="1"] [data-test=media-loading]')).toBeVisible()
+    await expect(page.locator('.vibe-reel-overlay, .vibe-reel-entry-spinner, [data-reel-entry]')).toHaveCount(0)
+    release()
+    await expect(page.locator('.reel-item[data-post-id="1"] img')).toHaveClass(/media-preview--ready/)
+  } finally { release() }
+})
+
+for (const previous of ['ready', 'failed'] as const) {
+  test(`same-ID replacement waits for its new source after a previously ${previous} original`, async ({ page }) => {
+    if (previous === 'failed') {
+      await page.route('**/media/1-0-original.svg', (route) => route.abort('failed'))
+    }
+    await open(page)
+    await page.locator('.masonry-item').first().click({ position: { x: 20, y: 20 } })
+    const overlay = page.locator('.vibe-reel-overlay')
+    await expect(overlay).toHaveAttribute('data-reel-entry', 'ready')
+    if (previous === 'failed') await expect(overlay.locator('.media-error').first()).toBeVisible()
+    else await expect(overlay.locator('.reel-item[data-post-id="1"] img')).toHaveClass(/media-preview--ready/)
+    await page.keyboard.press('Escape')
+    await expect(overlay).toHaveCount(0)
+
+    let release!: () => void
+    let requested!: () => void
+    const held = new Promise<void>((resolve) => { release = resolve })
+    const requestStarted = new Promise<void>((resolve) => { requested = resolve })
+    await page.route('**/media/repaired-original.svg', async (route) => {
+      requested()
+      await held
+      await route.fulfill({ contentType: 'image/svg+xml', body:
+        '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600"><rect width="400" height="600" fill="#334155"/></svg>',
+      })
+    })
+    try {
+      await page.evaluate(() => {
+        const original = window.__state.items[0]!
+        window.__vibe.updateItems([{ ...original, src: '/media/repaired-original.svg' }])
+      })
+      await page.locator('.masonry-item').first().click({ position: { x: 20, y: 20 } })
+      await requestStarted
+      const image = overlay.locator('.reel-item[data-post-id="1"] img')
+      await expect(image).toHaveAttribute('src', '/media/repaired-original.svg')
+      expect(await image.evaluate((element) => {
+        const image = element as HTMLImageElement
+        return { complete: image.complete, naturalWidth: image.naturalWidth }
+      })).toEqual({ complete: false, naturalWidth: 0 })
+      await expect(overlay).not.toHaveClass(/vibe-reel-viewer-enter-active/)
+      await expect(overlay).toHaveAttribute('data-reel-entry', 'waiting')
+      const main = overlay.locator('.reel-layout-main')
+      await expect(main).toHaveAttribute('inert')
+      await expect(main).toHaveCSS('opacity', '0')
+      await expect(overlay.getByRole('status', { name: 'Loading media', exact: true })).toBeVisible()
+      release()
+      await expect(image).toHaveJSProperty('complete', true)
+      expect(await image.evaluate((element) => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
+      await expect(overlay).toHaveAttribute('data-reel-entry', 'ready')
+      await expect(image).toHaveClass(/media-preview--ready/)
+      await expect(main).not.toHaveAttribute('inert')
+    } finally { release() }
   })
 }

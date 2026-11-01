@@ -109,9 +109,9 @@
         "purpose": "Consistent timing across display refresh rates"
       },
       {
-        "name": "demo-reel-staging-experiment",
+        "name": "shared-reel-entry-staging",
         "value": "existing 160ms slide, then 160ms item fade after readiness",
-        "purpose": "Demo-only review: spinner until both slide completion and media readiness; library entry remains unchanged"
+        "purpose": "Shared feed-to-reel entry: spinner until slide completion and active media readiness, then item fade; standalone reels preserve their existing behavior"
       }
     ],
     "breakpoints": [

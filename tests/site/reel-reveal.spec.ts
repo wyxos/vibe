@@ -63,14 +63,14 @@ async function openFirst(page: Page, selector = '.masonry-item') {
 }
 
 async function waiting(page: Page) {
-  await expect(page.locator(overlay)).toHaveAttribute('data-demo-reel-entry', 'waiting')
+  await expect(page.locator(overlay)).toHaveAttribute('data-reel-entry', 'waiting')
   await expect(page.getByRole('status', { name: 'Loading media', exact: true })).toBeVisible()
   await expect(page.locator(`${overlay} .reel-layout-main`)).toHaveCSS('opacity', '0')
 }
 
 async function finishFade(page: Page) {
   const main = page.locator(`${overlay} .reel-layout-main`)
-  await expect(page.locator(overlay)).toHaveAttribute('data-demo-reel-entry', 'revealing')
+  await expect(page.locator(overlay)).toHaveAttribute('data-reel-entry', 'revealing')
   await expect(main).toHaveAttribute('data-test-paused-transition', 'opacity')
   const timing = await main.evaluate((element) => {
     const style = getComputedStyle(element)
@@ -79,9 +79,9 @@ async function finishFade(page: Page) {
   expect(timing.duration).toBe('0.16s')
   expect(timing.property).toContain('opacity')
   await finishTransition(page, `${overlay} .reel-layout-main`, 'opacity')
-  await expect(page.locator(overlay)).toHaveAttribute('data-demo-reel-entry', 'ready')
+  await expect(page.locator(overlay)).toHaveAttribute('data-reel-entry', 'ready')
   await expect(main).toHaveCSS('opacity', '1')
-  await expect(page.locator('.demo-reel-spinner')).toBeHidden()
+  await expect(page.locator('.vibe-reel-entry-spinner')).toBeHidden()
   await page.clock.resume()
 }
 
@@ -193,14 +193,14 @@ test('reduced motion still waits for media and can close and reopen', async ({ p
   await openFirst(page)
   await waiting(page)
   media.release()
-  await expect(page.locator(overlay)).toHaveAttribute('data-demo-reel-entry', 'ready')
+  await expect(page.locator(overlay)).toHaveAttribute('data-reel-entry', 'ready')
   await expect(page.locator(`${overlay} .reel-layout-main`)).toHaveCSS('opacity', '1')
-  await expect(page.locator('.demo-reel-spinner')).toBeHidden()
+  await expect(page.locator('.vibe-reel-entry-spinner')).toBeHidden()
   await page.keyboard.press('Escape')
   await page.clock.resume()
   await expect(page.locator(overlay)).toHaveCount(0)
   await openFirst(page)
-  await expect(page.locator(overlay)).toHaveAttribute('data-demo-reel-entry', 'ready')
+  await expect(page.locator(overlay)).toHaveAttribute('data-reel-entry', 'ready')
   expect(errors).toEqual([])
 })
 
@@ -243,6 +243,42 @@ test('changing grouped media while opening waits for the current frame', async (
   await waiting(page)
   media.release()
   await finishFade(page)
+  expect(errors).toEqual([])
+})
+
+test('native fade cancellation restores entry interaction when the surface is shown again', async ({ page }) => {
+  await page.addInitScript(() => {
+    document.addEventListener('transitionrun', (event) => {
+      const main = event.target
+      if (!(main instanceof HTMLElement) || !(event instanceof TransitionEvent)
+        || event.propertyName !== 'opacity'
+        || !main.matches('.vibe-reel-overlay .reel-layout-main')) return
+      const surface = main.closest<HTMLElement>('.vibe-surface')!
+      main.addEventListener('transitioncancel', function onCancel(cancel) {
+        if (cancel.target !== main || cancel.propertyName !== 'opacity') return
+        main.removeEventListener('transitioncancel', onCancel)
+        surface.style.removeProperty('display')
+        main.dataset.testNativeFadeCanceled = 'true'
+      })
+      // Hiding an ancestor cancels the real CSS transition. Restore it only
+      // after that browser event, without synthesizing animation completion.
+      surface.style.display = 'none'
+      void main.getBoundingClientRect()
+    }, true)
+  })
+  const errors = await ready(page)
+  await page.locator('.masonry-item img').first().evaluate(async (element) => {
+    await (element as HTMLImageElement).decode()
+  })
+  await page.locator('.masonry-item').first().click({ position: { x: 20, y: 20 } })
+  const main = page.locator(`${overlay} .reel-layout-main`)
+  await expect(main).toHaveAttribute('data-test-native-fade-canceled', 'true')
+  await expect(page.locator(overlay)).toHaveAttribute('data-reel-entry', 'ready')
+  await expect(main).not.toHaveAttribute('inert')
+  await expect(main).toHaveCSS('opacity', '1')
+  await expect(page.getByRole('status', { name: 'Loading media', exact: true })).toBeHidden()
+  await page.keyboard.press('Escape')
+  await expect(page.locator(overlay)).toHaveCount(0)
   expect(errors).toEqual([])
 })
 
