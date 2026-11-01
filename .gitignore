@@ -12,8 +12,6 @@ dist
 lib
 .vscode
 dist-ssr
-docs/.vitepress/cache
-docs/.vitepress/dist
 *.local
 
 # Editor directories and files
@@ -27,7 +25,6 @@ docs/.vitepress/dist
 *.sln
 *.sw?
 .npmrc
-.gh-pages
 .cursor/commands
 .zephyr/
 

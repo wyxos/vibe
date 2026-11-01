@@ -14,7 +14,6 @@
     "type": "git",
     "url": "https://github.com/wyxos/vibe.git"
   },
-  "homepage": "https://vibe.wyxos.com/",
   "bugs": {
     "url": "https://github.com/wyxos/vibe/issues"
   },
@@ -36,24 +35,18 @@
     "lib"
   ],
   "scripts": {
-    "dev": "node scripts/dev.mjs",
-    "dev:demo": "vite --host 127.0.0.1 --port 5173",
-    "docs:build": "vitepress build docs",
-    "docs:dev": "vitepress dev docs --host 127.0.0.1 --port 5174",
-    "docs:preview": "vitepress preview docs",
-    "build": "vite build && vitepress build docs && node scripts/write-cname.mjs",
+    "dev": "npm run build:lib && concurrently --kill-others --names bundle,types \"vite build --watch --mode development --config vite.config.lib.ts\" \"vue-tsc --watch -p tsconfig.lib.json\"",
+    "build": "npm run build:lib",
     "build:lib": "vite build --config vite.config.lib.ts && npm run build:types",
     "build:types": "vue-tsc -p tsconfig.lib.json",
-    "check:demo-dist": "node scripts/check-demo-dist.mjs",
     "check:package": "node scripts/check-package-shape.mjs",
-    "prepublishOnly": "npm run check && npm run test:unit && npm run build:lib && npm run test:e2e && npm run check:package",
-    "preview": "vite preview",
+    "prepublishOnly": "npm run check && npm run test:unit && npm run test:runner && npm run test:e2e:built && npm run check:package",
     "release": "npx @wyxos/zephyr --type=node",
     "release:atlas": "npm exec --yes --package @wyxos/zephyr@latest -- zephyr --type=node --non-interactive --auto-commit --then-deploy ../../php/atlas --consumer-preset \"Atlas Production (Windows)\" --consumer-package @wyxos/vibe --consumer-maintenance off --consumer-skip-git-hooks --consumer-auto-commit --skip-git-hooks patch",
     "release:verified": "npm run release && npm run verify:published -- --wait",
     "verify:published": "node scripts/verify-published-version.mjs",
     "test:e2e": "node scripts/run-playwright.mjs",
-    "test:e2e:built": "npm run build && npm run check:demo-dist && node scripts/run-playwright.mjs --built",
+    "test:e2e:built": "npm run build:lib && node scripts/run-playwright.mjs --built",
     "test:e2e:headed": "node scripts/run-playwright.mjs --headed",
     "test:e2e:install": "playwright install chromium",
     "test:e2e:ui": "node scripts/run-playwright.mjs --ui",
@@ -62,7 +55,8 @@
     "check": "npm run lint && npm run typecheck",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
-    "typecheck": "vue-tsc --noEmit --pretty false"
+    "typecheck": "vue-tsc --noEmit --pretty false && vue-tsc --noEmit -p tests/browser/tsconfig.json --pretty false",
+    "test:runner": "node --test tests/tooling/playwright-guard.test.mjs tests/tooling/library-watch.test.mjs"
   },
   "peerDependencies": {
     "vue": "^3.5.0",
@@ -90,7 +84,6 @@
     "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",
     "vite": "^8.0.1",
-    "vitepress": "^1.6.4",
     "vitest": "^4.1.2",
     "vue": "^3.5.30",
     "vue-eslint-parser": "^10.0.0",

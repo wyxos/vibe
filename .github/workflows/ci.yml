@@ -33,11 +33,11 @@ jobs:
       - name: Run unit tests
         run: npm run test:unit
 
-      - name: Run built demo smoke
+      - name: Run built library browser checks
         run: npm run test:e2e:built
 
-      - name: Build library
-        run: npm run build:lib
+      - name: Verify browser process cleanup
+        run: npm run test:runner
 
       - name: Run e2e tests
         run: npm run test:e2e

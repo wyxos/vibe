@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [tailwindcss(), vue()],
   publicDir: false,
   resolve: {
@@ -13,7 +13,9 @@ export default defineConfig({
   },
   build: {
     outDir: 'lib',
-    emptyOutDir: true,
+    // Declaration watch runs alongside the bundle watcher in development.
+    // Only a release build clears the output before both outputs regenerate.
+    emptyOutDir: mode !== 'development',
     lib: {
       entry: fileURLToPath(new URL('./src/index.ts', import.meta.url)),
       name: 'Vibe',
@@ -28,4 +30,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))

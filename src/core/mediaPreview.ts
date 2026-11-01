@@ -13,18 +13,12 @@ export interface VibeMediaErrorProps {
   status: string
 }
 
-const ERROR_LABELS: Readonly<Record<string, string>> = {
-  401: 'Authentication required',
-  403: 'Access forbidden',
-  404: 'Preview not found',
-  419: 'Session expired',
-  500: 'Server error',
+export function mediaErrorStatus(_src: string): string {
+  // Native media errors do not expose an HTTP status. The host can supply
+  // richer diagnostics through its custom error component.
+  return 'Error'
 }
 
-export function mediaErrorStatus(src: string): string {
-  return src.match(/\/demo-errors\/(401|403|404|419|500)\//)?.[1] ?? 'Error'
-}
-
-export function mediaErrorLabel(src: string): string {
-  return ERROR_LABELS[mediaErrorStatus(src)] ?? 'Preview unavailable'
+export function mediaErrorLabel(_src: string): string {
+  return 'Preview unavailable'
 }

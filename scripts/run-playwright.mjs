@@ -1,55 +1,45 @@
 #!/usr/bin/env node
-
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { createServer, preview } from 'vite'
+import { createServer } from 'vite'
 
 const args = process.argv.slice(2)
-const built = args.includes('--built')
-const playwrightArgs = args.filter((arg) => arg !== '--built')
-const host = '127.0.0.1'
-const port = built ? 4174 : 4173
-const playwrightCli = fileURLToPath(import.meta.resolve('@playwright/test/cli'))
-
-const server = built
-  ? await preview({
-      preview: { host, port, strictPort: true },
-    })
-  : await createServer({
-      server: { host, port, strictPort: true },
-    })
-
-if (!built) {
-  await server.listen()
+process.env.VIBE_TEST_BUILT = args.includes('--built') ? '1' : '0'
+const server = await createServer({
+  configFile: fileURLToPath(new URL('../tests/browser/vite.config.ts', import.meta.url)),
+  server: { host: '127.0.0.1', port: 0 },
+})
+let child
+let interrupted = false
+const shutdown = () => {
+  interrupted = true
+  if (child?.connected) child.send({ type: 'vibe-test-shutdown' }, () => {})
 }
-
-if (built && !playwrightArgs.some((arg) => arg.startsWith('--config'))) {
-  playwrightArgs.unshift('--config', 'playwright.built.config.ts')
-}
+process.once('SIGINT', shutdown)
+process.once('SIGTERM', shutdown)
+const disconnect = () => { if (child?.connected) child.disconnect() }
+process.once('exit', disconnect)
 
 try {
-  const exitCode = await runPlaywright(playwrightArgs)
-  process.exitCode = exitCode
-}
-finally {
-  await server.close()
-}
-
-function runPlaywright(cliArgs) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [playwrightCli, 'test', ...cliArgs], {
-      stdio: 'inherit',
-      windowsHide: true,
+  await server.listen()
+  process.exitCode = await new Promise((resolve, reject) => {
+    child = spawn(process.execPath, [
+      '--import', new URL('./playwright-guard.mjs', import.meta.url).href,
+      fileURLToPath(import.meta.resolve('@playwright/test/cli')), 'test',
+      '--config', 'tests/browser/playwright.config.ts',
+      ...args.filter((arg) => arg !== '--built'),
+    ], {
+      stdio: ['inherit', 'inherit', 'inherit', 'ipc'], windowsHide: true,
+      detached: process.platform !== 'win32',
+      env: { ...process.env, VIBE_TEST_URL: server.resolvedUrls.local[0], VIBE_GUARD_PARENT: String(process.pid) },
     })
-
     child.once('error', reject)
-    child.once('exit', (code, signal) => {
-      if (signal) {
-        reject(new Error(`Playwright exited from signal ${signal}.`))
-        return
-      }
-
-      resolve(code ?? 1)
-    })
+    child.once('exit', (code) => resolve(code ?? 1))
+    if (interrupted) shutdown()
   })
+} finally {
+  process.removeListener('SIGINT', shutdown)
+  process.removeListener('SIGTERM', shutdown)
+  process.removeListener('exit', disconnect)
+  await server.close()
 }

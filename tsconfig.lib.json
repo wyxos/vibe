@@ -15,6 +15,5 @@
     "src/types.ts",
     "src/core/**/*.ts",
     "src/components/**/*.vue"
-  ],
-  "exclude": ["src/App.vue", "src/main.ts", "src/style.css"]
+  ]
 }

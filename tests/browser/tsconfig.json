@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node"],
+    "paths": { "@/*": ["src/*"], "@vibe-under-test": ["src/index.ts"] }
+  },
+  "include": ["./**/*.ts"]
+}

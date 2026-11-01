@@ -61,7 +61,7 @@ describe('rewrite regressions', () => {
   })
 
   it('keeps a failed asset in the feed and renders its status fallback', async () => {
-    const failedSrc = 'https://example.com/demo-errors/403/blocked.jpg'
+    const failedSrc = 'https://example.com/blocked.jpg'
     const vibe = track(createVibe({
       target,
       initialPage: { items: [item(1, failedSrc), item(2)], next: null },
@@ -73,8 +73,8 @@ describe('rewrite regressions', () => {
     await flushPromises()
 
     const fallback = target.querySelector<HTMLElement>('[data-post-id="1"] [data-test="media-error"]')
-    expect(fallback?.getAttribute('aria-label')).toBe('403 Access forbidden')
-    expect(fallback?.textContent).toContain('Access forbidden')
+    expect(fallback?.getAttribute('aria-label')).toBe('Error Preview unavailable')
+    expect(fallback?.textContent).toContain('Preview unavailable')
     expect(vibe.getState().items.map(({ postId }) => postId)).toEqual([1, 2])
     expect(target.querySelector('[data-post-id="2"]')).not.toBeNull()
   })
