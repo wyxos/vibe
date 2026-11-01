@@ -21,6 +21,7 @@ export interface FakeMediaPage {
 }
 
 interface FixtureItem {
+  id?: number
   url: string
   postId?: number | null
   width?: number | null
@@ -94,6 +95,7 @@ function normalizeItem(item: FixtureItem): VibeMediaAsset {
   const height = sourceDimension(item.height)
 
   return {
+    ...(item.id == null ? {} : { mediaId: item.id }),
     src: item.url,
     preview: {
       src: previewUrl(item.url),

@@ -4,6 +4,7 @@ import {
   type RouterHistory,
 } from 'vue-router'
 
+import SelectionPage from './pages/SelectionPage.vue'
 import DemosPage from './pages/DemosPage.vue'
 import AutoScrollDemoPage from './pages/AutoScrollDemoPage.vue'
 import AudioDemoPage from './pages/AudioDemoPage.vue'
@@ -31,6 +32,7 @@ export function createDemoRouter(
   return createRouter({
     history,
     routes: [
+      ...(import.meta.env.DEV ? [{ path: '/select', name: 'select', component: SelectionPage }] : []),
       { path: '/', name: 'feed', component: FeedDemoPage },
       {
         path: '/demos',

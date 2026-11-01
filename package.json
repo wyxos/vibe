@@ -36,10 +36,10 @@
     "lib"
   ],
   "scripts": {
-    "dev": "concurrently --kill-others --names demo,docs \"npm:dev:demo\" \"npm:docs:dev\"",
-    "dev:demo": "vite --host 127.0.0.1 --port 5173 --strictPort",
+    "dev": "node scripts/dev.mjs",
+    "dev:demo": "vite --host 127.0.0.1 --port 5173",
     "docs:build": "vitepress build docs",
-    "docs:dev": "vitepress dev docs --host 127.0.0.1 --port 5174 --strictPort",
+    "docs:dev": "vitepress dev docs --host 127.0.0.1 --port 5174",
     "docs:preview": "vitepress preview docs",
     "build": "vite build && vitepress build docs && node scripts/write-cname.mjs",
     "build:lib": "vite build --config vite.config.lib.ts && npm run build:types",

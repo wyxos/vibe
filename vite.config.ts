@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import type { Connect } from 'vite'
 import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
+import { selectionPlugin } from './scripts/selectionPlugin'
 
 function demoErrorAssetMiddleware(): Connect.NextHandleFunction {
   return (request, response, next) => {
@@ -24,6 +25,7 @@ function demoErrorAssetMiddleware(): Connect.NextHandleFunction {
 
 export default defineConfig({
   plugins: [
+    selectionPlugin(),
     tailwindcss(),
     vue(),
     {

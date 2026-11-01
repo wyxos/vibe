@@ -6,6 +6,7 @@ import { RouterLink, RouterView, useRoute } from 'vue-router'
 import type { VibeInstance, VibeState } from '@/index'
 
 const route = useRoute()
+const selectionAvailable = import.meta.env.DEV
 const infiniteScroll = ref(true)
 const demoVibe = shallowRef<VibeInstance | null>(null)
 const vibeState = shallowRef<VibeState | null>(null)
@@ -132,6 +133,7 @@ function updateVibeInstance(instance: VibeInstance | null): void {
           <span>Vibe</span>
         </RouterLink>
         <nav class="app-navigation" aria-label="Primary navigation">
+          <RouterLink v-if="selectionAvailable" class="app-nav-link" to="/select">Select examples</RouterLink>
           <RouterLink
             class="app-nav-link"
             to="/demos/card-header-and-footer"
