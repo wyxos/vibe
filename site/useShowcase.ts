@@ -53,6 +53,8 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
   let viewport: MediaQueryList | null = null
   let request: AbortController | null = null
   let generation = 0
+  let viewportFill = 0
+  let sizeObserver: ResizeObserver | null = null
 
   const loaded = computed(() => state.value?.items.length ?? 0)
   const layout = computed(() => state.value?.reelOrigin === 'masonry' ? 'reel' : 'masonry')
@@ -64,6 +66,24 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
 
   function countRendered() {
     rendered.value = target.value?.querySelectorAll('.masonry-item, .reel-shell').length ?? 0
+  }
+
+  async function fillViewport(api: VibeInstance) {
+    const current = ++viewportFill
+    // Each iteration requests a real page, then lets the browser commit its
+    // geometry. This bounded startup fill never polls or scrolls for the user.
+    for (let pages = 0; pages < 6; pages++) {
+      await nextTick()
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+      if (current !== viewportFill || vibe !== api || filtering.value) return
+      const feed = target.value?.querySelector<HTMLElement>('.masonry-feed')
+      const snapshot = api.getState()
+      if (!feed || feed.clientHeight === 0 || feed.scrollHeight > feed.clientHeight + 1
+        || snapshot.next === null || snapshot.nextPageError || snapshot.isLoading
+        || snapshot.isLoadingMore || snapshot.loadMoreLocked) return
+      await api.loadNext()
+      if (api.getState().items.length <= snapshot.items.length) return
+    }
   }
 
   async function showInfo(item: ShowcaseItem) {
@@ -111,10 +131,12 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
     const scroller = element.querySelector('.masonry-feed')
     if (scroller && scrollTop) scroller.scrollTop = scrollTop
     countRendered()
+    await fillViewport(api)
   }
 
   async function chooseFilter(value: ShowcaseFilter) {
     if (value === filter.value && !filtering.value) return
+    viewportFill++
     request?.abort()
     const controller = new AbortController()
     request = controller
@@ -137,11 +159,13 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
         filtering.value = false
         api?.setLoadMoreLocked(false)
         request = null
+        if (api && !controller.signal.aborted) await fillViewport(api)
       }
     }
   }
 
   async function reset() {
+    viewportFill++
     request?.abort()
     request = null
     filtering.value = false
@@ -150,7 +174,7 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
     vibe?.setLoadMoreLocked(false)
     vibe?.setReelInfoSheet(false)
     try {
-      if (vibe) await vibe.reload()
+      if (vibe) { await vibe.reload(); await fillViewport(vibe) }
       else await initialize()
     } catch {
       error.value = 'The demo could not restart. Please try again.'
@@ -171,14 +195,18 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
   onMounted(() => {
     viewport = window.matchMedia('(max-width: 600px)')
     viewport.addEventListener('change', resize)
+    sizeObserver = new ResizeObserver(() => { if (vibe) void fillViewport(vibe) })
+    if (target.value) sizeObserver.observe(target.value)
     observer = new MutationObserver(countRendered)
     if (target.value) observer.observe(target.value, { childList: true, subtree: true })
     void initialize().catch(() => { error.value = 'The demo could not start. Restart it to try again.' })
   })
   onBeforeUnmount(() => {
     generation++
+    viewportFill++
     request?.abort()
     observer?.disconnect()
+    sizeObserver?.disconnect()
     viewport?.removeEventListener('change', resize)
     vibe?.destroy()
     vibe = null

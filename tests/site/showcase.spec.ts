@@ -81,6 +81,32 @@ for (const width of [1440, 390]) {
   })
 }
 
+test('a tall viewport fills automatically after opening, filtering, and restarting', async ({ page }) => {
+  await page.setViewportSize({ width: 1889, height: 2045 })
+  const errors = await ready(page)
+  const feed = page.locator('.masonry-feed')
+  async function expectScrollable() {
+    await expect(page.locator('[data-test=showcase-stage]')).toHaveAttribute('data-loading', 'false')
+    await expect.poll(() => feed.evaluate((element) => (
+      element.scrollHeight > element.clientHeight
+    ))).toBe(true)
+    await expect(page.locator('[data-test=showcase-stage]')).toHaveAttribute('data-loading', 'false')
+  }
+  // Initial pages shorter than this viewport must request their next page
+  // without a wheel event, a scrollbar, or a manual Load more action.
+  await expectScrollable()
+  expect(Number(await page.locator('[data-test=loaded-count]').textContent())).toBeGreaterThan(18)
+  await capture(page, 'showcase-tall')
+  await page.locator('[data-test=filter-image]').click()
+  await expect(page.locator('[data-test=filter-image]')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('.masonry-item').first()).toHaveAttribute('data-post-id', /-image-0$/)
+  await expectScrollable()
+  await page.getByRole('button', { name: 'Restart demo', exact: true }).click()
+  await expectScrollable()
+  await expect(page.locator('.masonry-item').first()).toHaveAttribute('data-post-id', /-image-0$/)
+  expect(errors).toEqual([])
+})
+
 test('infinite feed loads gracefully and bounds mounted cards as it grows', async ({ page }) => {
   const errors = await ready(page)
   const feed = page.locator('.masonry-feed')
