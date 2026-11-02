@@ -9,8 +9,7 @@ import {
   computed,
   nextTick,
   shallowRef,
-  watch,
-  type CSSProperties,
+  watch, type CSSProperties,
 } from 'vue'
 
 import {
@@ -44,6 +43,7 @@ import { useVisiblePostPreload } from './useVisiblePostPreload'
 import { useMediaLoading } from './useMediaLoading'
 import { useMediaReadiness } from './useMediaReadiness'
 import { useTimedMediaCard } from './useTimedMediaCard'
+import { useCardVideoMotion } from './useCardVideoMotion'
 
 const props = defineProps<{
   active?: boolean
@@ -142,6 +142,11 @@ useVisiblePostPreload({
   mediaReady: () => effectivePreviewState.value === 'ready',
   mediaSource: () => props.mediaSource ?? 'preview',
 })
+const { blocked: videoMotionBlocked, element: cardElement } = useCardVideoMotion({
+  enabled: () => props.mediaCard?.pauseVideoDuringTransitions === true && props.layout === 'masonry' && mediaType.value === 'video',
+  entering: () => props.entering, preparing: () => props.preparing === true, leaving: () => props.leaving === true,
+  identity: () => `${props.item.postId}:${normalizedMediaIndex.value}:${mediaSrc.value}`,
+})
 const {
   currentTime: timedMediaCurrentTime,
   duration: timedMediaDuration,
@@ -160,7 +165,7 @@ const {
   volume: timedMediaVolume,
 } = useTimedMediaCard({
   active: () => props.active,
-  inViewport: () => props.inViewport === true,
+  inViewport: () => props.inViewport === true && !videoMotionBlocked.value,
   layout: () => props.layout,
   mediaCard: () => props.mediaCard,
   mediaElement,
@@ -233,7 +238,7 @@ watch(
 
 </script>
 <template>
-  <article
+  <article ref="cardElement"
     :data-post-id="item.postId"
     :data-media-index="normalizedMediaIndex"
     class="media-card"

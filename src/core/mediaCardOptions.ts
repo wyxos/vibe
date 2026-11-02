@@ -17,6 +17,8 @@ export interface VibeMediaCardOptions {
     component: Component
   }
   videoMuted?: boolean
+  /** Keep masonry video playback paused until its card transition settles. */
+  pauseVideoDuringTransitions?: boolean
 }
 
 export interface VibeReelAudioState {
