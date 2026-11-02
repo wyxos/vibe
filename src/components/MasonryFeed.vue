@@ -1,17 +1,9 @@
 <script setup lang="ts">
 import type { MediaFailure } from '../core/mediaFailure'
-import {
-  computed,
-  onBeforeUnmount,
-  shallowRef,
-  useId,
-  watch,
-  type CSSProperties,
-} from 'vue'
+import { computed, onBeforeUnmount, shallowRef, useId, watch, type CSSProperties } from 'vue'
 
 import type { MasonryFeedProps } from '../core/feed'
 import { isNearFeedBottom } from '../core/feed'
-import { mediaStateKey } from '../core/mediaAsset'
 import {
   calculateFullyVisibleMasonryIndices,
   calculateMasonryEntryOffset,
@@ -30,6 +22,7 @@ import type { VibeItemId } from '../types'
 import GalleryScrollbar from './GalleryScrollbar.vue'
 import FeedFooter from './FeedFooter.vue'
 import MediaCard from './MediaCard.vue'
+import { usePreparedMasonryReplacement } from './usePreparedMasonryReplacement'
 import { useMasonryMediaVisibility } from './useMasonryMediaVisibility'
 import { useSettledMasonryFeedLayout } from './useSettledMasonryFeedLayout'
 
@@ -174,18 +167,28 @@ const showLoadMore = computed(() => (
 
 const viewportIndices = computed(() => new Set(viewportIndexSnapshot.value))
 
+const replacement = usePreparedMasonryReplacement(props, {
+  width: () => masonryWidth.value, viewportHeight: () => galleryViewportHeight.value,
+  scrollTop: () => galleryScrollTop, contentTop: () => masonryContentTop.value,
+  overscan: () => resolveMasonryOverscan(props.masonry, galleryViewportHeight.value),
+  layoutOptions: () => masonryLayoutOptions.value,
+}, {
+  ready: (id, index) => emit('ready', id, index), error: (id, index) => emit('error', id, index),
+  failure: (id, failure) => emit('mediaError', id, failure),
+})
 const visibleItems = computed(() => {
-  return overscanIndexSnapshot.value.flatMap((index) => {
+  const active = overscanIndexSnapshot.value.flatMap((index) => {
     const item = props.items[index]
     const position = masonryLayout.value.items[index]
     if (!item || !position || position.width <= 0 || position.height <= 0) return []
 
     return [{
       fetchPriority: viewportIndices.value.has(index) ? 'high' as const : 'low' as const,
-      index,
-      item,
+      index, item, preparing: false, preparedStyle: undefined as CSSProperties | undefined,
     }]
   })
+  const activeIds = new Set(active.map(row => row.item.postId))
+  return [...active, ...replacement.rows.value.filter(row => !activeIds.has(row.item.postId))]
 })
 
 function mergeOrderedIndices(first: readonly number[], second: readonly number[]): number[] {
@@ -411,7 +414,7 @@ onBeforeUnmount(() => {
   if (viewportFrame !== null) cancelAnimationFrame(viewportFrame)
 })
 
-defineExpose({ getScrollElement, loadIfNearBottom })
+defineExpose({ getScrollElement, loadIfNearBottom, prepareItemReplacement: replacement.prepareItemReplacement, cancelItemReplacement: replacement.cancelItemReplacement })
 </script>
 
 <template>
@@ -434,33 +437,31 @@ defineExpose({ getScrollElement, loadIfNearBottom })
         aria-label="Media gallery"
       >
         <MediaCard
-          v-for="({ fetchPriority, item, index }) in visibleItems"
+          v-for="({ fetchPriority, item, index, preparing, preparedStyle }) in visibleItems"
           :key="item.postId"
           class="masonry-item"
-          :entering="enteringPostIds.has(item.postId)"
+          :preparing="preparing"
+          :entering="!preparing && enteringPostIds.has(item.postId)"
           :leaving="leavingPostIds.has(item.postId)"
           :fetch-priority="fetchPriority"
           :card-footer="cardFooter"
           :card-header="cardHeader"
           :media-card="mediaCard"
-          :in-viewport="viewportIndices.has(index)"
+          :in-viewport="!preparing && viewportIndices.has(index)"
           :index="index"
           :item="item"
-          :item-style="itemStyle(index)"
-          interactive
+          :item-style="preparing ? preparedStyle : itemStyle(index)"
+          :interactive="!preparing"
           layout="masonry"
           :loaded-count="items.length"
           :media-index="mediaIndices.get(item.postId) ?? 0"
-          :preview-state="previewStates.get(mediaStateKey(
-            item.postId,
-            mediaIndices.get(item.postId) ?? 0,
-          )) ?? 'loading'"
+          :preview-state="replacement.previewState(item.postId, mediaIndices.get(item.postId) ?? 0)"
           :total="total"
           @activate="emit('activate', item.postId, $event)"
           @media-change="emit('mediaChange', item.postId, $event)"
-          @ready="emit('ready', item.postId, $event)"
-          @error="emit('error', item.postId, $event)"
-          @media-error="emit('mediaError', item.postId, $event)"
+          @ready="replacement.ready(item.postId, $event)"
+          @error="replacement.error(item.postId, $event)"
+          @media-error="replacement.failure(item.postId, $event)"
         />
       </section>
       <div v-if="masonry?.bottomSpacePx" class="masonry-bottom-space" aria-hidden="true"

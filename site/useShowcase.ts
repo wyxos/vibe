@@ -42,7 +42,7 @@ function fixturePage(page: number, filter: ShowcaseFilter): VibePage {
   }
 }
 
-export function useShowcase(target: Ref<HTMLElement | null>) {
+export function useShowcase(target: Ref<HTMLElement | null>, options: { prepareReplacementMedia?: boolean } = {}) {
   const filter = ref<ShowcaseFilter>('all')
   const state = shallowRef<VibeState | null>(null)
   const rendered = ref(0)
@@ -151,7 +151,7 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
       api?.setLoadMoreLocked(true)
       await latency(180, controller.signal)
       if (request !== controller || controller.signal.aborted) return
-      await api?.replacePage(fixturePage(0, value), { resetScroll: true })
+      await api?.replacePage(fixturePage(0, value), { resetScroll: true, prepareMedia: options.prepareReplacementMedia === true })
     } catch {
       if (!controller.signal.aborted) error.value = 'The collection could not change. Please try again.'
     } finally {

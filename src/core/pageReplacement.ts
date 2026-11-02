@@ -1,3 +1,4 @@
+import { nextTick } from 'vue'
 import { clampMediaIndex } from './mediaAsset'
 import { validatePage } from './page'
 import type { VibeSurfaceExpose } from './feed'
@@ -7,6 +8,8 @@ import type { VibeItem, VibePage } from '../types'
 export interface VibePageReplacementOptions {
   /** Scroll masonry to its beginning after the outgoing cards leave. */
   resetScroll?: boolean
+  /** Experimental: prepare incoming masonry videos during the existing exit. */
+  prepareMedia?: boolean
 }
 
 interface PageReplacementOptions {
@@ -27,6 +30,7 @@ export class PageReplacementController {
     this.controller?.abort()
     this.controller = null
     this.options.surface()?.cancelItemRemoval()
+    this.options.surface()?.cancelItemReplacement?.()
   }
 
   async replace(pageValue: VibePage, options?: VibePageReplacementOptions): Promise<void> {
@@ -51,6 +55,9 @@ export class PageReplacementController {
       const outgoing = state.items
         .filter((item) => !incomingIds.has(String(item.postId)))
         .map((item) => item.postId)
+      if (options?.prepareMedia === true) {
+        this.options.surface()?.prepareItemReplacement?.(items, options.resetScroll === true)
+      }
       await this.options.surface()?.animateItemRemoval(outgoing, controller.signal)
       if (controller.signal.aborted) return
       if (options?.resetScroll) {
@@ -70,10 +77,12 @@ export class PageReplacementController {
       state.error = null
       state.nextPageError = null
       this.options.commit({ ...page, items })
+      if (options?.prepareMedia === true) await nextTick()
     } finally {
       if (this.controller === controller) {
         this.controller = null
         this.options.surface()?.cancelItemRemoval()
+        this.options.surface()?.cancelItemReplacement?.()
       }
     }
   }

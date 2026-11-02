@@ -49,6 +49,8 @@ export interface MasonryFeedProps extends FeedRendererProps {
 }
 
 export interface FeedRendererExpose {
+  prepareItemReplacement?: (items: readonly VibeItem[], resetScroll: boolean) => void
+  cancelItemReplacement?: () => void
   changeActiveMedia?: (direction: -1 | 1) => boolean
   getScrollElement?: () => HTMLElement | null
   loadIfNearBottom: () => void
@@ -76,6 +78,8 @@ export interface ReelLayoutProps extends ReelFeedProps {
 }
 
 export interface VibeSurfaceExpose {
+  prepareItemReplacement?: (items: readonly VibeItem[], resetScroll: boolean) => void
+  cancelItemReplacement?: () => void
   animateItemRemoval: (postIds: readonly VibeItemId[], signal: AbortSignal) => Promise<void>
   cancelItemRemoval: () => void
   changeActiveReelMedia: (direction: -1 | 1) => boolean

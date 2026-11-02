@@ -14,6 +14,7 @@ import type {
   VibeCardRegion,
   VibeFeedFooter,
   VibeFeedFooterActions,
+  VibeItem,
   VibeItemId,
   VibeMediaCardOptions,
   VibeMediaErrorContext,
@@ -322,6 +323,8 @@ onBeforeUnmount(() => {
 })
 
 defineExpose({
+  prepareItemReplacement: (items: readonly VibeItem[], resetScroll: boolean) => masonryRenderer.value?.prepareItemReplacement?.(items, resetScroll),
+  cancelItemReplacement: () => masonryRenderer.value?.cancelItemReplacement?.(),
   animateItemRemoval,
   cancelItemRemoval,
   changeActiveReelMedia,

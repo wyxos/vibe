@@ -63,6 +63,7 @@ const props = defineProps<{
   mediaIndex: number
   mediaCard?: VibeMediaCardOptions
   mediaSource?: VibeMediaSource
+  preparing?: boolean
   previewState: MediaPreviewState
   reelControlsTarget?: HTMLElement | null
   reelAudioState?: VibeReelAudioState
@@ -189,11 +190,11 @@ const {
   onChange: (mediaIndex) => emit('mediaChange', mediaIndex),
 })
 
-const { imageLoading, mediaIsTimed, timedMediaPreload } = useMediaLoading({ active: () => props.active, fetchPriority: () => props.fetchPriority, layout: () => props.layout, mediaSource: () => mediaSrc.value, mediaType: () => mediaType.value, mediaElement, playbackAllowed: () => timedMediaPlaybackAllowed.value })
+const { imageLoading, mediaIsTimed, timedMediaPreload } = useMediaLoading({ active: () => props.active, fetchPriority: () => props.fetchPriority, layout: () => props.layout, mediaSource: () => mediaSrc.value, mediaType: () => mediaType.value, mediaElement, playbackAllowed: () => timedMediaPlaybackAllowed.value, preparing: () => props.preparing === true })
 const usesStationaryReelControls = computed(() => props.layout === 'reel'
   && props.stationaryReelControls === true)
 const mediaControlsVisible = computed(() => (
-  mediaIsTimed.value
+  !props.preparing && mediaIsTimed.value
   && (!isAudio.value || props.layout === 'reel')
   && effectivePreviewState.value === 'ready'
   && (
@@ -237,6 +238,7 @@ watch(
     :data-media-index="normalizedMediaIndex"
     class="media-card"
     :class="{
+      'media-card--preparing': preparing,
       'media-card--entering': entering,
       'media-card--leaving': leaving,
       'media-card--error': effectivePreviewState === 'error',
@@ -247,9 +249,9 @@ watch(
         || cardFooter?.background === 'transparent',
     }"
     :style="itemStyle"
-    :aria-hidden="leaving || undefined"
+    :aria-hidden="leaving || preparing || undefined"
     :aria-busy="effectivePreviewState === 'loading' || retrying"
-    :inert="leaving || undefined"
+    :inert="leaving || preparing || undefined"
     :role="interactive && !leaving && !usesSeparateActivator ? 'button' : undefined"
     :tabindex="interactive && !leaving && !usesSeparateActivator ? 0 : undefined"
     @click="activate(interactive && !usesSeparateActivator, activationInput($event))"
@@ -366,7 +368,7 @@ watch(
               :data-source-generation="sourceGeneration"
               class="media-preview"
               :class="{
-                'media-preview--ready': effectivePreviewState === 'ready',
+                'media-preview--ready': !preparing && effectivePreviewState === 'ready',
                 'media-preview--reel-video': layout === 'reel',
               }"
               :src="mediaSrc"

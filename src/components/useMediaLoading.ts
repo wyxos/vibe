@@ -1,4 +1,4 @@
-import { computed, nextTick, watch, type ShallowRef } from 'vue'
+import { computed, nextTick, onBeforeUnmount, watch, type ShallowRef } from 'vue'
 
 import { isTimedMedia } from '../core/mediaType'
 import type { VibeLayout, VibeMediaType } from '../types'
@@ -12,6 +12,7 @@ interface MediaLoadingOptions {
   mediaType: () => VibeMediaType | undefined
   mediaElement: ShallowRef<HTMLMediaElement | null>
   playbackAllowed: () => boolean
+  preparing?: () => boolean
 }
 
 export function useMediaLoading(options: MediaLoadingOptions) {
@@ -22,6 +23,7 @@ export function useMediaLoading(options: MediaLoadingOptions) {
       : 'eager' as const
   ))
   const timedMediaPreload = computed(() => {
+    if (options.preparing?.()) return 'auto' as const
     if (options.layout() === 'reel' && !options.active()) return 'none' as const
     if (options.fetchPriority() === 'high') return 'auto' as const
     return options.layout() === 'masonry' ? 'none' as const : 'metadata' as const
@@ -39,6 +41,14 @@ export function useMediaLoading(options: MediaLoadingOptions) {
       emitMediaPlaybackDiagnostic(media, 'load-requested')
       media.load()
     })
+  })
+
+  onBeforeUnmount(() => {
+    const media = options.mediaElement.value
+    if (!options.preparing?.() || !media) return
+    media.pause()
+    media.removeAttribute('src')
+    media.load()
   })
 
   return { imageLoading, mediaIsTimed, timedMediaPreload }
