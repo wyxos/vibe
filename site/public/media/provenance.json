@@ -166,5 +166,7 @@
       "height": 1254,
       "bytes": 420744
     }
-  ]
+  ],
+  "scope": "Original subset only. The openly licensed expansion is recorded separately in catalogue.json.",
+  "additionalCatalogue": "catalogue.json"
 }

@@ -1,4 +1,6 @@
 import type { VibeItem, VibeMediaAsset } from '../src/index'
+import { interleave, licensedShowcaseItems } from './catalogue'
+import type { MediaCredit } from './catalogue'
 
 export interface ShowcaseItem extends VibeItem {
   title: string
@@ -6,6 +8,7 @@ export interface ShowcaseItem extends VibeItem {
   kind: 'image' | 'video' | 'audio'
   palette: string
   description: string
+  credit?: MediaCredit
 }
 
 const media = (file: string) => `${import.meta.env.BASE_URL}media/${file}`
@@ -40,7 +43,7 @@ function sound(id: string, title: string, covered: boolean): ShowcaseItem {
   }
 }
 
-export const showcaseItems: ShowcaseItem[] = [
+const originalShowcaseItems: ShowcaseItem[] = [
   artwork('image-01', 'Solstice', 'Original studies', 'image-01.webp', 1086, 1448, '#c7b59a',
     'An original AI-generated image made for this demonstration.'),
   video('orbit', 'Chromatic orbit', 'chromatic-orbit.mp4', 576, 768),
@@ -76,8 +79,31 @@ export const showcaseItems: ShowcaseItem[] = [
     'A circular signal print; also used as the cover of the original audio study.'),
 ]
 
+const importedItems = licensedShowcaseItems()
+const kinds = ['image', 'video', 'audio'] as const
+const pools = Object.fromEntries(kinds.map((kind) => [kind, interleave(
+  originalShowcaseItems.filter((item) => item.kind === kind && item.postId !== 'showcase-uncovered-audio'),
+  importedItems.filter((item) => item.kind === kind),
+)])) as Record<typeof kinds[number], ShowcaseItem[]>
+
+pools.audio.push(originalShowcaseItems.find((item) => item.postId === 'showcase-uncovered-audio')!)
+
+export const showcaseItems: ShowcaseItem[] = []
+const positions = { image: 0, video: 0, audio: 0 }
+while (showcaseItems.length < originalShowcaseItems.length + importedItems.length) {
+  for (const kind of ['image', 'video', 'image', 'audio'] as const) {
+    const item = pools[kind][positions[kind]]
+    if (item) { showcaseItems.push(item); positions[kind]++ }
+  }
+}
+
+// Keep a grouped post in the opening mixed page without immediately repeating
+// its cover. Individual category ordering stays independent of this showcase.
+const openingGroup = showcaseItems.splice(showcaseItems.findIndex((item) => item.postId === 'showcase-geometric-trio'), 1)[0]!
+const repeatedCover = showcaseItems.splice(showcaseItems.findIndex((item) => item.postId === 'showcase-orbital-study'), 1)[0]!
+showcaseItems.splice(4, 0, openingGroup)
+showcaseItems.push(repeatedCover)
+
 export function getShowcaseItems(filter: 'all' | 'image' | 'video' | 'audio'): ShowcaseItem[] {
-  if (filter !== 'all') return showcaseItems.filter((item) => item.kind === filter)
-  const order = [0, 1, 6, 3, 16, 5, 10, 8, 15, 7, 13, 4, 12, 14, 9, 11, 17, 2]
-  return order.map((index) => showcaseItems[index]!)
+  return filter === 'all' ? [...showcaseItems] : [...pools[filter]]
 }

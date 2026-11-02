@@ -12,5 +12,6 @@
   "branding": {
     "file": "logo.svg",
     "origin": "Original Vibe blue/cyan masonry logo restored from project history: 403d5bc, public/logo.svg"
-  }
+  },
+  "licensedMedia": "media/catalogue.json"
 }

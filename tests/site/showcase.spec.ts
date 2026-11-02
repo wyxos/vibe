@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
 
 const noVisuals = process.env.VIBE_TEST_NO_VISUALS === '1'
@@ -205,4 +206,63 @@ test('all fixture sources are local and generation provenance is complete', asyn
     expect((await request.get(`/media/${asset.file}`)).ok()).toBe(true)
   }
   expect(manifest.deliveryDerivatives.reduce((bytes: number, item: { bytes: number }) => bytes + item.bytes, 0)).toBeLessThan(1000000)
+})
+
+
+test('licensed catalogue has distinct files, complete credits and intact delivery assets', async ({ request }) => {
+  const response = await request.get('/media/catalogue.json')
+  expect(response.ok()).toBe(true)
+  const catalogue = await response.json()
+  expect(catalogue.thirdPartyMediaUsed).toBe(true)
+  expect(catalogue.assets).toHaveLength(90)
+  expect(new Set(catalogue.assets.map((asset: { sourceMediaUrl: string }) => asset.sourceMediaUrl)).size).toBe(90)
+  for (const asset of catalogue.assets) {
+    expect(asset.credit.author).toBeTruthy()
+    expect(asset.credit.originalTitle).toBeTruthy()
+    expect(asset.credit.sourceUrl).toMatch(/^https:\/\/commons\.wikimedia\.org\//)
+    expect(asset.credit.licenseUrl).toMatch(/^https:\/\/creativecommons\.org\//)
+    expect(asset.credit.changes).toBeTruthy()
+    for (const delivery of [asset, ...(asset.cover ? [asset.cover] : [])]) {
+      const file = await request.get(`/media/${delivery.file}`)
+      expect(file.ok()).toBe(true)
+      expect(createHash('sha256').update(await file.body()).digest('hex')).toBe(delivery.sha256)
+    }
+  }
+})
+
+test('each category offers at least eighteen distinct media sources before repeating', async ({ page }) => {
+  await ready(page)
+  const catalogues = await page.evaluate(async () => {
+    const path = '/fixtures.ts'
+    const { getShowcaseItems } = await import(/* @vite-ignore */ path)
+    return ['all', 'image', 'video', 'audio'].map((kind) => {
+      const items = getShowcaseItems(kind) as { src: string }[]
+      return { kind, count: items.length, firstSources: items.slice(0, 18).map((item) => item.src) }
+    })
+  })
+  expect(catalogues.map((catalogue) => catalogue.count)).toEqual([108, 62, 26, 20])
+  for (const catalogue of catalogues) expect(new Set(catalogue.firstSources).size).toBe(18)
+})
+
+
+for (const width of [1440, 390]) test(`licensed media exposes its credit and license at ${width}px`, async ({ page, request }) => {
+  await page.setViewportSize({ width, height: 844 })
+  const errors = await ready(page)
+  const catalogue = await (await request.get('/media/catalogue.json')).json()
+  const source = page.locator('.masonry-item[data-post-id^="commons-image-01-"]')
+  await source.locator('.showcase-card-info').click()
+  const sheet = page.locator('[data-test=media-information]')
+  await expect(sheet).toBeVisible()
+  await expect(sheet).toContainText(catalogue.assets[0].credit.author)
+  await expect(sheet.getByRole('link', { name: catalogue.assets[0].credit.license, exact: true })).toHaveAttribute('href', catalogue.assets[0].credit.licenseUrl)
+  await expect(sheet.getByRole('link', { name: 'Wikimedia Commons', exact: true })).toHaveAttribute('href', catalogue.assets[0].credit.sourceUrl)
+  await expect(sheet).toContainText('Licensed media')
+  await expect(page.locator('.vibe-reel-overlay')).toHaveAttribute('data-reel-entry', 'ready')
+  await page.evaluate(async () => {
+    await Promise.all(document.getAnimations().filter((animation) => animation instanceof CSSTransition)
+      .map((animation) => animation.finished.catch(() => {})))
+  })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await capture(page, `licensed-info-${width}`)
+  expect(errors).toEqual([])
 })

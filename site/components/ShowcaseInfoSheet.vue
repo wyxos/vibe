@@ -6,9 +6,9 @@ import type { ShowcaseItem } from '../fixtures'
 
 const props = defineProps<VibeReelInfoSheetProps>()
 const item = computed(() => props.item as ShowcaseItem)
-const method = computed(() => /\/image-0[1-4]\.(?:png|webp)(?:[?#]|$)/.test(props.mediaItem.src)
+const method = computed(() => item.value.credit ? 'Licensed media' : /\/image-0[1-4]\.(?:png|webp)(?:[?#]|$)/.test(props.mediaItem.src)
   ? 'AI-generated image' : 'Original procedural media')
-const provenanceUrl = `${import.meta.env.BASE_URL}media/provenance.json`
+const provenanceUrl = computed(() => `${import.meta.env.BASE_URL}media/${item.value.credit ? 'catalogue.json' : 'provenance.json'}`)
 </script>
 
 <template>
@@ -24,13 +24,19 @@ const provenanceUrl = `${import.meta.env.BASE_URL}media/provenance.json`
       <dl>
         <div><dt>Collection</dt><dd>{{ item.collection }}</dd></div>
         <div><dt>Created with</dt><dd>{{ method }}</dd></div>
+        <template v-if="item.credit">
+          <div><dt>Credit</dt><dd>{{ item.credit.author }}</dd></div>
+          <div><dt>License</dt><dd><a :href="item.credit.licenseUrl" target="_blank" rel="noopener noreferrer">{{ item.credit.license }}</a></dd></div>
+          <div><dt>Source</dt><dd><a :href="item.credit.sourceUrl" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a></dd></div>
+        </template>
         <div><dt>Media in this post</dt><dd>{{ mediaCount }}</dd></div>
         <div v-if="mediaItem.width && mediaItem.height">
           <dt>Dimensions</dt><dd>{{ mediaItem.width }} × {{ mediaItem.height }}</dd>
         </div>
       </dl>
-      <p class="provenance-note">Every image, motion study and sound in this collection was made for Vibe.</p>
-      <p class="provenance-note">This original collection repeats as you scroll. Page loading is simulated to demonstrate loading states.</p>
+      <p v-if="item.credit" class="provenance-note">{{ item.credit.changes }}</p>
+      <p class="provenance-note">This collection combines original work with openly licensed media. Licensed items retain their individual credits and licenses.</p>
+      <p class="provenance-note">The collection repeats after you have explored the available items. Page loading is simulated to demonstrate loading states.</p>
     </div>
     <footer class="provenance-sheet-footer">
       <a :href="provenanceUrl" target="_blank" rel="noopener noreferrer">
