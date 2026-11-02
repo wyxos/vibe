@@ -77,5 +77,7 @@ export const showcaseItems: ShowcaseItem[] = [
 ]
 
 export function getShowcaseItems(filter: 'all' | 'image' | 'video' | 'audio'): ShowcaseItem[] {
-  return filter === 'all' ? [...showcaseItems] : showcaseItems.filter((item) => item.kind === filter)
+  if (filter !== 'all') return showcaseItems.filter((item) => item.kind === filter)
+  const order = [0, 1, 6, 3, 16, 5, 10, 8, 15, 7, 13, 4, 12, 14, 9, 11, 17, 2]
+  return order.map((index) => showcaseItems[index]!)
 }

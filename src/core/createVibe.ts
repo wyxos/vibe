@@ -24,6 +24,7 @@ import { updateReelAutoAdvanceState } from './reelAutoAdvance'
 import { VibeReelAudioController } from './reelAudioController'
 import { setReelInfoSheetEnabled } from './reelInfoSheet'
 import { VibeRouteSync } from './vibeRouting'
+import { openMasonryReel } from './reelViewer'
 import { createItemSnapshot, snapshotState, watchStateSnapshots, type VibeRuntimeState } from './runtime'
 import { applyItemUpdates } from './updateItems'
 import type {
@@ -157,7 +158,7 @@ class VibeController implements VibeInstance {
       },
       onCloseReel: () => this.closeMasonryReel(),
       onLoadMore: () => { void this.loadNext() },
-      onOpenReel: (postId: VibeItemId) => this.openMasonryReel(postId),
+      onOpenReel: (postId: VibeItemId) => openMasonryReel(this.state, this.routing, postId),
       onReelInfoSheetChange: (enabled: boolean) => this.setReelInfoSheet(enabled),
       onReelAudioChange: (state: VibeReelAudioState) => this.reelAudio.set(state, true),
       onRetryEnd: () => { void this.retryEnd() },
@@ -402,18 +403,15 @@ class VibeController implements VibeInstance {
   setLayout(layout: VibeLayoutMode): void {
     this.responsiveLayout.setLayout(layout)
   }
+  openReel(postId: VibeItemId): void {
+    if (this.state.layout !== 'masonry' || !this.state.items.some((item) => item.postId === postId)) return
+    this.surface?.openReel(postId)
+  }
   private closeMasonryReel(): void {
     if (this.state.reelOrigin !== 'masonry') return
     this.state.activeReelPostId = null
     this.state.reelOrigin = null
     this.routing.syncFeed()
-  }
-  private openMasonryReel(postId: VibeItemId): void {
-    if (this.state.layout !== 'masonry') return
-    if (!this.state.items.some((item) => item.postId === postId)) return
-    this.state.activeReelPostId = postId
-    this.state.reelOrigin = 'masonry'
-    this.routing.syncReel(postId)
   }
   private setActiveReelPost(postId: VibeItemId): void {
     if (this.state.layout !== 'reel' && this.state.reelOrigin !== 'masonry') return

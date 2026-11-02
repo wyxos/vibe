@@ -19,7 +19,7 @@ Experience: let visitors explore the actual library rather than read a feature p
 
 **OWN-WORLD:** Use the original blue/cyan masonry-block logo with a restrained navy and blue interface. The user has rejected warm paper/coral framing. Keep small rectangular controls and leave visual variety to the media.
 
-**STORY:** Visitors scroll, observe loading, optionally start automatic scrolling, and explore other media/layouts. Repeated original fixtures and simulated page latency remain explicit.
+**STORY:** Visitors scroll the mixed-media infinite masonry feed, observe loading, and open media or information in a closable reel. No permanent layout switch or automatic scrolling appears in this first demo. Provenance and simulated-feed details live in media information.
 
 **FIRST VIEWPORT:** A compact brand-and-controls bar leads directly into a viewport-filling feed. No marketing heading, introductory paragraphs, install section, or promotional footer. Phone controls wrap and keep accessible targets.
 

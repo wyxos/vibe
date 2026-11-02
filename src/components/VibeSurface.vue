@@ -329,6 +329,7 @@ defineExpose({
   loadIfNearBottom,
   moveActiveReelPost,
   navigateToReelItem,
+  openReel: (postId: VibeItemId) => activateMasonryItem(postId, 'keyboard'),
   resetMediaLifecycle,
   startItemRemoval,
   transitionActiveReelMedia: (direction: -1 | 1) => reelRenderer.value?.transitionActiveMedia?.(direction) ?? Promise.resolve(false),

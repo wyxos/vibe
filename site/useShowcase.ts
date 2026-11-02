@@ -8,8 +8,7 @@ import ShowcaseCardFooter from './components/ShowcaseCardFooter.vue'
 import ShowcaseInfoSheet from './components/ShowcaseInfoSheet.vue'
 
 export type ShowcaseFilter = 'all' | 'image' | 'video' | 'audio'
-type ShowcaseLayout = 'masonry' | 'reel'
-const pageSize = 12
+const pageSize = 18
 
 function latency(milliseconds: number, signal: AbortSignal): Promise<void> {
   // This one-shot delay demonstrates an asynchronous page boundary. It never
@@ -45,7 +44,6 @@ function fixturePage(page: number, filter: ShowcaseFilter): VibePage {
 
 export function useShowcase(target: Ref<HTMLElement | null>) {
   const filter = ref<ShowcaseFilter>('all')
-  const layout = ref<ShowcaseLayout>('masonry')
   const state = shallowRef<VibeState | null>(null)
   const rendered = ref(0)
   const filtering = ref(false)
@@ -57,7 +55,7 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
   let generation = 0
 
   const loaded = computed(() => state.value?.items.length ?? 0)
-  const autoScrolling = computed(() => Boolean(state.value?.autoScroll.enabled))
+  const layout = computed(() => state.value?.reelOrigin === 'masonry' ? 'reel' : 'masonry')
   const busy = computed(() => filtering.value || !state.value || state.value.isLoading || state.value.isLoadingMore)
   const status = computed(() => filtering.value ? 'Changing collection'
     : state.value?.isLoading ? 'Loading the first page'
@@ -69,8 +67,7 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
   }
 
   async function showInfo(item: ShowcaseItem) {
-    layout.value = 'reel'
-    vibe?.setLayout('reel')
+    vibe?.openReel(item.postId)
     await nextTick()
     if (item.mediaId === undefined) return
     vibe?.navigateToReelItem({ postId: item.postId, mediaId: item.mediaId })
@@ -93,7 +90,7 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
     const current = ++generation
     vibe?.destroy()
     const api = createVibe({
-      target: element, layout: layout.value, infiniteScroll: true, initialPage,
+      target: element, layout: 'masonry', infiniteScroll: true, initialPage,
       cardFooter: { component: CardFooter, height: 56 },
       reelInfoSheet: { component: ShowcaseInfoSheet },
       mediaCard: { feedPreload: 'visible-post', videoMuted: true },
@@ -144,16 +141,6 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
     }
   }
 
-  function chooseLayout(value: ShowcaseLayout) {
-    layout.value = value
-    vibe?.setReelInfoSheet(false)
-    vibe?.setLayout(value)
-  }
-
-  function toggleAutoScroll() {
-    vibe?.setAutoScroll(!autoScrolling.value, 70)
-  }
-
   async function reset() {
     request?.abort()
     request = null
@@ -197,6 +184,6 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
     vibe = null
   })
 
-  return { filter, layout, loaded, rendered, busy, status, autoScrolling, error,
-    chooseFilter, chooseLayout, toggleAutoScroll, reset }
+  return { filter, layout, loaded, rendered, busy, status, error,
+    chooseFilter, reset }
 }

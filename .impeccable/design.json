@@ -138,13 +138,6 @@
       "css": ".ds-filter{font:12px Space Grotesk,system-ui,sans-serif;min-height:44px;padding:0 16px;border:0;border-radius:3px;background:#1b3d63;color:#e9f2ff}.ds-filter:hover{background:#152e4a}.ds-filter:focus-visible{outline:2px solid #06b6d4;outline-offset:2px}"
     },
     {
-      "name": "Auto scroll",
-      "kind": "button",
-      "refersTo": "auto-scroll",
-      "html": "<button class=\"ds-auto\">Auto scroll</button>",
-      "css": ".ds-auto{font:12px Space Grotesk,system-ui,sans-serif;min-height:44px;padding:0 13px;border:0;border-radius:3px;background:#2563d4;color:#fff}.ds-auto:hover{background:#1d56bc}.ds-auto:focus-visible{outline:2px solid #06b6d4;outline-offset:2px}"
-    },
-    {
       "name": "Icon action",
       "kind": "button",
       "html": "<button class=\"ds-icon\" aria-label=\"Restart demo\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M3 11a9 9 0 1 1 2 7M3 4v7h7\"/></svg></button>",
@@ -159,7 +152,7 @@
     {
       "name": "Status strip",
       "kind": "custom",
-      "html": "<div class=\"ds-status\">12 loaded · 12 rendered</div>",
+      "html": "<div class=\"ds-status\">12 loaded \u00c2\u00b7 12 rendered</div>",
       "css": ".ds-status{min-height:34px;padding:7px 18px;background:#0c1e33;color:#adc4de;border-top:1px solid #234260;font:10px/1.4 Space Grotesk,system-ui,sans-serif;font-variant-numeric:tabular-nums}"
     }
   ],
@@ -176,7 +169,7 @@
     "dos": [
       "Preserve the original logo and blue interface",
       "Give the feed the overwhelming share of the viewport",
-      "Keep repeated-fixture and simulated-latency disclosure visible"
+      "Keep provenance and simulation details available in media information"
     ],
     "donts": [
       "Do not restore the rejected warm paper/coral theme",

@@ -30,7 +30,7 @@ const provenanceUrl = `${import.meta.env.BASE_URL}media/provenance.json`
         </div>
       </dl>
       <p class="provenance-note">Every image, motion study and sound in this collection was made for Vibe.</p>
-      <p class="provenance-note">The collection repeats with unique item identities, so you can keep exploring the feed.</p>
+      <p class="provenance-note">This original collection repeats as you scroll. Page loading is simulated to demonstrate loading states.</p>
     </div>
     <footer class="provenance-sheet-footer">
       <a :href="provenanceUrl" target="_blank" rel="noopener noreferrer">

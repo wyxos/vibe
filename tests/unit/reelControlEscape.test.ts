@@ -27,6 +27,25 @@ describe('Escape from focused reel controls', () => {
     vi.unstubAllGlobals()
   })
 
+  it('opens a loaded post through the public viewer API without changing the feed layout', async () => {
+    instance = createVibe({ target, initialPage: { items: [{ postId: 1,
+      src: 'https://example.test/image.jpg', width: 400, height: 600, items: [] }], next: null } })
+    await instance.mount()
+    instance.openReel('missing')
+    expect(instance.getState().reelOrigin).toBeNull()
+    instance.openReel(1)
+    await flushPromises()
+    expect(instance.getState().layout).toBe('masonry')
+    expect(instance.getState().activeReelPostId).toBe(1)
+    expect(instance.getState().reelOrigin).toBe('masonry')
+    const overlay = target.querySelector<HTMLElement>('.vibe-reel-overlay')!
+    expect(document.activeElement).toBe(overlay)
+    overlay.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Escape' }))
+    await flushPromises()
+    expect(instance.getState().reelOrigin).toBeNull()
+    expect(instance.getState().layout).toBe('masonry')
+  })
+
   it('leaves a feed-opened reel mounted when a nested control has handled Escape', async () => {
     instance = createVibe({ target, initialPage: { items: [{ postId: 1,
       src: 'https://example.test/image.jpg', width: 400, height: 600, items: [] }], next: null } })

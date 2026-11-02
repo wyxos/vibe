@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { GalleryHorizontalEnd, Github, Grid2X2, Pause, Play, RotateCcw } from 'lucide-vue-next'
+import { Github, RotateCcw } from 'lucide-vue-next'
 import { ref } from 'vue'
 import { useShowcase } from './useShowcase'
 import type { ShowcaseFilter } from './useShowcase'
 
 const target = ref<HTMLElement | null>(null)
 const logoUrl = `${import.meta.env.BASE_URL}logo.svg`
-const { filter, layout, loaded, rendered, busy, status, autoScrolling, error,
-  chooseFilter, chooseLayout, toggleAutoScroll, reset } = useShowcase(target)
+const { filter, layout, loaded, rendered, busy, status, error,
+  chooseFilter, reset } = useShowcase(target)
 const filters: { value: ShowcaseFilter; label: string }[] = [
   { value: 'all', label: 'All media' }, { value: 'image', label: 'Images' },
   { value: 'video', label: 'Motion' }, { value: 'audio', label: 'Sound' },
@@ -29,18 +29,6 @@ const filters: { value: ShowcaseFilter; label: string }[] = [
         >{{ option.label }}</button>
       </div>
       <div class="playground-actions">
-        <button
-          class="auto-scroll-button" type="button" data-test="auto-scroll"
-          :aria-pressed="autoScrolling" :aria-label="autoScrolling ? 'Pause auto scroll' : 'Start auto scroll'"
-          @click="toggleAutoScroll"
-        >
-          <Pause v-if="autoScrolling" :size="14" aria-hidden="true" /><Play v-else :size="14" aria-hidden="true" />
-          <span class="auto-label">{{ autoScrolling ? 'Pause' : 'Auto scroll' }}</span>
-        </button>
-        <div class="layout-toggle" role="group" aria-label="Feed layout">
-          <button type="button" aria-label="Masonry layout" title="Masonry layout" data-test="layout-masonry" :aria-pressed="layout === 'masonry'" @click="chooseLayout('masonry')"><Grid2X2 :size="17" aria-hidden="true" /></button>
-          <button type="button" aria-label="Reel layout" title="Reel layout" data-test="layout-reel" :aria-pressed="layout === 'reel'" @click="chooseLayout('reel')"><GalleryHorizontalEnd :size="17" aria-hidden="true" /></button>
-        </div>
         <button class="reset-button" type="button" aria-label="Restart demo" title="Restart demo" data-test="reset-demo" @click="reset"><RotateCcw :size="16" aria-hidden="true" /></button>
         <a class="project-link" href="https://github.com/wyxos/vibe" target="_blank" rel="noopener noreferrer" aria-label="Vibe on GitHub" title="Vibe on GitHub"><Github :size="18" aria-hidden="true" /></a>
       </div>
@@ -56,7 +44,6 @@ const filters: { value: ShowcaseFilter; label: string }[] = [
         <div v-if="error" class="showcase-error" role="alert">{{ error }} <button type="button" @click="reset">Restart</button></div>
         <div class="stage-status-bar">
           <span class="stage-counters"><span><b data-test="loaded-count">{{ loaded }}</b> loaded</span><span><b data-test="rendered-count">{{ rendered }}</b> rendered</span></span>
-          <span class="fixture-context">Original fixtures repeat · 450 ms simulated page latency</span>
           <span class="stage-status" :class="{ 'is-busy': busy }" data-test="request-state" role="status"><span class="status-dot" aria-hidden="true" />{{ status }}</span>
         </div>
       </div>

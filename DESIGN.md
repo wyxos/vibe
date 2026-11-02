@@ -62,11 +62,6 @@ components:
     textColor: "{colors.text}"
     rounded: "{rounded.control}"
     height: "44px"
-  auto-scroll:
-    backgroundColor: "{colors.action}"
-    textColor: "#ffffff"
-    rounded: "{rounded.control}"
-    height: "44px"
   stage:
     backgroundColor: "{colors.page}"
     textColor: "{colors.text}"
@@ -94,7 +89,7 @@ Use the locally hosted Space Grotesk face. The largest visible text is the compa
 
 The page is a 100dvh flex column: a compact toolbar followed immediately by a feed filling the remaining space. The feed owns scrolling. There is no marketing introduction, install section, or promotional footer.
 
-Desktop toolbar minimum height is 68px. At 700px and below, the brand and actions occupy the first row and filters the second; controls retain 44px targets. At 900px and below, spacing tightens and the secondary GitHub link hides. The status strip stays at the bottom of the stage, with the fixture disclosure wrapping to its own row on phones.
+Desktop toolbar minimum height is 68px. At 700px and below, the brand and actions occupy the first row and filters the second; controls retain 44px targets. At 900px and below, spacing tightens and the secondary GitHub link hides. The status strip stays at the bottom of the stage, with only loaded/rendered counts and request state.
 
 ## Elevation & Depth
 
@@ -108,10 +103,10 @@ Keep controls and media corners small: 2px for detail controls and 3px for ordin
 
 - Original logo: use site/public/logo.svg, restored from project history; do not replace it with an invented mark.
 - Filters: transparent at rest, supporting-blue hover, selected-blue pressed state, aria-pressed semantics.
-- Auto scroll: one clear blue action; Pause appears while enabled.
-- Layout, reset, and project controls: compact icons with accessible names and 44px targets.
+- The first demo has no automatic scrolling or permanent layout controls. Native user scrolling drives pagination from the start.
+- Reset and project controls: compact icons with accessible names and 44px targets.
 - Card footer: title and information action; omit repeated collection text from the visible frame.
-- Status: actual loaded and rendered counts, request state, and a quiet disclosure of repeated fixtures and simulated latency.
+- Status: actual loaded and rendered counts and request state. Keep fixture repetition and simulated-loading details inside media information.
 - Information sheet: blue surfaces, fixed header/footer, scrolling body, and media provenance.
 
 Control transitions use 140ms; focus uses a 2px cyan outline. Feed-to-reel opening preserves the original 160ms slide from the left. Keep the existing reel image fade and zoom, with both settling together over 160ms instead of running at different speeds. Post navigation uses elapsed-time animation so its duration stays consistent across refresh rates. Respect reduced motion. Vibe itself owns feed and media animation.
@@ -122,7 +117,7 @@ The shared library stages feed-to-reel opening: slide the viewer with a spinner,
 
 - Do preserve the original logo and variations of blue.
 - Do give the feed the overwhelming share of the viewport.
-- Do keep essential controls, source disclosure, and performance observations honest.
+- Do keep essential controls and performance observations honest; place source details in media information.
 - Don't restore warm paper/coral framing, large marketing headings, taglines, or promotional sections.
 - Don't convert fixture counts or simulated latency into production-performance claims.
 - Don't publish the showcase before the user's review and explicit instruction.

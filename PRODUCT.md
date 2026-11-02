@@ -23,7 +23,8 @@ The reusable package lives in `src/`; its public API is `src/index.ts`. The show
 - Preserve virtualization, continuous pagination, grouped media, images, video, audio, responsive layouts, and the library's existing public API.
 - Preserve independent library regression tests and synthetic fixtures in `tests/`.
 - Demonstrate actual library state. Loaded-item and mounted-card counts are observations, not FPS or production throughput claims.
-- The showcase repeats original fixtures with disclosed simulated page latency; it is not a live provider feed.
+- The first demo starts in an infinite masonry feed. Clicking media or its information action opens a closable reel; do not offer a permanent layout switch or automatic scrolling in this demo.
+- The opening page mixes photographs, geometric artwork, video, audio and grouped posts. The finite original catalogue repeats during pagination; media information holds provenance and simulation details rather than the main status strip.
 - Use originally authored, AI-generated, or explicitly licensed public media with provenance. Public visibility alone does not establish reuse permission.
 - Keep private application data out of public assets and the published library package.
 - The intended public showcase domain is `vibe.wyxos.com`. Publication requires the user's review and explicit instruction.
