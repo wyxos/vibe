@@ -15,6 +15,7 @@ interface ReelTimedMediaActivityOptions {
   mediaElement: Ref<HTMLMediaElement | null>
   mediaIsMuted: Ref<boolean>
   mediaIsPlaying: Ref<boolean>
+  onPaused?: (media: HTMLMediaElement) => void
 }
 
 export function useReelTimedMediaActivity(options: ReelTimedMediaActivityOptions) {
@@ -29,7 +30,11 @@ export function useReelTimedMediaActivity(options: ReelTimedMediaActivityOptions
 
   function onPlaying(): void {
     if (!playbackAllowed.value) {
-      options.mediaElement.value?.pause()
+      const media = options.mediaElement.value
+      if (media) {
+        media.pause()
+        options.onPaused?.(media)
+      }
       options.mediaIsPlaying.value = false
       return
     }
@@ -40,7 +45,10 @@ export function useReelTimedMediaActivity(options: ReelTimedMediaActivityOptions
   watch(playbackAllowed, (allowed) => {
     const media = options.mediaElement.value
     if (!allowed) {
-      media?.pause()
+      if (media) {
+        media.pause()
+        options.onPaused?.(media)
+      }
       if (media) media.muted = true
       options.mediaIsPlaying.value = false
       return

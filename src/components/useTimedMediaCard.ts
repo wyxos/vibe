@@ -55,14 +55,19 @@ export function useTimedMediaCard(options: TimedMediaCardOptions) {
     mediaElement: options.mediaElement,
     mediaIsMuted: isMuted,
     mediaIsPlaying: isPlaying,
+    onPaused: syncClock,
   })
+
+  function syncClock(media: HTMLMediaElement): void {
+    currentTime.value = finiteMediaValue(media.currentTime)
+    duration.value = finiteMediaValue(media.duration)
+  }
 
   function sync(event?: Event): void {
     const media = (event?.currentTarget as HTMLMediaElement | null)
       ?? options.mediaElement.value
     if (!media) return
-    currentTime.value = finiteMediaValue(media.currentTime)
-    duration.value = finiteMediaValue(media.duration)
+    syncClock(media)
     syncAudioState(media, playbackAllowed.value)
   }
 
