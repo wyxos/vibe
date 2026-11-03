@@ -27,7 +27,7 @@ for (const fullscreen of [false, true]) test(`stationary pointer preserves idle 
   await expect(reel).toHaveAttribute('data-active-post-id', 'covered-audio')
   await expect(controls).toHaveCount(1)
   await reel.locator('[data-post-id="covered-audio"] .media-card-media').dispatchEvent('pointermove', {
-    pointerType: 'mouse', clientX: box.x + 350, clientY: box.y + 280,
+    pointerType: 'mouse', clientX: box.x + 351, clientY: box.y + 280,
     movementX: 0, movementY: 0,
   })
   expect(await controls.evaluate(element => element.classList.contains('media-controls--idle-hidden'))).toBe(true)
@@ -54,8 +54,8 @@ test('idle slide clips at the media viewport bottom above the footer', async ({ 
 test.describe('fullscreen touch navigation', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 
-  test('a swipe leaves idle controls hidden on the next grouped item', async ({ page }) => {
-    await page.goto('/?scenario=mixed&layout=reel')
+  test('swiping from an image to audio and video keeps idle controls hidden', async ({ page }) => {
+    await page.goto('/?scenario=grouped-controls&layout=reel')
     await page.getByRole('button', { name: 'Image options' }).tap()
     await page.getByRole('button', { name: 'Enter fullscreen' }).tap()
     await expect(page.locator('.vibe-surface')).toHaveAttribute('data-reel-fullscreen', 'true')
@@ -66,17 +66,26 @@ test.describe('fullscreen touch navigation', () => {
     const touch = await page.context().newCDPSession(page)
     const point = (fraction: number) => [{ x: box.x + box.width * fraction, y: box.y + box.height / 2 }]
     try {
-      await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: point(0.85) })
-      for (const fraction of [0.7, 0.5, 0.3, 0.12]) {
-        await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: point(fraction) })
+      for (const [index, label] of [[1, 'Audio controls'], [2, 'Video controls']] as const) {
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: point(0.85) })
+        for (const fraction of [0.7, 0.5, 0.3, 0.12]) {
+          await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: point(fraction) })
+        }
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+        await expect(reel).toHaveAttribute('data-active-media-index', String(index))
+        const controls = page.getByLabel(label, { exact: true })
+        await expect(controls).toHaveAttribute('inert', '')
+        await reel.locator('.media-card-media').first().evaluate(element => {
+          const event = new PointerEvent('pointermove', {
+            bubbles: true, pointerType: 'mouse', clientX: 40, clientY: 40, movementX: 5,
+          })
+          Object.defineProperty(event, 'sourceCapabilities', { value: { firesTouchEvents: true } })
+          element.dispatchEvent(event)
+        })
+        expect(await controls.getAttribute('inert')).toBe('')
       }
-      await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
     } finally {
       await touch.detach()
     }
-    await expect(reel).toHaveAttribute('data-active-media-index', '1')
-    const controls = page.locator('[data-control-post-id="1"]:not(.vibe-reel-media-controls-leave-active)')
-    await expect(controls).toHaveCount(1)
-    await expect(controls).toHaveAttribute('inert', '')
   })
 })

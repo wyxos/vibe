@@ -4,7 +4,7 @@ import '@vibe-style'
 import type { VibeInstance, VibeState } from '../../src/index'
 import './harness.css'
 import { Header, Footer, InfoSheet, TrackDrawer } from './chrome'
-import { audio, items, video } from './media'
+import { audio, image, items, video } from './media'
 
 declare global {
   interface Window {
@@ -19,6 +19,7 @@ const params = new URLSearchParams(location.search)
 const scenario = params.get('scenario')
 const subtitles = ref(false)
 const initial = scenario === 'audio' ? audio()
+  : scenario === 'grouped-controls' ? [{ ...image(1), postId: 1, items: [audio()[0]!, video(2)] }]
   : scenario === 'controls' ? [video(1), { ...items(2, 1)[0]!, items: [] }, audio()[0]!]
   : scenario === 'video' ? [video(1), video(2), video(3)]
     : scenario === 'mixed' ? [items(1, 1)[0]!, video(2), ...items(3, 8)]
