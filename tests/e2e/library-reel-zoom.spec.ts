@@ -112,3 +112,21 @@ for (const layout of ['reel', 'masonry']) {
     await expect.poll(() => reel.evaluate(node => Math.round(node.scrollTop / node.clientHeight))).toBe(6)
   })
 }
+
+test('leaving fullscreen restores the selected post in a short embedded reel', async ({ page }) => {
+  await page.goto('/?scenario=mixed&layout=reel&chrome')
+  await page.locator('#target').evaluate(node => { node.style.height = '360px' })
+  const reel = page.locator('.reel-feed')
+  const surface = page.locator('.vibe-surface')
+  await expect(reel).not.toHaveAttribute('data-resizing')
+  await reel.locator('[data-post-id="1"] .media-card-media').dblclick()
+  await expect(surface).toHaveAttribute('data-reel-fullscreen', 'true')
+  await expect(reel).not.toHaveAttribute('data-resizing')
+  await reel.evaluate(node => { node.scrollTop = 2 * node.clientHeight })
+  await expect(reel).toHaveAttribute('data-active-post-id', '3')
+  await page.evaluate(() => document.exitFullscreen())
+  await expect(surface).not.toHaveAttribute('data-reel-fullscreen')
+  await expect(reel).not.toHaveAttribute('data-resizing')
+  await expect(reel).toHaveAttribute('data-active-post-id', '3')
+  await expect.poll(() => reel.evaluate(node => Math.round(node.scrollTop / node.clientHeight))).toBe(2)
+})

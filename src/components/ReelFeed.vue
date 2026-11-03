@@ -122,7 +122,6 @@ function itemStyle(index: number): CSSProperties {
 function nearestIndex(element: HTMLElement): number {
   const height = viewportHeight || element.clientHeight
   if (height <= 0 || props.items.length === 0) return 0
-
   return Math.min(
     props.items.length - 1,
     Math.max(0, Math.round(element.scrollTop / height)),
@@ -132,8 +131,10 @@ function nearestIndex(element: HTMLElement): number {
 function onScroll(event: Event): void {
   const element = event.currentTarget as HTMLElement | null
   if (!element) return
-
-  const height = viewportHeight || element.clientHeight
+  // A fullscreen resize can queue scroll before the fullscreen or resize observers run.
+  const fullscreenElement = element.ownerDocument.fullscreenElement
+  if (element.clientHeight !== viewportHeight || (fullscreen && fullscreen.value !== Boolean(fullscreenElement?.contains(element)))) return
+  const height = viewportHeight
   const lastItemAnchor = Math.max(0, props.items.length - 1) * height
   isFooterVisible.value = props.items.length > 0
     && element.scrollTop > lastItemAnchor + 1
@@ -148,7 +149,6 @@ function onScroll(event: Event): void {
 function restoreActiveItem(): void {
   const element = galleryElement.value
   if (!element) return
-
   isFooterVisible.value = false
   setResizeState(true)
   viewportHeight = element.clientHeight
