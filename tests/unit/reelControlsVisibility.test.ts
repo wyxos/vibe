@@ -58,6 +58,24 @@ describe('native reel controls visibility', () => {
     expect(state.activity.hidden.value).toBe(true)
   })
 
+  it('ignores stationary pointer retargeting across remounted items', async () => {
+    const state = setup()
+    const move = (x: number, y: number, movementX = 0) => new PointerEvent('pointermove', {
+      pointerType: 'mouse', clientX: x, clientY: y, movementX,
+    })
+    expect(state.activity.pointerMoved(move(50, 100, 10))).toBe(true)
+    await vi.advanceTimersByTimeAsync(5000)
+    state.item.value++
+    await nextTick()
+    expect(state.activity.pointerMoved(move(50, 100))).toBe(false)
+    expect(state.activity.hidden.value).toBe(true)
+    expect(state.activity.pointerMoved(move(51, 100, 1))).toBe(true)
+    expect(state.activity.pointerMoved(new PointerEvent('pointermove', {
+      pointerType: 'touch', clientX: 200, clientY: 300,
+    }))).toBe(false)
+    expect(state.activity.pointerMoved(move(51, 100))).toBe(false)
+  })
+
   it('keeps focused controls, open popovers and held gestures visible', async () => {
     const state = setup()
     state.activity.onFocusIn()

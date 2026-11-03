@@ -17,6 +17,7 @@ declare global {
 const params = new URLSearchParams(location.search)
 const scenario = params.get('scenario')
 const initial = scenario === 'audio' ? audio()
+  : scenario === 'controls' ? [video(1), { ...items(2, 1)[0]!, items: [] }, audio()[0]!]
   : scenario === 'video' ? [video(1), video(2), video(3)]
     : scenario === 'mixed' ? [items(1, 1)[0]!, video(2), ...items(3, 8)]
       : items()

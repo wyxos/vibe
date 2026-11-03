@@ -32,7 +32,9 @@ watch([() => props.visible, () => props.identity], ([visible]) => {
   activity.resetInteraction()
   if (visible && props.layout === 'reel') activity.ready()
 }, { immediate: true })
-function reveal() { if (props.layout === 'reel') activity.reveal() }
+function reveal(event: PointerEvent) {
+  if (props.layout === 'reel' && activity.pointerMoved(event)) activity.reveal()
+}
 </script>
 
 <template>

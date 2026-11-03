@@ -216,7 +216,7 @@ const mediaControlsKey = computed(() => (
 const controlsActivity = useReelControlsVisibility()
 const controlsHidden = computed(() => props.layout === 'reel' && controlsActivity.hidden.value)
 function revealTimedControls(event?: PointerEvent) {
-  if (event?.pointerType === 'touch') return
+  if (event && !controlsActivity.pointerMoved(event)) return
   if (props.layout === 'reel' && props.active && mediaIsTimed.value) controlsActivity.reveal()
 }
 

@@ -1,10 +1,12 @@
 import { inject, nextTick, onBeforeUnmount, onMounted, provide, shallowRef, type InjectionKey } from 'vue'
+import { useReelPointerMovement } from './useReelPointerMovement'
 
 function createVisibility() {
   const hidden = shallowRef(false)
   const holds = new Set<symbol>()
   let deadline: ReturnType<typeof setTimeout> | undefined
   let disposed = false
+  const pointerMoved = useReelPointerMovement()
 
   function clearDeadline() {
     if (deadline !== undefined) clearTimeout(deadline)
@@ -37,7 +39,7 @@ function createVisibility() {
   }
 
   onBeforeUnmount(() => { disposed = true; clearDeadline() })
-  return { hidden, ready, reveal, hold, release }
+  return { hidden, ready, reveal, hold, release, pointerMoved }
 }
 
 type Visibility = ReturnType<typeof createVisibility>

@@ -32,9 +32,10 @@ import ReelEntrySpinner from './ReelEntrySpinner.vue'
 import { useMediaLifecycle } from './useMediaLifecycle'
 import { useReelKeyboard } from './useReelKeyboard'
 import { useReelEntryReveal } from './useReelEntryReveal'
+import { provideReelPointerMovement } from './useReelPointerMovement'
+provideReelPointerMovement()
 const ENTRY_STAGGER_MS = 35
 const ITEM_MOTION_MS = 420
-
 const props = defineProps<{
   canRetryEnd: boolean
   cardFooter?: VibeCardRegion
