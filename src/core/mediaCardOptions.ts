@@ -16,6 +16,7 @@ export interface VibeMediaCardOptions {
   overlay?: {
     component: Component
   }
+  /** Mute masonry previews (default true). Reel audio uses initialReelAudioState. */
   videoMuted?: boolean
   /** Keep masonry video playback paused until its card transition settles. */
   pauseVideoDuringTransitions?: boolean

@@ -29,6 +29,7 @@ export function useTimedMediaCard(options: TimedMediaCardOptions) {
   const currentTime = shallowRef(0)
   const duration = shallowRef(0)
   const isPlaying = shallowRef(false)
+  const playbackRate = shallowRef(1)
   const {
     apply: applyAudioState,
     setVolume,
@@ -68,6 +69,7 @@ export function useTimedMediaCard(options: TimedMediaCardOptions) {
       ?? options.mediaElement.value
     if (!media) return
     syncClock(media)
+    playbackRate.value = media.playbackRate
     syncAudioState(media, playbackAllowed.value)
   }
 
@@ -87,6 +89,12 @@ export function useTimedMediaCard(options: TimedMediaCardOptions) {
     if (!media || !Number.isFinite(time)) return
     media.currentTime = Math.min(finiteMediaValue(media.duration), Math.max(0, time))
     currentTime.value = media.currentTime
+  }
+  function setPlaybackRate(rate: number): void {
+    const media = options.mediaElement.value
+    if (!media || !Number.isFinite(rate) || rate < 0.25 || rate > 4) return
+    media.playbackRate = rate
+    playbackRate.value = rate
   }
 
   async function togglePlayback(): Promise<void> {
@@ -110,6 +118,7 @@ export function useTimedMediaCard(options: TimedMediaCardOptions) {
     currentTime.value = 0
     duration.value = 0
     isPlaying.value = false
+    playbackRate.value = 1
   }, { flush: 'sync' })
 
   return {
@@ -122,8 +131,10 @@ export function useTimedMediaCard(options: TimedMediaCardOptions) {
     onLoadedMetadata,
     onPlaying,
     playbackAllowed,
+    playbackRate,
     seek,
     setVolume,
+    setPlaybackRate,
     sync,
     toggleMute,
     togglePlayback,

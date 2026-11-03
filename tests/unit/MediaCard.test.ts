@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, markRaw } from 'vue'
 
 import MediaCard from '@/components/MediaCard.vue'
-
 function mediaAsset(name: string) {
   return {
     src: `https://example.com/${name}.jpg`,
@@ -314,6 +313,7 @@ describe('MediaCard', () => {
       'media-control-button media-control-playback',
       'media-controls-audio',
       'media-control-time',
+      'media-control-options',
     ])
     expect(wrapper.get('.media-control-time').text()).toBe('0:05 / 2:05')
 

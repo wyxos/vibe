@@ -659,44 +659,33 @@
 .reel-media-controls-host {
   --vibe-reel-media-seek-height: 0.9rem;
   --vibe-reel-media-row-height: 2.5rem;
+  --vibe-reel-media-control-gap: 0rem;
 
   position: absolute;
   z-index: 6;
   right: 0;
   bottom: 0;
   left: 0;
-  height: calc(var(--vibe-reel-media-seek-height) + var(--vibe-reel-media-row-height));
+  height: calc(var(--vibe-reel-media-seek-height) + var(--vibe-reel-media-row-height) + var(--vibe-reel-media-control-gap));
   pointer-events: none;
 }
 
 .reel-media-controls-host .media-controls {
   position: absolute;
   inset: 0;
+  gap: var(--vibe-reel-media-control-gap);
   pointer-events: auto;
 }
-
-.reel-media-controls-host .media-control-seek {
-  height: var(--vibe-reel-media-seek-height);
-}
-
-.reel-media-controls-host .media-controls-row {
-  min-height: var(--vibe-reel-media-row-height);
-}
+.reel-media-controls-host .media-control-seek { height: var(--vibe-reel-media-seek-height); }
+.reel-media-controls-host .media-controls-row { min-height: var(--vibe-reel-media-row-height); }
 
 .vibe-reel-media-controls-enter-active,
 .vibe-reel-media-controls-leave-active {
   transition: opacity 180ms ease, transform 180ms ease;
 }
-
-.reel-media-controls-host .vibe-reel-media-controls-leave-active {
-  pointer-events: none;
-}
-
+.reel-media-controls-host .vibe-reel-media-controls-leave-active { pointer-events: none; }
 .vibe-reel-media-controls-enter-from,
-.vibe-reel-media-controls-leave-to {
-  opacity: 0;
-  transform: translateY(0.25rem);
-}
+.vibe-reel-media-controls-leave-to { opacity: 0; transform: translateY(0.25rem); }
 
 .media-controls-row {
   display: flex;
@@ -707,18 +696,16 @@
   justify-content: flex-start;
   gap: 0.5rem;
 }
-
 .media-controls-audio {
+  position: relative;
   display: flex;
   min-width: 0;
   padding: 0.125rem 0.375rem 0.125rem 0.125rem;
   align-items: center;
   gap: 0.375rem;
-  border-radius: 999px;
-  background: rgb(8 8 8 / 75%);
-  backdrop-filter: blur(8px);
+  border-radius: 3px;
+  background: rgb(8 8 8 / 30%);
 }
-
 .media-control-button {
   display: grid;
   flex: 0 0 auto;
@@ -726,105 +713,60 @@
   height: 1.75rem;
   padding: 0;
   border: 0;
-  border-radius: 50%;
+  border-radius: 3px;
   place-items: center;
   color: inherit;
-  background: rgb(8 8 8 / 75%);
-  backdrop-filter: blur(8px);
+  background: rgb(8 8 8 / 30%);
   cursor: pointer;
   transition: background 160ms ease, transform 160ms ease;
 }
-
-.media-controls-audio .media-control-button {
-  background: transparent;
-  backdrop-filter: none;
-}
-
-.media-control-button:hover {
-  background: rgb(38 38 38 / 94%);
-  transform: scale(1.04);
-}
-
-.media-controls-audio .media-control-button:hover {
-  background: rgb(255 255 255 / 16%);
-}
-
-.media-control-button:active {
-  transform: scale(0.92);
-}
-
+.media-controls-audio .media-control-button { background: transparent; }
+.media-control-button:hover { background: rgb(38 38 38 / 30%); transform: scale(1.04); }
+.media-controls-audio .media-control-button:hover { background: rgb(255 255 255 / 16%); }
+.media-control-button:active { transform: scale(0.92); }
 .media-control-button:focus-visible,
-.media-control-range:focus-visible {
-  outline: 2px solid #f5f5f5;
-  outline-offset: 2px;
-}
-
+.media-control-range:focus-visible,
+.media-control-option:focus-visible { outline: 2px solid #f5f5f5; outline-offset: 2px; }
 .media-control-time {
   flex: 0 0 auto;
   padding: 0.5rem 0.75rem;
-  border-radius: 999px;
+  border-radius: 3px;
   color: #f5f5f5;
-  background: rgb(8 8 8 / 75%);
-  backdrop-filter: blur(8px);
+  background: rgb(8 8 8 / 30%);
   font: 500 0.72rem/1 system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-
 .media-control-range {
   height: 0.9rem;
   margin: 0;
   appearance: none;
-  background:
-    linear-gradient(
-      to right,
-      #f5f5f5 var(--media-range-progress),
-      rgb(255 255 255 / 30%) var(--media-range-progress)
-    );
+  background: linear-gradient(to right, #f5f5f5 var(--media-range-progress), rgb(255 255 255 / 30%) var(--media-range-progress));
   cursor: pointer;
 }
-
 .media-control-range::-webkit-slider-thumb {
   width: 0.75rem;
   height: 0.75rem;
   border: 0;
-  border-radius: 50%;
+  border-radius: 3px;
   appearance: none;
   background: #f5f5f5;
   box-shadow: 0 0 0 1px rgb(0 0 0 / 30%);
 }
-
-.media-control-range::-webkit-slider-runnable-track {
-  height: 100%;
-  background: transparent;
-}
-
+.media-control-range::-webkit-slider-runnable-track { height: 100%; background: transparent; }
 .media-control-range::-moz-range-thumb {
   width: 0.75rem;
   height: 0.75rem;
   border: 0;
-  border-radius: 50%;
+  border-radius: 3px;
   background: #f5f5f5;
   box-shadow: 0 0 0 1px rgb(0 0 0 / 30%);
 }
-
-.media-control-range::-moz-range-track {
-  height: 100%;
-  background: transparent;
-}
-
-.media-control-range:disabled {
-  cursor: default;
-  opacity: 0.45;
-}
-
-.media-control-seek {
-  height: 0.45rem;
-  width: 100%;
-  border-radius: 0;
-}
-
-.media-control-seek::-webkit-slider-thumb {
+.media-control-range::-moz-range-track { height: 100%; background: transparent; }
+.media-control-range:disabled { cursor: default; opacity: 0.45; }
+.media-control-seek { height: 0.45rem; width: 100%; border-radius: 0; }
+.media-control-seek::-webkit-slider-thumb,
+.media-control-volume::-webkit-slider-thumb {
   width: 0;
   height: 0;
   border-radius: 0;
@@ -832,8 +774,8 @@
   background: transparent;
   box-shadow: none;
 }
-
-.media-control-seek::-moz-range-thumb {
+.media-control-seek::-moz-range-thumb,
+.media-control-volume::-moz-range-thumb {
   width: 0;
   height: 0;
   border: 0;
@@ -841,14 +783,136 @@
   background: transparent;
   box-shadow: none;
 }
+.media-control-volume-panel { display: flex; align-items: center; }
+.media-control-volume { width: 5rem; min-width: 2.75rem; border-radius: 0; }
+.media-controls .media-control-volume-toggle { display: none; }
+.media-control-options { position: relative; margin-left: auto; }
+.media-control-options-panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.75rem);
+  display: grid;
+  gap: 0.75rem;
+  width: max-content;
+  max-width: calc(100vw - 1.5rem);
+  padding: 0.75rem;
+  border: 1px solid rgb(255 255 255 / 30%);
+  border-radius: 3px;
+  color: #f5f5f5;
+  background: #171717;
+  font: 500 0.75rem/1.4 system-ui, sans-serif;
+}
+.media-control-option {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.375rem;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+.media-control-option:hover { background: rgb(255 255 255 / 12%); }
+.media-control-option[aria-pressed=true] { border-color: currentColor; background: rgb(255 255 255 / 16%); }
+.media-control-rate { display: grid; gap: 0.375rem; }
+.media-control-rates { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.media-control-popover-enter-active,
+.media-control-popover-leave-active { transition: opacity 140ms ease, transform 140ms ease; }
+.media-control-popover-enter-from,
+.media-control-popover-leave-to { opacity: 0; transform: translateY(0.375rem); }
 
-.media-control-volume {
-  flex: 0 1 5rem;
-  width: clamp(2.75rem, 18%, 5rem);
-  min-width: 2.75rem;
-  border-radius: 999px;
+@media (max-width: 700px) {
+  .reel-media-controls-host {
+    --vibe-reel-media-seek-height: 0.9rem;
+    --vibe-reel-media-row-height: 3.75rem;
+    --vibe-reel-media-control-gap: 1rem;
+  }
+  .media-controls--reel { gap: 1rem; }
+  .media-controls-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px 44px;
+    gap: 0.375rem;
+    padding: 0.5rem;
+  }
+  .media-controls--reel .media-control-button { width: 44px; height: 44px; }
+  .media-controls--reel .media-control-button svg { width: 27px; height: 27px; }
+  .media-control-playback { grid-column: 1; grid-row: 1; }
+  .media-control-time {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    justify-self: center;
+    padding-inline: 0.5rem;
+    font-size: 0.75rem;
+    pointer-events: none;
+  }
+  .media-controls-audio { grid-column: 3; grid-row: 1; padding: 0; background: transparent; }
+  .media-controls .media-control-mute { display: none; }
+  .media-controls .media-control-volume-toggle { display: grid; background: rgb(8 8 8 / 30%); }
+  .media-control-options { grid-column: 4; grid-row: 1; margin-left: 0; }
+  .media-control-volume-panel {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 0.75rem);
+    display: flex;
+    justify-content: center;
+    width: 44px;
+    height: 10rem;
+    padding: 0.75rem 0;
+    border-radius: 3px;
+    background: rgb(8 8 8 / 30%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(0.375rem);
+    transition: opacity 140ms ease, transform 140ms ease, visibility 0s 140ms;
+  }
+  .media-control-volume-panel--open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+    transition-delay: 0s;
+  }
+  .media-control-volume {
+    flex: none;
+    width: 0.9rem;
+    min-width: 0;
+    height: 100%;
+    writing-mode: vertical-lr;
+    direction: rtl;
+    background: linear-gradient(to top, #f5f5f5 var(--media-range-progress), rgb(255 255 255 / 30%) var(--media-range-progress));
+    touch-action: none;
+  }
 }
 
+@media (max-width: 380px) {
+  .media-control-time { font-size: 0.65rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .media-control-volume-panel,
+  .media-control-popover-enter-active,
+  .media-control-popover-leave-active { transition-duration: 0.01ms; }
+}
+.media-controls--reel {
+  transition: transform 180ms ease-out, opacity 180ms ease-out, visibility 0s;
+}
+.media-controls--reel.media-controls--idle-hidden {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(calc(100% + 1rem));
+  pointer-events: none;
+  transition: transform 180ms ease-out, opacity 180ms ease-out, visibility 0s 180ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .media-controls--reel,
+  .media-controls--reel.media-controls--idle-hidden { transition-duration: 0.01ms; transition-delay: 0s; }
+}
 .reel-feed {
   container-type: size;
   flex: 1 1 auto;

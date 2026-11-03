@@ -117,7 +117,7 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
       target: element, layout: 'masonry', infiniteScroll: true, initialPage,
       cardFooter: { component: CardFooter, height: 56 },
       reelInfoSheet: { component: ShowcaseInfoSheet },
-      mediaCard: { feedPreload: 'visible-post', videoMuted: true,
+      mediaCard: { feedPreload: 'visible-post',
         pauseVideoDuringTransitions: true },
       masonry: { minColumnWidth: viewport?.matches ? 145 : 240, loadMoreThresholdPx: 420,
         overscan: { minimumPx: 350, viewportMultiplier: 0.75, maximumPx: 650 } },

@@ -21,7 +21,7 @@ export function useMediaCardAudio(options: MediaCardAudioOptions) {
   const shared = options.layout() === 'reel' && options.reelAudioState()
   const videoIsMuted = shallowRef(shared
     ? initial.muted
-    : options.mediaCard()?.videoMuted ?? options.layout() === 'masonry')
+    : options.layout() === 'masonry' ? options.mediaCard()?.videoMuted ?? true : false)
   const videoVolume = shallowRef(shared ? initial.volume : 1)
   let lastAudibleVolume = shared ? initial.lastAudibleVolume : 1
 

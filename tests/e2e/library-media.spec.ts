@@ -111,7 +111,7 @@ for (const width of [1440, 390]) {
       ))
     }).toBeLessThanOrEqual(1)
     const box = await reel.boundingBox()
-    for (const control of await controls.locator('button, input').all()) {
+    for (const control of await controls.locator('button:visible, input:visible').all()) {
       const child = await control.boundingBox()
       expect(child!.y + child!.height).toBeLessThanOrEqual(box!.y + box!.height)
     }

@@ -114,6 +114,10 @@ Control transitions use 140ms; focus uses a 2px cyan outline. Feed-to-reel openi
 
 The shared library stages feed-to-reel opening: slide the viewer with a spinner, then fade the whole item in after both the slide and active media readiness complete. Errors reveal their recovery state after the slide. Standalone reels retain their existing loading and navigation behavior. The showcase uses this shared implementation without a separate reveal adapter.
 
+Shared reel media controls use 30% dark backgrounds. They slide down after five idle seconds and retain that hidden state across posts and grouped media within the open reel. Pointer movement or tapping media reveals them; a tap that reveals controls preserves playback. A new reel starts visible. Focused controls, held sliders and open options remain visible until interaction ends. Reduced motion removes the slide.
+
+At phone widths, controls use 27px icons with 44px targets and a 16px gap below the seek bar. The timestamp stays centered, with a volume icon and then an options cog on the right. Volume opens a vertical bar using the seek bar's rectangular styling. Options offer mute and native playback speed. Desktop retains the inline volume bar. These controls belong to the shared library; the showcase supplies no alternate implementation.
+
 ## Do's and Don'ts
 
 - Do preserve the original logo and variations of blue.

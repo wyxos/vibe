@@ -10,7 +10,6 @@ export class VibeReelAudioController {
     this.state = reactive(normalizeReelAudioState({
       ...options.initialReelAudioState,
       muted: options.initialReelAudioState?.muted
-        ?? options.mediaCard?.videoMuted
         ?? false,
     }))
   }

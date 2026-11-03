@@ -45,6 +45,7 @@ Library unit tests live in `tests/unit/`; source and built-library browser check
 - Make performance evidence observable and state its conditions.
 - Keep the reusable library separate from its showcase and application policy.
 - Preserve media provenance and accessible interaction.
+- Reel video and audio start with sound enabled unless the consumer supplies an explicit reel audio preference. Muted feed previews do not set reel audio policy. The shared library owns idle controls, responsive volume and playback options.
 
 ## Accessibility & Inclusion
 

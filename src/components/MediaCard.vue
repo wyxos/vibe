@@ -36,7 +36,7 @@ import type {
 } from '../types'
 import CardRegion from './CardRegion.vue'
 import MediaError from './MediaError.vue'
-import MediaControls from './MediaControls.vue'
+import MediaControlsLayer from './MediaControlsLayer.vue'
 import MediaContextOverlay from './MediaContextOverlay.vue'
 import { useMediaCarouselNavigation } from './useMediaCarouselNavigation'
 import { useVisiblePostPreload } from './useVisiblePostPreload'
@@ -44,6 +44,7 @@ import { useMediaLoading } from './useMediaLoading'
 import { useMediaReadiness } from './useMediaReadiness'
 import { useTimedMediaCard } from './useTimedMediaCard'
 import { useCardVideoMotion } from './useCardVideoMotion'
+import { useReelControlsVisibility } from './useReelControlsVisibility'
 
 const props = defineProps<{
   active?: boolean
@@ -163,6 +164,8 @@ const {
   toggleMute: toggleTimedMediaMute,
   togglePlayback: toggleTimedMediaPlayback,
   volume: timedMediaVolume,
+  playbackRate: timedMediaPlaybackRate,
+  setPlaybackRate,
 } = useTimedMediaCard({
   active: () => props.active,
   inViewport: () => props.inViewport === true && !videoMotionBlocked.value,
@@ -210,11 +213,19 @@ const mediaControlsVisible = computed(() => (
 const mediaControlsKey = computed(() => (
   `${props.item.postId}:${normalizedMediaIndex.value}:${mediaSrc.value}`
 ))
+const controlsActivity = useReelControlsVisibility()
+const controlsHidden = computed(() => props.layout === 'reel' && controlsActivity.hidden.value)
+function revealTimedControls(event?: PointerEvent) {
+  if (event?.pointerType === 'touch') return
+  if (props.layout === 'reel' && props.active && mediaIsTimed.value) controlsActivity.reveal()
+}
 
 function onTimedMediaClick(event: MouseEvent): void {
   if (props.layout !== 'reel') return
 
   event.stopPropagation()
+  if (controlsHidden.value) { revealTimedControls(); return }
+  revealTimedControls()
   void toggleTimedMediaPlayback()
 }
 function onAudioCoverError(event: Event): void {
@@ -282,6 +293,7 @@ watch(
         class="media-card-media"
         :class="{ 'media-card-media--carousel': layout === 'reel' && mediaItems.length > 1 }"
         :data-media-direction="mediaDirection"
+        @pointermove="revealTimedControls"
         @wheel="onMediaWheel"
         @touchstart.passive="onMediaTouchStart"
         @touchend.passive="onMediaTouchEnd"
@@ -418,32 +430,16 @@ watch(
 
         <MediaContextOverlay :item="item" :media-card="mediaCard" :media-index="normalizedMediaIndex" :media-item="mediaItem" :media-source="mediaSource ?? 'preview'" />
 
-        <Teleport
-          :disabled="!usesStationaryReelControls || !reelControlsTarget"
-          :to="reelControlsTarget ?? 'body'"
-        >
-          <Transition
-            name="vibe-reel-media-controls"
-            :css="usesStationaryReelControls"
-          >
-            <MediaControls
-              v-if="mediaControlsVisible"
-              :key="mediaControlsKey"
-              :current-time="timedMediaCurrentTime"
-              :data-control-post-id="usesStationaryReelControls ? item.postId : undefined"
-              :duration="timedMediaDuration"
-              :layout="layout"
-              :media-type="isAudio ? 'audio' : 'video'"
-              :muted="timedMediaIsMuted"
-              :playing="timedMediaIsPlaying"
-              :volume="timedMediaVolume"
-              @seek="seekTimedMedia"
-              @toggle-mute="toggleTimedMediaMute"
-              @toggle-playback="toggleTimedMediaPlayback"
-              @volume-change="setTimedMediaVolume"
-            />
-          </Transition>
-        </Teleport>
+        <MediaControlsLayer
+          :visible="mediaControlsVisible" :identity="mediaControlsKey"
+          :stationary="usesStationaryReelControls" :target="reelControlsTarget" :post-id="item.postId"
+          :current-time="timedMediaCurrentTime" :duration="timedMediaDuration" :layout="layout"
+          :media-type="isAudio ? 'audio' : 'video'" :muted="timedMediaIsMuted"
+          :playing="timedMediaIsPlaying" :playback-rate="timedMediaPlaybackRate" :volume="timedMediaVolume"
+          @playback-rate-change="setPlaybackRate" @seek="seekTimedMedia"
+          @toggle-mute="toggleTimedMediaMute" @toggle-playback="toggleTimedMediaPlayback"
+          @volume-change="setTimedMediaVolume"
+        />
 
         <div
           v-if="mediaItems.length > 1"

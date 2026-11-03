@@ -11,6 +11,7 @@ import CardRegion from './CardRegion.vue'
 import FeedFooter from './FeedFooter.vue'
 import MediaCard from './MediaCard.vue'
 import ReelAutoAdvanceProgress from './ReelAutoAdvanceProgress.vue'
+import { provideReelControlsVisibility } from './useReelControlsVisibility'
 const MEDIA_TRANSITION_MS = 300
 const REMOVAL_REFLOW_SUPPRESSION_MS = 250
 let suppressAutomaticLoadUntil = 0
@@ -29,6 +30,7 @@ const emit = defineEmits<{
   retryForward: []
 }>()
 const galleryElement = shallowRef<HTMLElement | null>(null)
+provideReelControlsVisibility(() => galleryElement.value)
 const reelControlsElement = shallowRef<HTMLElement | null>(null)
 const initialIndex = props.initialPostId === null || props.initialPostId === undefined
   ? -1
@@ -363,7 +365,6 @@ defineExpose({
   transitionActivePost,
 })
 </script>
-
 <template>
   <main
     class="reel-shell"
@@ -371,8 +372,7 @@ defineExpose({
       'reel-shell--has-footer': Boolean(cardFooter),
       'reel-shell--has-header': Boolean(cardHeader),
     }"
-    data-layout-mode="reel"
-  >
+    data-layout-mode="reel">
     <CardRegion
       v-if="cardHeader && activeItem && reelForward.status === 'idle'"
       :index="activeIndex"
