@@ -20,7 +20,12 @@ function createPlaybackOptions(element: () => HTMLElement | null, autoAdvance: (
     try {
       syncFullscreen()
       if (fullscreen.value) await document.exitFullscreen()
-      else if (canFullscreen.value) await element()?.requestFullscreen()
+      else if (canFullscreen.value) {
+        const surface = element()
+        await surface?.requestFullscreen()
+        const viewer = surface?.querySelector<HTMLElement>('.vibe-reel-overlay') ?? surface
+        viewer?.focus({ preventScroll: true })
+      }
     } catch {
       // Browsers can deny a request even when the API is available.
     }

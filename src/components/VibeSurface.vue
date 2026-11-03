@@ -344,7 +344,7 @@ defineExpose({
 
 <template>
   <div
-    ref="surfaceElement"
+    ref="surfaceElement" tabindex="-1"
     class="vibe-surface" :data-reel-fullscreen="fullscreen || undefined"
   >
     <ReelLayout
