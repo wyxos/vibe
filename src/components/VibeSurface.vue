@@ -68,7 +68,7 @@ const masonryRenderer = shallowRef<FeedRendererExpose | null>(null)
 const reelRenderer = shallowRef<FeedRendererExpose | null>(null)
 const reelOverlay = shallowRef<HTMLElement | null>(null)
 const surfaceElement = shallowRef<HTMLElement | null>(null)
-provideReelPlaybackOptions(() => surfaceElement.value, () => props.state.reelAutoAdvance)
+const { fullscreen } = provideReelPlaybackOptions(() => surfaceElement.value, () => props.state.reelAutoAdvance)
 const isReelLeaving = shallowRef(false)
 const enteringPostIds = shallowRef<ReadonlySet<VibeItemId>>(new Set())
 const entryDelays = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
@@ -345,7 +345,7 @@ defineExpose({
 <template>
   <div
     ref="surfaceElement"
-    class="vibe-surface"
+    class="vibe-surface" :data-reel-fullscreen="fullscreen || undefined"
   >
     <ReelLayout
       v-if="state.layout === 'reel' && (state.items.length > 0 || state.reelForward.status !== 'idle')"

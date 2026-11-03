@@ -109,6 +109,25 @@ for (const width of [1440, 390]) for (const reducedMotion of [false, true]) {
   })
 }
 
+test('fullscreen hides the showcase return action and restores it on exit', async ({ page }) => {
+  await ready(page)
+  await page.locator('[data-test=filter-video]').click()
+  const source = page.getByRole('button', { name: 'Open post showcase-orbit-video-0', exact: true })
+  await expect(source).toBeVisible()
+  await expect(page.locator('[data-test=showcase-stage]')).toHaveAttribute('data-loading', 'false')
+  await source.click()
+  const back = page.getByRole('button', { name: 'Back to feed', exact: true })
+  const cog = page.getByRole('button', { name: 'Video options', exact: true })
+  await expect(back).toBeVisible()
+  await cog.click()
+  await page.getByRole('button', { name: 'Enter fullscreen', exact: true }).click()
+  await expect(back).toBeHidden()
+  await expect(page.locator('.reel-shell > .media-card-footer')).toHaveCount(0)
+  await cog.click()
+  await page.getByRole('button', { name: 'Exit fullscreen', exact: true }).click()
+  await expect(back).toBeVisible()
+})
+
 test('a tall viewport fills automatically after opening, filtering, and restarting', async ({ page }) => {
   await page.setViewportSize({ width: 1889, height: 2045 })
   const errors = await ready(page)

@@ -12,6 +12,7 @@ import FeedFooter from './FeedFooter.vue'
 import MediaCard from './MediaCard.vue'
 import ReelAutoAdvanceProgress from './ReelAutoAdvanceProgress.vue'
 import { provideReelControlsVisibility } from './useReelControlsVisibility'
+import { useReelPlaybackOptions } from './useReelPlaybackOptions'
 const MEDIA_TRANSITION_MS = 300
 const REMOVAL_REFLOW_SUPPRESSION_MS = 250
 let suppressAutomaticLoadUntil = 0
@@ -31,6 +32,7 @@ const emit = defineEmits<{
 }>()
 const galleryElement = shallowRef<HTMLElement | null>(null)
 provideReelControlsVisibility(() => galleryElement.value)
+const fullscreen = useReelPlaybackOptions()?.fullscreen
 const reelControlsElement = shallowRef<HTMLElement | null>(null)
 const initialIndex = props.initialPostId === null || props.initialPostId === undefined
   ? -1
@@ -48,7 +50,6 @@ const trackStyle = computed<CSSProperties>(() => ({
 const visibleItems = computed(() => {
   const first = Math.max(0, activeIndex.value - 2)
   const last = Math.min(props.items.length - 1, activeIndex.value + 2)
-
   return props.items.slice(first, last + 1).map((item, offset) => ({
     fetchPriority: first + offset === activeIndex.value ? 'high' as const : 'low' as const,
     index: first + offset,
@@ -114,7 +115,6 @@ const forwardMessage = computed(() => {
   if (canManuallyContinueForward.value) return 'Load the next page to continue.'
   return 'You reached the end of this feed.'
 })
-
 function itemStyle(index: number): CSSProperties {
   return { gridRow: `${index + 1}` }
 }
@@ -369,7 +369,7 @@ defineExpose({
   <main
     class="reel-shell"
     :class="{
-      'reel-shell--has-footer': Boolean(cardFooter),
+      'reel-shell--has-footer': Boolean(cardFooter) && !fullscreen,
       'reel-shell--has-header': Boolean(cardHeader),
     }"
     data-layout-mode="reel">
@@ -476,7 +476,7 @@ defineExpose({
     </div>
 
     <CardRegion
-      v-if="cardFooter && activeItem && reelForward.status === 'idle'"
+      v-if="!fullscreen && cardFooter && activeItem && reelForward.status === 'idle'"
       :index="activeIndex"
       :item="activeItem"
       layout="reel"

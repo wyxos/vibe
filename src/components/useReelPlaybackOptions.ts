@@ -38,7 +38,9 @@ function createPlaybackOptions(element: () => HTMLElement | null, autoAdvance: (
 }
 
 export function provideReelPlaybackOptions(element: () => HTMLElement | null, autoAdvance: () => VibeReelAutoAdvanceState) {
-  provide(key, createPlaybackOptions(element, autoAdvance))
+  const options = createPlaybackOptions(element, autoAdvance)
+  provide(key, options)
+  return options
 }
 
 export function useReelPlaybackOptions() {

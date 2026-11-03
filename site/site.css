@@ -132,6 +132,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 }
 
 .showcase-reel-back:hover { background: var(--supporting); }
+.vibe-surface[data-reel-fullscreen] .showcase-reel-back { display: none; }
 .showcase-reel-back:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 
 .showcase-feed { --vibe-reel-spinner-track: var(--line); --vibe-reel-spinner-accent: var(--cyan); }

@@ -45,6 +45,7 @@ import { useTimedMediaCard } from './useTimedMediaCard'
 import { useCardVideoMotion } from './useCardVideoMotion'
 import { useReelControlsVisibility } from './useReelControlsVisibility'
 import { useReelFullscreenGesture } from './useReelPlaybackOptions'
+import { useReelZoom } from './useReelZoom'
 const props = defineProps<{
   active?: boolean
   advanceOnMediaEnd?: boolean
@@ -174,11 +175,9 @@ const {
   onReady: markSourceReady,
   reelAudioState: () => props.reelAudioState,
 })
-
 const usesSeparateActivator = computed(() => (
   props.interactive && Boolean(props.cardHeader || props.cardFooter)
 ))
-
 function activationInput(event: MouseEvent): 'keyboard' | 'pointer' {
   return event.detail === 0 ? 'keyboard' : 'pointer'
 }
@@ -222,6 +221,9 @@ function revealTimedControls(event?: PointerEvent) {
 }
 
 const activeReel = () => props.layout === 'reel' && props.active === true
+const zoom = useReelZoom(() => activeReel() && effectivePreviewState.value === 'ready', () => mediaControlsKey.value, {
+  onWheel: onMediaWheel, onTouchStart: onMediaTouchStart, onTouchEnd: onMediaTouchEnd,
+})
 const reelClick = useReelFullscreenGesture(() => {
   const wasHidden = controlsHidden.value
   revealTimedControls()
@@ -294,11 +296,9 @@ watch(
       <div
         class="media-card-media"
         :class="{ 'media-card-media--carousel': layout === 'reel' && mediaItems.length > 1 }"
-        :data-media-direction="mediaDirection"
+        :data-media-direction="mediaDirection" :data-zoomed="zoom.zoomed.value || undefined" :style="zoom.style.value"
         @pointermove="revealTimedControls"
-        @wheel="onMediaWheel"
-        @touchstart.passive="onMediaTouchStart"
-        @touchend.passive="onMediaTouchEnd"
+        v-on="activeReel() ? zoom.listeners : { wheel: onMediaWheel }" @click.capture="zoom.guardClick" :tabindex="zoom.zoomed.value ? -1 : undefined"
       >
         <Transition
           :css="!retrying"
@@ -432,6 +432,7 @@ watch(
         </Transition>
 
         <MediaContextOverlay :item="item" :media-card="mediaCard" :media-index="normalizedMediaIndex" :media-item="mediaItem" :media-source="mediaSource ?? 'preview'" />
+        <button v-if="zoom.zoomed.value" type="button" class="vibe-media-fit" aria-label="Fit media" @click.stop="zoom.fit">Fit</button>
 
         <MediaControlsLayer
           :visible="mediaControlsVisible" :identity="mediaControlsKey" :options="mediaCard?.controls"
