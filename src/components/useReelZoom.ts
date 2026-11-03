@@ -87,9 +87,12 @@ export function useReelZoom(
         return
       }
       event.preventDefault()
-      const delta = event.deltaY * (event.deltaMode === 1 ? 16 : 1)
+      const element = event.currentTarget as HTMLElement
+      const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16
+        : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? element.clientHeight : 1
+      const delta = event.deltaY * unit
       const point = { x: event.clientX, y: event.clientY }
-      zoomAt(scale.value * Math.exp(-delta / 240), point, point, event.currentTarget as HTMLElement)
+      zoomAt(scale.value * Math.exp(-delta / 240), point, point, element)
     },
     touchstart: start,
     touchmove: move,

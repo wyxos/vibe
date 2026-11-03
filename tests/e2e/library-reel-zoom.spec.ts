@@ -48,6 +48,21 @@ for (const phone of [false, true]) {
   })
 }
 
+test('Ctrl+wheel zooms an image in forward and back out to fit', async ({ page }) => {
+  await page.goto('/?scenario=mixed&layout=reel')
+  const media = page.locator('.reel-item .media-card-media').first()
+  await expect(media.locator('img')).toBeVisible()
+  await media.hover()
+  await page.keyboard.down('Control')
+  await page.mouse.wheel(0, -240)
+  const fit = page.getByRole('button', { name: 'Fit media' })
+  await expect(fit).toBeVisible()
+  await page.mouse.wheel(0, 250)
+  await page.keyboard.up('Control')
+  await expect(fit).toHaveCount(0)
+  await expect(media).not.toHaveAttribute('data-zoomed')
+})
+
 test('fullscreen removes the reel footer and restores it on exit', async ({ page }) => {
   await page.goto('/?scenario=video&layout=reel&chrome')
   const footer = page.locator('.reel-shell > .media-card-footer')
