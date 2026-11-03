@@ -247,9 +247,8 @@ function scrollToPost(index: number): Promise<void> {
   const element = galleryElement.value
   if (!element) return Promise.resolve()
 
-  const top = index * (viewportHeight || element.clientHeight)
   activeIndex.value = index
-  return transitionReelScroll(element, top, prefersReducedMotion())
+  return transitionReelScroll(element, () => index * element.clientHeight, prefersReducedMotion())
 }
 
 function advanceToPost(index: number): void {
@@ -340,6 +339,7 @@ watch(activePostId, (postId) => {
   if (postId !== undefined) emit('activeChange', postId)
 }, { immediate: true })
 
+if (fullscreen) watch(fullscreen, beginResize, { flush: 'sync' })
 onMounted(() => {
   window.addEventListener('resize', beginResize)
   window.addEventListener('orientationchange', beginResize)
@@ -369,7 +369,7 @@ defineExpose({
   <main
     class="reel-shell"
     :class="{
-      'reel-shell--has-footer': Boolean(cardFooter) && !fullscreen,
+      'reel-shell--has-footer': Boolean(cardFooter),
       'reel-shell--has-header': Boolean(cardHeader),
     }"
     data-layout-mode="reel">
@@ -476,7 +476,7 @@ defineExpose({
     </div>
 
     <CardRegion
-      v-if="!fullscreen && cardFooter && activeItem && reelForward.status === 'idle'"
+      v-if="cardFooter && activeItem && reelForward.status === 'idle'"
       :index="activeIndex"
       :item="activeItem"
       layout="reel"

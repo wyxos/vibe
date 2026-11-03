@@ -8,7 +8,7 @@ it.each([60, 165, 240])('uses elapsed time at %i Hz rather than assuming 60 fram
   vi.spyOn(performance, 'now').mockReturnValue(0)
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frames.push(callback); return frames.length })
   const element = document.createElement('div')
-  const finished = transitionReelScroll(element, 500, false)
+  const finished = transitionReelScroll(element, () => 500, false)
   for (let frame = 1; frame / rate * 1000 < 150 && frames.length; frame++) frames.shift()!(frame / rate * 1000)
   expect(element.hasAttribute('data-transitioning')).toBe(true)
   expect(element.scrollTop).toBeLessThan(450)

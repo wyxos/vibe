@@ -63,15 +63,52 @@ test('Ctrl+wheel zooms an image in forward and back out to fit', async ({ page }
   await expect(media).not.toHaveAttribute('data-zoomed')
 })
 
-test('fullscreen removes the reel footer and restores it on exit', async ({ page }) => {
+test('fullscreen retains enabled header and footer actions', async ({ page }) => {
   await page.goto('/?scenario=video&layout=reel&chrome')
+  const header = page.locator('.reel-shell > .media-card-header')
   const footer = page.locator('.reel-shell > .media-card-footer')
-  await expect(footer).toBeVisible()
   const cog = page.getByRole('button', { name: 'Video options', exact: true })
   await cog.click()
   await page.getByRole('button', { name: 'Enter fullscreen', exact: true }).click()
-  await expect(footer).toHaveCount(0)
+  await expect(page.locator('.vibe-surface')).toHaveAttribute('data-reel-fullscreen', 'true')
+  await expect(header).toBeVisible()
+  await expect(footer).toBeVisible()
+  await footer.getByRole('button', { name: 'Like' }).click()
+  await expect(footer.getByRole('button', { name: 'Like' })).toHaveAttribute('aria-pressed', 'true')
   await cog.click()
   await page.getByRole('button', { name: 'Exit fullscreen', exact: true }).click()
-  await expect(footer).toBeVisible()
+  await expect(footer.getByRole('button', { name: 'Like' })).toHaveAttribute('aria-pressed', 'true')
 })
+
+for (const layout of ['reel', 'masonry']) {
+  test(`fullscreen exit retains the post reached by scrolling (${layout})`, async ({ page }) => {
+    await page.goto(`/?scenario=mixed&layout=${layout}&chrome`)
+    if (layout === 'masonry') await page.locator('.masonry-item').nth(4).click()
+    const reel = page.locator('.reel-feed')
+    const scrollTo = (index: number) => reel.evaluate((node, target) => {
+      node.scrollTop = target * node.clientHeight
+    }, index)
+    await expect(reel).not.toHaveAttribute('data-resizing')
+    if (layout === 'reel') {
+      await scrollTo(2)
+      await expect(reel).toHaveAttribute('data-active-post-id', '3')
+      await scrollTo(4)
+    }
+    await expect(reel).toHaveAttribute('data-active-post-id', '5')
+    await reel.locator('[data-post-id="5"] .media-card-media').dblclick()
+    const surface = page.locator('.vibe-surface')
+    await expect(surface).toHaveAttribute('data-reel-fullscreen', 'true')
+    await expect(reel).not.toHaveAttribute('data-resizing')
+    await scrollTo(5)
+    await expect(reel).toHaveAttribute('data-active-post-id', '6')
+    await page.evaluate(async () => {
+      window.__vibe.nextReelPost()
+      await document.exitFullscreen()
+    })
+    await expect(surface).not.toHaveAttribute('data-reel-fullscreen')
+    await expect(reel).not.toHaveAttribute('data-transitioning')
+    await expect(reel).not.toHaveAttribute('data-resizing')
+    await expect(reel).toHaveAttribute('data-active-post-id', '7')
+    await expect.poll(() => reel.evaluate(node => Math.round(node.scrollTop / node.clientHeight))).toBe(6)
+  })
+}
