@@ -1,6 +1,25 @@
 import { defineComponent, h, ref } from 'vue'
 import type { PropType } from 'vue'
-import type { VibeItem } from '../../src/index'
+import type { VibeItem, VibeMediaControlsDrawerProps } from '../../src/index'
+
+export const TrackDrawer = defineComponent({
+  props: {
+    media: { type: Object as PropType<VibeMediaControlsDrawerProps['media']>, required: true },
+    actions: { type: Array as PropType<VibeMediaControlsDrawerProps['actions']>, required: true },
+    close: { type: Function as PropType<VibeMediaControlsDrawerProps['close']>, required: true },
+    selectAction: { type: Function as PropType<VibeMediaControlsDrawerProps['selectAction']>, required: true },
+  },
+  inheritAttrs: false,
+  setup: props => () => h('section', {
+    style: { background: '#132b45', color: 'white', padding: '24px' },
+  }, [
+    h('h2', `Tracks for post ${props.media.item.postId}`),
+    ...props.actions.map(action => h('button', {
+      type: 'button', 'aria-pressed': action.selected, onClick: () => props.selectAction(action),
+    }, action.label)),
+    h('button', { type: 'button', onClick: props.close }, 'Done'),
+  ]),
+})
 
 export const Header = defineComponent({
   props: { item: { type: Object as PropType<VibeItem>, required: true } },

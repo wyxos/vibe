@@ -807,6 +807,15 @@
   overflow: hidden;
 }
 .media-control-drawer[open] { display: flex; flex-direction: column; }
+.media-control-drawer--custom {
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
 .media-control-drawer::backdrop { background: rgb(0 0 0 / 55%); }
 .media-control-drawer-header {
   display: flex;

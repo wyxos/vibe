@@ -53,7 +53,7 @@ function reveal(event: PointerEvent) {
         :current-time="currentTime" :duration="duration" :layout="layout"
         :media-type="mediaType" :muted="muted" :playing="playing"
         :playback-rate="playbackRate" :volume="volume"
-        :options="options" :actions="actions"
+        :options="options" :actions="actions" :media="context"
         @pointermove="reveal" @pointerdown="activity.onPointerDown"
         @focusin="activity.onFocusIn" @focusout="activity.onFocusOut"
         @interaction-change="activity.onInteractionChange"

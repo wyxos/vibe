@@ -14,11 +14,25 @@ export interface VibeMediaControlAction {
 }
 
 export interface VibeMediaControlsOptions {
+  /** Replace the phone drawer content. Vibe retains the modal and dismissal lifecycle. */
+  drawer?: { component: Component; class?: string }
   showMute?: boolean
   /** Defaults to Vibe's standard speeds. An empty array hides speed controls. */
   playbackRates?: readonly number[]
   /** Resolve actions for the active media. Selection and playback changes belong to the consumer. */
   actions?: (media: VibeMediaOverlayProps) => readonly VibeMediaControlAction[]
+}
+
+export interface VibeMediaControlsDrawerProps {
+  media: VibeMediaOverlayProps
+  actions: readonly VibeMediaControlAction[]
+  close: () => void
+  selectAction: (action: VibeMediaControlAction) => void
+  muted: boolean
+  toggleMute: () => void
+  playbackRate: number
+  playbackRates: readonly number[]
+  setPlaybackRate: (rate: number) => void
 }
 
 export interface VibeCardChromeStyle {

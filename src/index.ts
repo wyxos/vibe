@@ -50,6 +50,7 @@ export type {
   VibeMediaAsset,
   VibeMediaCardOptions,
   VibeMediaControlAction,
+  VibeMediaControlsDrawerProps,
   VibeMediaControlsOptions,
   VibeMediaErrorContext,
   VibeMediaLifecycleContext,

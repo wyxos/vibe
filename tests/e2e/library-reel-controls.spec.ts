@@ -114,6 +114,36 @@ for (const width of [1440, 390]) {
       await expect(cog).toHaveAttribute('aria-expanded', 'false')
       await expect(cog).toBeFocused()
     })
+
+    test('consumer drawer markup uses the library dismissal lifecycle', async ({ page }, testInfo) => {
+      await page.goto('/?scenario=video&layout=reel&controlActions&customDrawer')
+      const cog = page.getByRole('button', { name: 'Video options', exact: true })
+      await cog.click()
+      const drawer = page.getByRole('dialog', { name: 'Video options', exact: true })
+      if (width >= 700) {
+        await expect(drawer).toHaveCount(0)
+        await expect(page.getByRole('button', { name: 'Choose audio track' })).toBeVisible()
+        return
+      }
+      await expect(drawer).toHaveClass(/test-track-drawer/)
+      await expect(drawer.getByRole('heading', { name: 'Tracks for post 1' })).toBeVisible()
+      await expect(drawer.getByRole('button', { name: 'Close playback options' })).toHaveCount(0)
+      const subtitles = drawer.getByRole('button', { name: 'English subtitles' })
+      await subtitles.click()
+      await expect(subtitles).toHaveAttribute('aria-pressed', 'true')
+      await testInfo.attach('custom-drawer', { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' })
+      await drawer.getByRole('button', { name: 'Done' }).click()
+      await expect(drawer).toHaveCount(0)
+      await expect(cog).toBeFocused()
+      await cog.click()
+      await page.keyboard.press('Escape')
+      await expect(drawer).toHaveCount(0)
+      await expect(cog).toBeFocused()
+      await cog.click()
+      await drawer.getByRole('button', { name: 'Choose audio track' }).click()
+      await expect(page.locator('body')).toHaveAttribute('data-track-target', '1:0')
+      await expect(drawer).toHaveCount(0)
+    })
   })
 }
 

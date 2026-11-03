@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Pause, Play, Settings, Volume2, VolumeX, X } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, useId, watch, type CSSProperties } from 'vue'
-import type { VibeLayout, VibeMediaControlAction, VibeMediaControlsOptions, VibeMediaType } from '../types'
+import type { VibeLayout, VibeMediaControlAction, VibeMediaControlsDrawerProps, VibeMediaControlsOptions, VibeMediaOverlayProps, VibeMediaType } from '../types'
 
 const props = withDefaults(defineProps<{
   currentTime: number
@@ -14,6 +14,7 @@ const props = withDefaults(defineProps<{
   playbackRate?: number
   options?: VibeMediaControlsOptions
   actions?: readonly VibeMediaControlAction[]
+  media: VibeMediaOverlayProps
 }>(), { playbackRate: 1 })
 const emit = defineEmits<{
   seek: [time: number]
@@ -33,7 +34,19 @@ let phoneQuery: MediaQueryList | undefined
 const id = useId()
 const rates = computed(() => [...new Set(props.options?.playbackRates ?? [0.5, 0.75, 1, 1.5, 2])]
   .filter(rate => Number.isFinite(rate) && rate >= 0.25 && rate <= 4))
-const hasOptions = computed(() => props.options?.showMute !== false || rates.value.length > 0 || !!props.actions?.length)
+const customDrawer = computed(() => phone.value ? props.options?.drawer : undefined)
+const hasOptions = computed(() => !!customDrawer.value || props.options?.showMute !== false || rates.value.length > 0 || !!props.actions?.length)
+const drawerProps = computed<VibeMediaControlsDrawerProps>(() => ({
+  media: props.media,
+  actions: props.actions ?? [],
+  close: dismissOptions,
+  selectAction,
+  muted: props.muted,
+  toggleMute: () => emit('toggleMute'),
+  playbackRate: props.playbackRate,
+  playbackRates: rates.value,
+  setPlaybackRate: rate => emit('playbackRateChange', rate),
+}))
 
 function syncPhone() {
   const next = phoneQuery?.matches ?? false
@@ -54,6 +67,7 @@ function dismissOptions() {
 }
 
 function selectAction(action: VibeMediaControlAction) {
+  if (action.disabled) return
   if (!action.keepOpen) dismissOptions()
   action.onSelect()
 }
@@ -199,38 +213,43 @@ const volumeStyle = computed<CSSProperties>(() => ({
         <Transition name="media-control-popover">
           <component
             :is="phone ? 'dialog' : 'div'" v-if="popover === 'options'" ref="optionsPanel"
-            :id="`${id}-options`" :class="phone ? 'media-control-drawer' : 'media-control-options-panel'"
+            :id="`${id}-options`"
+            :class="[phone ? 'media-control-drawer' : 'media-control-options-panel',
+              customDrawer && ['media-control-drawer--custom', customDrawer.class]]"
             :role="phone ? undefined : 'group'" :aria-label="`${mediaLabelTitle} options`"
             @cancel.prevent="dismissOptions"
             @click.self="phone && dismissOptions()"
           >
-            <header v-if="phone" class="media-control-drawer-header">
-              <strong>Playback options</strong>
-              <button type="button" class="media-control-option" aria-label="Close playback options" autofocus @click="dismissOptions">
-                <X :size="22" />
-              </button>
-            </header>
-            <div class="media-control-options-body">
-              <button v-if="options?.showMute !== false" type="button" class="media-control-option" @click="emit('toggleMute')">
-                {{ muted ? 'Unmute' : 'Mute' }}
-              </button>
-              <div v-if="rates.length" class="media-control-rate" role="group" aria-label="Playback speed">
-                <span>Speed</span>
-                <div class="media-control-rates">
-                  <button
-                    v-for="rate in rates" :key="rate" type="button" class="media-control-option"
-                    :aria-pressed="playbackRate === rate" :aria-label="`${rate}× speed`"
-                    @click="emit('playbackRateChange', rate)"
-                  >{{ rate }}×</button>
+            <component v-if="customDrawer" :is="customDrawer.component" v-bind="drawerProps" />
+            <template v-else>
+              <header v-if="phone" class="media-control-drawer-header">
+                <strong>Playback options</strong>
+                <button type="button" class="media-control-option" aria-label="Close playback options" autofocus @click="dismissOptions">
+                  <X :size="22" />
+                </button>
+              </header>
+              <div class="media-control-options-body">
+                <button v-if="options?.showMute !== false" type="button" class="media-control-option" @click="emit('toggleMute')">
+                  {{ muted ? 'Unmute' : 'Mute' }}
+                </button>
+                <div v-if="rates.length" class="media-control-rate" role="group" aria-label="Playback speed">
+                  <span>Speed</span>
+                  <div class="media-control-rates">
+                    <button
+                      v-for="rate in rates" :key="rate" type="button" class="media-control-option"
+                      :aria-pressed="playbackRate === rate" :aria-label="`${rate}× speed`"
+                      @click="emit('playbackRateChange', rate)"
+                    >{{ rate }}×</button>
+                  </div>
                 </div>
+                <button
+                  v-for="action in actions" :key="action.id" type="button"
+                  class="media-control-option media-control-custom-action"
+                  :disabled="action.disabled" :aria-pressed="action.selected"
+                  @click="selectAction(action)"
+                >{{ action.label }}</button>
               </div>
-              <button
-                v-for="action in actions" :key="action.id" type="button"
-                class="media-control-option media-control-custom-action"
-                :disabled="action.disabled" :aria-pressed="action.selected"
-                @click="selectAction(action)"
-              >{{ action.label }}</button>
-            </div>
+            </template>
           </component>
         </Transition>
       </div>

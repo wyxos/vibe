@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import '@vibe-style'
 import type { VibeInstance, VibeState } from '../../src/index'
 import './harness.css'
-import { Header, Footer, InfoSheet } from './chrome'
+import { Header, Footer, InfoSheet, TrackDrawer } from './chrome'
 import { audio, items, video } from './media'
 
 declare global {
@@ -43,6 +43,7 @@ window.__vibe = createVibe({
   mediaCard: {
     feedPreload: 'visible-post',
     controls: params.has('controlActions') ? {
+      drawer: params.has('customDrawer') ? { component: TrackDrawer, class: 'test-track-drawer' } : undefined,
       showMute: false,
       playbackRates: [1, 2],
       actions: ({ item, mediaIndex }) => [
