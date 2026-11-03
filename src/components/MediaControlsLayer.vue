@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
-import type { VibeItemId, VibeLayout } from '../types'
+import type { VibeItemId, VibeLayout, VibeMediaControlsOptions, VibeMediaOverlayProps } from '../types'
 import MediaControls from './MediaControls.vue'
 import { useReelControlsVisibility } from './useReelControlsVisibility'
 
@@ -18,6 +18,8 @@ const props = defineProps<{
   playing: boolean
   playbackRate: number
   volume: number
+  options?: VibeMediaControlsOptions
+  context: VibeMediaOverlayProps
 }>()
 const emit = defineEmits<{
   seek: [time: number]
@@ -28,6 +30,9 @@ const emit = defineEmits<{
 }>()
 const activity = useReelControlsVisibility()
 const hidden = computed(() => props.layout === 'reel' && activity.hidden.value)
+const actions = computed(() => props.visible && props.layout === 'reel'
+  ? props.options?.actions?.(props.context)
+  : undefined)
 watch([() => props.visible, () => props.identity], ([visible]) => {
   activity.resetInteraction()
   if (visible && props.layout === 'reel') activity.ready()
@@ -48,6 +53,7 @@ function reveal(event: PointerEvent) {
         :current-time="currentTime" :duration="duration" :layout="layout"
         :media-type="mediaType" :muted="muted" :playing="playing"
         :playback-rate="playbackRate" :volume="volume"
+        :options="options" :actions="actions"
         @pointermove="reveal" @pointerdown="activity.onPointerDown"
         @focusin="activity.onFocusIn" @focusout="activity.onFocusOut"
         @interaction-change="activity.onInteractionChange"

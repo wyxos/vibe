@@ -1,4 +1,5 @@
 import { createVibe } from '@vibe-under-test'
+import { ref } from 'vue'
 import '@vibe-style'
 import type { VibeInstance, VibeState } from '../../src/index'
 import './harness.css'
@@ -16,6 +17,7 @@ declare global {
 
 const params = new URLSearchParams(location.search)
 const scenario = params.get('scenario')
+const subtitles = ref(false)
 const initial = scenario === 'audio' ? audio()
   : scenario === 'controls' ? [video(1), { ...items(2, 1)[0]!, items: [] }, audio()[0]!]
   : scenario === 'video' ? [video(1), video(2), video(3)]
@@ -38,7 +40,23 @@ window.__vibe = createVibe({
   cardFooter: params.has('chrome') ? { component: Footer, height: 48, background: 'transparent' } : undefined,
   reelInfoSheet: { component: InfoSheet },
   reelAutoAdvance: { intervalMs: 3000 },
-  mediaCard: { feedPreload: 'visible-post' },
+  mediaCard: {
+    feedPreload: 'visible-post',
+    controls: params.has('controlActions') ? {
+      showMute: false,
+      playbackRates: [1, 2],
+      actions: ({ item, mediaIndex }) => [
+        {
+          id: 'subtitles', label: 'English subtitles', selected: subtitles.value, keepOpen: true,
+          onSelect: () => { subtitles.value = !subtitles.value },
+        },
+        {
+          id: 'audio', label: 'Choose audio track',
+          onSelect: () => { document.body.dataset.trackTarget = `${item.postId}:${mediaIndex}` },
+        },
+      ],
+    } : undefined,
+  },
   masonry: {
     bottomSpacePx: Number(params.get('bottomSpace') ?? 0),
     loadMoreThresholdPx: Number(params.get('threshold') ?? 240),

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Pause, Play, Settings, Volume2, VolumeX } from 'lucide-vue-next'
+import { Pause, Play, Settings, Volume2, VolumeX, X } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, useId, watch, type CSSProperties } from 'vue'
-import type { VibeLayout, VibeMediaType } from '../types'
+import type { VibeLayout, VibeMediaControlAction, VibeMediaControlsOptions, VibeMediaType } from '../types'
 
 const props = withDefaults(defineProps<{
   currentTime: number
@@ -12,6 +12,8 @@ const props = withDefaults(defineProps<{
   playing: boolean
   volume: number
   playbackRate?: number
+  options?: VibeMediaControlsOptions
+  actions?: readonly VibeMediaControlAction[]
 }>(), { playbackRate: 1 })
 const emit = defineEmits<{
   seek: [time: number]
@@ -25,8 +27,36 @@ const root = ref<HTMLElement | null>(null)
 const volumeButton = ref<HTMLButtonElement | null>(null)
 const optionsButton = ref<HTMLButtonElement | null>(null)
 const popover = ref<'volume' | 'options' | null>(null)
+const phone = ref(false)
+const optionsPanel = ref<HTMLElement | null>(null)
+let phoneQuery: MediaQueryList | undefined
 const id = useId()
-const rates = [0.5, 0.75, 1, 1.5, 2]
+const rates = computed(() => [...new Set(props.options?.playbackRates ?? [0.5, 0.75, 1, 1.5, 2])]
+  .filter(rate => Number.isFinite(rate) && rate >= 0.25 && rate <= 4))
+const hasOptions = computed(() => props.options?.showMute !== false || rates.value.length > 0 || !!props.actions?.length)
+
+function syncPhone() {
+  const next = phoneQuery?.matches ?? false
+  if (next !== phone.value && popover.value === 'options') dismissOptions()
+  phone.value = next
+}
+watch(optionsPanel, panel => {
+  if (panel instanceof HTMLDialogElement && !panel.open) panel.showModal()
+}, { flush: 'post' })
+watch(hasOptions, available => {
+  if (!available && popover.value === 'options') dismissOptions()
+})
+
+function dismissOptions() {
+  popover.value = null
+  if (optionsPanel.value instanceof HTMLDialogElement) optionsPanel.value.close()
+  optionsButton.value?.focus({ preventScroll: true })
+}
+
+function selectAction(action: VibeMediaControlAction) {
+  if (!action.keepOpen) dismissOptions()
+  action.onSelect()
+}
 
 function bounded(value: number, maximum = 1): number {
   if (!Number.isFinite(value)) return 0
@@ -51,9 +81,11 @@ function onKeydown(event: KeyboardEvent): void {
   if (event.key === 'Escape' && popover.value) {
     event.preventDefault()
     event.stopPropagation()
-    const button = popover.value === 'volume' ? volumeButton : optionsButton
-    popover.value = null
-    button.value?.focus({ preventScroll: true })
+    if (popover.value === 'options') dismissOptions()
+    else {
+      popover.value = null
+      volumeButton.value?.focus({ preventScroll: true })
+    }
   } else if (event.key !== 'Escape') event.stopPropagation()
 }
 function outsidePointer(event: PointerEvent): void {
@@ -65,8 +97,15 @@ function onFocusout(event: FocusEvent): void {
   }
 }
 watch(popover, value => emit('interactionChange', value !== null), { flush: 'sync' })
-onMounted(() => document.addEventListener('pointerdown', outsidePointer))
+onMounted(() => {
+  phoneQuery = window.matchMedia?.('(max-width: 700px)')
+  syncPhone()
+  phoneQuery?.addEventListener?.('change', syncPhone)
+  document.addEventListener('pointerdown', outsidePointer)
+})
 onBeforeUnmount(() => {
+  if (optionsPanel.value instanceof HTMLDialogElement) optionsPanel.value.close()
+  phoneQuery?.removeEventListener?.('change', syncPhone)
   document.removeEventListener('pointerdown', outsidePointer)
   if (popover.value) emit('interactionChange', false)
 })
@@ -147,34 +186,52 @@ const volumeStyle = computed<CSSProperties>(() => ({
       <output class="media-control-time" aria-live="off">
         {{ formatTime(safeCurrentTime) }} / {{ formatTime(safeDuration) }}
       </output>
-      <div class="media-control-options">
+      <div v-if="hasOptions" class="media-control-options">
         <button
           ref="optionsButton" type="button" class="media-control-button media-control-options-toggle"
           :aria-label="`${mediaLabelTitle} options`" title="Options"
           :aria-expanded="popover === 'options'" :aria-controls="`${id}-options`"
+          :aria-haspopup="phone ? 'dialog' : undefined"
           @click="togglePopover('options')"
         >
           <Settings :size="18" />
         </button>
         <Transition name="media-control-popover">
-          <div
-            v-if="popover === 'options'" :id="`${id}-options`" class="media-control-options-panel"
-            role="group" :aria-label="`${mediaLabelTitle} options`"
+          <component
+            :is="phone ? 'dialog' : 'div'" v-if="popover === 'options'" ref="optionsPanel"
+            :id="`${id}-options`" :class="phone ? 'media-control-drawer' : 'media-control-options-panel'"
+            :role="phone ? undefined : 'group'" :aria-label="`${mediaLabelTitle} options`"
+            @cancel.prevent="dismissOptions"
+            @click.self="phone && dismissOptions()"
           >
-            <button type="button" class="media-control-option" @click="emit('toggleMute')">
-              {{ muted ? 'Unmute' : 'Mute' }}
-            </button>
-            <div class="media-control-rate" role="group" aria-label="Playback speed">
-              <span>Speed</span>
-              <div class="media-control-rates">
-                <button
-                  v-for="rate in rates" :key="rate" type="button" class="media-control-option"
-                  :aria-pressed="playbackRate === rate" :aria-label="`${rate}× speed`"
-                  @click="emit('playbackRateChange', rate)"
-                >{{ rate }}×</button>
+            <header v-if="phone" class="media-control-drawer-header">
+              <strong>Playback options</strong>
+              <button type="button" class="media-control-option" aria-label="Close playback options" autofocus @click="dismissOptions">
+                <X :size="22" />
+              </button>
+            </header>
+            <div class="media-control-options-body">
+              <button v-if="options?.showMute !== false" type="button" class="media-control-option" @click="emit('toggleMute')">
+                {{ muted ? 'Unmute' : 'Mute' }}
+              </button>
+              <div v-if="rates.length" class="media-control-rate" role="group" aria-label="Playback speed">
+                <span>Speed</span>
+                <div class="media-control-rates">
+                  <button
+                    v-for="rate in rates" :key="rate" type="button" class="media-control-option"
+                    :aria-pressed="playbackRate === rate" :aria-label="`${rate}× speed`"
+                    @click="emit('playbackRateChange', rate)"
+                  >{{ rate }}×</button>
+                </div>
               </div>
+              <button
+                v-for="action in actions" :key="action.id" type="button"
+                class="media-control-option media-control-custom-action"
+                :disabled="action.disabled" :aria-pressed="action.selected"
+                @click="selectAction(action)"
+              >{{ action.label }}</button>
             </div>
-          </div>
+          </component>
         </Transition>
       </div>
     </div>

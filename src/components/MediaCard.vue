@@ -214,6 +214,10 @@ const mediaControlsKey = computed(() => (
   `${props.item.postId}:${normalizedMediaIndex.value}:${mediaSrc.value}`
 ))
 const controlsActivity = useReelControlsVisibility()
+const controlsContext = computed(() => ({
+  item: props.item, mediaIndex: normalizedMediaIndex.value, mediaItem: mediaItem.value,
+  mediaSource: props.mediaSource ?? 'preview',
+}))
 const controlsHidden = computed(() => props.layout === 'reel' && controlsActivity.hidden.value)
 function revealTimedControls(event?: PointerEvent) {
   if (event && !controlsActivity.pointerMoved(event)) return
@@ -431,7 +435,8 @@ watch(
         <MediaContextOverlay :item="item" :media-card="mediaCard" :media-index="normalizedMediaIndex" :media-item="mediaItem" :media-source="mediaSource ?? 'preview'" />
 
         <MediaControlsLayer
-          :visible="mediaControlsVisible" :identity="mediaControlsKey"
+          :visible="mediaControlsVisible" :identity="mediaControlsKey" :options="mediaCard?.controls"
+          :context="controlsContext"
           :stationary="usesStationaryReelControls" :target="reelControlsTarget" :post-id="item.postId"
           :current-time="timedMediaCurrentTime" :duration="timedMediaDuration" :layout="layout"
           :media-type="isAudio ? 'audio' : 'video'" :muted="timedMediaIsMuted"
