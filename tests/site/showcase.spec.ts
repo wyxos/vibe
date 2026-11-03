@@ -84,6 +84,31 @@ for (const width of [1440, 390]) {
   })
 }
 
+for (const width of [1440, 390]) for (const reducedMotion of [false, true]) {
+  test(`Back to feed closes the viewer at ${width}px with reduced motion ${reducedMotion}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await page.emulateMedia({ reducedMotion: reducedMotion ? 'reduce' : 'no-preference' })
+    const errors = await ready(page)
+    const source = page.locator('.masonry-item').first()
+    await source.locator('.media-card-activator').click()
+    const originalScroll = await page.locator('.masonry-feed').evaluate(element => element.scrollTop)
+    const back = page.getByRole('button', { name: 'Back to feed', exact: true })
+    await expect(back).toBeVisible()
+    await expect(page.locator('.vibe-reel-overlay')).toHaveAttribute('data-reel-entry', 'ready')
+    expect(await back.evaluate(button => button.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    if (!reducedMotion) await capture(page, `back-to-feed-${width}`)
+    await back.focus()
+    await page.keyboard.press('Enter')
+    await expect(page.locator('.vibe-reel-overlay')).toHaveCount(0)
+    await expect(page.locator('[data-test=showcase-stage]')).toHaveAttribute('data-layout', 'masonry')
+    await expect(source.locator('.media-card-activator')).toBeFocused()
+    expect(await page.locator('.masonry-feed').evaluate(element => element.scrollTop)).toBe(originalScroll)
+    await expect(back).toHaveCount(0)
+    expect(errors).toEqual([])
+  })
+}
+
 test('a tall viewport fills automatically after opening, filtering, and restarting', async ({ page }) => {
   await page.setViewportSize({ width: 1889, height: 2045 })
   const errors = await ready(page)

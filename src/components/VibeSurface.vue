@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ReelBackButton from './ReelBackButton.vue'
 import {
   computed,
   nextTick,
@@ -443,13 +444,13 @@ defineExpose({
           ref="reelOverlay"
           class="vibe-reel-overlay"
           :data-reel-entry="reelEntryPhase"
-          role="dialog"
-          aria-label="Media viewer"
+          role="dialog" aria-label="Media viewer"
           aria-modal="true"
           tabindex="-1"
           @transitionend="finishFade"
           @transitioncancel="finishFade"
         >
+          <ReelBackButton @click="closeMasonryReel" />
           <ReelLayout
             ref="reelRenderer"
             :entry-pending="reelEntryPhase !== 'ready'"

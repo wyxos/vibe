@@ -111,7 +111,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   .showcase-card-stack { display: none; }
 }
 
-.showcase-feed { --vibe-reel-spinner-track: var(--line); --vibe-reel-spinner-accent: var(--cyan); }
+.showcase-feed { --vibe-reel-back-background: var(--surface); --vibe-reel-back-color: var(--text); --vibe-reel-back-border: var(--line); --vibe-reel-back-hover: var(--supporting); --vibe-reel-back-focus: var(--cyan); --vibe-reel-spinner-track: var(--line); --vibe-reel-spinner-accent: var(--cyan); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
