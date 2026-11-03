@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
 
 import type { VibeMediaError } from './mediaPreview'
-import type { VibeMediaOverlayProps } from '../types'
+import type { VibeMediaOverlayProps, VibeReelAutoAdvanceOptions, VibeReelAutoAdvanceState } from '../types'
 
 export interface VibeMediaControlAction {
   id: string
@@ -33,6 +33,13 @@ export interface VibeMediaControlsDrawerProps {
   playbackRate: number
   playbackRates: readonly number[]
   setPlaybackRate: (rate: number) => void
+  reelPlayback?: {
+    fullscreen: boolean
+    canFullscreen: boolean
+    toggleFullscreen: () => void
+    autoAdvance: Readonly<VibeReelAutoAdvanceState>
+    setAutoAdvance: (update: VibeReelAutoAdvanceOptions) => void
+  }
 }
 
 export interface VibeCardChromeStyle {

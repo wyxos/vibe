@@ -2,12 +2,14 @@
 import { Pause, Play, Settings, Volume2, VolumeX, X } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, useId, watch, type CSSProperties } from 'vue'
 import type { VibeLayout, VibeMediaControlAction, VibeMediaControlsDrawerProps, VibeMediaControlsOptions, VibeMediaOverlayProps, VibeMediaType } from '../types'
+import ReelPlaybackMenu from './ReelPlaybackMenu.vue'
+import { useReelPlaybackOptions } from './useReelPlaybackOptions'
 
 const props = withDefaults(defineProps<{
   currentTime: number
   duration: number
   layout: VibeLayout
-  mediaType: Extract<VibeMediaType, 'audio' | 'video'>
+  mediaType: Extract<VibeMediaType, 'audio' | 'video' | 'image'>
   muted: boolean
   playing: boolean
   volume: number
@@ -35,7 +37,8 @@ const id = useId()
 const rates = computed(() => [...new Set(props.options?.playbackRates ?? [0.5, 0.75, 1, 1.5, 2])]
   .filter(rate => Number.isFinite(rate) && rate >= 0.25 && rate <= 4))
 const customDrawer = computed(() => phone.value ? props.options?.drawer : undefined)
-const hasOptions = computed(() => !!customDrawer.value || props.options?.showMute !== false || rates.value.length > 0 || !!props.actions?.length)
+const reelPlayback = useReelPlaybackOptions()
+const hasOptions = computed(() => !!reelPlayback || !!customDrawer.value || props.options?.showMute !== false || rates.value.length > 0 || !!props.actions?.length)
 const drawerProps = computed<VibeMediaControlsDrawerProps>(() => ({
   media: props.media,
   actions: props.actions ?? [],
@@ -46,7 +49,19 @@ const drawerProps = computed<VibeMediaControlsDrawerProps>(() => ({
   playbackRate: props.playbackRate,
   playbackRates: rates.value,
   setPlaybackRate: rate => emit('playbackRateChange', rate),
+  reelPlayback: reelPlayback ? {
+    fullscreen: reelPlayback.fullscreen.value,
+    canFullscreen: reelPlayback.canFullscreen.value,
+    toggleFullscreen,
+    autoAdvance: reelPlayback.autoAdvance.value,
+    setAutoAdvance: reelPlayback.setAutoAdvance,
+  } : undefined,
 }))
+
+function toggleFullscreen() {
+  dismissOptions()
+  void reelPlayback?.toggleFullscreen()
+}
 
 function syncPhone() {
   const next = phoneQuery?.matches ?? false
@@ -125,7 +140,7 @@ onBeforeUnmount(() => {
 })
 const safeDuration = computed(() => bounded(props.duration, Number.MAX_SAFE_INTEGER))
 const mediaLabel = computed(() => props.mediaType)
-const mediaLabelTitle = computed(() => props.mediaType === 'audio' ? 'Audio' : 'Video')
+const mediaLabelTitle = computed(() => ({ audio: 'Audio', video: 'Video', image: 'Image' })[props.mediaType])
 const safeCurrentTime = computed(() => bounded(props.currentTime, safeDuration.value))
 const seekStyle = computed<CSSProperties>(() => ({
   '--media-range-progress': `${safeDuration.value > 0 ? safeCurrentTime.value / safeDuration.value * 100 : 0}%`,
@@ -139,7 +154,7 @@ const volumeStyle = computed<CSSProperties>(() => ({
   <div
     ref="root"
     class="media-controls"
-    :class="`media-controls--${layout}`"
+    :class="[`media-controls--${layout}`, { 'media-controls--image': mediaType === 'image' }]"
     role="group"
     :aria-label="`${mediaLabelTitle} controls`"
     @click.stop
@@ -149,6 +164,7 @@ const volumeStyle = computed<CSSProperties>(() => ({
     @wheel.stop
   >
     <input
+      v-if="mediaType !== 'image'"
       class="media-control-range media-control-seek"
       type="range" min="0" :max="safeDuration || 0" step="0.1"
       :value="safeCurrentTime" :style="seekStyle"
@@ -159,6 +175,7 @@ const volumeStyle = computed<CSSProperties>(() => ({
     >
     <div v-if="layout === 'reel'" class="media-controls-row">
       <button
+        v-if="mediaType !== 'image'"
         type="button" class="media-control-button media-control-playback"
         :aria-label="playing ? `Pause ${mediaLabel}` : `Play ${mediaLabel}`"
         :title="playing ? 'Pause' : 'Play'" @click="emit('togglePlayback')"
@@ -166,7 +183,7 @@ const volumeStyle = computed<CSSProperties>(() => ({
         <Pause v-if="playing" :size="18" fill="currentColor" />
         <Play v-else :size="18" fill="currentColor" />
       </button>
-      <div class="media-controls-audio">
+      <div v-if="mediaType !== 'image'" class="media-controls-audio">
         <button
           type="button" class="media-control-button media-control-mute"
           :aria-label="muted ? `Unmute ${mediaLabel}` : `Mute ${mediaLabel}`"
@@ -197,7 +214,7 @@ const volumeStyle = computed<CSSProperties>(() => ({
           >
         </div>
       </div>
-      <output class="media-control-time" aria-live="off">
+      <output v-if="mediaType !== 'image'" class="media-control-time" aria-live="off">
         {{ formatTime(safeCurrentTime) }} / {{ formatTime(safeDuration) }}
       </output>
       <div v-if="hasOptions" class="media-control-options">
@@ -229,10 +246,11 @@ const volumeStyle = computed<CSSProperties>(() => ({
                 </button>
               </header>
               <div class="media-control-options-body">
-                <button v-if="options?.showMute !== false" type="button" class="media-control-option" @click="emit('toggleMute')">
+                <ReelPlaybackMenu @fullscreen="toggleFullscreen" />
+                <button v-if="mediaType !== 'image' && options?.showMute !== false" type="button" class="media-control-option" @click="emit('toggleMute')">
                   {{ muted ? 'Unmute' : 'Mute' }}
                 </button>
-                <div v-if="rates.length" class="media-control-rate" role="group" aria-label="Playback speed">
+                <div v-if="mediaType !== 'image' && rates.length" class="media-control-rate" role="group" aria-label="Playback speed">
                   <span>Speed</span>
                   <div class="media-control-rates">
                     <button

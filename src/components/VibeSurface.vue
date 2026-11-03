@@ -33,6 +33,7 @@ import { useMediaLifecycle } from './useMediaLifecycle'
 import { useReelKeyboard } from './useReelKeyboard'
 import { useReelEntryReveal } from './useReelEntryReveal'
 import { provideReelPointerMovement } from './useReelPointerMovement'
+import { provideReelPlaybackOptions } from './useReelPlaybackOptions'
 provideReelPointerMovement()
 const ENTRY_STAGGER_MS = 35
 const ITEM_MOTION_MS = 420
@@ -67,6 +68,7 @@ const masonryRenderer = shallowRef<FeedRendererExpose | null>(null)
 const reelRenderer = shallowRef<FeedRendererExpose | null>(null)
 const reelOverlay = shallowRef<HTMLElement | null>(null)
 const surfaceElement = shallowRef<HTMLElement | null>(null)
+provideReelPlaybackOptions(() => surfaceElement.value, () => props.state.reelAutoAdvance)
 const isReelLeaving = shallowRef(false)
 const enteringPostIds = shallowRef<ReadonlySet<VibeItemId>>(new Set())
 const entryDelays = shallowRef<ReadonlyMap<VibeItemId, number>>(new Map())
@@ -102,12 +104,10 @@ let previousPostIds = new Set<VibeItemId>(
 let enterReleaseFrame: number | null = null
 let restoreFocusPostId: VibeItemId | null = null
 let restoreFocusVisible = false
-
 function prefersReducedMotion(): boolean {
   return typeof window.matchMedia === 'function'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
-
 function scheduleEnterRelease(): void {
   if (enterReleaseFrame !== null) cancelAnimationFrame(enterReleaseFrame)
 

@@ -92,10 +92,10 @@ for (const width of [1440, 390]) {
     await open(page, 'scenario=mixed&layout=reel')
     const reel = page.locator('.reel-feed')
     const host = page.locator('[data-test=reel-media-controls-host]')
-    await expect(host.locator('.media-controls')).toHaveCount(0)
+    await expect(host.locator('.media-controls')).toHaveClass(/media-controls--image/)
     await page.evaluate(() => window.__vibe.nextReelPost())
     await expect(reel).toHaveAttribute('data-active-post-id', '2')
-    const controls = host.locator('.media-controls')
+    const controls = host.locator('[data-control-post-id="2"]')
     await expect(controls).toBeVisible()
     await expect(controls).not.toHaveClass(/vibe-reel-media-controls-enter-active/)
     const active = reel.locator('[data-post-id="2"] video')
@@ -119,7 +119,7 @@ for (const width of [1440, 390]) {
     await expect(controls).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
     await expect(controls.locator('.media-control-seek')).toHaveCSS('cursor', 'pointer')
     await page.evaluate(() => window.__vibe.previousReelPost())
-    await expect(host.locator('.media-controls')).toHaveCount(0)
+    await expect(host.locator('.media-controls:not(.media-controls--image)')).toHaveCount(0)
     await expect.poll(() => active.evaluate((video: HTMLVideoElement) => ({
       autoplay: video.autoplay, muted: video.muted, paused: video.paused,
     }))).toEqual({ autoplay: false, muted: true, paused: true })

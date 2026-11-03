@@ -11,7 +11,6 @@ import {
   shallowRef,
   watch, type CSSProperties,
 } from 'vue'
-
 import {
   audioCoverVariant,
   clampMediaIndex,
@@ -45,7 +44,7 @@ import { useMediaReadiness } from './useMediaReadiness'
 import { useTimedMediaCard } from './useTimedMediaCard'
 import { useCardVideoMotion } from './useCardVideoMotion'
 import { useReelControlsVisibility } from './useReelControlsVisibility'
-
+import { useReelFullscreenGesture } from './useReelPlaybackOptions'
 const props = defineProps<{
   active?: boolean
   advanceOnMediaEnd?: boolean
@@ -71,7 +70,6 @@ const props = defineProps<{
   stationaryReelControls?: boolean
   total: number | null
 }>()
-
 const emit = defineEmits<{
   activate: [input: 'keyboard' | 'pointer']
   ended: [mediaIndex: number]
@@ -87,7 +85,6 @@ function activate(
 ): void {
   if (interactive) emit('activate', input)
 }
-
 const mediaItems = computed(() => mediaAssets(props.item))
 const normalizedMediaIndex = computed(() => (
   clampMediaIndex(props.item, props.mediaIndex)
@@ -202,7 +199,7 @@ const { imageLoading, mediaIsTimed, timedMediaPreload } = useMediaLoading({ acti
 const usesStationaryReelControls = computed(() => props.layout === 'reel'
   && props.stationaryReelControls === true)
 const mediaControlsVisible = computed(() => (
-  !props.preparing && mediaIsTimed.value
+  !props.preparing && (mediaIsTimed.value || (usesStationaryReelControls.value && mediaType.value === 'image'))
   && (!isAudio.value || props.layout === 'reel')
   && effectivePreviewState.value === 'ready'
   && (
@@ -221,16 +218,17 @@ const controlsContext = computed(() => ({
 const controlsHidden = computed(() => props.layout === 'reel' && controlsActivity.hidden.value)
 function revealTimedControls(event?: PointerEvent) {
   if (event && !controlsActivity.pointerMoved(event)) return
-  if (props.layout === 'reel' && props.active && mediaIsTimed.value) controlsActivity.reveal()
+  if (props.layout === 'reel' && props.active) controlsActivity.reveal()
 }
 
-function onTimedMediaClick(event: MouseEvent): void {
-  if (props.layout !== 'reel') return
-
-  event.stopPropagation()
-  if (controlsHidden.value) { revealTimedControls(); return }
+const activeReel = () => props.layout === 'reel' && props.active === true
+const reelClick = useReelFullscreenGesture(() => {
+  const wasHidden = controlsHidden.value
   revealTimedControls()
-  void toggleTimedMediaPlayback()
+  if (!wasHidden && mediaIsTimed.value) void toggleTimedMediaPlayback()
+}, () => mediaControlsKey.value, activeReel)
+function onReelMediaClick(event: MouseEvent) {
+  if (activeReel()) reelClick(event, mediaIsTimed.value)
 }
 function onAudioCoverError(event: Event): void {
   const target = event.currentTarget as HTMLImageElement
@@ -360,7 +358,7 @@ watch(
                 ? (timedMediaIsPlaying ? 'Pause audio' : 'Play audio')
                 : 'Audio'"
               :disabled="layout !== 'reel'"
-              @click="onTimedMediaClick"
+              @click="onReelMediaClick"
             >
               <img
                 v-if="visibleAudioCover"
@@ -409,7 +407,7 @@ watch(
               @playing="onTimedMediaPlaying"
               @pause="timedMediaIsPlaying = false"
               @ended="onTimedMediaEnded"
-              @click="onTimedMediaClick"
+              @click="onReelMediaClick"
               @error="failSourceAttempt"
             />
 
@@ -426,6 +424,7 @@ watch(
               alt=""
               decoding="async"
               :loading="imageLoading"
+              @click="onReelMediaClick"
               @load="markSourceReady"
               @error="failSourceAttempt"
             >
@@ -439,7 +438,7 @@ watch(
           :context="controlsContext"
           :stationary="usesStationaryReelControls" :target="reelControlsTarget" :post-id="item.postId"
           :current-time="timedMediaCurrentTime" :duration="timedMediaDuration" :layout="layout"
-          :media-type="isAudio ? 'audio' : 'video'" :muted="timedMediaIsMuted"
+          :media-type="isAudio ? 'audio' : mediaIsTimed ? 'video' : 'image'" :muted="timedMediaIsMuted"
           :playing="timedMediaIsPlaying" :playback-rate="timedMediaPlaybackRate" :volume="timedMediaVolume"
           @playback-rate-change="setPlaybackRate" @seek="seekTimedMedia"
           @toggle-mute="toggleTimedMediaMute" @toggle-playback="toggleTimedMediaPlayback"

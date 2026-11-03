@@ -16,7 +16,7 @@ test('stationary pointer preserves idle controls through video, image and audio 
   await page.mouse.wheel(0, 650)
   await page.clock.runFor(800)
   await expect(reel).toHaveAttribute('data-active-post-id', '2')
-  await expect(controls).toHaveCount(0)
+  await expect(controls.and(page.locator('.media-controls--image'))).toHaveAttribute('inert', '')
   await page.mouse.wheel(0, 650)
   await page.clock.runFor(800)
   await expect(reel).toHaveAttribute('data-active-post-id', 'covered-audio')

@@ -13,7 +13,7 @@ const props = defineProps<{
   currentTime: number
   duration: number
   layout: VibeLayout
-  mediaType: 'audio' | 'video'
+  mediaType: 'audio' | 'video' | 'image'
   muted: boolean
   playing: boolean
   playbackRate: number
