@@ -23,6 +23,7 @@ The reusable package lives in `src/`; its public API is `src/index.ts`. The show
 - Preserve virtualization, continuous pagination, grouped media, images, video, audio, responsive layouts, and the library's existing public API.
 - Preserve independent library regression tests and synthetic fixtures in `tests/`.
 - Demonstrate actual library state. Loaded-item and mounted-card counts are observations, not FPS or production throughput claims.
+- The showcase prepares incoming videos during collection replacement, keeps each video paused through its card entry and exit, and resumes playback after that card's transform settles.
 - The first demo starts in an infinite masonry feed. Clicking media or its information action opens a closable reel; do not offer a permanent layout switch or automatic scrolling in this demo.
 - The opening page mixes photographs, geometric artwork, video, audio and grouped posts. The catalogue contains original work and a larger, individually credited Commons collection; each category cycles only after its catalogue is exhausted. Media information holds provenance and simulation details rather than the main status strip.
 - Use originally authored, AI-generated, or explicitly licensed public media with provenance. Public visibility alone does not establish reuse permission.

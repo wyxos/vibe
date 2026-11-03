@@ -44,6 +44,8 @@ for (const width of [1440, 390]) {
     await expect(page.locator('.masonry-item .media-audio-cover').first()).toBeAttached()
     await expect(page.locator('.masonry-item .showcase-card-stack').first()).toBeAttached()
     await expect(page.locator('[data-test=auto-scroll], [data-test=layout-reel], [data-test=layout-masonry]')).toHaveCount(0)
+    await expect(page.getByRole('navigation', { name: 'Demo version', exact: true })).toHaveCount(0)
+    await expect(page.locator('iframe')).toHaveCount(0)
     await expect(page.getByText(/Original fixtures repeat|simulated page latency/i)).toHaveCount(0)
     expect(errors).toEqual([])
   })

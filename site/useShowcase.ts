@@ -42,7 +42,7 @@ function fixturePage(page: number, filter: ShowcaseFilter): VibePage {
   }
 }
 
-export function useShowcase(target: Ref<HTMLElement | null>, options: { prepareReplacementMedia?: boolean } = {}) {
+export function useShowcase(target: Ref<HTMLElement | null>) {
   const filter = ref<ShowcaseFilter>('all')
   const state = shallowRef<VibeState | null>(null)
   const rendered = ref(0)
@@ -114,7 +114,7 @@ export function useShowcase(target: Ref<HTMLElement | null>, options: { prepareR
       cardFooter: { component: CardFooter, height: 56 },
       reelInfoSheet: { component: ShowcaseInfoSheet },
       mediaCard: { feedPreload: 'visible-post', videoMuted: true,
-        pauseVideoDuringTransitions: options.prepareReplacementMedia === true },
+        pauseVideoDuringTransitions: true },
       masonry: { minColumnWidth: viewport?.matches ? 145 : 240, loadMoreThresholdPx: 420,
         overscan: { minimumPx: 350, viewportMultiplier: 0.75, maximumPx: 650 } },
       onStateChange: (value) => { if (generation === current) state.value = value },
@@ -152,7 +152,7 @@ export function useShowcase(target: Ref<HTMLElement | null>, options: { prepareR
       api?.setLoadMoreLocked(true)
       await latency(180, controller.signal)
       if (request !== controller || controller.signal.aborted) return
-      await api?.replacePage(fixturePage(0, value), { resetScroll: true, prepareMedia: options.prepareReplacementMedia === true })
+      await api?.replacePage(fixturePage(0, value), { resetScroll: true, prepareMedia: true })
     } catch {
       if (!controller.signal.aborted) error.value = 'The collection could not change. Please try again.'
     } finally {

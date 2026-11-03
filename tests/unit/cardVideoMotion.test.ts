@@ -131,7 +131,7 @@ describe('opt-in card video motion playback', () => {
     expect(play).not.toHaveBeenCalled()
   })
 
-  it('keeps V1 playback eligibility unchanged during entry and exit', async () => {
+  it('keeps opt-out playback eligibility unchanged during entry and exit', async () => {
     const { media, play, pause } = await setup(false)
     expect(media.autoplay).toBe(true)
     await wrapper!.setProps({ entering: false, leaving: true })

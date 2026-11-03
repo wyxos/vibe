@@ -32,11 +32,11 @@ async function records(page: Page) {
 }
 
 for (const width of [1440, 390]) {
-  test(`V2 holds each video until its own entrance ends at ${width}px`, async ({ page }, testInfo) => {
+  test(`default demo holds each video until its own entrance ends at ${width}px`, async ({ page }, testInfo) => {
     const errors: string[] = []
     page.on('pageerror', error => errors.push(error.message))
     await page.setViewportSize({ width, height: 960 })
-    await page.goto('/?demo=v2&embedded=1')
+    await page.goto('/')
     await auditMotion(page)
     await page.locator('[data-test=filter-video]').click()
     await expect(page.locator('[data-test=showcase-stage]')).toHaveAttribute('data-loading', 'false')
@@ -54,13 +54,13 @@ for (const width of [1440, 390]) {
     // Animation.finished can resolve before transitionend is dispatched. The
     // native animation state at playing, checked above, is the playback boundary.
     const screenshotDir = process.env.VIBE_SITE_REVIEW_DIR
-    if (screenshotDir) await page.screenshot({ path: `${screenshotDir}/per-card-v2-${width}.png` })
+    if (screenshotDir) await page.screenshot({ path: `${screenshotDir}/per-card-default-${width}.png` })
     expect(errors).toEqual([])
   })
 }
 
-test('V2 pauses outgoing videos and survives an interrupted collection change', async ({ page }) => {
-  await page.goto('/?demo=v2&embedded=1')
+test('default demo pauses outgoing videos and survives an interrupted collection change', async ({ page }) => {
+  await page.goto('/')
   await page.locator('[data-test=filter-video]').click()
   await expect(page.locator('[data-test=showcase-stage]')).toHaveAttribute('data-loading', 'false')
   await expect.poll(() => page.locator('.masonry-item video').evaluateAll(videos => videos.filter(v => !(v as HTMLVideoElement).paused).length)).toBeGreaterThan(0)
@@ -80,9 +80,9 @@ test('V2 pauses outgoing videos and survives an interrupted collection change', 
   await expect.poll(() => page.locator('.masonry-item video').evaluateAll(videos => videos.filter(v => !(v as HTMLVideoElement).paused).length)).toBeGreaterThan(0)
 })
 
-test('V2 reduced motion starts eligible videos without a missing-transition wait', async ({ page }) => {
+test('default demo reduced motion starts eligible videos without a missing-transition wait', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.goto('/?demo=v2&embedded=1')
+  await page.goto('/')
   await page.locator('[data-test=filter-video]').click()
   await expect(page.locator('[data-test=showcase-stage]')).toHaveAttribute('data-loading', 'false')
   await expect.poll(() => page.locator('.masonry-item video').evaluateAll(videos => videos.filter(v => !(v as HTMLVideoElement).paused).length)).toBeGreaterThan(0)

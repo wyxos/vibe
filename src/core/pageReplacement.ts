@@ -8,7 +8,7 @@ import type { VibeItem, VibePage } from '../types'
 export interface VibePageReplacementOptions {
   /** Scroll masonry to its beginning after the outgoing cards leave. */
   resetScroll?: boolean
-  /** Experimental: prepare incoming masonry videos during the existing exit. */
+  /** Prepare incoming masonry videos during the existing exit. */
   prepareMedia?: boolean
 }
 

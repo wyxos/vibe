@@ -109,7 +109,7 @@ Keep controls and media corners small: 2px for detail controls and 3px for ordin
 - Status: actual loaded and rendered counts and request state. Keep fixture repetition and simulated-loading details inside media information.
 - Information sheet: blue surfaces, fixed header/footer, scrolling body, and media provenance.
 
-Control transitions use 140ms; focus uses a 2px cyan outline. Feed-to-reel opening preserves the original 160ms slide from the left. Keep the existing reel image fade and zoom, with both settling together over 160ms instead of running at different speeds. Post navigation uses elapsed-time animation so its duration stays consistent across refresh rates. Respect reduced motion. Vibe itself owns feed and media animation.
+Control transitions use 140ms; focus uses a 2px cyan outline. Feed-to-reel opening preserves the original 160ms slide from the left. Keep the existing reel image fade and zoom, with both settling together over 160ms instead of running at different speeds. Post navigation uses elapsed-time animation so its duration stays consistent across refresh rates. Respect reduced motion. Vibe itself owns feed and media animation. Preview videos stay paused through their own card entry and exit transforms, and resume individually after entry settles. Collection replacement prepares and reuses incoming video elements.
 
 The shared library stages feed-to-reel opening: slide the viewer with a spinner, then fade the whole item in after both the slide and active media readiness complete. Errors reveal their recovery state after the slide. Standalone reels retain their existing loading and navigation behavior. The showcase uses this shared implementation without a separate reveal adapter.
 
