@@ -111,7 +111,30 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   .showcase-card-stack { display: none; }
 }
 
-.showcase-feed { --vibe-reel-back-background: var(--surface); --vibe-reel-back-color: var(--text); --vibe-reel-back-border: var(--line); --vibe-reel-back-hover: var(--supporting); --vibe-reel-back-focus: var(--cyan); --vibe-reel-spinner-track: var(--line); --vibe-reel-spinner-accent: var(--cyan); }
+.showcase-reel-back {
+  position: absolute;
+  z-index: 13;
+  top: 10px;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 140ms ease-out;
+}
+
+.showcase-reel-back:hover { background: var(--supporting); }
+.showcase-reel-back:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+.showcase-feed { --vibe-reel-spinner-track: var(--line); --vibe-reel-spinner-accent: var(--cyan); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }

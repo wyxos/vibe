@@ -2,12 +2,13 @@
 import { Github, RotateCcw } from 'lucide-vue-next'
 import { ref } from 'vue'
 import { useShowcase } from './useShowcase'
+import ShowcaseReelBackButton from './components/ShowcaseReelBackButton.vue'
 import type { ShowcaseFilter } from './useShowcase'
 
 const target = ref<HTMLElement | null>(null)
 const logoUrl = `${import.meta.env.BASE_URL}logo.svg`
-const { filter, layout, loaded, rendered, busy, status, error,
-  chooseFilter, reset } = useShowcase(target)
+const { filter, layout, loaded, rendered, busy, status, error, reelTarget,
+  chooseFilter, closeReel, reset } = useShowcase(target)
 const filters: { value: ShowcaseFilter; label: string }[] = [
   { value: 'all', label: 'All media' }, { value: 'image', label: 'Images' },
   { value: 'video', label: 'Motion' }, { value: 'audio', label: 'Sound' },
@@ -33,6 +34,10 @@ const filters: { value: ShowcaseFilter; label: string }[] = [
         <a class="project-link" href="https://github.com/wyxos/vibe" target="_blank" rel="noopener noreferrer" aria-label="Vibe on GitHub" title="Vibe on GitHub"><Github :size="18" aria-hidden="true" /></a>
       </div>
     </header>
+
+    <Teleport v-if="reelTarget" :to="reelTarget">
+      <ShowcaseReelBackButton @click="closeReel" />
+    </Teleport>
 
     <main id="top" class="playground" aria-label="Live Vibe demonstration">
       <h1 class="sr-only">Vibe media feed</h1>

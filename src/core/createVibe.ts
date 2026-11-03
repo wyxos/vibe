@@ -407,6 +407,7 @@ class VibeController implements VibeInstance {
     if (this.state.layout !== 'masonry' || !this.state.items.some((item) => item.postId === postId)) return
     this.surface?.openReel(postId)
   }
+  closeReel(): void { this.surface?.closeReel() }
   private closeMasonryReel(): void {
     if (this.state.reelOrigin !== 'masonry') return
     this.state.activeReelPostId = null

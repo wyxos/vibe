@@ -47,6 +47,19 @@ test('masonry activation and Escape preserve feed focus and scrolling', async ({
   expect(await feed.evaluate((element) => element.scrollTop)).toBe(scrollTop)
 })
 
+test('closeReel supports custom controls without a built-in return button', async ({ page }) => {
+  await open(page)
+  const card = page.locator('.masonry-item').first()
+  await card.click()
+  await expect(page.locator('.vibe-reel-overlay')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Back to feed', exact: true })).toHaveCount(0)
+  await page.evaluate(() => window.__vibe.closeReel())
+  await expect(page.locator('.vibe-reel-overlay')).toHaveCount(0)
+  await expect(card).toBeFocused()
+  await page.evaluate(() => window.__vibe.closeReel())
+  await expect(page.locator('.masonry-feed')).toBeVisible()
+})
+
 test('reduced motion suppresses reel travel', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await open(page)

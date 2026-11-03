@@ -26,6 +26,8 @@ export interface VibeInstance {
   cancelAutofill: () => Promise<void>
   cancelFill: () => Promise<void>
   cancelLoading: () => Promise<void>
+  /** Close a feed-opened viewer, restoring feed position and source focus. */
+  closeReel: () => void
   destroy: () => void
   fill: (target: VibeFillTarget) => Promise<void>
   getState: () => VibeState

@@ -104,7 +104,7 @@ Keep controls and media corners small: 2px for detail controls and 3px for ordin
 - Original logo: use site/public/logo.svg, restored from project history; do not replace it with an invented mark.
 - Filters: transparent at rest, supporting-blue hover, selected-blue pressed state, aria-pressed semantics.
 - The first demo has no automatic scrolling or permanent layout controls. Native user scrolling drives pagination from the start.
-- Reel return: a persistent “Back to feed” action in the top-left of a feed-opened viewer uses the existing close transition and restores source position and focus without resizing media.
+- Reel return: the showcase supplies a persistent “Back to feed” action in the top-left of a feed-opened viewer. It uses the existing close transition and restores source position and focus without resizing media. This control belongs to the demo; library consumers supply their own controls through `closeReel()`.
 - Reset and project controls: compact icons with accessible names and 44px targets.
 - Card footer: title and information action; omit repeated collection text from the visible frame.
 - Status: actual loaded and rendered counts and request state. Keep fixture repetition and simulated-loading details inside media information.

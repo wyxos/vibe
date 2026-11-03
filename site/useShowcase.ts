@@ -46,6 +46,7 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
   const filter = ref<ShowcaseFilter>('all')
   const state = shallowRef<VibeState | null>(null)
   const rendered = ref(0)
+  const reelTarget = shallowRef<HTMLElement | null>(null)
   const filtering = ref(false)
   const error = ref('')
   let vibe: VibeInstance | null = null
@@ -64,7 +65,10 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
       : state.value?.isLoadingMore ? 'Bringing in the next page'
         : state.value?.lifecycle === 'error' ? 'Feed unavailable' : 'Ready to explore')
 
+  function closeReel() { vibe?.closeReel() }
+
   function countRendered() {
+    reelTarget.value = target.value?.querySelector<HTMLElement>('.vibe-reel-overlay') ?? null
     rendered.value = target.value?.querySelectorAll('.masonry-item, .reel-shell').length ?? 0
   }
 
@@ -213,6 +217,6 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
     vibe = null
   })
 
-  return { filter, layout, loaded, rendered, busy, status, error,
-    chooseFilter, reset }
+  return { filter, layout, loaded, rendered, busy, status, error, reelTarget,
+    chooseFilter, closeReel, reset }
 }

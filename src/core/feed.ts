@@ -83,6 +83,7 @@ export interface VibeSurfaceExpose {
   animateItemRemoval: (postIds: readonly VibeItemId[], signal: AbortSignal) => Promise<void>
   cancelItemRemoval: () => void
   changeActiveReelMedia: (direction: -1 | 1) => boolean
+  closeReel: () => void
   getAutoScrollElement: () => HTMLElement | null
   loadIfNearBottom: () => Promise<void>
   moveActiveReelPost: (direction: -1 | 1) => boolean

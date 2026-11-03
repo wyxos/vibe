@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import ReelBackButton from './ReelBackButton.vue'
 import {
   computed,
   nextTick,
@@ -329,6 +328,7 @@ defineExpose({
   animateItemRemoval,
   cancelItemRemoval,
   changeActiveReelMedia,
+  closeReel: closeMasonryReel,
   getAutoScrollElement,
   loadIfNearBottom,
   moveActiveReelPost,
@@ -450,7 +450,6 @@ defineExpose({
           @transitionend="finishFade"
           @transitioncancel="finishFade"
         >
-          <ReelBackButton @click="closeMasonryReel" />
           <ReelLayout
             ref="reelRenderer"
             :entry-pending="reelEntryPhase !== 'ready'"
