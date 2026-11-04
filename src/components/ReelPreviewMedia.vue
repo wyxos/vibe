@@ -48,7 +48,7 @@ watchEffect((cleanup) => {
 </script>
 
 <template>
-  <div ref="tile" class="reel-preview-media" :data-nsfw-presentation="source.presentation">
+  <span ref="tile" class="reel-preview-media" :data-nsfw-presentation="source.presentation">
     <video
       v-if="videoSource && animate && !failedVideo"
       :key="videoSource"
@@ -73,5 +73,5 @@ watchEffect((cleanup) => {
     <Music v-else-if="source.type === 'audio'" role="img" aria-label="Audio" />
     <ImageOff v-else role="img" aria-label="Preview unavailable" />
     <span v-if="source.label" class="reel-preview-label">{{ source.label }}</span>
-  </div>
+  </span>
 </template>

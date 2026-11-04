@@ -940,6 +940,12 @@
 .media-control-option[aria-pressed=true] { border-color: currentColor; background: rgb(255 255 255 / 16%); }
 .media-control-rate { display: grid; gap: 0.375rem; }
 .media-control-rates { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.media-control-options-panel :is(.media-control-duration-stepper :is(button, input), .media-control-rates button) {
+  min-height: 2rem;
+}
+.media-control-options-panel .media-control-duration-stepper button { width: 2rem; }
+.media-control-options-panel .media-control-duration-stepper input { width: 2.75rem; }
+.media-control-options-panel .media-control-rates button { min-width: 2rem; }
 .media-control-popover-enter-active,
 .media-control-popover-leave-active { transition: opacity 140ms ease, transform 140ms ease; }
 .media-control-popover-enter-from,
@@ -1201,6 +1207,15 @@
   background: var(--vibe-reel-preview-tile, #080808);
   border-radius: 0.1875rem;
 }
+
+.reel-previews .reel-preview-card {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+}
+.reel-preview-card:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }
 
 .reel-preview-media {
   position: absolute;

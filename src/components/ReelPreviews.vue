@@ -3,7 +3,7 @@ import EmblaCarousel, { type EmblaCarouselType } from 'embla-carousel'
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { resolveMediaType } from '../core/mediaType'
 import { resolveReelPreviewCount, useReelPreviewOptions } from '../core/reelPreviews'
-import type { VibeItem, VibeReelPreviewCount, VibeState } from '../types'
+import type { VibeItem, VibeItemId, VibeReelPreviewCount, VibeState } from '../types'
 import ReelPreviewMedia from './ReelPreviewMedia.vue'
 
 const props = defineProps<{
@@ -11,7 +11,7 @@ const props = defineProps<{
   activeIndex: number
   state: VibeState
 }>()
-const emit = defineEmits<{ loadMore: [] }>()
+const emit = defineEmits<{ loadMore: []; select: [postId: VibeItemId] }>()
 const counts = [4, 6, 8] as const
 const options = useReelPreviewOptions()
 const countOption = options.reelPreviewCount
@@ -154,8 +154,11 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
       <ol class="reel-preview-list">
         <li v-for="preview in track" :key="preview.id"
           :data-preview-post-id="positions.has(preview.id) ? preview.id : undefined" :aria-hidden="!positions.has(preview.id) || undefined">
-          <span v-if="positions.has(preview.id)" class="reel-preview-position" aria-hidden="true">+{{ positions.get(preview.id) }}</span>
-          <ReelPreviewMedia :source="preview.source" :position="positions.get(preview.id) ?? 0" />
+          <button type="button" class="reel-preview-card" :disabled="!positions.has(preview.id)"
+            :aria-label="`Open upcoming item ${positions.get(preview.id)}`" @click="emit('select', preview.id)">
+            <span v-if="positions.has(preview.id)" class="reel-preview-position" aria-hidden="true">+{{ positions.get(preview.id) }}</span>
+            <ReelPreviewMedia :source="preview.source" :position="positions.get(preview.id) ?? 0" />
+          </button>
         </li>
       </ol>
     </div>

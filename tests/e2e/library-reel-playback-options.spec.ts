@@ -30,6 +30,7 @@ for (const phone of [false, true]) {
       await page.goto('/?scenario=mixed&layout=reel')
       await page.getByRole('button', { name: 'Image options', exact: true }).click()
       const duration = page.getByRole('spinbutton', { name: 'Image duration (seconds)' })
+      await expect(duration).toHaveCSS('min-height', phone ? '44px' : '32px')
       await expect(duration).toHaveValue('3')
       await page.getByRole('button', { name: 'Increase image duration' }).click()
       await expect(duration).toHaveValue('4')

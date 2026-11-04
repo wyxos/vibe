@@ -260,6 +260,11 @@ async function transitionActivePost(postId: VibeItemId): Promise<boolean> {
   return true
 }
 
+function selectPreview(postId: VibeItemId) {
+  galleryElement.value?.focus({ preventScroll: true })
+  void transitionActivePost(postId)
+}
+
 async function transitionActiveMedia(direction: -1 | 1): Promise<boolean> {
   if (!changeActiveMedia(direction)) return false
   if (!prefersReducedMotion()) {
@@ -391,6 +396,7 @@ defineExpose({
       <div
         ref="galleryElement"
         class="gallery-shell reel-feed"
+        tabindex="-1"
         :data-active-post-id="activePostId"
         :data-active-media-index="activeMediaIndex"
         @scroll.passive="onScroll"
@@ -464,7 +470,7 @@ defineExpose({
         data-test="reel-media-controls-host"
       />
       <Transition name="vibe-reel-previews">
-        <ReelPreviews v-if="previews && state" :items="previews" :active-index="activeIndex" :state="state" @load-more="emit('loadMore')" />
+        <ReelPreviews v-if="previews && state" :items="previews" :active-index="activeIndex" :state="state" @select="selectPreview" @load-more="emit('loadMore')" />
       </Transition>
     </div>
 
