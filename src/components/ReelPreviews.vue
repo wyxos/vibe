@@ -27,13 +27,13 @@ function chooseCount(value: VibeReelPreviewCount) {
 }
 
 const upcomingCount = computed(() => Math.max(0, props.items.length - props.activeIndex - 1))
-const lastOffset = computed(() => Math.max(0, upcomingCount.value - selectedCount.value))
-const browseOffset = ref(0)
-watch(() => props.activeIndex, () => { browseOffset.value = 0 }, { flush: 'sync' })
-watch(lastOffset, limit => { browseOffset.value = Math.min(browseOffset.value, limit) }, { flush: 'sync' })
+const lastPage = computed(() => Math.max(0, Math.ceil(upcomingCount.value / selectedCount.value) - 1))
+const browsePage = ref(0)
+watch(() => [props.activeIndex, selectedCount.value], () => { browsePage.value = 0 }, { flush: 'sync' })
+watch(lastPage, limit => { browsePage.value = Math.min(browsePage.value, limit) }, { flush: 'sync' })
 
 const previews = computed(() => {
-  const start = props.activeIndex + 1 + browseOffset.value
+  const start = props.activeIndex + 1 + browsePage.value * selectedCount.value
   return props.items.slice(start, start + selectedCount.value).map((item) => {
     if (options.resolveReelPreview) return { id: item.postId, source: options.resolveReelPreview(item) }
     const type = resolveMediaType(item.type, item.src)
@@ -69,6 +69,8 @@ const track = shallowRef<typeof previews.value>([])
 const positions = computed(() => new Map(previews.value.map(({ id }, index) => [id, index + 1])))
 let slider: EmblaCarouselType | undefined
 let settled: typeof previews.value = []
+let settledPage = 0
+let settledActiveIndex = -1
 let moving = false
 let revision = 0
 
@@ -77,6 +79,8 @@ async function sync(animate: boolean) {
   moving = false
   const request = ++revision
   const target = previews.value
+  const page = browsePage.value
+  const activeIndex = props.activeIndex
   const root = viewport.value
   const axis = horizontal.value ? 'x' : 'y'
   const motion = root?.ownerDocument.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)')
@@ -85,17 +89,20 @@ async function sync(animate: boolean) {
   const nextFirst = target[0]?.id
   const forward = settled.findIndex(({ id }) => id === nextFirst)
   const backward = target.findIndex(({ id }) => id === oldFirst)
-  const start = canMove ? Math.max(0, backward) : 0
-  const end = canMove ? Math.max(0, forward) : 0
-  // Stage only the entering and exiting cards around the shared portion of the track.
+  const pageChange = activeIndex === settledActiveIndex ? page - settledPage : 0
+  const start = canMove ? (pageChange < 0 ? target.length : Math.max(0, backward)) : 0
+  const end = canMove ? (pageChange > 0 ? settled.length : Math.max(0, forward)) : 0
+  // A page change stages both groups. Reel navigation can reuse their shared cards.
   track.value = start ? [...target.slice(0, start), ...settled]
     : end ? [...settled.slice(0, end), ...target] : target
   await nextTick()
   if (request !== revision) return
+  settled = target
+  settledPage = page
+  settledActiveIndex = activeIndex
   if (!root || start === end) {
     slider?.destroy()
     slider = undefined
-    settled = target
     return
   }
   const settings = { axis, startIndex: start, align: 'start', containScroll: false, duration: 15,
@@ -109,12 +116,11 @@ async function sync(animate: boolean) {
       void sync(previews.value !== settled)
     })
   }
-  settled = target
   moving = true
   slider.scrollTo(end)
 }
 
-watch([viewport, horizontal, selectedCount, previews, () => props.activeIndex, browseOffset],
+watch([viewport, horizontal, selectedCount, previews, () => props.activeIndex, browsePage],
   ([root, axis, count, , index, offset], [oldRoot, oldAxis, oldCount, , oldIndex, oldOffset]) => {
     if (root !== oldRoot) { slider?.destroy(); slider = undefined }
     void sync(root === oldRoot && axis === oldAxis && count === oldCount && (index !== oldIndex || offset !== oldOffset))
@@ -160,8 +166,8 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
         @click="chooseCount(value)"
       >{{ value }}</button>
     </div>
-    <button v-if="lastOffset" type="button" class="reel-preview-arrow"
-      aria-label="Previous previews" :disabled="browseOffset === 0" @click="browseOffset--">
+    <button v-if="lastPage" type="button" class="reel-preview-arrow"
+      aria-label="Previous previews" :disabled="browsePage === 0" @click="browsePage--">
       <component :is="horizontal ? ChevronLeft : ChevronUp" aria-hidden="true" />
     </button>
     <div v-if="previews.length" ref="viewport" class="reel-preview-viewport" :style="{ '--preview-count': selectedCount }">
@@ -175,8 +181,8 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
         </li>
       </ol>
     </div>
-    <button v-if="lastOffset" type="button" class="reel-preview-arrow"
-      aria-label="Next previews" :disabled="browseOffset >= lastOffset" @click="browseOffset++">
+    <button v-if="lastPage" type="button" class="reel-preview-arrow"
+      aria-label="Next previews" :disabled="browsePage >= lastPage" @click="browsePage++">
       <component :is="horizontal ? ChevronRight : ChevronDown" aria-hidden="true" />
     </button>
     <div v-if="status" class="reel-preview-boundary">
