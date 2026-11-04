@@ -1176,7 +1176,9 @@
   min-width: 2rem;
   padding: 0;
 }
-.reel-preview-arrow:disabled { visibility: hidden; }
+.reel-previews .reel-preview-arrow[aria-disabled="true"] { cursor: default; }
+.reel-preview-arrow[aria-disabled="true"] svg { opacity: 0.45; }
+.reel-previews .reel-preview-arrow[aria-disabled="true"]:hover:not(:focus-visible) { border-color: transparent; }
 .reel-preview-arrow svg { width: 1rem; height: 1rem; }
 
 .reel-preview-viewport {

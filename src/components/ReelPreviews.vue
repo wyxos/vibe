@@ -49,6 +49,11 @@ watch([firstPage, lastPage], ([first, last]) => {
   browsePage.value = Math.max(first, Math.min(browsePage.value, last))
 }, { flush: 'sync' })
 
+function movePreviewPage(direction: -1 | 1) {
+  const page = browsePage.value + direction
+  if (page >= firstPage.value && page <= lastPage.value) browsePage.value = page
+}
+
 function selectPreview(postId: VibeItemId) {
   if (props.items[props.activeIndex]?.postId === postId) return
   browseAnchor.value = firstPreviewIndex.value
@@ -191,7 +196,7 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
       >{{ value }}</button>
     </div>
     <button v-if="firstPage < lastPage" type="button" class="reel-preview-arrow"
-      aria-label="Previous previews" :disabled="browsePage <= firstPage" @click="browsePage--">
+      aria-label="Previous previews" :aria-disabled="browsePage <= firstPage" @click="movePreviewPage(-1)">
       <component :is="horizontal ? ChevronLeft : ChevronUp" aria-hidden="true" />
     </button>
     <div v-if="previews.length" ref="viewport" class="reel-preview-viewport" :style="{ '--preview-count': selectedCount }">
@@ -208,7 +213,7 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
       </ol>
     </div>
     <button v-if="previews.length && firstPage < lastPage" type="button" class="reel-preview-arrow"
-      aria-label="Next previews" :disabled="browsePage >= lastPage" @click="browsePage++">
+      aria-label="Next previews" :aria-disabled="browsePage >= lastPage" @click="movePreviewPage(1)">
       <component :is="horizontal ? ChevronRight : ChevronDown" aria-hidden="true" />
     </button>
     <div v-if="status" class="reel-preview-boundary">
