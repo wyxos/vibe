@@ -814,25 +814,56 @@
 .media-control-volume { width: 5rem; min-width: 2.75rem; border-radius: 0; }
 .media-controls .media-control-volume-toggle { display: none; }
 .media-control-options { position: relative; margin-left: auto; }
-.media-control-options-body { display: grid; gap: 0.75rem; }
+.media-control-options-body { display: grid; }
+.media-control-options-body > :is(.media-control-option, .media-control-advance-duration, .media-control-rate) {
+  padding: 0.375rem 0.75rem;
+}
+.media-control-options-body > .media-control-option {
+  border: 0;
+  border-radius: 0;
+  text-align: start;
+}
+.media-control-options-body > .media-control-option:focus-visible { outline-offset: -2px; }
 .media-control-custom-action { text-align: start; }
 .media-control-advance-duration {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
   min-height: 44px;
 }
-.media-control-advance-duration input {
-  width: 5rem;
-  min-height: 44px;
-  padding: 0.5rem;
+.media-control-advance-duration:is(:hover, :has(:focus-visible)) { background: rgb(255 255 255 / 12%); }
+.media-control-duration-stepper {
+  display: inline-flex;
+  align-items: stretch;
   border: 1px solid rgb(255 255 255 / 30%);
   border-radius: 3px;
+}
+.media-control-duration-stepper :is(button, input) {
+  min-height: 44px;
+  border: 0;
   color: inherit;
   background: transparent;
   font: inherit;
 }
+.media-control-duration-stepper button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  cursor: pointer;
+}
+.media-control-duration-stepper button:disabled { opacity: 0.5; cursor: default; }
+.media-control-duration-stepper button:not(:disabled):hover { background: rgb(255 255 255 / 12%); }
+.media-control-duration-stepper :is(button, input):focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }
+.media-control-duration-stepper input {
+  appearance: textfield;
+  width: 3.5rem;
+  border-inline: 1px solid rgb(255 255 255 / 30%);
+  text-align: center;
+}
+.media-control-duration-stepper input::-webkit-inner-spin-button,
+.media-control-duration-stepper input::-webkit-outer-spin-button { appearance: none; margin: 0; }
 .media-control-option:disabled { opacity: 0.5; cursor: default; }
 .media-control-drawer {
   position: fixed;
@@ -872,7 +903,7 @@
 .media-control-drawer .media-control-options-body {
   overflow: auto;
   overscroll-behavior: contain;
-  padding: 0.75rem 1rem max(1rem, env(safe-area-inset-bottom));
+  padding-block-end: env(safe-area-inset-bottom);
 }
 @media (prefers-reduced-motion: no-preference) {
   .media-control-drawer[open] { animation: vibe-options-drawer-in 180ms ease-out; }
@@ -886,7 +917,7 @@
   gap: 0.75rem;
   width: max-content;
   max-width: calc(100vw - 1.5rem);
-  padding: 0.75rem;
+  padding: 0;
   border: 1px solid rgb(255 255 255 / 30%);
   border-radius: 3px;
   color: #f5f5f5;

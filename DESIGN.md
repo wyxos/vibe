@@ -114,7 +114,9 @@ Control transitions use 140ms; focus uses a 2px cyan outline. Feed-to-reel openi
 
 The shared library stages feed-to-reel opening: slide the viewer with a spinner, then fade the whole item in after both the slide and active media readiness complete. Errors reveal their recovery state after the slide. Standalone reels retain their existing loading and navigation behavior. The showcase uses this shared implementation without a separate reveal adapter.
 
-The reel toolbar's Previews toggle controls Vibe's built-in upcoming-post rail. It starts off. The rail shows up to 4, 6, or 8 loaded posts as still images, with a media icon when artwork is unavailable. It gives the current post the full width when no previews remain. A single status or pagination action occupies the bottom edge when needed.
+The reel toolbar's Upcoming previews toggle controls Vibe's built-in preview rail. It starts off. The rail shows up to 4, 6, or 8 loaded posts as still images, with a media icon when artwork is unavailable. It gives the current post the full width when no previews remain. A single status or pagination action occupies the bottom edge when needed.
+
+Menu rows own their padding. Hover and selection backgrounds extend to both edges of the menu. The image duration field accepts typed values and has explicit minus and plus buttons that change the duration by one second, with a one-second floor for the buttons.
 
 Shared reel media controls use 30% dark backgrounds. They slide down after five idle seconds and retain that hidden state across posts and grouped media within the open reel. Pointer movement or tapping media reveals them; a tap that reveals controls preserves playback. A new reel starts visible. Focused controls, held sliders and open options remain visible until interaction ends. Reduced motion removes the slide.
 

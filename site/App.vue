@@ -40,7 +40,7 @@ const filters: { value: ShowcaseFilter; label: string }[] = [
         <ShowcaseReelBackButton @click="closeReel" />
         <button class="showcase-reel-back" type="button" :aria-pressed="reelPreviews" @click="toggleReelPreviews">
           <PanelsTopLeft :size="16" aria-hidden="true" />
-          Previews
+          Upcoming previews
         </button>
       </div>
     </Teleport>

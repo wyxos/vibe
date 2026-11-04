@@ -30,6 +30,17 @@ for (const phone of [false, true]) {
       await page.goto('/?scenario=mixed&layout=reel')
       await page.getByRole('button', { name: 'Image options', exact: true }).click()
       const duration = page.getByRole('spinbutton', { name: 'Image duration (seconds)' })
+      await expect(duration).toHaveValue('3')
+      await page.getByRole('button', { name: 'Increase image duration' }).click()
+      await expect(duration).toHaveValue('4')
+      await page.getByRole('button', { name: 'Decrease image duration' }).click()
+      await expect(duration).toHaveValue('3')
+      const evidenceDir = process.env.VIBE_SITE_REVIEW_DIR
+      if (evidenceDir) {
+        const menu = page.getByRole(phone ? 'dialog' : 'group', { name: 'Image options', exact: true })
+        if (!phone) await page.getByRole('button', { name: 'Auto advance', exact: true }).hover()
+        await menu.screenshot({ path: `${evidenceDir}/playback-options-${phone ? 'phone' : 'desktop'}.png` })
+      }
       await duration.fill('1')
       await duration.press('Tab')
       const advance = page.getByRole('button', { name: 'Auto advance', exact: true })
