@@ -11,6 +11,8 @@ import CardRegion from './CardRegion.vue'
 import FeedFooter from './FeedFooter.vue'
 import MediaCard from './MediaCard.vue'
 import ReelAutoAdvanceProgress from './ReelAutoAdvanceProgress.vue'
+import ReelForwardStatus from './ReelForwardStatus.vue'
+import ReelPreviews from './ReelPreviews.vue'
 import { provideReelControlsVisibility } from './useReelControlsVisibility'
 import { useReelPlaybackOptions } from './useReelPlaybackOptions'
 const MEDIA_TRANSITION_MS = 300
@@ -58,6 +60,8 @@ const visibleItems = computed(() => {
 })
 const activePostId = computed(() => props.items[activeIndex.value]?.postId)
 const activeItem = computed(() => props.items[activeIndex.value])
+const previews = computed(() => props.state?.reelPreviews && activeItem.value && props.reelForward.status === 'idle'
+  ? props.items.slice(activeIndex.value + 1, activeIndex.value + 9) : null)
 const activeMediaIndex = computed(() => {
   const postId = activePostId.value
   return postId === undefined ? 0 : props.mediaIndices.get(postId) ?? 0
@@ -107,14 +111,6 @@ const showAutoAdvance = computed(() => (
   && !activeMediaWaitsForEnd.value
 ))
 const showLoadMore = computed(() => !props.infiniteScroll || props.items.length <= 1)
-const canManuallyContinueForward = computed(() => props.reelForward.status === 'end'
-  && props.hasNext && !props.infiniteScroll && !props.loadMoreLocked)
-const forwardMessage = computed(() => {
-  if (props.reelForward.status === 'loading') return 'Loading the next media…'
-  if (props.reelForward.status === 'error') return 'Unable to load the next media.'
-  if (canManuallyContinueForward.value) return 'Load the next page to continue.'
-  return 'You reached the end of this feed.'
-})
 function itemStyle(index: number): CSSProperties {
   return { gridRow: `${index + 1}` }
 }
@@ -395,23 +391,13 @@ defineExpose({
         :data-active-media-index="activeMediaIndex"
         @scroll.passive="onScroll"
       >
-        <div
+        <ReelForwardStatus
           v-if="reelForward.status !== 'idle'"
-          class="reel-forward-status"
-          :role="reelForward.status === 'error' ? 'alert' : 'status'"
-          :data-status="reelForward.status"
-        >
-          <p>{{ forwardMessage }}</p>
-          <button
-            v-if="reelForward.status === 'error' || reelForward.status === 'end'"
-            class="reel-forward-retry"
-            type="button"
-            :disabled="loadMoreLocked"
-            @click="emit('retryForward')"
-          >
-            {{ canManuallyContinueForward ? 'Load more' : 'Retry' }}
-          </button>
-        </div>
+          :status="reelForward.status"
+          :manual="hasNext && !infiniteScroll && !loadMoreLocked"
+          :locked="loadMoreLocked"
+          @retry="emit('retryForward')"
+        />
 
         <section
           v-else
@@ -472,6 +458,12 @@ defineExpose({
         ref="reelControlsElement"
         class="reel-media-controls-host"
         data-test="reel-media-controls-host"
+      />
+      <ReelPreviews
+        v-if="previews && state"
+        :items="previews"
+        :state="state"
+        @load-more="emit('loadMore')"
       />
     </div>
 

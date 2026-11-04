@@ -31,6 +31,7 @@ export function createInitialRuntimeState(
     nextPageError: null,
     phoneMode: false,
     reelAutoAdvance: createReelAutoAdvanceState(options.reelAutoAdvance),
+    reelPreviews: options.reelPreviews ?? false,
     reelForward: { error: null, status: 'idle' },
     reelForwardIndex: null,
     reelForwardItem: null,

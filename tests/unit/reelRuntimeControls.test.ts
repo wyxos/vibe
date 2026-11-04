@@ -47,6 +47,35 @@ describe('reel runtime controls', () => {
     return instance
   }
 
+  it('previews only loaded successors and offers one manual page action', async () => {
+    const loadPage = vi.fn(async () => ({ items: [item(3)], next: null }))
+    const instance = track(createVibe({
+      target, layout: 'reel', infiniteScroll: false, reelPreviews: true,
+      initialPage: { items: [item(1), item(2)], next: 1 }, loadPage,
+    }))
+    const rail = () => target.querySelector('.reel-previews')!
+    const previewIds = () => [...rail().querySelectorAll('[data-preview-post-id]')]
+      .map((element) => element.getAttribute('data-preview-post-id'))
+    await instance.mount()
+    await flushPromises()
+    expect(previewIds()).toEqual(['2'])
+    expect(instance.nextReelPost()).toBe(true)
+    await flushPromises()
+    expect(previewIds()).toEqual([])
+    expect(rail().classList.contains('reel-previews--empty')).toBe(true)
+    expect(loadPage).not.toHaveBeenCalled()
+    expect(rail().querySelectorAll('button')).toHaveLength(1)
+    rail().querySelector('button')!.click()
+    await flushPromises()
+    expect(loadPage).toHaveBeenCalledTimes(1)
+    expect(previewIds()).toEqual(['3'])
+    expect(rail().textContent).toContain('End of feed')
+    expect(instance.getState().activeReelPostId).toBe(2)
+    instance.setReelPreviews(false)
+    await flushPromises()
+    expect(rail()).toBeNull()
+  })
+
   it('controls media items and posts in a base reel', async () => {
     const instance = track(createVibe({
       target,

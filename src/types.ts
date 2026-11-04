@@ -423,6 +423,8 @@ export interface CreateVibeOptions {
   removalReconciliation?: VibeRemovalReconciliationOptions
   restoreBacklog?: (context: VibeBacklogRestoreContext) => Promise<void> | void
   reelAutoAdvance?: VibeReelAutoAdvanceOptions
+  /** Show previews of upcoming loaded posts in reels. Defaults to false. */
+  reelPreviews?: boolean
   reelInfoSheet?: VibeReelInfoSheetOptions
   routing?: VibeRoutingOptions
 }
@@ -447,6 +449,7 @@ export interface VibeState {
   nextPageError: unknown | null
   phoneMode: boolean
   reelAutoAdvance: VibeReelAutoAdvanceState
+  reelPreviews: boolean
   reelForward: VibeReelForwardState
   reelInfoSheet: VibeReelInfoSheetState
   reelOrigin: 'masonry' | null

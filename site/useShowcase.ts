@@ -58,6 +58,7 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
   let sizeObserver: ResizeObserver | null = null
 
   const loaded = computed(() => state.value?.items.length ?? 0)
+  const reelPreviews = computed(() => state.value?.reelPreviews ?? false)
   const layout = computed(() => state.value?.reelOrigin === 'masonry' ? 'reel' : 'masonry')
   const busy = computed(() => filtering.value || !state.value || state.value.isLoading || state.value.isLoadingMore)
   const status = computed(() => filtering.value ? 'Changing collection'
@@ -66,6 +67,7 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
         : state.value?.lifecycle === 'error' ? 'Feed unavailable' : 'Ready to explore')
 
   function closeReel() { vibe?.closeReel() }
+  function toggleReelPreviews() { vibe?.setReelPreviews(!reelPreviews.value) }
 
   function countRendered() {
     reelTarget.value = target.value?.querySelector<HTMLElement>('.vibe-reel-overlay') ?? null
@@ -115,6 +117,7 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
     vibe?.destroy()
     const api = createVibe({
       target: element, layout: 'masonry', infiniteScroll: true, initialPage,
+      reelPreviews: reelPreviews.value,
       cardFooter: { component: CardFooter, height: 56 },
       reelInfoSheet: { component: ShowcaseInfoSheet },
       mediaCard: { feedPreload: 'visible-post',
@@ -217,6 +220,6 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
     vibe = null
   })
 
-  return { filter, layout, loaded, rendered, busy, status, error, reelTarget,
-    chooseFilter, closeReel, reset }
+  return { filter, layout, loaded, rendered, busy, status, error, reelTarget, reelPreviews,
+    chooseFilter, closeReel, reset, toggleReelPreviews }
 }

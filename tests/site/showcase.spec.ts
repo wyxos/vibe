@@ -33,6 +33,39 @@ async function settledMedia(page: Page) {
   })
 }
 
+for (const width of [1440, 768, 390]) {
+  test(`toggles native reel previews at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    const errors = await ready(page)
+    await page.locator('.masonry-item .media-card-activator').first().click()
+    await expect(page.locator('.vibe-reel-overlay')).toHaveAttribute('data-reel-entry', 'ready')
+    const toggle = page.getByRole('button', { name: 'Previews', exact: true })
+    const rail = page.getByRole('complementary', { name: 'Upcoming reel items' })
+    const cards = rail.locator('[data-preview-post-id]')
+    const feed = page.locator('.reel-feed')
+    const post = await feed.getAttribute('data-active-post-id')
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    await expect(rail).toHaveCount(0)
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    await expect(cards).toHaveCount(4)
+    const railBox = (await rail.boundingBox())!
+    const feedBox = (await feed.boundingBox())!
+    const controlsBox = (await page.locator('.reel-media-controls-host').boundingBox())!
+    expect(feedBox.x + feedBox.width).toBeLessThanOrEqual(railBox.x + 1)
+    expect(controlsBox.x + controlsBox.width).toBeLessThanOrEqual(railBox.x + 1)
+    expect(railBox.x + railBox.width).toBeLessThanOrEqual(width)
+    await rail.getByRole('button', { name: 'Show 8 previews' }).click()
+    await expect(cards).toHaveCount(8)
+    await capture(page, `native-reel-previews-${width}`)
+    await toggle.click()
+    await expect(rail).toHaveCount(0)
+    await expect(feed).toHaveAttribute('data-active-post-id', post!)
+    expect((await feed.boundingBox())!.width).toBeGreaterThan(feedBox.width)
+    expect(errors).toEqual([])
+  })
+}
+
 for (const width of [1440, 390]) {
   test(`initial masonry page presents mixed media without alternate demo controls at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 })
@@ -109,7 +142,7 @@ for (const width of [1440, 390]) for (const reducedMotion of [false, true]) {
   })
 }
 
-test('fullscreen hides the showcase return action and restores it on exit', async ({ page }) => {
+test('fullscreen hides the showcase toolbar and restores it on exit', async ({ page }) => {
   await ready(page)
   await page.locator('[data-test=filter-video]').click()
   const source = page.getByRole('button', { name: 'Open post showcase-orbit-video-0', exact: true })
@@ -117,15 +150,19 @@ test('fullscreen hides the showcase return action and restores it on exit', asyn
   await expect(page.locator('[data-test=showcase-stage]')).toHaveAttribute('data-loading', 'false')
   await source.click()
   const back = page.getByRole('button', { name: 'Back to feed', exact: true })
+  const previews = page.getByRole('button', { name: 'Previews', exact: true })
   const cog = page.getByRole('button', { name: 'Video options', exact: true })
   await expect(back).toBeVisible()
+  await expect(previews).toBeVisible()
   await cog.click()
   await page.getByRole('button', { name: 'Enter fullscreen', exact: true }).click()
   await expect(back).toBeHidden()
-  await expect(page.locator('.reel-shell > .media-card-footer')).toHaveCount(0)
+  await expect(previews).toBeHidden()
+  await expect(page.locator('.reel-shell > .media-card-footer')).toBeVisible()
   await cog.click()
   await page.getByRole('button', { name: 'Exit fullscreen', exact: true }).click()
   await expect(back).toBeVisible()
+  await expect(previews).toBeVisible()
 })
 
 test('a tall viewport fills automatically after opening, filtering, and restarting', async ({ page }) => {

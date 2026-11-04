@@ -64,6 +64,7 @@ export interface VibeInstance {
   setLoadMoreLocked: (locked: boolean) => void
   setTotal: (total: number | null) => void
   setReelAutoAdvance: (update: boolean | VibeReelAutoAdvanceOptions) => void
+  setReelPreviews: (enabled: boolean) => void
   setReelAudioState: (state: VibeReelAudioState) => void
   setReelInfoSheet: (enabled: boolean) => void
   undoLastRemoval: () => VibeRemoval | null

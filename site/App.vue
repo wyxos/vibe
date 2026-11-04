@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Github, RotateCcw } from 'lucide-vue-next'
+import { Github, PanelsTopLeft, RotateCcw } from 'lucide-vue-next'
 import { ref } from 'vue'
 import { useShowcase } from './useShowcase'
 import ShowcaseReelBackButton from './components/ShowcaseReelBackButton.vue'
@@ -7,8 +7,8 @@ import type { ShowcaseFilter } from './useShowcase'
 
 const target = ref<HTMLElement | null>(null)
 const logoUrl = `${import.meta.env.BASE_URL}logo.svg`
-const { filter, layout, loaded, rendered, busy, status, error, reelTarget,
-  chooseFilter, closeReel, reset } = useShowcase(target)
+const { filter, layout, loaded, rendered, busy, status, error, reelTarget, reelPreviews,
+  chooseFilter, closeReel, reset, toggleReelPreviews } = useShowcase(target)
 const filters: { value: ShowcaseFilter; label: string }[] = [
   { value: 'all', label: 'All media' }, { value: 'image', label: 'Images' },
   { value: 'video', label: 'Motion' }, { value: 'audio', label: 'Sound' },
@@ -36,7 +36,13 @@ const filters: { value: ShowcaseFilter; label: string }[] = [
     </header>
 
     <Teleport v-if="reelTarget" :to="reelTarget">
-      <ShowcaseReelBackButton @click="closeReel" />
+      <div class="showcase-reel-toolbar">
+        <ShowcaseReelBackButton @click="closeReel" />
+        <button class="showcase-reel-back" type="button" :aria-pressed="reelPreviews" @click="toggleReelPreviews">
+          <PanelsTopLeft :size="16" aria-hidden="true" />
+          Previews
+        </button>
+      </div>
     </Teleport>
 
     <main id="top" class="playground" aria-label="Live Vibe demonstration">

@@ -33,6 +33,7 @@ export interface VibeRuntimeState {
   nextPageError: unknown | null
   phoneMode: boolean
   reelAutoAdvance: VibeReelAutoAdvanceState
+  reelPreviews: boolean
   reelForward: VibeReelForwardState
   reelForwardIndex: number | null
   reelForwardItem: VibeItem | null
@@ -89,6 +90,7 @@ export function snapshotState(
     nextPageError: state.nextPageError,
     phoneMode: state.phoneMode,
     reelAutoAdvance: { ...state.reelAutoAdvance },
+    reelPreviews: state.reelPreviews,
     reelForward: { ...state.reelForward },
     reelInfoSheet: { ...state.reelInfoSheet },
     reelOrigin: state.reelOrigin,

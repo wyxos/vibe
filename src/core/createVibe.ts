@@ -12,7 +12,7 @@ import { reconcileBeforeFill } from './fillReconciliation'
 import type { VibeSurfaceExpose } from './feed'
 import { createFeedFooterActions } from './feedFooter'
 import { createInitialRuntimeState } from './initialRuntimeState'
-import { resolveVibeTarget, validateOptions } from './options'
+import { resolveVibeTarget, validateOptions, validateTotal } from './options'
 import { pageCurrentCursor, validatePage } from './page'
 import { performPageRequest } from './pageRequest'
 import { PageReplacementController, type VibePageReplacementOptions } from './pageReplacement'
@@ -389,13 +389,14 @@ class VibeController implements VibeInstance {
     })
   }
   setTotal(total: number | null): void {
-    if (total !== null && (!Number.isInteger(total) || total < 0)) {
-      throw new TypeError('Vibe total must be a non-negative integer or null.')
-    }
+    validateTotal(total)
     this.state.total = total
   }
   setReelAutoAdvance(update: boolean | VibeReelAutoAdvanceOptions): void {
     updateReelAutoAdvanceState(this.state.reelAutoAdvance, update)
+  }
+  setReelPreviews(enabled: boolean): void {
+    this.state.reelPreviews = enabled
   }
   setReelInfoSheet(enabled: boolean): void {
     setReelInfoSheetEnabled(this.state.reelInfoSheet, this.options.reelInfoSheet, enabled)

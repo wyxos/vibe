@@ -9,6 +9,12 @@ import type {
   VibeCardRegion,
 } from '../types'
 
+export function validateTotal(total: number | null): void {
+  if (total !== null && (!Number.isInteger(total) || total < 0)) {
+    throw new TypeError('Vibe total must be a non-negative integer or null.')
+  }
+}
+
 function validateCardRegion(
   name: 'cardFooter' | 'cardHeader',
   region?: VibeCardRegion,
