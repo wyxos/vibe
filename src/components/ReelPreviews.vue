@@ -29,6 +29,8 @@ function chooseCount(value: VibeReelPreviewCount) {
 const browseAnchor = ref<number | null>(null)
 const firstPreviewIndex = computed(() => browseAnchor.value ?? props.activeIndex + 1)
 const upcomingCount = computed(() => Math.max(0, props.items.length - firstPreviewIndex.value))
+const firstPage = computed(() => props.activeIndex > 0 || browseAnchor.value !== null
+  ? -Math.ceil(firstPreviewIndex.value / selectedCount.value) : 0)
 const lastPage = computed(() => Math.max(0, Math.ceil(upcomingCount.value / selectedCount.value) - 1))
 const browsePage = ref(0)
 let selectedPost: VibeItemId | undefined
@@ -43,7 +45,9 @@ watch(() => props.activeIndex, index => {
   selectedPost = undefined
 }, { flush: 'sync' })
 watch(selectedCount, resetBrowsing, { flush: 'sync' })
-watch(lastPage, limit => { browsePage.value = Math.min(browsePage.value, limit) }, { flush: 'sync' })
+watch([firstPage, lastPage], ([first, last]) => {
+  browsePage.value = Math.max(first, Math.min(browsePage.value, last))
+}, { flush: 'sync' })
 
 function selectPreview(postId: VibeItemId) {
   if (props.items[props.activeIndex]?.postId === postId) return
@@ -54,7 +58,7 @@ function selectPreview(postId: VibeItemId) {
 
 const previews = computed(() => {
   const start = firstPreviewIndex.value + browsePage.value * selectedCount.value
-  return props.items.slice(start, start + selectedCount.value).map((item) => {
+  return props.items.slice(Math.max(0, start), start + selectedCount.value).map((item) => {
     if (options.resolveReelPreview) return { id: item.postId, source: options.resolveReelPreview(item) }
     const type = resolveMediaType(item.type, item.src)
     const preview = item.preview
@@ -169,7 +173,7 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
 
 <template>
   <aside
-    v-if="previews.length || status"
+    v-if="previews.length || status || browsePage > firstPage"
     class="reel-previews"
     :class="{ 'reel-previews--empty': !previews.length }"
     aria-label="Upcoming reel items"
@@ -186,8 +190,8 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
         @click="chooseCount(value)"
       >{{ value }}</button>
     </div>
-    <button v-if="lastPage" type="button" class="reel-preview-arrow"
-      aria-label="Previous previews" :disabled="browsePage === 0" @click="browsePage--">
+    <button v-if="firstPage < lastPage" type="button" class="reel-preview-arrow"
+      aria-label="Previous previews" :disabled="browsePage <= firstPage" @click="browsePage--">
       <component :is="horizontal ? ChevronLeft : ChevronUp" aria-hidden="true" />
     </button>
     <div v-if="previews.length" ref="viewport" class="reel-preview-viewport" :style="{ '--preview-count': selectedCount }">
@@ -203,7 +207,7 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
         </li>
       </ol>
     </div>
-    <button v-if="lastPage" type="button" class="reel-preview-arrow"
+    <button v-if="previews.length && firstPage < lastPage" type="button" class="reel-preview-arrow"
       aria-label="Next previews" :disabled="browsePage >= lastPage" @click="browsePage++">
       <component :is="horizontal ? ChevronRight : ChevronDown" aria-hidden="true" />
     </button>
