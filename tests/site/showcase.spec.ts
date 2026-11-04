@@ -92,6 +92,8 @@ for (const reduced of [false, true]) {
         return Math.abs(preview.y - item.y - item.height)
       }).toBeLessThanOrEqual(1)
       await expect(rail.locator('[data-preview-post-id]')).toHaveCount(4)
+      await expect.poll(() => feed.evaluate(element => element.parentElement!.getAnimations().length)).toBe(0)
+      await expect(feed).not.toHaveAttribute('data-resizing', '')
       for (const clipped of [rail, rail.locator('.reel-preview-viewport')]) {
         await expect(clipped).toHaveCSS('overflow', 'clip')
       }
