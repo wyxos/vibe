@@ -264,7 +264,6 @@ function selectPreview(postId: VibeItemId) {
   galleryElement.value?.focus({ preventScroll: true })
   void transitionActivePost(postId)
 }
-
 async function transitionActiveMedia(direction: -1 | 1): Promise<boolean> {
   if (!changeActiveMedia(direction)) return false
   if (!prefersReducedMotion()) {
@@ -470,7 +469,9 @@ defineExpose({
         data-test="reel-media-controls-host"
       />
       <Transition name="vibe-reel-previews">
-        <ReelPreviews v-if="previews && state" :items="previews" :active-index="activeIndex" :state="state" @select="selectPreview" @load-more="emit('loadMore')" />
+        <ReelPreviews v-if="previews && state" :items="previews" :active-index="activeIndex"
+          :previous-post-id="items[activeIndex - 1]?.postId" :state="state"
+          @select="selectPreview" @load-more="emit('loadMore')" />
       </Transition>
     </div>
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import EmblaCarousel, { type EmblaCarouselType } from 'embla-carousel'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-vue-next'
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { resolveMediaType } from '../core/mediaType'
 import { resolveReelPreviewCount, useReelPreviewOptions } from '../core/reelPreviews'
@@ -9,6 +10,7 @@ import ReelPreviewMedia from './ReelPreviewMedia.vue'
 const props = defineProps<{
   items: readonly VibeItem[]
   activeIndex: number
+  previousPostId?: VibeItemId
   state: VibeState
 }>()
 const emit = defineEmits<{ loadMore: []; select: [postId: VibeItemId] }>()
@@ -52,6 +54,10 @@ const canRetry = computed(() => props.items.length < selectedCount.value && boun
 
 function isolate(event: KeyboardEvent) {
   if (event.key !== 'Escape') event.stopPropagation()
+}
+
+function selectAdjacent(postId: VibeItemId | undefined) {
+  if (postId !== undefined) emit('select', postId)
 }
 
 const viewport = ref<HTMLElement | null>(null)
@@ -133,7 +139,7 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
 
 <template>
   <aside
-    v-if="previews.length || status"
+    v-if="previews.length || status || previousPostId !== undefined"
     class="reel-previews"
     :class="{ 'reel-previews--empty': !previews.length }"
     aria-label="Upcoming reel items"
@@ -150,18 +156,25 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
         @click="chooseCount(value)"
       >{{ value }}</button>
     </div>
+    <button v-if="previews.length || previousPostId !== undefined" type="button" class="reel-preview-arrow"
+      aria-label="Previous reel item" :disabled="previousPostId === undefined" @click="selectAdjacent(previousPostId)">
+      <component :is="horizontal ? ChevronLeft : ChevronUp" aria-hidden="true" />
+    </button>
     <div v-if="previews.length" ref="viewport" class="reel-preview-viewport" :style="{ '--preview-count': selectedCount }">
       <ol class="reel-preview-list">
         <li v-for="preview in track" :key="preview.id"
           :data-preview-post-id="positions.has(preview.id) ? preview.id : undefined" :aria-hidden="!positions.has(preview.id) || undefined">
           <button type="button" class="reel-preview-card" :disabled="!positions.has(preview.id)"
             :aria-label="`Open upcoming item ${positions.get(preview.id)}`" @click="emit('select', preview.id)">
-            <span v-if="positions.has(preview.id)" class="reel-preview-position" aria-hidden="true">+{{ positions.get(preview.id) }}</span>
             <ReelPreviewMedia :source="preview.source" :position="positions.get(preview.id) ?? 0" />
           </button>
         </li>
       </ol>
     </div>
+    <button v-if="previews.length" type="button" class="reel-preview-arrow"
+      aria-label="Next reel item" @click="selectAdjacent(previews[0]?.id)">
+      <component :is="horizontal ? ChevronRight : ChevronDown" aria-hidden="true" />
+    </button>
     <div v-if="status" class="reel-preview-boundary">
       <span v-if="status" role="status">{{ status }}</span>
       <button v-if="canRetry" type="button" @click="emit('loadMore')">Retry</button>
