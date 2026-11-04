@@ -6,6 +6,7 @@ import { mediaAssetAt, mediaAssets, mediaPlaybackVariantForSource,
   mediaStateKey } from '../core/mediaAsset'
 import { isTimedMedia } from '../core/mediaType'
 import { transitionReelScroll } from '../core/reelScrollTransition'
+import { useReelPreviewOptions } from '../core/reelPreviews'
 import type { VibeItemId, VibeReelAudioState } from '../types'
 import CardRegion from './CardRegion.vue'
 import FeedFooter from './FeedFooter.vue'
@@ -60,8 +61,9 @@ const visibleItems = computed(() => {
 })
 const activePostId = computed(() => props.items[activeIndex.value]?.postId)
 const activeItem = computed(() => props.items[activeIndex.value])
+const placement = useReelPreviewOptions().reelPreviewPlacement
 const previews = computed(() => props.state?.reelPreviews && activeItem.value && props.reelForward.status === 'idle'
-  ? props.items.slice(activeIndex.value + 1, activeIndex.value + 9) : null)
+  ? props.items.slice(activeIndex.value + 1, activeIndex.value + 25) : null)
 const activeMediaIndex = computed(() => {
   const postId = activePostId.value
   return postId === undefined ? 0 : props.mediaIndices.get(postId) ?? 0
@@ -385,7 +387,7 @@ defineExpose({
       :total="total"
     />
 
-    <div class="reel-viewport">
+    <div class="reel-viewport" :data-preview-placement="typeof placement === 'function' ? placement() : placement ?? 'right'">
       <div
         ref="galleryElement"
         class="gallery-shell reel-feed"
@@ -462,7 +464,7 @@ defineExpose({
         data-test="reel-media-controls-host"
       />
       <Transition name="vibe-reel-previews">
-        <ReelPreviews v-if="previews && state" :items="previews" :state="state" @load-more="emit('loadMore')" />
+        <ReelPreviews v-if="previews && state" :items="previews" :active-index="activeIndex" :state="state" @load-more="emit('loadMore')" />
       </Transition>
     </div>
 

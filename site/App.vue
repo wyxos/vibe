@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Github, PanelsTopLeft, RotateCcw } from 'lucide-vue-next'
+import { Github, Minus, PanelsTopLeft, Plus, RotateCcw } from 'lucide-vue-next'
 import { ref } from 'vue'
 import { useShowcase } from './useShowcase'
 import ShowcaseReelBackButton from './components/ShowcaseReelBackButton.vue'
@@ -7,8 +7,9 @@ import type { ShowcaseFilter } from './useShowcase'
 
 const target = ref<HTMLElement | null>(null)
 const logoUrl = `${import.meta.env.BASE_URL}logo.svg`
-const { filter, layout, loaded, rendered, busy, status, error, reelTarget, reelPreviews,
+const { filter, layout, loaded, rendered, busy, status, error, reelTarget, reelPreviews, previewPlacement, previewCount,
   chooseFilter, closeReel, reset, toggleReelPreviews } = useShowcase(target)
+const placements = ['left', 'right', 'top', 'bottom'] as const
 const filters: { value: ShowcaseFilter; label: string }[] = [
   { value: 'all', label: 'All media' }, { value: 'image', label: 'Images' },
   { value: 'video', label: 'Motion' }, { value: 'audio', label: 'Sound' },
@@ -47,6 +48,18 @@ const filters: { value: ShowcaseFilter; label: string }[] = [
 
     <main id="top" class="playground" aria-label="Live Vibe demonstration">
       <h1 class="sr-only">Vibe media feed</h1>
+      <div v-if="layout === 'reel'" class="showcase-preview-settings">
+        <div class="filter-tabs" role="group" aria-label="Preview placement">
+          <button v-for="position in placements" :key="position" type="button"
+            :aria-pressed="previewPlacement === position" @click="previewPlacement = position"
+          >{{ position }}</button>
+        </div>
+        <div class="filter-tabs" role="group" aria-label="Preview count">
+          <button type="button" aria-label="Fewer previews" :disabled="previewCount <= 1" @click="previewCount--"><Minus :size="16" aria-hidden="true" /></button>
+          <output aria-live="polite">{{ previewCount }} previews</output>
+          <button type="button" aria-label="More previews" :disabled="previewCount >= 24" @click="previewCount++"><Plus :size="16" aria-hidden="true" /></button>
+        </div>
+      </div>
       <div
         class="showcase-stage" data-test="showcase-stage"
         :data-loaded="loaded" :data-rendered="rendered" :data-layout="layout" :data-loading="busy"

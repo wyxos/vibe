@@ -1,7 +1,7 @@
 import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import type { PropType, Ref } from 'vue'
 import { createVibe } from '../src/index'
-import type { VibeInstance, VibeItem, VibePage, VibeState } from '../src/index'
+import type { VibeInstance, VibeItem, VibePage, VibeReelPreviewPlacement, VibeState } from '../src/index'
 import { getShowcaseItems } from './fixtures'
 import type { ShowcaseItem } from './fixtures'
 import ShowcaseCardFooter from './components/ShowcaseCardFooter.vue'
@@ -59,6 +59,8 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
 
   const loaded = computed(() => state.value?.items.length ?? 0)
   const reelPreviews = computed(() => state.value?.reelPreviews ?? false)
+  const previewPlacement = ref<VibeReelPreviewPlacement>('right')
+  const previewCount = ref(4)
   const layout = computed(() => state.value?.reelOrigin === 'masonry' ? 'reel' : 'masonry')
   const busy = computed(() => filtering.value || !state.value || state.value.isLoading || state.value.isLoadingMore)
   const status = computed(() => filtering.value ? 'Changing collection'
@@ -118,6 +120,8 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
     const api = createVibe({
       target: element, layout: 'masonry', infiniteScroll: true, initialPage,
       reelPreviews: reelPreviews.value,
+      reelPreviewPlacement: () => previewPlacement.value,
+      reelPreviewCount: () => previewCount.value,
       cardFooter: { component: CardFooter, height: 56 },
       reelInfoSheet: { component: ShowcaseInfoSheet },
       mediaCard: { feedPreload: 'visible-post',
@@ -220,6 +224,6 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
     vibe = null
   })
 
-  return { filter, layout, loaded, rendered, busy, status, error, reelTarget, reelPreviews,
+  return { filter, layout, loaded, rendered, busy, status, error, reelTarget, reelPreviews, previewPlacement, previewCount,
     chooseFilter, closeReel, reset, toggleReelPreviews }
 }

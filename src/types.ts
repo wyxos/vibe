@@ -35,7 +35,8 @@ export type VibeFillStatus =
   | 'waiting'
 export type VibeFillTarget = { items: number } | { pages: number } | { until: 'end' }
 export type VibeMediaType = 'audio' | 'image' | 'video'
-export type VibeReelPreviewCount = 4 | 6 | 8
+export type VibeReelPreviewCount = number
+export type VibeReelPreviewPlacement = 'left' | 'right' | 'top' | 'bottom'
 export interface VibeReelPreview {
   src: string | null
   type: VibeMediaType
@@ -433,7 +434,10 @@ export interface CreateVibeOptions {
   reelAutoAdvance?: VibeReelAutoAdvanceOptions
   /** Show previews of upcoming loaded posts in reels. Defaults to false. */
   reelPreviews?: boolean
+  /** Number of upcoming posts (1–24). Defaults to 4. */
   reelPreviewCount?: VibeReelPreviewCount | (() => VibeReelPreviewCount)
+  /** Rail placement relative to the reel media. Defaults to right. */
+  reelPreviewPlacement?: VibeReelPreviewPlacement | (() => VibeReelPreviewPlacement)
   onReelPreviewCountChange?: (count: VibeReelPreviewCount) => void
   /** Resolve artwork, optional muted video, and visibility for a loaded upcoming post. */
   resolveReelPreview?: (item: VibeItem) => VibeReelPreview

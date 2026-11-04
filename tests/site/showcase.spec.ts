@@ -70,13 +70,65 @@ for (const width of [1440, 768, 390]) {
     expect(feedBox.x + feedBox.width).toBeLessThanOrEqual(railBox.x + 1)
     expect(controlsBox.x + controlsBox.width).toBeLessThanOrEqual(railBox.x + 1)
     expect(railBox.x + railBox.width).toBeLessThanOrEqual(width)
-    await rail.getByRole('button', { name: 'Show 8 previews' }).click()
-    await expect(cards).toHaveCount(8)
+    await page.getByRole('button', { name: 'More previews' }).click()
+    await expect(cards).toHaveCount(5)
     await capture(page, `native-reel-previews-${width}`)
     await toggle.click()
     await expect(rail).toHaveCount(0)
     await expect(feed).toHaveAttribute('data-active-post-id', post!)
     expect((await feed.boundingBox())!.width).toBeGreaterThan(feedBox.width)
+    expect(errors).toEqual([])
+  })
+}
+
+for (const reduced of [false, true]) {
+  test(`positions and moves upcoming previews with reduced motion ${reduced}`, async ({ page }) => {
+    const width = reduced ? 390 : 1440
+    await page.setViewportSize({ width, height: 844 })
+    await page.emulateMedia({ reducedMotion: reduced ? 'reduce' : 'no-preference' })
+    const errors = await ready(page)
+    await page.locator('.masonry-item .media-card-activator').first().click()
+    await expect(page.locator('.vibe-reel-overlay')).toHaveAttribute('data-reel-entry', 'ready')
+    await page.getByRole('button', { name: 'Upcoming previews' }).click()
+    const rail = page.locator('.reel-previews')
+    const feed = page.locator('.reel-feed')
+    for (const position of ['right', 'left', 'top', 'bottom']) {
+      await page.getByRole('group', { name: 'Preview placement' }).getByRole('button', { name: position }).click()
+      await expect.poll(async () => {
+        const preview = (await rail.boundingBox())!
+        const item = (await feed.boundingBox())!
+        if (position === 'right') return Math.abs(preview.x - item.x - item.width)
+        if (position === 'left') return Math.abs(item.x - preview.x - preview.width)
+        if (position === 'top') return Math.abs(item.y - preview.y - preview.height)
+        return Math.abs(preview.y - item.y - item.height)
+      }).toBeLessThanOrEqual(1)
+      await expect(rail.locator('[data-preview-post-id]')).toHaveCount(4)
+      await capture(page, `vibe-previews-${position}-${width}`)
+      const observed = await feed.evaluate(async element => {
+        const list = element.parentElement!.querySelector('.reel-preview-list')!
+        const retained = list.children[1]!
+        const initial = element.getAttribute('data-active-post-id')
+        const frames: boolean[] = []
+        element.scrollTop = element.clientHeight
+        let changed = false
+        for (let frame = 0; frame < 30; frame++) {
+          await new Promise(requestAnimationFrame)
+          changed ||= element.getAttribute('data-active-post-id') !== initial
+          frames.push(retained.getAnimations().some(animation => animation instanceof CSSTransition
+            && animation.transitionProperty === 'transform' && Number(animation.effect?.getTiming().duration) > 1))
+        }
+        element.scrollTop = 0
+        let returning = false
+        for (let frame = 0; frame < 30; frame++) {
+          await new Promise(requestAnimationFrame)
+          returning ||= retained.getAnimations().some(animation => animation instanceof CSSTransition
+            && animation.transitionProperty === 'transform' && Number(animation.effect?.getTiming().duration) > 1)
+        }
+        return { changed, forward: frames.some(Boolean), returning,
+          restored: element.getAttribute('data-active-post-id') === initial }
+      })
+      expect(observed).toEqual({ changed: true, forward: !reduced, returning: !reduced, restored: true })
+    }
     expect(errors).toEqual([])
   })
 }

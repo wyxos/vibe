@@ -1,20 +1,23 @@
 <script setup lang="ts">
-import { computed, inject, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { resolveMediaType } from '../core/mediaType'
-import { reelPreviewOptionsKey } from '../core/reelPreviews'
+import { resolveReelPreviewCount, useReelPreviewOptions } from '../core/reelPreviews'
 import type { VibeItem, VibeReelPreviewCount, VibeState } from '../types'
 import ReelPreviewMedia from './ReelPreviewMedia.vue'
 
 const props = defineProps<{
   items: readonly VibeItem[]
+  activeIndex: number
   state: VibeState
 }>()
 const emit = defineEmits<{ loadMore: [] }>()
 const counts = [4, 6, 8] as const
-const options = inject(reelPreviewOptionsKey, {})
+const options = useReelPreviewOptions()
 const countOption = options.reelPreviewCount
 const localCount = ref(typeof countOption === 'number' ? countOption : 4)
-const selectedCount = computed(() => typeof countOption === 'function' ? countOption() : localCount.value)
+const selectedCount = computed(() => resolveReelPreviewCount(typeof countOption === 'function' ? countOption() : localCount.value))
+const backwards = ref(false)
+watch(() => props.activeIndex, (index, previous) => { backwards.value = index < previous })
 
 function chooseCount(value: VibeReelPreviewCount) {
   localCount.value = value
@@ -49,6 +52,16 @@ const canRetry = computed(() => props.items.length < selectedCount.value && boun
 function isolate(event: KeyboardEvent) {
   if (event.key !== 'Escape') event.stopPropagation()
 }
+
+function pinLeavingTile(node: Element) {
+  if (!(node instanceof HTMLElement)) return
+  // Keep the outgoing card in place while the surviving cards slide into their new slots.
+  Object.assign(node.style, {
+    inset: `${node.offsetTop}px auto auto ${node.offsetLeft}px`,
+    width: `${node.offsetWidth}px`,
+    height: `${node.offsetHeight}px`,
+  })
+}
 </script>
 
 <template>
@@ -60,7 +73,7 @@ function isolate(event: KeyboardEvent) {
     data-reel-gesture-ignore
     @keydown="isolate"
   >
-    <div v-if="previews.length" class="reel-preview-count" role="group" aria-label="Number of reel previews">
+    <div v-if="previews.length && (countOption === undefined || options.onReelPreviewCountChange)" class="reel-preview-count" role="group" aria-label="Number of reel previews">
       <button
         v-for="value in counts"
         :key="value"
@@ -70,12 +83,16 @@ function isolate(event: KeyboardEvent) {
         @click="chooseCount(value)"
       >{{ value }}</button>
     </div>
-    <ol v-if="previews.length" class="reel-preview-list" :class="{ 'reel-preview-list--dense': previews.length > 4 }">
+    <TransitionGroup
+      v-if="previews.length" tag="ol" name="vibe-preview-tile" class="reel-preview-list"
+      :class="{ 'reel-preview-list--dense': previews.length > 4, 'reel-preview-list--backwards': backwards }"
+      @before-leave="pinLeavingTile"
+    >
       <li v-for="(preview, index) in previews" :key="preview.id" :data-preview-post-id="preview.id">
         <span class="reel-preview-position" aria-hidden="true">+{{ index + 1 }}</span>
         <ReelPreviewMedia :source="preview.source" :position="index + 1" />
       </li>
-    </ol>
+    </TransitionGroup>
     <div v-if="status" class="reel-preview-boundary">
       <span v-if="status" role="status">{{ status }}</span>
       <button v-if="canRetry" type="button" @click="emit('loadMore')">Retry</button>

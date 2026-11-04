@@ -80,6 +80,7 @@ export type {
   VibeReelOrigin,
   VibeReelPreview,
   VibeReelPreviewCount,
+  VibeReelPreviewPlacement,
   VibeRoutingOptions,
   VibeState,
 } from './types'

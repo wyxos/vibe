@@ -49,6 +49,18 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 .reset-button, .project-link { display: grid; place-items: center; width: 44px; min-height: 44px; padding: 0; border: 0; background: transparent; border-radius: 3px; color: var(--muted); transition: background 140ms, color 140ms; }
 .reset-button:hover, .project-link:hover { color: var(--text); background: var(--supporting); }
 .playground { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.showcase-preview-settings {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 0.75rem;
+  padding-inline: 0.625rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.showcase-preview-settings [aria-label="Preview placement"] button { text-transform: capitalize; }
+.showcase-preview-settings [aria-label="Preview count"] button { min-width: 44px; }
+.showcase-preview-settings output { font-size: 12px; color: var(--muted); }
 .showcase-stage { position: relative; display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; background: var(--page); }
 .showcase-feed { width: 100%; flex: 1; min-height: 0; }
 .showcase-feed > .vibe-surface { height: 100%; }
@@ -111,13 +123,14 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
   .showcase-card-stack { display: none; }
 }
 
+.showcase-feed .vibe-reel-overlay { display: flex; flex-direction: column; }
+.showcase-feed .vibe-reel-overlay > .reel-layout { flex: 1; height: auto; }
+
 .showcase-reel-toolbar {
-  position: absolute;
-  z-index: 13;
-  top: 10px;
-  left: 10px;
+  order: -1;
   display: flex;
   gap: 6px;
+  padding: 6px 10px 0;
 }
 
 .showcase-reel-back {

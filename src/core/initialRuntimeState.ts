@@ -34,6 +34,7 @@ export function createInitialRuntimeState(
     reelPreviews: options.reelPreviews ?? false,
     reelPreviewOptions: {
       reelPreviewCount: options.reelPreviewCount,
+      reelPreviewPlacement: options.reelPreviewPlacement,
       onReelPreviewCountChange: options.onReelPreviewCountChange,
       resolveReelPreview: options.resolveReelPreview,
     },
