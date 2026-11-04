@@ -1,4 +1,5 @@
 import { computed, watch, type ComputedRef, type WatchHandle } from 'vue'
+import type { ReelPreviewOptions } from './reelPreviews'
 
 import type {
   VibeAutoScrollState,
@@ -34,6 +35,7 @@ export interface VibeRuntimeState {
   phoneMode: boolean
   reelAutoAdvance: VibeReelAutoAdvanceState
   reelPreviews: boolean
+  reelPreviewOptions: ReelPreviewOptions
   reelForward: VibeReelForwardState
   reelForwardIndex: number | null
   reelForwardItem: VibeItem | null

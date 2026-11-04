@@ -1,5 +1,7 @@
 import { computed, inject, onBeforeUnmount, onMounted, provide, shallowRef, type InjectionKey } from 'vue'
 import { updateReelAutoAdvanceState } from '../core/reelAutoAdvance'
+import { reelPreviewOptionsKey } from '../core/reelPreviews'
+import type { VibeRuntimeState } from '../core/runtime'
 import type { VibeReelAutoAdvanceOptions, VibeReelAutoAdvanceState } from '../types'
 
 const key: InjectionKey<ReturnType<typeof createPlaybackOptions>> = Symbol('reel-playback-options')
@@ -42,9 +44,10 @@ function createPlaybackOptions(element: () => HTMLElement | null, autoAdvance: (
   }
 }
 
-export function provideReelPlaybackOptions(element: () => HTMLElement | null, autoAdvance: () => VibeReelAutoAdvanceState) {
-  const options = createPlaybackOptions(element, autoAdvance)
+export function provideReelPlaybackOptions(element: () => HTMLElement | null, state: VibeRuntimeState) {
+  const options = createPlaybackOptions(element, () => state.reelAutoAdvance)
   provide(key, options)
+  provide(reelPreviewOptionsKey, state.reelPreviewOptions)
   return options
 }
 

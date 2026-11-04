@@ -32,6 +32,11 @@ export function createInitialRuntimeState(
     phoneMode: false,
     reelAutoAdvance: createReelAutoAdvanceState(options.reelAutoAdvance),
     reelPreviews: options.reelPreviews ?? false,
+    reelPreviewOptions: {
+      reelPreviewCount: options.reelPreviewCount,
+      onReelPreviewCountChange: options.onReelPreviewCountChange,
+      resolveReelPreview: options.resolveReelPreview,
+    },
     reelForward: { error: null, status: 'idle' },
     reelForwardIndex: null,
     reelForwardItem: null,

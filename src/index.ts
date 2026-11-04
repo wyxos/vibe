@@ -78,6 +78,8 @@ export type {
   VibeReelForwardState,
   VibeReelForwardStatus,
   VibeReelOrigin,
+  VibeReelPreview,
+  VibeReelPreviewCount,
   VibeRoutingOptions,
   VibeState,
 } from './types'

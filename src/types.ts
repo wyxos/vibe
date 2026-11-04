@@ -35,6 +35,14 @@ export type VibeFillStatus =
   | 'waiting'
 export type VibeFillTarget = { items: number } | { pages: number } | { until: 'end' }
 export type VibeMediaType = 'audio' | 'image' | 'video'
+export type VibeReelPreviewCount = 4 | 6 | 8
+export interface VibeReelPreview {
+  src: string | null
+  type: VibeMediaType
+  poster?: string | null
+  label?: string | null
+  presentation?: 'visible' | 'blur' | 'hidden'
+}
 export interface VibeAutoScrollOptions { enabled?: boolean; maxSpeedPxPerSecond?: number; minSpeedPxPerSecond?: number; speedPxPerSecond?: number }
 export interface VibeAutoScrollState {
   enabled: boolean
@@ -425,6 +433,10 @@ export interface CreateVibeOptions {
   reelAutoAdvance?: VibeReelAutoAdvanceOptions
   /** Show previews of upcoming loaded posts in reels. Defaults to false. */
   reelPreviews?: boolean
+  reelPreviewCount?: VibeReelPreviewCount | (() => VibeReelPreviewCount)
+  onReelPreviewCountChange?: (count: VibeReelPreviewCount) => void
+  /** Resolve artwork, optional muted video, and visibility for a loaded upcoming post. */
+  resolveReelPreview?: (item: VibeItem) => VibeReelPreview
   reelInfoSheet?: VibeReelInfoSheetOptions
   routing?: VibeRoutingOptions
 }

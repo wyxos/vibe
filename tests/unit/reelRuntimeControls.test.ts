@@ -47,7 +47,7 @@ describe('reel runtime controls', () => {
     return instance
   }
 
-  it('previews only loaded successors and offers one manual page action', async () => {
+  it('collapses previews at the end of the loaded items when automatic loading is off', async () => {
     const loadPage = vi.fn(async () => ({ items: [item(3)], next: null }))
     const instance = track(createVibe({
       target, layout: 'reel', infiniteScroll: false, reelPreviews: true,
@@ -61,15 +61,13 @@ describe('reel runtime controls', () => {
     expect(previewIds()).toEqual(['2'])
     expect(instance.nextReelPost()).toBe(true)
     await flushPromises()
-    expect(previewIds()).toEqual([])
-    expect(rail().classList.contains('reel-previews--empty')).toBe(true)
+    expect(rail()).toBeNull()
     expect(loadPage).not.toHaveBeenCalled()
-    expect(rail().querySelectorAll('button')).toHaveLength(1)
-    rail().querySelector('button')!.click()
+    await instance.loadNext()
     await flushPromises()
     expect(loadPage).toHaveBeenCalledTimes(1)
     expect(previewIds()).toEqual(['3'])
-    expect(rail().textContent).toContain('End of feed')
+    expect(rail().textContent).not.toContain('End of feed')
     expect(instance.getState().activeReelPostId).toBe(2)
     instance.setReelPreviews(false)
     await flushPromises()
