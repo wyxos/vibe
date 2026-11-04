@@ -95,6 +95,7 @@
     "vue-tsc": "^3.2.5"
   },
   "dependencies": {
+    "embla-carousel": "^8.6.0",
     "lucide-vue-next": "^1.0.0"
   }
 }

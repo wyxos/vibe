@@ -47,7 +47,7 @@ for (const width of [1440, 768, 390]) {
     await expect(toggle).toHaveAttribute('aria-pressed', 'false')
     await expect(rail).toHaveCount(0)
     const closedWidth = (await feed.boundingBox())!.width
-    const openingWidths = feed.evaluate(element => new Promise<number[]>((resolve) => {
+    const sampleWidths = () => feed.evaluate(element => new Promise<number[]>((resolve) => {
       const viewport = element.parentElement!
       const widths: number[] = []
       const observer = new ResizeObserver(() => widths.push(element.getBoundingClientRect().width))
@@ -59,13 +59,17 @@ for (const width of [1440, 768, 390]) {
         resolve(widths)
       })
     }))
+    const openingWidths = sampleWidths()
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-pressed', 'true')
     await expect(cards).toHaveCount(4)
     const widths = await openingWidths
-    const railBox = (await rail.boundingBox())!
-    const feedBox = (await feed.boundingBox())!
-    const controlsBox = (await page.locator('.reel-media-controls-host').boundingBox())!
+    const { railBox, feedBox, controlsBox } = await feed.evaluate(element => {
+      const viewport = element.parentElement!
+      const box = (target: Element) => target.getBoundingClientRect().toJSON() as DOMRect
+      return { railBox: box(viewport.querySelector('.reel-previews')!), feedBox: box(element),
+        controlsBox: box(viewport.querySelector('.reel-media-controls-host')!) }
+    })
     expect(widths.some(value => value > feedBox.width + 2 && value < closedWidth - 2)).toBe(true)
     expect(feedBox.x + feedBox.width).toBeLessThanOrEqual(railBox.x + 1)
     expect(controlsBox.x + controlsBox.width).toBeLessThanOrEqual(railBox.x + 1)
@@ -73,8 +77,10 @@ for (const width of [1440, 768, 390]) {
     await page.getByRole('button', { name: 'More previews' }).click()
     await expect(cards).toHaveCount(5)
     await capture(page, `native-reel-previews-${width}`)
+    const closingWidths = sampleWidths()
     await toggle.click()
     await expect(rail).toHaveCount(0)
+    expect((await closingWidths).some(value => value > feedBox.width + 2 && value < closedWidth - 2)).toBe(true)
     await expect(feed).toHaveAttribute('data-active-post-id', post!)
     expect((await feed.boundingBox())!.width).toBeGreaterThan(feedBox.width)
     expect(errors).toEqual([])
@@ -103,31 +109,50 @@ for (const reduced of [false, true]) {
         return Math.abs(preview.y - item.y - item.height)
       }).toBeLessThanOrEqual(1)
       await expect(rail.locator('[data-preview-post-id]')).toHaveCount(4)
-      await capture(page, `vibe-previews-${position}-${width}`)
-      const observed = await feed.evaluate(async element => {
+      for (const clipped of [rail, rail.locator('.reel-preview-viewport')]) {
+        await expect(clipped).toHaveCSS('overflow', 'clip')
+      }
+      await capture(page, `vibe-carousel-${position}-${width}`)
+      const observed = await feed.evaluate(async (element, horizontal) => {
         const list = element.parentElement!.querySelector('.reel-preview-list')!
         const retained = list.children[1]!
         const initial = element.getAttribute('data-active-post-id')
-        const frames: boolean[] = []
-        element.scrollTop = element.clientHeight
-        let changed = false
-        for (let frame = 0; frame < 30; frame++) {
-          await new Promise(requestAnimationFrame)
-          changed ||= element.getAttribute('data-active-post-id') !== initial
-          frames.push(retained.getAnimations().some(animation => animation instanceof CSSTransition
-            && animation.transitionProperty === 'transform' && Number(animation.effect?.getTiming().duration) > 1))
+        const coordinate = () => retained.getBoundingClientRect()[horizontal ? 'x' : 'y']
+        const sample = async (scrollTop: number) => {
+          const start = coordinate()
+          const frames: number[] = []
+          element.scrollTop = scrollTop
+          for (let frame = 0; frame < 45; frame++) {
+            await new Promise(requestAnimationFrame)
+            frames.push(coordinate())
+          }
+          const end = frames.at(-1)!
+          const direction = Math.sign(end - start)
+          return { direction, steps: new Set(frames.filter(value => Math.abs(value - start) > 1 && Math.abs(value - end) > 1).map(Math.round)).size,
+            reversed: frames.some((value, index) => index && (value - frames[index - 1]!) * direction < -1) }
         }
-        element.scrollTop = 0
-        let returning = false
-        for (let frame = 0; frame < 30; frame++) {
-          await new Promise(requestAnimationFrame)
-          returning ||= retained.getAnimations().some(animation => animation instanceof CSSTransition
-            && animation.transitionProperty === 'transform' && Number(animation.effect?.getTiming().duration) > 1)
-        }
-        return { changed, forward: frames.some(Boolean), returning,
-          restored: element.getAttribute('data-active-post-id') === initial }
-      })
-      expect(observed).toEqual({ changed: true, forward: !reduced, returning: !reduced, restored: true })
+        const forward = await sample(element.clientHeight)
+        const changed = element.getAttribute('data-active-post-id') !== initial
+        const backward = await sample(0)
+        return { changed, forward, backward, restored: element.getAttribute('data-active-post-id') === initial }
+      }, position === 'top' || position === 'bottom')
+      expect(observed).toMatchObject({ changed: true, forward: { direction: -1, reversed: false },
+        backward: { direction: 1, reversed: false }, restored: true })
+      for (const sample of [observed.forward, observed.backward]) {
+        if (reduced) expect(sample.steps).toBe(0)
+        else expect(sample.steps).toBeGreaterThan(3)
+      }
+    }
+    if (reduced) {
+      const more = page.getByRole('button', { name: 'More previews' })
+      for (let count = 4; count < 12; count++) await more.click()
+      const cards = rail.locator('[data-preview-post-id]')
+      await expect(cards).toHaveCount(12)
+      const viewport = rail.locator('.reel-preview-viewport')
+      await expect(viewport).toHaveCSS('overflow', 'clip')
+      const edge = (await viewport.boundingBox())!
+      const last = (await cards.last().boundingBox())!
+      expect(last.x + last.width).toBeLessThanOrEqual(edge.x + edge.width + 1)
     }
     expect(errors).toEqual([])
   })
