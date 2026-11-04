@@ -1134,11 +1134,7 @@
   flex-direction: row;
 }
 
-.reel-previews--empty {
-  grid-area: 3 / 2;
-  flex-direction: row;
-  justify-content: center;
-}
+.reel-previews--empty { grid-area: 3 / 2; }
 
 .reel-previews:not(.reel-previews--empty):is(.vibe-reel-previews-enter-active, .vibe-reel-previews-leave-active) {
   transition: opacity var(--reel-preview-duration) ease-in-out;

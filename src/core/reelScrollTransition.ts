@@ -8,7 +8,10 @@ export function transitionReelScroll(
   const start = element.scrollTop
   const top = getTop()
   if (immediate || Math.abs(start - top) <= 1) {
+    // Mandatory snap stops can intercept a jump across multiple reel items.
+    if (immediate) element.setAttribute('data-transitioning', '')
     element.scrollTop = top
+    if (immediate) element.removeAttribute('data-transitioning')
     return Promise.resolve()
   }
 

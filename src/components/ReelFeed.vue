@@ -63,7 +63,7 @@ const activePostId = computed(() => props.items[activeIndex.value]?.postId)
 const activeItem = computed(() => props.items[activeIndex.value])
 const placement = useReelPreviewOptions().reelPreviewPlacement
 const previews = computed(() => props.state?.reelPreviews && activeItem.value && props.reelForward.status === 'idle'
-  ? props.items.slice(activeIndex.value + 1, activeIndex.value + 25) : null)
+  ? props.items : null)
 const activeMediaIndex = computed(() => {
   const postId = activePostId.value
   return postId === undefined ? 0 : props.mediaIndices.get(postId) ?? 0
@@ -470,7 +470,7 @@ defineExpose({
       />
       <Transition name="vibe-reel-previews">
         <ReelPreviews v-if="previews && state" :items="previews" :active-index="activeIndex"
-          :previous-post-id="items[activeIndex - 1]?.postId" :state="state"
+          :state="state"
           @select="selectPreview" @load-more="emit('loadMore')" />
       </Transition>
     </div>

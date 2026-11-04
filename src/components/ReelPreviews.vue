@@ -10,7 +10,6 @@ import ReelPreviewMedia from './ReelPreviewMedia.vue'
 const props = defineProps<{
   items: readonly VibeItem[]
   activeIndex: number
-  previousPostId?: VibeItemId
   state: VibeState
 }>()
 const emit = defineEmits<{ loadMore: []; select: [postId: VibeItemId] }>()
@@ -27,14 +26,23 @@ function chooseCount(value: VibeReelPreviewCount) {
   options.onReelPreviewCountChange?.(value)
 }
 
-const previews = computed(() => props.items.slice(0, selectedCount.value).map((item) => {
-  if (options.resolveReelPreview) return { id: item.postId, source: options.resolveReelPreview(item) }
-  const type = resolveMediaType(item.type, item.src)
-  const preview = item.preview
-  const src = preview && resolveMediaType(preview.type, preview.src) === 'image'
-    ? preview.src : type === 'image' ? item.src : null
-  return { id: item.postId, source: { src, type } }
-}))
+const upcomingCount = computed(() => Math.max(0, props.items.length - props.activeIndex - 1))
+const lastOffset = computed(() => Math.max(0, upcomingCount.value - selectedCount.value))
+const browseOffset = ref(0)
+watch(() => props.activeIndex, () => { browseOffset.value = 0 }, { flush: 'sync' })
+watch(lastOffset, limit => { browseOffset.value = Math.min(browseOffset.value, limit) }, { flush: 'sync' })
+
+const previews = computed(() => {
+  const start = props.activeIndex + 1 + browseOffset.value
+  return props.items.slice(start, start + selectedCount.value).map((item) => {
+    if (options.resolveReelPreview) return { id: item.postId, source: options.resolveReelPreview(item) }
+    const type = resolveMediaType(item.type, item.src)
+    const preview = item.preview
+    const src = preview && resolveMediaType(preview.type, preview.src) === 'image'
+      ? preview.src : type === 'image' ? item.src : null
+    return { id: item.postId, source: { src, type } }
+  })
+})
 const boundary = computed(() => {
   if (!props.state.infiniteScroll || props.state.loadMoreLocked) return null
   if (props.state.isLoadingMore) return 'loading'
@@ -43,21 +51,17 @@ const boundary = computed(() => {
   return null
 })
 const status = computed(() => {
-  if (!boundary.value || props.items.length >= selectedCount.value) return null
+  if (!boundary.value || upcomingCount.value >= selectedCount.value) return null
   return {
     loading: 'Loading previews…',
     end: 'End of feed',
     retry: 'Could not load more',
   }[boundary.value]
 })
-const canRetry = computed(() => props.items.length < selectedCount.value && boundary.value === 'retry')
+const canRetry = computed(() => upcomingCount.value < selectedCount.value && boundary.value === 'retry')
 
 function isolate(event: KeyboardEvent) {
   if (event.key !== 'Escape') event.stopPropagation()
-}
-
-function selectAdjacent(postId: VibeItemId | undefined) {
-  if (postId !== undefined) emit('select', postId)
 }
 
 const viewport = ref<HTMLElement | null>(null)
@@ -110,10 +114,10 @@ async function sync(animate: boolean) {
   slider.scrollTo(end)
 }
 
-watch([viewport, horizontal, selectedCount, previews, () => props.activeIndex],
-  ([root, axis, count, , index], [oldRoot, oldAxis, oldCount, , oldIndex]) => {
+watch([viewport, horizontal, selectedCount, previews, () => props.activeIndex, browseOffset],
+  ([root, axis, count, , index, offset], [oldRoot, oldAxis, oldCount, , oldIndex, oldOffset]) => {
     if (root !== oldRoot) { slider?.destroy(); slider = undefined }
-    void sync(root === oldRoot && axis === oldAxis && count === oldCount && index !== oldIndex)
+    void sync(root === oldRoot && axis === oldAxis && count === oldCount && (index !== oldIndex || offset !== oldOffset))
   }, { flush: 'post' })
 watch(viewport, (root, _, cleanup) => {
   if (!root) return
@@ -139,7 +143,7 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
 
 <template>
   <aside
-    v-if="previews.length || status || previousPostId !== undefined"
+    v-if="previews.length || status"
     class="reel-previews"
     :class="{ 'reel-previews--empty': !previews.length }"
     aria-label="Upcoming reel items"
@@ -156,8 +160,8 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
         @click="chooseCount(value)"
       >{{ value }}</button>
     </div>
-    <button v-if="previews.length || previousPostId !== undefined" type="button" class="reel-preview-arrow"
-      aria-label="Previous reel item" :disabled="previousPostId === undefined" @click="selectAdjacent(previousPostId)">
+    <button v-if="lastOffset" type="button" class="reel-preview-arrow"
+      aria-label="Previous previews" :disabled="browseOffset === 0" @click="browseOffset--">
       <component :is="horizontal ? ChevronLeft : ChevronUp" aria-hidden="true" />
     </button>
     <div v-if="previews.length" ref="viewport" class="reel-preview-viewport" :style="{ '--preview-count': selectedCount }">
@@ -171,8 +175,8 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
         </li>
       </ol>
     </div>
-    <button v-if="previews.length" type="button" class="reel-preview-arrow"
-      aria-label="Next reel item" @click="selectAdjacent(previews[0]?.id)">
+    <button v-if="lastOffset" type="button" class="reel-preview-arrow"
+      aria-label="Next previews" :disabled="browseOffset >= lastOffset" @click="browseOffset++">
       <component :is="horizontal ? ChevronRight : ChevronDown" aria-hidden="true" />
     </button>
     <div v-if="status" class="reel-preview-boundary">
