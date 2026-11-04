@@ -1,6 +1,57 @@
 import { expect, test } from '@playwright/test'
 import { capture, ready } from './showcaseSupport'
 
+test('preview selection slides directly and a second click takes over', async ({ page }) => {
+  const errors = await ready(page)
+  await page.locator('.masonry-item .media-card-activator').first().click()
+  await expect(page.locator('.vibe-reel-overlay')).toHaveAttribute('data-reel-entry', 'ready')
+  await page.getByRole('button', { name: 'bottom', exact: true }).click()
+  await page.getByRole('button', { name: 'Upcoming previews', exact: true }).click()
+  const feed = page.locator('.reel-feed')
+  await expect(feed).not.toHaveAttribute('data-resizing', '')
+  await expect.poll(() => page.locator('.reel-viewport').evaluate(element => element.getAnimations().length)).toBe(0)
+  const initial = await feed.getAttribute('data-active-post-id')
+  const buttons = page.locator('.reel-preview-card')
+  const near = await buttons.first().locator('..').getAttribute('data-preview-post-id')
+  const far = await buttons.nth(3).locator('..').getAttribute('data-preview-post-id')
+  const result = await feed.evaluate(async (element, expected) => {
+    const buttons = element.parentElement!.querySelectorAll<HTMLButtonElement>('.reel-preview-card')
+    const frame = () => new Promise(requestAnimationFrame)
+    const visible = () => [...element.querySelectorAll<HTMLElement>('.reel-item')]
+      .filter(card => getComputedStyle(card).visibility === 'visible')
+      .map(card => card.dataset.postId)
+    const farCard = () => element.querySelector<HTMLElement>(`[data-post-id="${expected.far}"]`)!
+    buttons[3]!.click()
+    for (let index = 0; index < 12; index++) {
+      await frame()
+      const offset = farCard()?.getBoundingClientRect().top - element.getBoundingClientRect().top
+      if (offset > 0 && offset < element.clientHeight * 0.8) break
+    }
+    const firstLayers = visible()
+    const before = farCard().getBoundingClientRect().top
+    buttons[0]!.click()
+    await frame()
+    const after = farCard().getBoundingClientRect().top
+    const samples: number[] = []
+    while (element.hasAttribute('data-preview-jump') && samples.length < 45) {
+      await frame()
+      const card = element.querySelector<HTMLElement>(`[data-post-id="${expected.near}"]`)
+      if (card) samples.push(card.getBoundingClientRect().top - element.getBoundingClientRect().top)
+    }
+    return { firstLayers, continuity: Math.abs(before - after), samples }
+  }, { near, far })
+  expect(result.firstLayers).toEqual([initial, far])
+  expect(result.continuity).toBeLessThan(80)
+  expect(new Set(result.samples.map(Math.round)).size).toBeGreaterThan(3)
+  await expect(feed).toHaveAttribute('data-active-post-id', near!)
+  await expect(feed).not.toHaveAttribute('data-preview-jump', '')
+  await page.getByRole('button', { name: 'Instant', exact: true }).click()
+  await buttons.nth(3).click()
+  await expect(feed).toHaveAttribute('data-active-post-id', far!)
+  await expect(feed.locator('[data-preview-layer]')).toHaveCount(0)
+  expect(errors).toEqual([])
+})
+
 for (const width of [1440, 390]) test(`preview buttons activate their reel items at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 844 })
   if (width === 390) await page.emulateMedia({ reducedMotion: 'reduce' })

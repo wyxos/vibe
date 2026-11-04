@@ -37,6 +37,7 @@ export type VibeFillTarget = { items: number } | { pages: number } | { until: 'e
 export type VibeMediaType = 'audio' | 'image' | 'video'
 export type VibeReelPreviewCount = number
 export type VibeReelPreviewPlacement = 'left' | 'right' | 'top' | 'bottom'
+export type VibeReelPreviewTransition = 'slide' | 'none'
 export interface VibeReelPreview {
   src: string | null
   type: VibeMediaType
@@ -438,6 +439,8 @@ export interface CreateVibeOptions {
   reelPreviewCount?: VibeReelPreviewCount | (() => VibeReelPreviewCount)
   /** Rail placement relative to the reel media. Defaults to right. */
   reelPreviewPlacement?: VibeReelPreviewPlacement | (() => VibeReelPreviewPlacement)
+  /** Motion for selecting a reel preview. Defaults to 'slide'. */
+  reelPreviewTransition?: VibeReelPreviewTransition | (() => VibeReelPreviewTransition)
   onReelPreviewCountChange?: (count: VibeReelPreviewCount) => void
   /** Resolve artwork, optional muted video, and visibility for a loaded upcoming post. */
   resolveReelPreview?: (item: VibeItem) => VibeReelPreview

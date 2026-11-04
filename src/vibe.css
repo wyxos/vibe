@@ -1316,9 +1316,14 @@
 }
 
 .reel-feed[data-resizing],
+.reel-feed[data-preview-jump],
 .reel-feed[data-transitioning] {
   scroll-snap-type: none;
 }
+
+.reel-feed[data-preview-jump]:has([data-preview-layer]) .reel-item:not([data-preview-layer]) { visibility: hidden; }
+.reel-feed[data-preview-jump] { overflow-y: hidden; }
+.reel-feed[data-preview-jump] .reel-item { pointer-events: none; }
 
 .reel-forward-status {
   display: grid;

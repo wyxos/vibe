@@ -16,6 +16,7 @@ import ReelForwardStatus from './ReelForwardStatus.vue'
 import ReelPreviews from './ReelPreviews.vue'
 import { provideReelControlsVisibility } from './useReelControlsVisibility'
 import { useReelPlaybackOptions } from './useReelPlaybackOptions'
+import { useReelPreviewJump } from './useReelPreviewJump'
 const MEDIA_TRANSITION_MS = 300
 const REMOVAL_REFLOW_SUPPRESSION_MS = 250
 let suppressAutomaticLoadUntil = 0
@@ -41,6 +42,7 @@ const initialIndex = props.initialPostId === null || props.initialPostId === und
   ? -1
   : props.items.findIndex((item) => item.postId === props.initialPostId)
 const activeIndex = shallowRef(Math.max(0, initialIndex))
+const previewJump = useReelPreviewJump(galleryElement, activeIndex)
 const isFooterVisible = shallowRef(false)
 const isResizing = shallowRef(false)
 let viewportHeight = 0
@@ -53,15 +55,14 @@ const trackStyle = computed<CSSProperties>(() => ({
 const visibleItems = computed(() => {
   const first = Math.max(0, activeIndex.value - 2)
   const last = Math.min(props.items.length - 1, activeIndex.value + 2)
-  return props.items.slice(first, last + 1).map((item, offset) => ({
-    fetchPriority: first + offset === activeIndex.value ? 'high' as const : 'low' as const,
-    index: first + offset,
-    item,
+  const indices = new Set([...Array.from({ length: last - first + 1 }, (_, offset) => first + offset), ...previewJump.layers.value])
+  return [...indices].sort((a, b) => a - b).filter(index => props.items[index]).map(index => ({
+    fetchPriority: index === activeIndex.value ? 'high' as const : 'low' as const, index, item: props.items[index]!,
   }))
 })
 const activePostId = computed(() => props.items[activeIndex.value]?.postId)
 const activeItem = computed(() => props.items[activeIndex.value])
-const placement = useReelPreviewOptions().reelPreviewPlacement
+const { reelPreviewPlacement: placement, reelPreviewTransition: previewTransition } = useReelPreviewOptions()
 const previews = computed(() => props.state?.reelPreviews && activeItem.value && props.reelForward.status === 'idle'
   ? props.items : null)
 const activeMediaIndex = computed(() => {
@@ -114,9 +115,8 @@ const showAutoAdvance = computed(() => (
 ))
 const showLoadMore = computed(() => !props.infiniteScroll || props.items.length <= 1)
 function itemStyle(index: number): CSSProperties {
-  return { gridRow: `${index + 1}` }
+  return { gridColumn: '1', gridRow: `${(previewJump.layers.value.includes(index) ? activeIndex.value : index) + 1}` }
 }
-
 function nearestIndex(element: HTMLElement): number {
   const height = viewportHeight || element.clientHeight
   if (height <= 0 || props.items.length === 0) return 0
@@ -128,7 +128,7 @@ function nearestIndex(element: HTMLElement): number {
 
 function onScroll(event: Event): void {
   const element = event.currentTarget as HTMLElement | null
-  if (!element) return
+  if (!element || element.hasAttribute('data-preview-jump')) return
   // A fullscreen resize can queue scroll before the fullscreen or resize observers run.
   const fullscreenElement = element.ownerDocument.fullscreenElement
   if (element.clientHeight !== viewportHeight || (fullscreen && fullscreen.value !== Boolean(fullscreenElement?.contains(element)))) return
@@ -177,6 +177,7 @@ function scheduleResizeRelease(): void {
 }
 
 function beginResize(): void {
+  previewJump.stop()
   setResizeState(true)
   const element = galleryElement.value
   if (element) {
@@ -242,6 +243,7 @@ function prefersReducedMotion(): boolean {
 }
 
 function scrollToPost(index: number): Promise<void> {
+  previewJump.stop()
   const element = galleryElement.value
   if (!element) return Promise.resolve()
 
@@ -252,17 +254,18 @@ function scrollToPost(index: number): Promise<void> {
 function advanceToPost(index: number): void {
   void scrollToPost(index)
 }
-
 async function transitionActivePost(postId: VibeItemId): Promise<boolean> {
   const index = props.items.findIndex((item) => item.postId === postId)
   if (index < 0 || index === activeIndex.value) return false
   await scrollToPost(index)
   return true
 }
-
 function selectPreview(postId: VibeItemId) {
   galleryElement.value?.focus({ preventScroll: true })
-  void transitionActivePost(postId)
+  const index = props.items.findIndex(item => item.postId === postId)
+  const style = typeof previewTransition === 'function' ? previewTransition() : previewTransition
+  isFooterVisible.value = false
+  if (index >= 0) void previewJump.jump(index, style !== 'none' && !prefersReducedMotion())
 }
 async function transitionActiveMedia(direction: -1 | 1): Promise<boolean> {
   if (!changeActiveMedia(direction)) return false
@@ -327,6 +330,7 @@ watch(galleryElement, (element) => {
 watch(
   () => props.items.length,
   async (length) => {
+    previewJump.stop()
     const requestedPostId = props.initialPostId
     const requestedIndex = requestedPostId === null || requestedPostId === undefined
       ? -1
@@ -357,7 +361,6 @@ onBeforeUnmount(() => {
   if (restoreFrame !== null) cancelAnimationFrame(restoreFrame)
   if (resizeReleaseTimer !== null) clearTimeout(resizeReleaseTimer)
 })
-
 defineExpose({
   activeIndex,
   activePostId,
@@ -407,7 +410,6 @@ defineExpose({
           :locked="loadMoreLocked"
           @retry="emit('retryForward')"
         />
-
         <section
           v-else
           class="reel-track"
@@ -419,7 +421,7 @@ defineExpose({
             :key="item.postId"
             :active="index === activeIndex && !isFooterVisible"
             :advance-on-media-end="props.reelAutoAdvance.enabled && index === activeIndex"
-            class="reel-item"
+            class="reel-item" :data-reel-index="index" :data-preview-layer="previewJump.layers.value.includes(index) || undefined"
             :entering="false"
             :fetch-priority="fetchPriority"
             :index="index"
@@ -446,7 +448,6 @@ defineExpose({
             @media-error="emit('mediaError', item.postId, $event)"
           />
         </section>
-
         <FeedFooter
           v-if="reelForward.status === 'idle'"
           :actions="feedFooterActions"
@@ -462,7 +463,6 @@ defineExpose({
           @retry-end="emit('retryEnd')"
         />
       </div>
-
       <div
         ref="reelControlsElement"
         class="reel-media-controls-host"

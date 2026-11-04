@@ -7,7 +7,7 @@ import type { ShowcaseFilter } from './useShowcase'
 
 const target = ref<HTMLElement | null>(null)
 const logoUrl = `${import.meta.env.BASE_URL}logo.svg`
-const { filter, layout, loaded, rendered, busy, status, error, reelTarget, reelPreviews, previewPlacement, previewCount,
+const { filter, layout, loaded, rendered, busy, status, error, reelTarget, reelPreviews, previewPlacement, previewCount, previewTransition,
   chooseFilter, closeReel, reset, toggleReelPreviews } = useShowcase(target)
 const placements = ['left', 'right', 'top', 'bottom'] as const
 const filters: { value: ShowcaseFilter; label: string }[] = [
@@ -58,6 +58,10 @@ const filters: { value: ShowcaseFilter; label: string }[] = [
           <button type="button" aria-label="Fewer previews" :disabled="previewCount <= 1" @click="previewCount--"><Minus :size="16" aria-hidden="true" /></button>
           <output aria-live="polite">{{ previewCount }} previews</output>
           <button type="button" aria-label="More previews" :disabled="previewCount >= 24" @click="previewCount++"><Plus :size="16" aria-hidden="true" /></button>
+        </div>
+        <div class="filter-tabs" role="group" aria-label="Preview selection transition">
+          <button type="button" :aria-pressed="previewTransition === 'slide'" @click="previewTransition = 'slide'">Slide</button>
+          <button type="button" :aria-pressed="previewTransition === 'none'" @click="previewTransition = 'none'">Instant</button>
         </div>
       </div>
       <div

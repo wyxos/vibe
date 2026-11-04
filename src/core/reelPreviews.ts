@@ -2,7 +2,7 @@ import { inject, type InjectionKey } from 'vue'
 import type { CreateVibeOptions } from '../types'
 
 export type ReelPreviewOptions = Pick<CreateVibeOptions,
-  'reelPreviewCount' | 'reelPreviewPlacement' | 'onReelPreviewCountChange' | 'resolveReelPreview'>
+  'reelPreviewCount' | 'reelPreviewPlacement' | 'reelPreviewTransition' | 'onReelPreviewCountChange' | 'resolveReelPreview'>
 
 export const reelPreviewOptionsKey: InjectionKey<ReelPreviewOptions> = Symbol('reelPreviewOptions')
 
