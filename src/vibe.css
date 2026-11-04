@@ -1084,6 +1084,11 @@
   grid-area: 2 / 2 / 3 / 3;
 }
 
+.reel-viewport[data-preview-placement="bottom"]:has(> .reel-previews) > .reel-media-controls-host {
+  /* Stop the slide at the media edge while leaving room for popovers above. */
+  clip-path: inset(-100vmax -100vmax 0);
+}
+
 .reel-previews {
   display: flex;
   flex-direction: column;

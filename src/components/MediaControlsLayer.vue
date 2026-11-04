@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, onBeforeUnmount, watch } from 'vue'
 import type { VibeItemId, VibeLayout, VibeMediaControlsOptions, VibeMediaOverlayProps } from '../types'
 import MediaControls from './MediaControls.vue'
 import { useReelControlsVisibility } from './useReelControlsVisibility'
@@ -29,7 +29,14 @@ const emit = defineEmits<{
   volumeChange: [volume: number]
 }>()
 const activity = useReelControlsVisibility()
-const hidden = computed(() => props.layout === 'reel' && activity.hidden.value)
+const paused = computed(() => props.visible && props.layout === 'reel' && props.mediaType !== 'image' && !props.playing)
+const hidden = computed(() => props.layout === 'reel' && activity.hidden.value && !paused.value)
+const playbackHold = Symbol('paused-playback')
+watch([paused, () => props.identity, () => props.playing], ([isPaused, identity], previous) => {
+  if (isPaused) activity.hold(playbackHold, previous?.[2] === true && previous[1] === identity)
+  else activity.release(playbackHold)
+}, { immediate: true })
+onBeforeUnmount(() => activity.release(playbackHold))
 const actions = computed(() => props.visible && props.layout === 'reel'
   ? props.options?.actions?.(props.context)
   : undefined)

@@ -29,9 +29,10 @@ function createVisibility() {
     ready()
   }
 
-  function hold(token: symbol) {
+  function hold(token: symbol, revealControls = true) {
     holds.add(token)
-    reveal()
+    if (revealControls) reveal()
+    else clearDeadline()
   }
 
   function release(token: symbol) {
@@ -55,6 +56,7 @@ export function provideReelControlsVisibility(element?: () => HTMLElement | null
     const owner = gallery?.closest('.vibe-reel-overlay') ?? gallery?.closest('.vibe-surface') ?? gallery
     if (!owner?.contains(document.activeElement)) return
     const wasHidden = visibility.hidden.value
+      && !owner.querySelector('.reel-media-controls-host .media-controls:not([inert])')
     visibility.reveal()
     if (!wasHidden) return
     // Vue must remove inert before native Tab traversal can reach the controls.

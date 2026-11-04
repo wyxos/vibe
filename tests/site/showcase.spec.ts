@@ -234,6 +234,51 @@ for (const width of [1440, 390]) for (const reducedMotion of [false, true]) {
   })
 }
 
+for (const width of [1440, 390]) test(`bottom previews stay clear of sliding video controls at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 844 })
+  const errors = await ready(page)
+  await page.getByRole('button', { name: 'Motion', exact: true }).click()
+  await page.getByRole('button', { name: 'Open post showcase-orbit-video-0', exact: true }).click()
+  await expect(page.locator('.vibe-reel-overlay')).toHaveAttribute('data-reel-entry', 'ready')
+  await page.getByRole('button', { name: 'bottom', exact: true }).click()
+  await page.getByRole('button', { name: 'Upcoming previews', exact: true }).click()
+  const rail = page.locator('.reel-previews')
+  const host = page.locator('.reel-media-controls-host')
+  const controls = host.locator('.media-controls--reel')
+  await expect(rail.locator('[data-preview-post-id]').first()).toBeVisible()
+  await expect(host).toHaveCSS('clip-path', /inset\(/)
+  await expect(controls.getByRole('button', { name: 'Pause video', exact: true })).toBeVisible()
+  const feed = await page.locator('.reel-feed').boundingBox()
+  await page.mouse.move(feed!.x + feed!.width / 2, feed!.y + feed!.height / 2)
+  await expect(controls).not.toHaveClass(/idle-hidden/)
+  const frames = controls.evaluate(async element => {
+    const host = element.parentElement!
+    const rail = host.parentElement!.querySelector('.reel-previews')!
+    const samples: number[] = []
+    while (getComputedStyle(element).visibility !== 'hidden') {
+      await new Promise(requestAnimationFrame)
+      const y = element.getBoundingClientRect().y - host.getBoundingClientRect().y
+      if (y > 0.5 && getComputedStyle(element).visibility === 'visible') samples.push(y)
+    }
+    return { samples, gap: Math.abs(host.getBoundingClientRect().bottom - rail.getBoundingClientRect().top) }
+  })
+  await expect(controls).toHaveClass(/idle-hidden/, { timeout: 8000 })
+  await expect(controls).toHaveCSS('visibility', 'hidden')
+  const slide = await frames
+  expect(slide.samples.length).toBeGreaterThan(2)
+  expect(slide.gap).toBeLessThanOrEqual(1)
+  await page.mouse.move(feed!.x + feed!.width / 2 + 10, feed!.y + feed!.height / 2)
+  await expect(controls).toHaveCSS('visibility', 'visible')
+  await controls.getByRole('button', { name: 'Pause video', exact: true }).click()
+  await expect(controls.getByRole('button', { name: 'Play video', exact: true })).toBeVisible()
+  await capture(page, `vibe-bottom-controls-${width}`)
+  await page.getByRole('button', { name: 'Video options', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Enter fullscreen', exact: true })).toBeVisible()
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await expect.poll(() => controls.evaluate(element => Number.parseFloat(getComputedStyle(element).transitionDuration))).toBeLessThan(0.001)
+  expect(errors).toEqual([])
+})
+
 test('fullscreen hides the showcase toolbar and restores it on exit', async ({ page }) => {
   await ready(page)
   await page.locator('[data-test=filter-video]').click()

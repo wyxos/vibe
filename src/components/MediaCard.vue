@@ -214,12 +214,12 @@ const controlsContext = computed(() => ({
   item: props.item, mediaIndex: normalizedMediaIndex.value, mediaItem: mediaItem.value,
   mediaSource: props.mediaSource ?? 'preview',
 }))
-const controlsHidden = computed(() => props.layout === 'reel' && controlsActivity.hidden.value)
+const controlsHidden = computed(() => props.layout === 'reel' && controlsActivity.hidden.value
+  && (!mediaIsTimed.value || timedMediaIsPlaying.value))
 function revealTimedControls(event?: PointerEvent) {
   if (event && !controlsActivity.pointerMoved(event)) return
   if (props.layout === 'reel' && props.active) controlsActivity.reveal()
 }
-
 const activeReel = () => props.layout === 'reel' && props.active === true
 const zoom = useReelZoom(() => activeReel() && effectivePreviewState.value === 'ready', () => mediaControlsKey.value, {
   onWheel: onMediaWheel, onTouchStart: onMediaTouchStart, onTouchEnd: onMediaTouchEnd,

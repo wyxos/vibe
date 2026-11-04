@@ -5,6 +5,22 @@ for (const width of [1440, 390]) {
   test.describe(`native reel controls at ${width}px`, () => {
     test.use({ viewport: { width, height: 844 }, hasTouch: width < 700, isMobile: width < 700 })
     for (const kind of ['video', 'audio']) {
+      test(`paused ${kind} keeps reel controls visible until playback resumes`, async ({ page }) => {
+        await page.goto(`/?scenario=${kind}&layout=reel`)
+        const controls = page.locator('.reel-media-controls-host .media-controls')
+        const media = page.locator('.reel-item').first().locator(kind)
+        await expect(controls).toBeVisible()
+        await media.evaluate(async (element: HTMLMediaElement) => { element.muted = true; await element.play(); element.pause() })
+        await expect(controls.getByRole('button', { name: `Play ${kind}`, exact: true })).toBeVisible()
+        await page.clock.install()
+        await page.clock.fastForward(6000)
+        await expect(controls).not.toHaveClass(/idle-hidden/)
+        await media.evaluate((element: HTMLMediaElement) => { element.muted = true; return element.play() })
+        await expect(controls.getByRole('button', { name: `Pause ${kind}`, exact: true })).toBeVisible()
+        await page.clock.fastForward(5000)
+        await expect(controls).toHaveClass(/idle-hidden/)
+      })
+
       test(`${kind} controls idle, stay hidden on navigation, and reveal on input`, async ({ page }) => {
         const errors: string[] = []
         page.on('pageerror', error => errors.push(error.message))
@@ -15,9 +31,14 @@ for (const width of [1440, 390]) {
         const media = page.locator('.reel-item').first().locator(kind)
         await expect.poll(() => media.evaluate((element: HTMLMediaElement) => element.muted)).toBe(false)
         await page.clock.install()
-        await page.clock.fastForward(4999)
+        await media.evaluate(async (element: HTMLMediaElement) => { element.muted = true; await element.play() })
+        await expect(controls.getByRole('button', { name: `Pause ${kind}`, exact: true })).toBeVisible()
+        await page.locator('.reel-item').first().locator('.media-card-media').dispatchEvent('pointermove', {
+          pointerType: 'mouse', clientX: 100, clientY: 100, movementX: 10, bubbles: true,
+        })
+        await page.clock.fastForward(4500)
         await expect(controls).not.toHaveClass(/idle-hidden/)
-        await page.clock.fastForward(1)
+        await page.clock.fastForward(600)
         await expect(controls).toHaveClass(/idle-hidden/)
         await expect(controls).toHaveAttribute('inert', '')
         await expect(controls).toHaveCSS('pointer-events', 'none')

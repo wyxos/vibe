@@ -118,7 +118,7 @@ The reel toolbar's Upcoming previews toggle starts off. In the reel, the demo le
 
 Menu rows own their padding. Hover and selection backgrounds extend to both edges of the menu. The image duration field accepts typed values and has explicit minus and plus buttons that change the duration by one second, with a one-second floor for the buttons.
 
-Shared reel media controls use 30% dark backgrounds. They slide down after five idle seconds and retain that hidden state across posts and grouped media within the open reel. Pointer movement or tapping media reveals them; a tap that reveals controls preserves playback. A new reel starts visible. Focused controls, held sliders and open options remain visible until interaction ends. Reduced motion removes the slide.
+Shared reel media controls use 30% dark backgrounds. During playback, they slide down after five idle seconds and stop at the media edge above a bottom preview rail. Paused audio and video keep their controls visible. Pointer movement or tapping media reveals hidden controls; a tap that reveals controls preserves playback. A new reel starts visible. Focused controls, held sliders and open options remain visible until interaction ends. Reduced motion removes the slide.
 
 At phone widths, controls use 27px icons with 44px targets and a 16px gap below the seek bar. The timestamp stays centered, with a volume icon and then an options cog on the right. Volume opens a vertical bar using the seek bar's rectangular styling. Options offer mute and native playback speed. Desktop retains the inline volume bar. These controls belong to the shared library; the showcase supplies no alternate implementation.
 

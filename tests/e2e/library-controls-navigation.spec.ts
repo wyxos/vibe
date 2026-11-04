@@ -44,7 +44,7 @@ test('idle slide clips at the media viewport bottom above the footer', async ({ 
   await page.clock.fastForward(5000)
   await expect(controls).toHaveClass(/idle-hidden/)
   const clipping = await controls.evaluate(element => {
-    const viewport = element.closest('.reel-viewport')!
+    const viewport = element.closest('.reel-viewport') ?? document.querySelector('.vibe-reel-overlay .reel-viewport')!
     const style = getComputedStyle(viewport)
     return { overflowY: style.overflowY, clipPath: style.clipPath }
   })
