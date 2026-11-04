@@ -36,8 +36,6 @@ jobs:
       - name: Build showcase
         run: npm run build:site
       - name: Publish showcase
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: ./dist-site
+        run: bash scripts/publish-showcase.sh dist-site
+      - name: Verify live showcase
+        run: bash scripts/verify-showcase.sh dist-site https://vibe.wyxos.com
