@@ -46,12 +46,27 @@ for (const width of [1440, 768, 390]) {
     const post = await feed.getAttribute('data-active-post-id')
     await expect(toggle).toHaveAttribute('aria-pressed', 'false')
     await expect(rail).toHaveCount(0)
+    const closedWidth = (await feed.boundingBox())!.width
+    const openingWidths = feed.evaluate(element => new Promise<number[]>((resolve) => {
+      const viewport = element.parentElement!
+      const widths: number[] = []
+      const observer = new ResizeObserver(() => widths.push(element.getBoundingClientRect().width))
+      observer.observe(element)
+      viewport.addEventListener('transitionend', function finish(event) {
+        if (event.target !== viewport || event.propertyName !== 'grid-template-columns') return
+        viewport.removeEventListener('transitionend', finish)
+        observer.disconnect()
+        resolve(widths)
+      })
+    }))
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-pressed', 'true')
     await expect(cards).toHaveCount(4)
+    const widths = await openingWidths
     const railBox = (await rail.boundingBox())!
     const feedBox = (await feed.boundingBox())!
     const controlsBox = (await page.locator('.reel-media-controls-host').boundingBox())!
+    expect(widths.some(value => value > feedBox.width + 2 && value < closedWidth - 2)).toBe(true)
     expect(feedBox.x + feedBox.width).toBeLessThanOrEqual(railBox.x + 1)
     expect(controlsBox.x + controlsBox.width).toBeLessThanOrEqual(railBox.x + 1)
     expect(railBox.x + railBox.width).toBeLessThanOrEqual(width)

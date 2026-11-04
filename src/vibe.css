@@ -1048,27 +1048,26 @@
 }
 
 .reel-viewport {
+  --reel-preview-width: clamp(6rem, 33cqw, 16rem);
+  --reel-preview-duration: 220ms;
+
   position: relative;
   overflow: clip;
   flex: 1 1 auto;
   width: 100%;
   min-height: 0;
+  display: grid;
+  container-type: inline-size;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr) 0px;
+  transition: grid-template-columns var(--reel-preview-duration) ease-in-out;
 }
 
 .reel-viewport > .reel-feed {
   height: 100%;
 }
 
-.reel-viewport:has(> .reel-previews) {
-  display: grid;
-  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
-}
-
-.reel-viewport:has(> .reel-previews:not(.reel-previews--empty)) {
-  container-type: inline-size;
-}
-
-.reel-viewport:has(> .reel-previews:not(.reel-previews--empty)) {
+.reel-viewport:has(> .reel-previews:not(.reel-previews--empty, .vibe-reel-previews-enter-from, .vibe-reel-previews-leave-to)) {
+  /* Percentages here resolve against this viewport. cqw on the rail itself uses the same width. */
   grid-template-columns: minmax(0, 1fr) clamp(6rem, 33%, 16rem);
 }
 
@@ -1076,7 +1075,7 @@
   grid-template-rows: minmax(0, 1fr) auto;
 }
 
-.reel-viewport:has(> .reel-previews) > :is(.reel-feed, .reel-media-controls-host) {
+.reel-viewport > :is(.reel-feed, .reel-media-controls-host) {
   grid-area: 1 / 1 / 2 / 2;
 }
 
@@ -1091,6 +1090,26 @@
   background: var(--vibe-reel-preview-background, #161b24);
   color: var(--vibe-reel-preview-color, #e5eaf4);
   font-size: 0.75rem;
+}
+
+.reel-previews:not(.reel-previews--empty) {
+  grid-area: 1 / 2;
+  width: var(--reel-preview-width);
+  box-sizing: border-box;
+}
+
+.reel-previews--empty { grid-area: 2 / 1 / 3 / -1; }
+
+.reel-previews:not(.reel-previews--empty):is(.vibe-reel-previews-enter-active, .vibe-reel-previews-leave-active) {
+  transition: opacity var(--reel-preview-duration) ease-in-out;
+  pointer-events: none;
+}
+
+.vibe-reel-previews-enter-from,
+.vibe-reel-previews-leave-to { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reel-viewport { --reel-preview-duration: 0ms; }
 }
 
 .reel-preview-count {

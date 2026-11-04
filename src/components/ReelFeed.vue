@@ -312,7 +312,9 @@ watch(galleryElement, (element) => {
   viewportHeight = element.clientHeight
   if (typeof ResizeObserver === 'undefined') return
 
-  resizeObserver = new ResizeObserver(restoreActiveItem)
+  resizeObserver = new ResizeObserver(() => {
+    if (element.clientHeight !== viewportHeight) restoreActiveItem()
+  })
   resizeObserver.observe(element)
 })
 
@@ -459,12 +461,9 @@ defineExpose({
         class="reel-media-controls-host"
         data-test="reel-media-controls-host"
       />
-      <ReelPreviews
-        v-if="previews && state"
-        :items="previews"
-        :state="state"
-        @load-more="emit('loadMore')"
-      />
+      <Transition name="vibe-reel-previews">
+        <ReelPreviews v-if="previews && state" :items="previews" :state="state" @load-more="emit('loadMore')" />
+      </Transition>
     </div>
 
     <CardRegion
