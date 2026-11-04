@@ -26,14 +26,34 @@ function chooseCount(value: VibeReelPreviewCount) {
   options.onReelPreviewCountChange?.(value)
 }
 
-const upcomingCount = computed(() => Math.max(0, props.items.length - props.activeIndex - 1))
+const browseAnchor = ref<number | null>(null)
+const firstPreviewIndex = computed(() => browseAnchor.value ?? props.activeIndex + 1)
+const upcomingCount = computed(() => Math.max(0, props.items.length - firstPreviewIndex.value))
 const lastPage = computed(() => Math.max(0, Math.ceil(upcomingCount.value / selectedCount.value) - 1))
 const browsePage = ref(0)
-watch(() => [props.activeIndex, selectedCount.value], () => { browsePage.value = 0 }, { flush: 'sync' })
+let selectedPost: VibeItemId | undefined
+
+function resetBrowsing() {
+  browseAnchor.value = null
+  browsePage.value = 0
+}
+
+watch(() => props.activeIndex, index => {
+  if (props.items[index]?.postId !== selectedPost) resetBrowsing()
+  selectedPost = undefined
+}, { flush: 'sync' })
+watch(selectedCount, resetBrowsing, { flush: 'sync' })
 watch(lastPage, limit => { browsePage.value = Math.min(browsePage.value, limit) }, { flush: 'sync' })
 
+function selectPreview(postId: VibeItemId) {
+  if (props.items[props.activeIndex]?.postId === postId) return
+  browseAnchor.value = firstPreviewIndex.value
+  selectedPost = postId
+  emit('select', postId)
+}
+
 const previews = computed(() => {
-  const start = props.activeIndex + 1 + browsePage.value * selectedCount.value
+  const start = firstPreviewIndex.value + browsePage.value * selectedCount.value
   return props.items.slice(start, start + selectedCount.value).map((item) => {
     if (options.resolveReelPreview) return { id: item.postId, source: options.resolveReelPreview(item) }
     const type = resolveMediaType(item.type, item.src)
@@ -175,7 +195,9 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
         <li v-for="preview in track" :key="preview.id"
           :data-preview-post-id="positions.has(preview.id) ? preview.id : undefined" :aria-hidden="!positions.has(preview.id) || undefined">
           <button type="button" class="reel-preview-card" :disabled="!positions.has(preview.id)"
-            :aria-label="`Open upcoming item ${positions.get(preview.id)}`" @click="emit('select', preview.id)">
+            :aria-label="`Open upcoming item ${positions.get(preview.id)}`"
+            :aria-current="preview.id === props.items[props.activeIndex]?.postId ? 'true' : undefined"
+            @click="selectPreview(preview.id)">
             <ReelPreviewMedia :source="preview.source" :position="positions.get(preview.id) ?? 0" />
           </button>
         </li>

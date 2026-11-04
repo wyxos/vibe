@@ -1226,6 +1226,7 @@
   padding: 0;
 }
 .reel-preview-card:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }
+.reel-previews .reel-preview-card[aria-current="true"] { border-color: currentColor; }
 
 .reel-preview-media {
   position: absolute;
