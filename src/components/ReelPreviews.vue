@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import EmblaCarousel, { type EmblaCarouselType } from 'embla-carousel'
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-vue-next'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, LoaderCircle } from 'lucide-vue-next'
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { resolveMediaType } from '../core/mediaType'
 import { resolveReelPreviewCount, useReelPreviewOptions } from '../core/reelPreviews'
@@ -26,24 +26,18 @@ function chooseCount(value: VibeReelPreviewCount) {
   options.onReelPreviewCountChange?.(value)
 }
 
-const browseAnchor = ref<number | null>(null)
-const firstPreviewIndex = computed(() => browseAnchor.value ?? props.activeIndex + 1)
+const firstPreviewIndex = computed(() => props.activeIndex + 1)
 const upcomingCount = computed(() => Math.max(0, props.items.length - firstPreviewIndex.value))
-const firstPage = computed(() => props.activeIndex > 0 || browseAnchor.value !== null
+const firstPage = computed(() => props.activeIndex > 0
   ? -Math.ceil(firstPreviewIndex.value / selectedCount.value) : 0)
 const lastPage = computed(() => Math.max(0, Math.ceil(upcomingCount.value / selectedCount.value) - 1))
 const browsePage = ref(0)
-let selectedPost: VibeItemId | undefined
 
 function resetBrowsing() {
-  browseAnchor.value = null
   browsePage.value = 0
 }
 
-watch(() => props.activeIndex, index => {
-  if (props.items[index]?.postId !== selectedPost) resetBrowsing()
-  selectedPost = undefined
-}, { flush: 'sync' })
+watch(() => props.activeIndex, resetBrowsing, { flush: 'sync' })
 watch(selectedCount, resetBrowsing, { flush: 'sync' })
 watch([firstPage, lastPage], ([first, last]) => {
   browsePage.value = Math.max(first, Math.min(browsePage.value, last))
@@ -56,8 +50,6 @@ function movePreviewPage(direction: -1 | 1) {
 
 function selectPreview(postId: VibeItemId) {
   if (props.items[props.activeIndex]?.postId === postId) return
-  browseAnchor.value = firstPreviewIndex.value
-  selectedPost = postId
   emit('select', postId)
 }
 
@@ -73,21 +65,22 @@ const previews = computed(() => {
   })
 })
 const boundary = computed(() => {
-  if (!props.state.infiniteScroll || props.state.loadMoreLocked) return null
   if (props.state.isLoadingMore) return 'loading'
   if (props.state.next === null) return 'end'
+  if (props.state.loadMoreLocked) return null
   if (props.state.nextPageError) return 'retry'
-  return null
+  return 'more'
 })
 const status = computed(() => {
-  if (!boundary.value || upcomingCount.value >= selectedCount.value) return null
+  if (!boundary.value || browsePage.value < lastPage.value) return null
   return {
     loading: 'Loading previews…',
     end: 'End of feed',
     retry: 'Could not load more',
+    more: '',
   }[boundary.value]
 })
-const canRetry = computed(() => upcomingCount.value < selectedCount.value && boundary.value === 'retry')
+const canLoadMore = computed(() => browsePage.value === lastPage.value && (boundary.value === 'retry' || boundary.value === 'more'))
 
 function isolate(event: KeyboardEvent) {
   if (event.key !== 'Escape') event.stopPropagation()
@@ -118,7 +111,8 @@ async function sync(animate: boolean) {
   const nextFirst = target[0]?.id
   const forward = settled.findIndex(({ id }) => id === nextFirst)
   const backward = target.findIndex(({ id }) => id === oldFirst)
-  const pageChange = activeIndex === settledActiveIndex ? page - settledPage : 0
+  const pageChange = activeIndex === settledActiveIndex ? page - settledPage
+    : forward < 0 && backward < 0 ? Math.sign(activeIndex - settledActiveIndex) : 0
   const start = canMove ? (pageChange < 0 ? target.length : Math.max(0, backward)) : 0
   const end = canMove ? (pageChange > 0 ? settled.length : Math.max(0, forward)) : 0
   // A page change stages both groups. Reel navigation can reuse their shared cards.
@@ -178,9 +172,7 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
 
 <template>
   <aside
-    v-if="previews.length || status || browsePage > firstPage"
     class="reel-previews"
-    :class="{ 'reel-previews--empty': !previews.length }"
     aria-label="Upcoming reel items"
     data-reel-gesture-ignore
     @keydown="isolate"
@@ -205,7 +197,6 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
           :data-preview-post-id="positions.has(preview.id) ? preview.id : undefined" :aria-hidden="!positions.has(preview.id) || undefined">
           <button type="button" class="reel-preview-card" :disabled="!positions.has(preview.id)"
             :aria-label="`Open upcoming item ${positions.get(preview.id)}`"
-            :aria-current="preview.id === props.items[props.activeIndex]?.postId ? 'true' : undefined"
             @click="selectPreview(preview.id)">
             <ReelPreviewMedia :source="preview.source" :position="positions.get(preview.id) ?? 0" />
           </button>
@@ -216,9 +207,12 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
       aria-label="Next previews" :aria-disabled="browsePage >= lastPage" @click="movePreviewPage(1)">
       <component :is="horizontal ? ChevronRight : ChevronDown" aria-hidden="true" />
     </button>
-    <div v-if="status" class="reel-preview-boundary">
-      <span v-if="status" role="status">{{ status }}</span>
-      <button v-if="canRetry" type="button" @click="emit('loadMore')">Retry</button>
+    <div v-if="status || canLoadMore" class="reel-preview-boundary" :class="{ 'reel-preview-boundary--only': !previews.length }">
+      <span v-if="status" role="status">
+        <LoaderCircle v-if="boundary === 'loading'" class="reel-preview-spinner" aria-hidden="true" />
+        {{ status }}
+      </span>
+      <button v-if="canLoadMore" type="button" @click="emit('loadMore')">{{ boundary === 'retry' ? 'Retry' : 'Load more' }}</button>
     </div>
   </aside>
 </template>

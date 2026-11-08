@@ -1,7 +1,8 @@
-import { flushPromises } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createVibe, type VibeInstance, type VibeItem } from '@/index'
+import ReelPreviews from '@/components/ReelPreviews.vue'
 
 function item(postId: number, grouped = false): VibeItem {
   const media = {
@@ -47,7 +48,7 @@ describe('reel runtime controls', () => {
     return instance
   }
 
-  it('collapses previews at the end of the loaded items when automatic loading is off', async () => {
+  it('keeps previews and a load action at the end when automatic loading is off', async () => {
     const loadPage = vi.fn(async () => ({ items: [item(3)], next: null }))
     const instance = track(createVibe({
       target, layout: 'reel', infiniteScroll: false, reelPreviews: true,
@@ -62,6 +63,8 @@ describe('reel runtime controls', () => {
     expect(instance.nextReelPost()).toBe(true)
     await flushPromises()
     expect(previewIds()).toEqual([])
+    expect(rail().classList.contains('reel-previews--empty')).toBe(false)
+    expect(rail().textContent).toContain('Load more')
     rail().querySelector<HTMLButtonElement>('[aria-label="Previous previews"]')!.click()
     await flushPromises()
     expect(previewIds()).toEqual(['1', '2'])
@@ -69,15 +72,53 @@ describe('reel runtime controls', () => {
     rail().querySelector<HTMLButtonElement>('[aria-label="Next previews"]')!.click()
     await flushPromises()
     expect(loadPage).not.toHaveBeenCalled()
-    await instance.loadNext()
+    ;[...rail().querySelectorAll('button')].find(button => button.textContent === 'Load more')!.click()
     await flushPromises()
     expect(loadPage).toHaveBeenCalledTimes(1)
     expect(previewIds()).toEqual(['3'])
-    expect(rail().textContent).not.toContain('End of feed')
+    expect(rail().textContent).toContain('End of feed')
     expect(instance.getState().activeReelPostId).toBe(2)
     instance.setReelPreviews(false)
     await flushPromises()
     expect(rail()).toBeNull()
+  })
+
+  it('advances upcoming previews after clicking a later preview', async () => {
+    const instance = track(createVibe({
+      target, layout: 'reel', infiniteScroll: false, reelPreviews: true,
+      initialPage: { items: Array.from({ length: 10 }, (_, index) => item(index + 1)), next: null },
+    }))
+    await instance.mount()
+    await flushPromises()
+    target.querySelector<HTMLButtonElement>('[aria-label="Open upcoming item 4"]')!.click()
+    await flushPromises()
+    expect(instance.getState().activeReelPostId).toBe(5)
+    expect([...target.querySelectorAll('[data-preview-post-id]')].map(node => node.getAttribute('data-preview-post-id')))
+      .toEqual(['6', '7', '8', '9'])
+    expect(target.querySelector('.reel-preview-card[aria-current]')).toBeNull()
+  })
+
+  it('shows loading, retry and locked states on the last browsed preview page', async () => {
+    const instance = track(createVibe({ target, initialPage: { items: [], next: null } }))
+    const state = { ...instance.getState(), next: 1, infiniteScroll: false }
+    const wrapper = mount(ReelPreviews, { props: {
+      items: Array.from({ length: 6 }, (_, index) => item(index + 1)), activeIndex: 0, state,
+    } })
+    try {
+      expect(wrapper.find('.reel-preview-boundary').exists()).toBe(false)
+      await wrapper.get('[aria-label="Next previews"]').trigger('click')
+      expect(wrapper.get('.reel-preview-boundary').text()).toBe('Load more')
+      await wrapper.setProps({ state: { ...state, isLoadingMore: true, loadMoreLocked: true } })
+      expect(wrapper.get('[role="status"]').text()).toBe('Loading previews…')
+      expect(wrapper.find('.reel-preview-spinner').exists()).toBe(true)
+      expect(wrapper.find('.reel-preview-boundary button').exists()).toBe(false)
+      await wrapper.setProps({ state: { ...state, nextPageError: true } })
+      await wrapper.get('.reel-preview-boundary button').trigger('click')
+      expect(wrapper.emitted('loadMore')).toHaveLength(1)
+      expect(wrapper.get('.reel-preview-boundary button').text()).toBe('Retry')
+      await wrapper.setProps({ state: { ...state, loadMoreLocked: true } })
+      expect(wrapper.find('.reel-preview-boundary').exists()).toBe(false)
+    } finally { wrapper.unmount() }
   })
 
   it('controls media items and posts in a base reel', async () => {

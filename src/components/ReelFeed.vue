@@ -63,7 +63,7 @@ const visibleItems = computed(() => {
 const activePostId = computed(() => props.items[activeIndex.value]?.postId)
 const activeItem = computed(() => props.items[activeIndex.value])
 const { reelPreviewPlacement: placement, reelPreviewTransition: previewTransition } = useReelPreviewOptions()
-const previews = computed(() => props.state?.reelPreviews && activeItem.value && props.reelForward.status === 'idle'
+const previews = computed(() => props.state?.reelPreviews && activeItem.value
   ? props.items : null)
 const activeMediaIndex = computed(() => {
   const postId = activePostId.value
