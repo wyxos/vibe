@@ -39,6 +39,8 @@ For selection available from the first click, set `selection.activation` to `'ca
 
 Set `selection.toolbar` to `'selection'` to reveal the shared toolbar only for a nonempty selection, or `'hidden'` to supply application controls through `onChange` and the instance API. These options retain the existing explicit-mode behavior unless configured. Ordering remains independently opt-in.
 
+Set `selection.clearOnBackgroundClick` to `true` to clear the entire selection, including off-screen IDs, when the user clicks empty masonry space or its bottom spacer. It defaults to `false`. Only unmodified primary clicks clear selection; cards, media, controls and scrollbar gutters retain their behavior. Clearing preserves the interaction mode and does not run a batch action.
+
 Select items enters selection mode. A card click or checkbox toggles its whole post, including grouped media. Done returns card clicks to opening the reel and keeps the selection. Media navigation and consumer card controls retain their own actions.
 
 Selection uses stable `postId` values, with string and numeric representations treated as the same identity. IDs must identify posts consistently throughout a selection session. Store provider-qualified IDs if the application combines providers with overlapping identifiers.

@@ -164,7 +164,7 @@ const showLoadMore = computed(() => (
 ))
 
 const viewportIndices = computed(() => new Set(viewportIndexSnapshot.value))
-useMasonrySelection(() => props.items, () => viewportIndexSnapshot.value)
+const onBackgroundClick = useMasonrySelection(() => props.items, () => viewportIndexSnapshot.value)
 
 const replacement = usePreparedMasonryReplacement(props, {
   width: () => masonryWidth.value, viewportHeight: () => galleryViewportHeight.value,
@@ -427,6 +427,7 @@ defineExpose({ getScrollElement, loadIfNearBottom, prepareItemReplacement: repla
       :aria-hidden="suspended || undefined"
       :inert="suspended || undefined"
       @scroll.passive="onScroll"
+      @click="onBackgroundClick"
     >
       <section
         ref="masonryElement"

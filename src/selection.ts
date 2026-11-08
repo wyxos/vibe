@@ -26,6 +26,8 @@ export interface VibeSelectionOptions {
   checkboxVisibility?: 'mode' | 'selection'
   /** Consumers can supply their own toolbar while retaining card selection. */
   toolbar?: 'always' | 'selection' | 'hidden'
+  /** Clear selection on an unmodified primary click in empty masonry space. Disabled by default. */
+  clearOnBackgroundClick?: boolean
   initialIds?: readonly VibeItemId[]
   onChange?: (selection: VibeSelectionSnapshot) => void
   actions?: readonly VibeSelectionAction[]

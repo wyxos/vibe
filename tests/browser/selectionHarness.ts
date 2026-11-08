@@ -37,6 +37,7 @@ export function selectionHarness(params: URLSearchParams): Partial<CreateVibeOpt
     layout: 'masonry',
     initialPage: { items: items(1, 40), next: 41, total: 160 },
     selection: params.has('disabled') || params.has('orderingOnly') ? false : {
+      clearOnBackgroundClick: params.has('clearBackground'),
       ...(params.has('implicitSelection') ? {
         activation: 'card-chrome' as const, checkboxVisibility: 'selection' as const,
         toolbar: params.has('hideSelectionToolbar') ? 'hidden' as const : 'selection' as const,
