@@ -125,6 +125,8 @@ At phone widths, controls use 27px icons with 44px targets and a 16px gap below 
 
 ## Selection and ordering
 
+Shared checkboxes and Move controls sit over the media below any card header, preserving header labels and actions without changing card dimensions. Consumers may enable selection from noninteractive header/footer clicks and show all checkboxes only while the selection is nonempty. Application-owned toolbars can hide the shared selection toolbar.
+
 The showcase enables Vibe's shared selection toolbar and card overlays. Selection uses blue outlines and square checkboxes without changing card dimensions. The toolbar stays above the feed on desktop and below it at narrow container widths. Review and Move panels keep their headers and actions fixed while their lists scroll. Batch actions receive the full selection, including items outside the viewport. The showcase offers Copy selected IDs and session-only ordering; filtering clears selection. Drag handles and the Move action appear only in Arrange mode.
 
 ## Do's and Don'ts

@@ -37,6 +37,10 @@ export function selectionHarness(params: URLSearchParams): Partial<CreateVibeOpt
     layout: 'masonry',
     initialPage: { items: items(1, 40), next: 41, total: 160 },
     selection: params.has('disabled') || params.has('orderingOnly') ? false : {
+      ...(params.has('implicitSelection') ? {
+        activation: 'card-chrome' as const, checkboxVisibility: 'selection' as const,
+        toolbar: params.has('hideSelectionToolbar') ? 'hidden' as const : 'selection' as const,
+      } : {}),
       getLabel: (item) => `Item ${item.postId}`,
       actions: [{
         id: 'collect', label: 'Collect selected',
@@ -47,7 +51,7 @@ export function selectionHarness(params: URLSearchParams): Partial<CreateVibeOpt
         },
       }],
     },
-    ordering: params.has('disabled') ? undefined : {
+    ordering: params.has('disabled') || params.has('implicitSelection') ? undefined : {
       onReorder: async ({ movedPostIds, targetPostId, position, signal }) => {
         harness.reorderCalls.push({ movedPostIds: [...movedPostIds], targetPostId, position })
         if (harness.holdReorder) await waitForOperation(signal)

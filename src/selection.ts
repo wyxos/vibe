@@ -20,6 +20,12 @@ export interface VibeSelectionAction {
 }
 
 export interface VibeSelectionOptions {
+  /** Select from noninteractive card header/footer clicks without entering a mode. */
+  activation?: 'explicit' | 'card-chrome'
+  /** Show every card checkbox only once at least one post is selected. */
+  checkboxVisibility?: 'mode' | 'selection'
+  /** Consumers can supply their own toolbar while retaining card selection. */
+  toolbar?: 'always' | 'selection' | 'hidden'
   initialIds?: readonly VibeItemId[]
   onChange?: (selection: VibeSelectionSnapshot) => void
   actions?: readonly VibeSelectionAction[]

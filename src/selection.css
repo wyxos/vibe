@@ -65,7 +65,7 @@
 }
 .vibe-selection-check {
   position: absolute;
-  top: 4px;
+  top: calc(var(--vibe-selection-card-top, 0px) + 4px);
   left: 4px;
   display: flex;
   align-items: center;
@@ -78,7 +78,10 @@
   cursor: pointer;
 }
 .vibe-selection-check input { margin: 0; width: 22px; height: 22px; accent-color: var(--vibe-selection-primary, #2563d4); cursor: pointer; }
-.vibe-selection-move-controls { position: absolute; top: 4px; right: 4px; display: flex; pointer-events: auto; border-radius: 3px; background: var(--vibe-selection-background, #0c1e33); }
+.vibe-selection-start { position: absolute; top: calc(var(--vibe-selection-card-top, 0px) + 4px); left: 4px; min-width: 44px; min-height: 44px; border: 0; border-radius: 3px; padding: 8px; color: inherit; background: var(--vibe-selection-background, #0c1e33); pointer-events: auto; font: inherit; }
+.vibe-selection-start:not(:focus-visible) { width: 1px; height: 1px; min-width: 0; min-height: 0; padding: 0; overflow: hidden; clip-path: inset(50%); }
+.vibe-selection-start:focus-visible { outline: 2px solid var(--vibe-selection-focus, #06b6d4); outline-offset: -2px; }
+.vibe-selection-move-controls { position: absolute; top: calc(var(--vibe-selection-card-top, 0px) + 4px); right: 4px; display: flex; pointer-events: auto; border-radius: 3px; background: var(--vibe-selection-background, #0c1e33); }
 .vibe-selection-grip { cursor: grab; touch-action: pan-y; }
 .media-card--selected::after { content: ''; position: absolute; z-index: 7; inset: 0; pointer-events: none; border: 2px solid var(--vibe-selection-primary, #3b82f6); border-radius: inherit; }
 .media-card[data-reorder-target]::before { content: ''; position: absolute; z-index: 8; left: 0; right: 0; height: 4px; background: var(--vibe-selection-focus, #06b6d4); pointer-events: none; }

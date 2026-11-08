@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, shallowRef, watchEffect } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, shallowRef, watchEffect } from 'vue'
 import { GripVertical, Move } from 'lucide-vue-next'
 import type { VibeItemId } from '../types'
 import { useSelectionContext } from './useSelectionContext'
 
-const props = defineProps<{ postId: VibeItemId }>()
+const props = defineProps<{ postId: VibeItemId; headerHeight?: number }>()
 const context = useSelectionContext()
 const controller = context?.controller
 const root = shallowRef<HTMLElement | null>(null)
@@ -15,7 +15,9 @@ const selected = computed(() => {
   return controller?.isSelected(props.postId) ?? false
 })
 const label = computed(() => controller?.getLabel(props.postId) ?? String(props.postId))
-const selecting = computed(() => Boolean(controller?.enabled && controller.state.mode !== 'browse'))
+const implicit = computed(() => controller?.selectionOptions.activation === 'card-chrome')
+const showCheckbox = computed(() => controller?.enabled && (controller.selectionOptions.checkboxVisibility === 'selection'
+  ? controller.state.count > 0 : controller.state.mode !== 'browse' || selected.value))
 const arranging = computed(() => controller?.state.mode === 'arrange')
 const moveAllowed = computed(() => {
   void controller?.state.selectedIds
@@ -23,6 +25,11 @@ const moveAllowed = computed(() => {
 })
 function startDrag(event: DragEvent): void {
   if (!context?.startDrag(props.postId, event)) event.preventDefault()
+}
+async function beginSelection(): Promise<void> {
+  controller?.toggle(props.postId)
+  await nextTick()
+  root.value?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true })
 }
 
 function dragOver(event: DragEvent): void {
@@ -80,8 +87,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="controller" ref="root" class="vibe-selection-card-controls" @click.stop @keydown.stop>
-    <label v-if="selecting || selected" class="vibe-selection-check">
+  <div v-if="controller" ref="root" class="vibe-selection-card-controls"
+    :style="{ '--vibe-selection-card-top': `${headerHeight ?? 0}px` }" @click.stop @keydown.stop>
+    <button v-if="implicit && !controller.state.count" type="button" class="vibe-selection-start"
+      :disabled="controller.state.busy" :aria-label="`Select ${label}`" @click="beginSelection">Select</button>
+    <label v-if="showCheckbox" class="vibe-selection-check">
       <input
         type="checkbox" :checked="selected" :aria-label="`Select ${label}`"
         :disabled="controller.state.busy" @change="controller.toggle(postId)"

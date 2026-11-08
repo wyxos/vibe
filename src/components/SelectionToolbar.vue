@@ -21,6 +21,10 @@ let panelAnimation: Animation | null = null
 let panelGeneration = 0
 const PAGE_SIZE = 50
 const actions = computed(() => controller?.selectionOptions.actions ?? [])
+const implicit = computed(() => controller?.selectionOptions.activation === 'card-chrome')
+const showToolbar = computed(() => controller && state && (controller.enabled || controller.canArrange)
+  && controller.selectionOptions.toolbar !== 'hidden'
+  && (controller.selectionOptions.toolbar !== 'selection' || state.count > 0 || state.busy || state.error))
 const here = computed(() => {
   const visible = new Set(context?.visibleIds.value.map(String))
   return state?.selectedIds.filter((id) => visible.has(String(id))).length ?? 0
@@ -122,13 +126,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="controller && state && (controller.enabled || controller.canArrange)" class="vibe-selection-toolbar">
+  <div v-if="showToolbar && controller && state" class="vibe-selection-toolbar">
     <div class="vibe-selection-toolbar-main" role="toolbar" aria-label="Selection and ordering">
       <div v-if="state.count" class="vibe-selection-summary" role="status" aria-live="polite" aria-atomic="true">
         <strong>{{ state.count }} selected</strong>
         <span>{{ here }} here · {{ offscreen }} off-screen</span>
       </div>
-      <button v-if="controller.enabled && state.mode === 'browse'" type="button" class="vibe-selection-button" :disabled="state.busy" @click="controller.setMode('select')">Select items</button>
+      <button v-if="controller.enabled && !implicit && state.mode === 'browse'" type="button" class="vibe-selection-button" :disabled="state.busy" @click="controller.setMode('select')">Select items</button>
       <button v-if="controller.canArrange && state.mode !== 'arrange'" type="button" class="vibe-selection-button" :disabled="state.busy" @click="controller.setMode('arrange')">Arrange items</button>
       <button v-if="state.count" type="button" class="vibe-selection-button vibe-selection-review" @click="openPanel('review')">Review selection</button>
       <div v-if="state.count && actions.length" class="vibe-selection-desktop-actions">
@@ -136,7 +140,7 @@ onBeforeUnmount(() => {
       </div>
       <button v-if="state.count && actions.length" type="button" class="vibe-selection-button vibe-selection-primary vibe-selection-phone-actions" :disabled="state.busy" @click="openPanel('actions')">Actions</button>
       <button v-if="state.count" type="button" class="vibe-selection-button" aria-label="Clear selection" :disabled="state.busy" @click="controller.clear()">Clear</button>
-      <button v-if="state.mode !== 'browse'" type="button" class="vibe-selection-button" :disabled="state.busy" @click="controller.setMode('browse')">Done</button>
+      <button v-if="!implicit && state.mode !== 'browse'" type="button" class="vibe-selection-button" :disabled="state.busy" @click="controller.setMode('browse')">Done</button>
     </div>
     <div v-if="state.busy || state.error" class="vibe-selection-operation" :role="state.error ? 'alert' : 'status'" aria-live="polite">
       <span>{{ state.error || 'Working on your selection…' }}</span>

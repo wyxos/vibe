@@ -35,6 +35,10 @@ The page and save functions above belong to the consuming application. Import th
 
 ## Selection
 
+For selection available from the first click, set `selection.activation` to `'card-chrome'`. Primary clicks on noninteractive header/footer space toggle the post while media still opens its viewer. Buttons, links, form controls, modified clicks and selected text retain their own behavior. Set `checkboxVisibility: 'selection'` to show all card checkboxes only while selection is nonempty. A keyboard-focusable Select action starts selection without a pointer.
+
+Set `selection.toolbar` to `'selection'` to reveal the shared toolbar only for a nonempty selection, or `'hidden'` to supply application controls through `onChange` and the instance API. These options retain the existing explicit-mode behavior unless configured. Ordering remains independently opt-in.
+
 Select items enters selection mode. A card click or checkbox toggles its whole post, including grouped media. Done returns card clicks to opening the reel and keeps the selection. Media navigation and consumer card controls retain their own actions.
 
 Selection uses stable `postId` values, with string and numeric representations treated as the same identity. IDs must identify posts consistently throughout a selection session. Store provider-qualified IDs if the application combines providers with overlapping identifiers.

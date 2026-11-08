@@ -276,7 +276,7 @@ watch(
     @keydown.enter="activate(interactive && !usesSeparateActivator, 'keyboard')"
     @keydown.space.prevent="activate(interactive && !usesSeparateActivator, 'keyboard')"
   >
-    <SelectionCardControls v-if="selection && layout === 'masonry' && !preparing" :post-id="item.postId" />
+    <SelectionCardControls v-if="selection && layout === 'masonry' && !preparing" :post-id="item.postId" :header-height="cardHeader?.height" />
     <div class="media-card-content">
       <CardRegion
         v-if="cardHeader"

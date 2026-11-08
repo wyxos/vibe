@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useCardChromeSelection } from './cardChromeSelection'
 
 import {
   clampMediaIndex,
@@ -26,6 +27,7 @@ const props = defineProps<{
   style?: VibeCardChromeStyle
   total: number | null
 }>()
+const selectChrome = useCardChromeSelection(() => props.item.postId, () => props.layout)
 
 const normalizedMediaIndex = computed(() => (
   clampMediaIndex(props.item, props.mediaIndex)
@@ -58,6 +60,7 @@ const background = computed(() => (
       },
     ]"
     :style="chromeStyle"
+    @click.capture="selectChrome"
     @click.stop
     @keydown.stop
   >
