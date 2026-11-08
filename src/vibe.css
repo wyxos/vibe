@@ -1,3 +1,5 @@
+@import './selection.css';
+
 .vibe-surface,
 .vibe-surface * {
   box-sizing: border-box;

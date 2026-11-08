@@ -19,7 +19,9 @@ import type {
   VibeState,
 } from './types'
 
-export interface VibeInstance {
+import type { VibeSelectionApi } from './selection'
+
+export interface VibeInstance extends VibeSelectionApi {
   appendPage: (page: VibePage) => void
   applyAutofillUpdate: (update: VibeBackendAutofillUpdate) => boolean
   applyFillUpdate: (update: VibeBackendFillUpdate) => boolean

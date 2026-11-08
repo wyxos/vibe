@@ -10,10 +10,7 @@ import {
   projectMasonryLayout,
   type MasonryLayout,
 } from '../core/masonry'
-import {
-  projectMasonryViewportIndex,
-  queryMasonryViewportIndex,
-} from '../core/masonryViewportIndex'
+import { projectMasonryViewportIndex, queryMasonryViewportIndex } from '../core/masonryViewportIndex'
 import {
   resolveMasonryMinColumnWidth,
   resolveMasonryOverscan,
@@ -25,6 +22,7 @@ import MediaCard from './MediaCard.vue'
 import { usePreparedMasonryReplacement } from './usePreparedMasonryReplacement'
 import { useMasonryMediaVisibility } from './useMasonryMediaVisibility'
 import { useSettledMasonryFeedLayout } from './useSettledMasonryFeedLayout'
+import { useMasonrySelection } from './useMasonrySelection'
 
 const MIN_GAP = 6
 const MAX_GAP = 12
@@ -166,6 +164,7 @@ const showLoadMore = computed(() => (
 ))
 
 const viewportIndices = computed(() => new Set(viewportIndexSnapshot.value))
+useMasonrySelection(() => props.items, () => viewportIndexSnapshot.value)
 
 const replacement = usePreparedMasonryReplacement(props, {
   width: () => masonryWidth.value, viewportHeight: () => galleryViewportHeight.value,

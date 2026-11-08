@@ -3,6 +3,7 @@ import {
   computed,
   nextTick,
   onBeforeUnmount,
+  provide,
   shallowRef,
   watch,
 } from 'vue'
@@ -34,6 +35,10 @@ import { useReelKeyboard } from './useReelKeyboard'
 import { useReelEntryReveal } from './useReelEntryReveal'
 import { provideReelPointerMovement } from './useReelPointerMovement'
 import { provideReelPlaybackOptions } from './useReelPlaybackOptions'
+import { createSelectionContext, selectionContextKey } from './useSelectionContext'
+import type { VibeSelectionController } from '../core/selection'
+import SelectionToolbar from './SelectionToolbar.vue'
+import { focusMasonryCard } from './masonryFocus'
 provideReelPointerMovement()
 const ENTRY_STAGGER_MS = 35
 const ITEM_MOTION_MS = 420
@@ -48,7 +53,10 @@ const props = defineProps<{
   reelInfoSheet?: VibeReelInfoSheetOptions
   reelAudioState: VibeReelAudioState
   state: VibeRuntimeState
+  selection?: VibeSelectionController
 }>()
+const hasSelection = Boolean(props.selection?.enabled || props.selection?.canArrange)
+if (hasSelection && props.selection) provide(selectionContextKey, createSelectionContext(props.selection))
 const emit = defineEmits<{
   activeReelChange: [postId: VibeItemId]
   closeReel: []
@@ -181,13 +189,6 @@ function activateMasonryItem(
   void nextTick(() => reelOverlay.value?.focus())
 }
 
-function findMasonryCard(postId: VibeItemId): HTMLElement | null {
-  const cards = surfaceElement.value
-    ?.querySelectorAll<HTMLElement>('.masonry-feed [data-post-id]') ?? []
-
-  return Array.from(cards).find((card) => card.dataset.postId === String(postId)) ?? null
-}
-
 function startItemRemoval(
   postIds: readonly VibeItemId[],
   options?: VibeItemRemovalOptions,
@@ -243,21 +244,6 @@ async function animateItemRemoval(postIds: readonly VibeItemId[], signal: AbortS
   })
 }
 
-function focusMasonryCard(postId: VibeItemId, showFocusRing: boolean): void {
-  const card = findMasonryCard(postId)
-  const activator = card?.querySelector<HTMLElement>('.media-card-activator')
-  const focusTarget = activator ?? card
-  if (!focusTarget) return
-
-  focusTarget.classList.toggle('media-card-focus-silent', !showFocusRing)
-  if (!showFocusRing) {
-    focusTarget.addEventListener('blur', () => {
-      focusTarget.classList.remove('media-card-focus-silent')
-    }, { once: true })
-  }
-  focusTarget?.focus({ preventScroll: true })
-}
-
 function closeMasonryReel(): void {
   if (props.state.reelOrigin !== 'masonry') return
 
@@ -273,7 +259,7 @@ function finishReelLeave(): void {
   restoreFocusPostId = null
   restoreFocusVisible = false
   void nextTick(() => {
-    if (postId !== null) focusMasonryCard(postId, showFocusRing)
+    if (postId !== null) focusMasonryCard(surfaceElement.value, postId, showFocusRing)
   })
 }
 
@@ -345,8 +331,10 @@ defineExpose({
 <template>
   <div
     ref="surfaceElement" tabindex="-1"
-    class="vibe-surface" :data-reel-fullscreen="fullscreen || undefined"
+    class="vibe-surface" :class="{ 'vibe-surface--selection': hasSelection }" :data-reel-fullscreen="fullscreen || undefined"
   >
+    <SelectionToolbar v-if="hasSelection && state.layout === 'masonry'"
+      :inert="state.reelOrigin === 'masonry' || isReelLeaving || undefined" :aria-hidden="state.reelOrigin === 'masonry' || isReelLeaving || undefined" />
     <ReelLayout
       v-if="state.layout === 'reel' && (state.items.length > 0 || state.reelForward.status !== 'idle')"
       ref="reelRenderer"

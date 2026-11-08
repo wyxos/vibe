@@ -408,6 +408,10 @@ export interface VibeBackendFillOptions {
 export type VibeFillOptions = VibeBackendFillOptions | VibeFrontendFillOptions
 
 export interface CreateVibeOptions {
+  /** Opt-in post selection, retained independently of pagination and virtualization. */
+  selection?: boolean | import('./selection').VibeSelectionOptions
+  /** Opt-in manual ordering. The consumer persists every requested move. */
+  ordering?: import('./selection').VibeOrderingOptions
   autoScroll?: VibeAutoScrollOptions
   autofill?: VibeAutofillOptions
   cardFooter?: VibeCardRegion

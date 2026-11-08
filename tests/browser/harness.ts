@@ -5,6 +5,7 @@ import type { VibeInstance, VibeState } from '../../src/index'
 import './harness.css'
 import { Header, Footer, InfoSheet, TrackDrawer } from './chrome'
 import { audio, image, items, video } from './media'
+import { selectionHarness } from './selectionHarness'
 
 declare global {
   interface Window {
@@ -70,6 +71,7 @@ window.__vibe = createVibe({
     if (params.has('defer')) await new Promise<void>((resolve) => { window.__resolvePage = resolve })
     return { items: items(100, 10), next: null, total: initial.length + 10 }
   },
+  ...(scenario === 'selection' ? selectionHarness(params) : {}),
 })
 await window.__vibe.mount()
 document.body.dataset.ready = 'true'

@@ -37,6 +37,7 @@ const provenanceUrl = computed(() => `${import.meta.env.BASE_URL}media/${item.va
       <p v-if="item.credit" class="provenance-note">{{ item.credit.changes }}</p>
       <p class="provenance-note">This collection combines original work with openly licensed media. Licensed items retain their individual credits and licenses.</p>
       <p class="provenance-note">The collection repeats after you have explored the available items. Page loading is simulated to demonstrate loading states.</p>
+      <p class="provenance-note">Selections include items on earlier pages. Arranging changes this demo session only; changing the filter or restarting restores the collection order.</p>
     </div>
     <footer class="provenance-sheet-footer">
       <a :href="provenanceUrl" target="_blank" rel="noopener noreferrer">

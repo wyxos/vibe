@@ -21,6 +21,7 @@ colors:
   white: "#ffffff"
   error-surface: "#48212c"
   error-border: "#d17b8f"
+  selection-backdrop: "#07132199"
 typography:
   sheet-title:
     fontSize: "21px"
@@ -121,6 +122,10 @@ Menu rows own their padding. Hover and selection backgrounds extend to both edge
 Shared reel media controls use 30% dark backgrounds. During playback, they slide down after five idle seconds and stop at the media edge above a bottom preview rail. Paused audio and video keep their controls visible. Pointer movement or tapping media reveals hidden controls; a tap that reveals controls preserves playback. A new reel starts visible. Focused controls, held sliders and open options remain visible until interaction ends. Reduced motion removes the slide.
 
 At phone widths, controls use 27px icons with 44px targets and a 16px gap below the seek bar. The timestamp stays centered, with a volume icon and then an options cog on the right. Volume opens a vertical bar using the seek bar's rectangular styling. Options offer mute and native playback speed. Desktop retains the inline volume bar. These controls belong to the shared library; the showcase supplies no alternate implementation.
+
+## Selection and ordering
+
+The showcase enables Vibe's shared selection toolbar and card overlays. Selection uses blue outlines and square checkboxes without changing card dimensions. The toolbar stays above the feed on desktop and below it at narrow container widths. Review and Move panels keep their headers and actions fixed while their lists scroll. Batch actions receive the full selection, including items outside the viewport. The showcase offers Copy selected IDs and session-only ordering; filtering clears selection. Drag handles and the Move action appear only in Arrange mode.
 
 ## Do's and Don'ts
 

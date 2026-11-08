@@ -1,5 +1,9 @@
 import { createApp, nextTick, reactive, type App, type WatchHandle } from 'vue'
 import VibeSurface from '../components/VibeSurface.vue'
+import { VibeSelectionController } from './selection'
+import { attachSelectionApi } from './selectionApi'
+import { surfaceOptions } from './surfaceOptions'
+import type { VibeSelectionApi } from '../selection'
 import { appendPageToState } from './appendPage'
 import { createAutofillState, isAutofillActive } from './autofill'
 import { VibeAutofillController } from './autofillController'
@@ -35,7 +39,8 @@ import type {
   VibeReelItemTarget, VibeReelNavigationResult, VibeState,
 } from '../types'
 import type { VibeItemRemovalOptions } from './itemRemovalOptions'
-class VibeController implements VibeInstance {
+class VibeController implements Omit<VibeInstance, keyof VibeSelectionApi> {
+  readonly selection: VibeSelectionController
   private app: App<Element> | null = null
   private readonly autoScroll: VibeAutoScrollController
   private readonly autofillController: VibeAutofillController
@@ -62,6 +67,10 @@ class VibeController implements VibeInstance {
     validateOptions(options)
     const layoutMode = options.layout ?? 'masonry'
     this.state = reactive(createInitialRuntimeState(options, layoutMode))
+    this.selection = new VibeSelectionController({
+      ...options, getItems: () => this.state.items,
+      setItems: (items) => { this.state.items = items },
+    })
     this.reelAudio = new VibeReelAudioController(options)
     this.lastLoadedCursor = options.initialPage ? pageCurrentCursor(options.initialPage) : null
     this.notificationItems = createItemSnapshot(this.state)
@@ -116,6 +125,7 @@ class VibeController implements VibeInstance {
     this.pageReplacement = new PageReplacementController({
       state: this.state, surface: () => this.surface,
       prepare: async () => {
+        this.selection.cancel()
         this.cancelRequest(false)
         if (isAutofillActive(this.state.autofill)) await this.cancelAutofill()
         if (this.fillController.isActive()) await this.cancelFill()
@@ -138,24 +148,12 @@ class VibeController implements VibeInstance {
     const target = resolveVibeTarget(this.options.target)
     this.responsiveLayout.mount(target)
     this.app = createApp(VibeSurface, {
-      canRetryEnd: Boolean(this.options.loadPage),
-      cardFooter: this.options.cardFooter,
-      cardHeader: this.options.cardHeader,
-      feedFooter: this.options.feedFooter,
+      ...surfaceOptions(this.options),
       feedFooterActions: createFeedFooterActions(this),
-      mediaCard: this.options.mediaCard,
-      masonry: this.options.masonry,
-      onMediaFullyVisible: this.options.onMediaFullyVisible,
-      onMediaError: this.options.onMediaError,
-      onMediaReady: this.options.onMediaReady,
-      onMediaVisible: this.options.onMediaVisible,
-      onReelMediaChange: this.options.onReelMediaChange,
       reelAudioState: this.reelAudio.state,
-      reelInfoSheet: this.options.reelInfoSheet,
+      selection: this.selection,
       state: this.state,
-      onActiveReelChange: (postId: VibeItemId) => {
-        if (this.state.reelForward.status === 'idle') this.setActiveReelPost(postId)
-      },
+      onActiveReelChange: (postId: VibeItemId) => { if (this.state.reelForward.status === 'idle') this.setActiveReelPost(postId) },
       onCloseReel: () => this.closeMasonryReel(),
       onLoadMore: () => { void this.loadNext() },
       onOpenReel: (postId: VibeItemId) => openMasonryReel(this.state, this.routing, postId),
@@ -174,6 +172,7 @@ class VibeController implements VibeInstance {
     }
   }
   destroy(): void {
+    this.selection.destroy()
     this.restoreController?.abort()
     this.restoreController = null
     this.autoScroll.destroy()
@@ -303,6 +302,7 @@ class VibeController implements VibeInstance {
     return this.startRequest(cursor, false)
   }
   private resetFeedVisit(): void {
+    this.selection.cancel()
     this.state.autofill = createAutofillState(this.options.autofill, undefined, false)
     this.fillController.reset()
     this.reelForward.reset()
@@ -497,4 +497,4 @@ class VibeController implements VibeInstance {
   }
   private setCurrentCursor(cursor: VibeCursor): void { this.lastLoadedCursor = this.state.current = cursor }
 }
-export const createVibe = (options: CreateVibeOptions): VibeInstance => new VibeController(options)
+export const createVibe = (options: CreateVibeOptions): VibeInstance => attachSelectionApi(new VibeController(options))

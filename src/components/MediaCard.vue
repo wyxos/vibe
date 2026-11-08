@@ -1,16 +1,9 @@
 <script setup lang="ts">
 import type { MediaFailure } from '../core/mediaFailure'
-import {
-  ChevronLeft,
-  ChevronRight,
-  Disc3,
-} from 'lucide-vue-next'
-import {
-  computed,
-  nextTick,
-  shallowRef,
-  watch, type CSSProperties,
-} from 'vue'
+import { ChevronLeft, ChevronRight, Disc3 } from 'lucide-vue-next'
+import { computed, nextTick, shallowRef, watch, type CSSProperties } from 'vue'
+import SelectionCardControls from './SelectionCardControls.vue'
+import { useSelectionContext } from './useSelectionContext'
 import {
   audioCoverVariant,
   clampMediaIndex,
@@ -80,10 +73,15 @@ const emit = defineEmits<{
   ready: [mediaIndex: number]
   reelAudioChange: [state: VibeReelAudioState]
 }>()
+const selection = useSelectionContext()
 function activate(
   interactive = false,
   input: 'keyboard' | 'pointer' = 'pointer',
 ): void {
+  if (interactive && props.layout === 'masonry' && selection?.controller.enabled && selection.controller.state.mode !== 'browse') {
+    if (!selection.controller.state.busy) selection.controller.toggle(props.item.postId)
+    return
+  }
   if (interactive) emit('activate', input)
 }
 const mediaItems = computed(() => mediaAssets(props.item))
@@ -176,7 +174,7 @@ const {
   reelAudioState: () => props.reelAudioState,
 })
 const usesSeparateActivator = computed(() => (
-  props.interactive && Boolean(props.cardHeader || props.cardFooter)
+  props.interactive && Boolean(props.cardHeader || props.cardFooter || selection)
 ))
 function activationInput(event: MouseEvent): 'keyboard' | 'pointer' {
   return event.detail === 0 ? 'keyboard' : 'pointer'
@@ -278,6 +276,7 @@ watch(
     @keydown.enter="activate(interactive && !usesSeparateActivator, 'keyboard')"
     @keydown.space.prevent="activate(interactive && !usesSeparateActivator, 'keyboard')"
   >
+    <SelectionCardControls v-if="selection && layout === 'masonry' && !preparing" :post-id="item.postId" />
     <div class="media-card-content">
       <CardRegion
         v-if="cardHeader"
@@ -476,8 +475,8 @@ watch(
           v-if="usesSeparateActivator"
           class="media-card-activator"
           type="button"
-          :aria-label="`Open post ${item.postId}`"
-          @click.stop="$emit('activate', activationInput($event))"
+          :aria-label="selection?.controller.enabled && selection.controller.state.mode !== 'browse' ? `Toggle selection for post ${item.postId}` : `Open post ${item.postId}`"
+          @click.stop="activate(true, activationInput($event))"
           @keydown.stop
         />
       </div>

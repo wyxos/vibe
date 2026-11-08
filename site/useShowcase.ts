@@ -117,9 +117,18 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
     const element = target.value
     if (!element) return
     const current = ++generation
+    const selectedIds = vibe?.getSelection().selectedIds ?? []
     vibe?.destroy()
     const api = createVibe({
       target: element, layout: 'masonry', infiniteScroll: true, initialPage,
+      selection: {
+        initialIds: selectedIds,
+        getLabel: (item) => (item as ShowcaseItem).title,
+        actions: [{ id: 'copy-selection', label: 'Copy selected IDs',
+          run: async (ids) => { await navigator.clipboard.writeText(ids.map(String).join('\n')) } }],
+      },
+      // The public demo arranges its current session only; it has no saved collection service.
+      ordering: { onReorder: () => {}, collectionKey: () => filter.value },
       reelPreviews: reelPreviews.value,
       reelPreviewPlacement: () => previewPlacement.value,
       reelPreviewCount: () => previewCount.value,
@@ -166,6 +175,7 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
       await latency(180, controller.signal)
       if (request !== controller || controller.signal.aborted) return
       await api?.replacePage(fixturePage(0, value), { resetScroll: true, prepareMedia: true })
+      api?.clearSelection()
     } catch {
       if (!controller.signal.aborted) error.value = 'The collection could not change. Please try again.'
     } finally {

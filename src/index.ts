@@ -1,5 +1,12 @@
 import './vibe.css'
 
+export type {
+  VibeInteractionMode, VibeSelectionApi, VibeSelectionSnapshot,
+  VibeSelectionState, VibeSelectionOptions, VibeSelectionAction,
+  VibeSelectionActionContext, VibeOrderingOptions, VibeReorderRequest,
+  VibeReorderPosition,
+} from './selection'
+
 export { createVibe } from './core/createVibe'
 export type {
   CreateVibeOptions,
