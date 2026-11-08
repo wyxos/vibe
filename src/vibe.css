@@ -1160,8 +1160,7 @@
   cursor: pointer;
 }
 
-.reel-previews button:is(:hover, :focus-visible, [aria-pressed="true"]),
-.reel-preview-boundary button {
+.reel-previews button:is(:hover, :focus-visible, [aria-pressed="true"]) {
   border-color: currentColor;
 }
 
@@ -1255,19 +1254,6 @@
 
 .reel-preview-list svg { width: 1rem; height: 1rem; }
 
-.reel-preview-boundary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.375rem;
-  text-align: center;
-}
-
-.reel-preview-boundary button { padding-inline: 0.5rem; }
-
-.reel-preview-boundary--only { flex: 1; }
-.reel-preview-boundary [role="status"] { display: flex; align-items: center; gap: 0.375rem; }
 .reel-preview-spinner { width: 1rem; height: 1rem; flex: none; animation: vibe-reel-loading 800ms linear infinite; }
 
 @media (prefers-reduced-motion: reduce) {

@@ -470,8 +470,8 @@ defineExpose({
       />
       <Transition name="vibe-reel-previews">
         <ReelPreviews v-if="previews && state" :items="previews" :active-index="activeIndex"
-          :state="state"
-          @select="selectPreview" @load-more="emit('loadMore')" />
+          :state="state" :can-retry-end="canRetryEnd"
+          @select="selectPreview" @load-more="emit('loadMore')" @retry-end="emit('retryEnd')" />
       </Transition>
     </div>
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import EmblaCarousel, { type EmblaCarouselType } from 'embla-carousel'
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, LoaderCircle } from 'lucide-vue-next'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ListPlus, LoaderCircle, RotateCw } from 'lucide-vue-next'
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { resolveMediaType } from '../core/mediaType'
 import { resolveReelPreviewCount, useReelPreviewOptions } from '../core/reelPreviews'
@@ -11,8 +11,9 @@ const props = defineProps<{
   items: readonly VibeItem[]
   activeIndex: number
   state: VibeState
+  canRetryEnd?: boolean
 }>()
-const emit = defineEmits<{ loadMore: []; select: [postId: VibeItemId] }>()
+const emit = defineEmits<{ loadMore: []; retryEnd: []; select: [postId: VibeItemId] }>()
 const counts = [4, 6, 8] as const
 const options = useReelPreviewOptions()
 const countOption = options.reelPreviewCount
@@ -64,23 +65,37 @@ const previews = computed(() => {
     return { id: item.postId, source: { src, type } }
   })
 })
-const boundary = computed(() => {
-  if (props.state.isLoadingMore) return 'loading'
-  if (props.state.next === null) return 'end'
-  if (props.state.loadMoreLocked) return null
-  if (props.state.nextPageError) return 'retry'
-  return 'more'
-})
-const status = computed(() => {
-  if (!boundary.value || browsePage.value < lastPage.value) return null
-  return {
-    loading: 'Loading previews…',
-    end: 'End of feed',
-    retry: 'Could not load more',
-    more: '',
-  }[boundary.value]
-})
-const canLoadMore = computed(() => browsePage.value === lastPage.value && (boundary.value === 'retry' || boundary.value === 'more'))
+const atBoundary = computed(() => browsePage.value === lastPage.value)
+const automaticAttemptLength = ref<number | null>(null)
+const automaticLoad = computed(() => atBoundary.value && props.state.infiniteScroll
+  && !props.state.loadMoreLocked && !props.state.isLoadingMore && !props.state.nextPageError
+  && props.state.next !== null && automaticAttemptLength.value !== props.items.length)
+// Request on arrival at the loaded boundary, then only again if results were added.
+// An empty response leaves manual recovery available instead of repeatedly fetching.
+watch(automaticLoad, async (ready, _, cleanup) => {
+  if (!ready) return
+  let cancelled = false
+  cleanup(() => { cancelled = true })
+  await nextTick()
+  if (cancelled || !automaticLoad.value) return
+  automaticAttemptLength.value = props.items.length
+  emit('loadMore')
+}, { immediate: true, flush: 'post' })
+const loading = computed(() => atBoundary.value && (props.state.isLoadingMore || automaticLoad.value))
+const nextDisabled = computed(() => atBoundary.value && (loading.value || props.state.loadMoreLocked
+  || (props.state.next === null && !props.canRetryEnd)))
+const nextLabel = computed(() => !atBoundary.value ? 'Next previews'
+  : loading.value ? 'Loading previews…' : props.state.nextPageError ? 'Retry loading previews'
+    : props.state.next === null ? 'Check for more previews' : 'Load more previews')
+const nextIcon = computed(() => !atBoundary.value ? (horizontal.value ? ChevronRight : ChevronDown)
+  : loading.value ? LoaderCircle : props.state.nextPageError || props.state.next === null ? RotateCw : ListPlus)
+
+function nextPreviews() {
+  if (nextDisabled.value) return
+  if (!atBoundary.value) movePreviewPage(1)
+  else if (props.state.next === null) emit('retryEnd')
+  else emit('loadMore')
+}
 
 function isolate(event: KeyboardEvent) {
   if (event.key !== 'Escape') event.stopPropagation()
@@ -191,7 +206,7 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
       aria-label="Previous previews" :aria-disabled="browsePage <= firstPage" @click="movePreviewPage(-1)">
       <component :is="horizontal ? ChevronLeft : ChevronUp" aria-hidden="true" />
     </button>
-    <div v-if="previews.length" ref="viewport" class="reel-preview-viewport" :style="{ '--preview-count': selectedCount }">
+    <div ref="viewport" class="reel-preview-viewport" :style="{ '--preview-count': selectedCount }">
       <ol class="reel-preview-list">
         <li v-for="preview in track" :key="preview.id"
           :data-preview-post-id="positions.has(preview.id) ? preview.id : undefined" :aria-hidden="!positions.has(preview.id) || undefined">
@@ -203,16 +218,9 @@ onBeforeUnmount(() => { revision++; slider?.destroy() })
         </li>
       </ol>
     </div>
-    <button v-if="previews.length && firstPage < lastPage" type="button" class="reel-preview-arrow"
-      aria-label="Next previews" :aria-disabled="browsePage >= lastPage" @click="movePreviewPage(1)">
-      <component :is="horizontal ? ChevronRight : ChevronDown" aria-hidden="true" />
+    <button type="button" class="reel-preview-arrow"
+      :aria-label="nextLabel" :title="nextLabel" :aria-disabled="nextDisabled" :aria-busy="loading || undefined" @click="nextPreviews">
+      <component :is="nextIcon" :class="{ 'reel-preview-spinner': loading }" aria-hidden="true" />
     </button>
-    <div v-if="status || canLoadMore" class="reel-preview-boundary" :class="{ 'reel-preview-boundary--only': !previews.length }">
-      <span v-if="status" role="status">
-        <LoaderCircle v-if="boundary === 'loading'" class="reel-preview-spinner" aria-hidden="true" />
-        {{ status }}
-      </span>
-      <button v-if="canLoadMore" type="button" @click="emit('loadMore')">{{ boundary === 'retry' ? 'Retry' : 'Load more' }}</button>
-    </div>
   </aside>
 </template>

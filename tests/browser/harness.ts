@@ -36,7 +36,7 @@ window.__vibe = createVibe({
   target: '#target',
   layout: params.get('layout') === 'reel' ? 'reel'
     : params.get('layout') === 'masonry' ? 'masonry' : 'responsive',
-  infiniteScroll: false,
+  infiniteScroll: params.has('infinite'),
   reelPreviewPlacement: params.get('previewPlacement') === 'bottom' ? 'bottom' : 'right',
   initialPage: { items: initial, next: 'next', total: initial.length + 10 },
   cardHeader: params.has('chrome') ? { component: Header, height: 48, background: 'transparent' } : undefined,
