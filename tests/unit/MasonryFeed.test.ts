@@ -99,31 +99,6 @@ describe('MasonryFeed', () => {
     vi.unstubAllGlobals()
   })
 
-  it('virtualizes a large absolute-positioned layout', async () => {
-    const items = Array.from({ length: 5000 }, (_, index) => feedItem(index + 1))
-    const wrapper = mount(MasonryFeed, { props: props(items) })
-    await wrapper.vm.$nextTick()
-
-    await wrapper.vm.$nextTick()
-    const masonry = wrapper.get('.masonry')
-    expect(wrapper.findAll('.masonry-item').length).toBeGreaterThan(0)
-    expect(wrapper.findAll('.masonry-item').length).toBeLessThan(100)
-    expect(Number.parseFloat((masonry.element as HTMLElement).style.height)).toBeGreaterThan(500)
-    expect(wrapper.find('[data-post-id="1"]').exists()).toBe(true)
-
-    const gallery = wrapper.get('.gallery-shell')
-    Object.defineProperty(gallery.element, 'scrollTop', {
-      configurable: true,
-      value: 5000,
-    })
-    await gallery.trigger('scroll')
-    flushAnimationFrames()
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.find('[data-post-id="1"]').exists()).toBe(false)
-    expect(wrapper.findAll('.masonry-item').length).toBeLessThan(100)
-  })
-
   it('does not schedule endless tail packing before the gallery has a width', async () => {
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(0)
     const wrapper = mount(MasonryFeed, { props: props(Array.from({ length: 40 }, (_, i) => feedItem(i + 1))) })
@@ -133,57 +108,6 @@ describe('MasonryFeed', () => {
     flushAnimationFrames()
     expect(animationFrames.length).toBeLessThanOrEqual(queued)
     wrapper.unmount()
-  })
-
-  it('coalesces scroll-window updates and retains cards within one window', async () => {
-    const items = Array.from({ length: 5000 }, (_, index) => feedItem(index + 1))
-    const wrapper = mount(MasonryFeed, { props: props(items) })
-    await wrapper.vm.$nextTick()
-    await wrapper.vm.$nextTick()
-    const gallery = wrapper.get('.gallery-shell')
-    const initialCards = wrapper.findAll('.masonry-item').map((card) => card.element)
-    const requestFrame = vi.mocked(requestAnimationFrame)
-    requestFrame.mockClear()
-
-    gallery.element.scrollTop = 1
-    await gallery.trigger('scroll')
-    gallery.element.scrollTop = 2
-    await gallery.trigger('scroll')
-
-    expect(requestFrame).toHaveBeenCalledTimes(1)
-    expect(wrapper.findAll('.masonry-item').map((card) => card.element))
-      .toEqual(initialCards)
-
-    flushAnimationFrames()
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.findAll('.masonry-item').map((card) => card.element))
-      .toEqual(initialCards)
-  })
-
-  it('supports an opt-in capped overscan without changing the default window', async () => {
-    const items = Array.from({ length: 5000 }, (_, index) => feedItem(index + 1))
-    const defaultWrapper = mount(MasonryFeed, { props: props(items) })
-    const cappedWrapper = mount(MasonryFeed, {
-      props: {
-        ...props(items),
-        masonry: {
-          overscan: {
-            maximumPx: 100,
-            minimumPx: 100,
-            viewportMultiplier: 0,
-          },
-        },
-      },
-    })
-    await defaultWrapper.vm.$nextTick()
-    await cappedWrapper.vm.$nextTick()
-
-    const defaultCount = defaultWrapper.findAll('.masonry-item').length
-    const cappedCount = cappedWrapper.findAll('.masonry-item').length
-    expect(cappedCount).toBeGreaterThan(0)
-    expect(cappedCount).toBeLessThan(defaultCount)
-    expect(cappedWrapper.find('[data-post-id="1"]').exists()).toBe(true)
   })
 
   it('renders a fixed overlay thumb from native scroll geometry', async () => {

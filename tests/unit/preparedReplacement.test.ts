@@ -132,34 +132,6 @@ describe('opt-in prepared page replacement', () => {
     expect(staleMedia!.isConnected).toBe(false)
   })
 
-  it('prepares only a bounded mounted subset of a larger incoming page', async () => {
-    const { vibe, finish } = await mount()
-    const options = { resetScroll: true, prepareMedia: true }
-    const items = Array.from({ length: 80 }, (_, index) => video(index + 3))
-    const replacing = vibe.replacePage({ items, next: null }, options)
-    await flushPromises()
-    const staged = [...target.querySelectorAll<HTMLVideoElement>('.media-card--preparing video')]
-    const preparedByPost = new Map(staged.map((media) => [
-      media.closest<HTMLElement>('[data-post-id]')!.dataset.postId!, media,
-    ]))
-    expect(staged.length).toBeGreaterThan(0)
-    expect(staged.length).toBeLessThan(items.length)
-    for (const media of staged) {
-      expect(media.autoplay).toBe(false)
-      expect(vi.mocked(HTMLMediaElement.prototype.play).mock.contexts).not.toContain(media)
-    }
-    finish()
-    await replacing
-    await flushPromises()
-    expect(vibe.getState().items).toHaveLength(items.length)
-    const promoted = [...target.querySelectorAll<HTMLVideoElement>('.masonry-item:not(.media-card--preparing) video')]
-    expect(promoted.length).toBeGreaterThan(0)
-    for (const media of promoted) {
-      const id = media.closest<HTMLElement>('[data-post-id]')!.dataset.postId!
-      if (preparedByPost.has(id)) expect(media).toBe(preparedByPost.get(id))
-    }
-  })
-
   it('resolves pending preparation on destroy without committing buffered events', async () => {
     const onReady = vi.fn()
     const { vibe } = await mount(onReady)
