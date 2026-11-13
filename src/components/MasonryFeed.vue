@@ -23,12 +23,11 @@ import { usePreparedMasonryReplacement } from './usePreparedMasonryReplacement'
 import { useMasonryMediaVisibility } from './useMasonryMediaVisibility'
 import { useSettledMasonryFeedLayout } from './useSettledMasonryFeedLayout'
 import { useMasonrySelection } from './useMasonrySelection'
-
+import { useMasonryScrollMedia } from './useMasonryScrollMedia'
 const MIN_GAP = 6
 const MAX_GAP = 12
 const REMOVAL_REFLOW_SUPPRESSION_MS = 250
 let suppressAutomaticLoadUntil = 0
-
 const props = withDefaults(defineProps<MasonryFeedProps>(), {
   leavingPostIds: () => new Set(),
   removalDelays: () => new Map(),
@@ -49,6 +48,7 @@ const galleryElement = shallowRef<HTMLElement | null>(null)
 const galleryId = `vibe-masonry-${useId()}`
 const masonryElement = shallowRef<HTMLElement | null>(null)
 const scrollbarDragging = shallowRef(false)
+const scrolling = useMasonryScrollMedia(galleryElement, measureViewport)
 const masonryWidth = shallowRef(0)
 const masonryGap = shallowRef(MIN_GAP)
 const galleryViewportHeight = shallowRef(0)
@@ -448,8 +448,8 @@ defineExpose({ getScrollElement, loadIfNearBottom, prepareItemReplacement: repla
           :card-footer="cardFooter"
           :card-header="cardHeader"
           :media-card="mediaCard"
-          :defer-media="scrollbarDragging || (!preparing && !viewportIndices.has(index))"
-          :in-viewport="!scrollbarDragging && !preparing && viewportIndices.has(index)"
+          :defer-media="scrollbarDragging || scrolling || (!preparing && !viewportIndices.has(index))"
+          :in-viewport="!scrollbarDragging && !scrolling && !preparing && viewportIndices.has(index)"
           :index="index"
           :item="item"
           :item-style="preparing ? preparedStyle : itemStyle(index)"
