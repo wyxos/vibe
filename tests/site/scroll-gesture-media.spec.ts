@@ -20,6 +20,13 @@ for (const input of ['wheel', 'touch'] as const) {
       const firstVideo = feed.locator('[data-post-id="showcase-orbit-all-1"] video')
       await expect.poll(() => firstVideo.evaluate(element => !element.paused && element.currentTime > 0)).toBe(true)
       const video = await firstVideo.elementHandle()
+      await feed.evaluate(element => {
+        element.addEventListener('transitionrun', event => {
+          if (event.propertyName === 'transform' && (event.target as Element).matches('.media-card-frame')) {
+            element.dataset.slidMedia = 'true'
+          }
+        })
+      })
       await video.evaluate(element => {
         element.addEventListener('pause', () => {
           element.dataset.pausedWithFrame = String(element.isConnected
@@ -63,6 +70,7 @@ for (const input of ['wheel', 'touch'] as const) {
         const video = node as HTMLVideoElement
         return !video.paused && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
       }))).toBe(true)
+      expect(await feed.getAttribute('data-slid-media')).toBeNull()
       await capture(page, `scroll-gesture-media-${input}-settled`)
       console.log(JSON.stringify({ input, loaded: 198, requestsWhileScrolling: 0, settledRequests: requests.length }))
     })

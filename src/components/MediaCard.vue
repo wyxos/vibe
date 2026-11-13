@@ -306,7 +306,7 @@ watch(
           :name="`media-slide-${mediaDirection}`"
         >
           <div
-            :key="`${item.postId}:${mediaItem.src}:${mediaSource ?? 'preview'}:${sourceGeneration}`"
+            :key="normalizedMediaIndex"
             class="media-card-frame"
             :data-media-index="normalizedMediaIndex"
           >
@@ -330,7 +330,7 @@ watch(
 
             <audio
               v-if="isAudio && layout === 'reel'"
-              ref="mediaElement"
+              :key="`audio:${sourceGeneration}`" ref="mediaElement"
               :data-source-generation="sourceGeneration"
               class="media-audio-element"
               :src="mediaSrc"
@@ -363,7 +363,7 @@ watch(
             >
               <img
                 v-if="visibleAudioCover && sourceIdentity"
-                :key="audioCoverIdentity"
+                :key="`${audioCoverIdentity}:${sourceGeneration}`"
                 :data-cover-identity="audioCoverIdentity"
                 :data-source-generation="sourceGeneration"
                 class="media-audio-cover"
@@ -384,7 +384,7 @@ watch(
 
             <video
               v-else-if="mediaIsTimed && sourceIdentity"
-              ref="mediaElement"
+              :key="`video:${sourceGeneration}`" ref="mediaElement"
               :data-source-generation="sourceGeneration"
               class="media-preview"
               :class="{
@@ -414,7 +414,7 @@ watch(
 
             <img
               v-else-if="!isAudio && sourceIdentity"
-              ref="imageElement"
+              :key="`image:${sourceGeneration}`" ref="imageElement"
               :data-source-generation="sourceGeneration"
               class="media-preview"
               :class="{ 'media-preview--ready': effectivePreviewState === 'ready' }"
