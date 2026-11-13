@@ -44,6 +44,7 @@ const props = defineProps<{
   advanceOnMediaEnd?: boolean
   cardFooter?: VibeCardRegion
   cardHeader?: VibeCardRegion
+  deferVideo?: boolean
   entering: boolean
   fetchPriority: 'high' | 'low'
   inViewport?: boolean
@@ -109,6 +110,7 @@ const mediaType = computed(() => resolveMediaType(
 ))
 const mediaWidth = computed(() => mediaVariant.value.width)
 const mediaHeight = computed(() => mediaVariant.value.height)
+const videoDeferred = computed(() => props.deferVideo === true && mediaType.value === 'video')
 const audioCover = computed(() => audioCoverVariant(mediaItem.value))
 const audioCoverIdentity = computed(() => `${props.item.postId}:${normalizedMediaIndex.value}:${audioCover.value?.src ?? ''}`)
 const audioCoverFailed = shallowRef(false)
@@ -116,7 +118,7 @@ const visibleAudioCover = computed(() => audioCoverFailed.value ? null : audioCo
 const { effectivePreviewState, failSourceAttempt, imageElement, markSourceReady,
   noteSourceActivity, retrySource, retrying, sourceGeneration, mediaElement }
   = useMediaReadiness({
-  identity: () => `${props.item.postId}:${normalizedMediaIndex.value}:${props.mediaSource ?? 'preview'}:${mediaSrc.value}:${mediaType.value ?? ''}`,
+  identity: () => videoDeferred.value ? null : `${props.item.postId}:${normalizedMediaIndex.value}:${props.mediaSource ?? 'preview'}:${mediaSrc.value}:${mediaType.value ?? ''}`,
   mediaIndex: () => normalizedMediaIndex.value,
   onError: (mediaIndex, confirmedFailure) => {
     emit('error', mediaIndex)
@@ -164,7 +166,7 @@ const {
   setPlaybackRate,
 } = useTimedMediaCard({
   active: () => props.active,
-  inViewport: () => props.inViewport === true && !videoMotionBlocked.value,
+  inViewport: () => props.inViewport === true && !videoDeferred.value && !videoMotionBlocked.value,
   layout: () => props.layout,
   mediaCard: () => props.mediaCard,
   mediaElement,
@@ -191,7 +193,6 @@ const {
   mediaIndex: () => normalizedMediaIndex.value,
   onChange: (mediaIndex) => emit('mediaChange', mediaIndex),
 })
-
 const { imageLoading, mediaIsTimed, timedMediaPreload } = useMediaLoading({ active: () => props.active, fetchPriority: () => props.fetchPriority, layout: () => props.layout, mediaSource: () => mediaSrc.value, mediaType: () => mediaType.value, mediaElement, playbackAllowed: () => timedMediaPlaybackAllowed.value, preparing: () => props.preparing === true })
 const usesStationaryReelControls = computed(() => props.layout === 'reel'
   && props.stationaryReelControls === true)
@@ -309,7 +310,7 @@ watch(
             :data-media-index="normalizedMediaIndex"
           >
             <div
-              v-if="effectivePreviewState === 'loading'"
+              v-if="!videoDeferred && effectivePreviewState === 'loading'"
               data-test="media-loading"
               class="media-loading"
               aria-hidden="true"
@@ -318,7 +319,7 @@ watch(
             </div>
 
             <MediaError
-              v-else-if="effectivePreviewState === 'error'"
+              v-else-if="!videoDeferred && effectivePreviewState === 'error'"
               :component="mediaCard?.error?.component"
               :label="mediaErrorLabel(mediaSrc)"
               :retrying="retrying"
@@ -381,7 +382,7 @@ watch(
             </button>
 
             <video
-              v-else-if="mediaIsTimed"
+              v-else-if="mediaIsTimed && !videoDeferred"
               ref="mediaElement"
               :data-source-generation="sourceGeneration"
               class="media-preview"
@@ -411,7 +412,7 @@ watch(
             />
 
             <img
-              v-else-if="!isAudio"
+              v-else-if="!isAudio && !videoDeferred"
               ref="imageElement"
               :data-source-generation="sourceGeneration"
               class="media-preview"

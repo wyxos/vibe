@@ -23,6 +23,7 @@ const props = defineProps<{
   scrollElement: HTMLElement | null
   suspended?: boolean
 }>()
+const emit = defineEmits<{ dragChange: [dragging: boolean] }>()
 
 const emptyGeometry: ScrollbarGeometry = {
   maximumScrollPosition: 0,
@@ -139,7 +140,7 @@ function onTrackPointerDown(event: PointerEvent): void {
 }
 
 function onThumbPointerDown(event: PointerEvent): void {
-  if (!isVisible.value) return
+  if (!isVisible.value || isDragging.value || event.button > 0) return
   event.preventDefault()
   event.stopPropagation()
   const thumb = event.currentTarget as HTMLElement
@@ -148,6 +149,7 @@ function onThumbPointerDown(event: PointerEvent): void {
   dragStartPosition = event.clientY
   dragStartScrollPosition = props.scrollElement?.scrollTop ?? 0
   isDragging.value = true
+  emit('dragChange', true)
   isInteracting.value = true
   if (interactionTimer !== null) clearTimeout(interactionTimer)
   interactionTimer = null
@@ -165,9 +167,11 @@ function onThumbPointerMove(event: PointerEvent): void {
 }
 
 function finishDragging(event: PointerEvent): void {
-  if (!isDragging.value || event.pointerId !== dragPointerId) return
-  const thumb = event.currentTarget as HTMLElement
-  thumb.releasePointerCapture?.(event.pointerId)
+  if (event.pointerId === dragPointerId) endDrag()
+}
+
+function endDrag(): void {
+  if (dragPointerId === null) return
   dragPointerId = null
   isDragging.value = false
   if (pendingMeasurement) {
@@ -175,6 +179,7 @@ function finishDragging(event: PointerEvent): void {
     measure('content')
   }
   releaseInteractionSoon()
+  emit('dragChange', false)
 }
 
 function onKeydown(event: KeyboardEvent): void {
@@ -238,6 +243,7 @@ watch(
   () => props.contentSize,
   () => { void nextTick(() => measure('content')) },
 )
+watch(isVisible, (visible) => { if (!visible) endDrag() })
 
 onBeforeUnmount(() => {
   props.scrollElement?.removeEventListener('scroll', onScroll)
@@ -274,6 +280,7 @@ onBeforeUnmount(() => {
       :style="thumbStyle"
       :tabindex="isVisible ? 0 : -1"
       @keydown="onKeydown"
+      @lostpointercapture="finishDragging"
       @pointercancel="finishDragging"
       @pointerdown="onThumbPointerDown"
       @pointermove="onThumbPointerMove"

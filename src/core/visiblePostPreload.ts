@@ -119,7 +119,8 @@ function start(entry: PreloadEntry): void {
     active -= 1
     if (entry.timed) activeTimed -= 1
     clearElement(entry)
-    pump()
+    // Releasing a viewport can cancel several owners in the same render.
+    queueMicrotask(pump)
   }
 
   if (entry.timed) {

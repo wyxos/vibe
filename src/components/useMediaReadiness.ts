@@ -9,7 +9,7 @@ import {
 import type { MediaPreviewState } from '../core/mediaPreview'
 
 interface MediaReadinessOptions {
-  identity: () => string
+  identity: () => string | null
   mediaIndex: () => number
   onError: (mediaIndex: number, confirmedFailure: boolean) => void
   onReady: (mediaIndex: number) => void
@@ -61,7 +61,7 @@ export function useMediaReadiness(options: MediaReadinessOptions) {
   }
 
   function reconcileCachedSource(): void {
-    if (disposed) return
+    if (disposed || options.identity() === null) return
     const image = imageElement.value
     if (image?.complete) {
       if (image.naturalWidth > 0) markSourceReady()
@@ -77,7 +77,7 @@ export function useMediaReadiness(options: MediaReadinessOptions) {
   }
 
   function failSourceAttempt(event?: Event, confirmedFailure = false): void {
-    if (disposed) return
+    if (disposed || options.identity() === null) return
     if (event && !eventIsCurrent(event)) return
     if (terminalError.value && !retrying.value && (!event || failureReported)) return
     clearWatchdog()
@@ -112,7 +112,7 @@ export function useMediaReadiness(options: MediaReadinessOptions) {
     if (eventIsCurrent(event) && sourcePending.value) armWatchdog()
   }
 
-  watch(options.identity, () => {
+  watch(options.identity, (identity) => {
     clearWatchdog()
     sourceGeneration.value += 1
     failureReported = false
@@ -121,7 +121,7 @@ export function useMediaReadiness(options: MediaReadinessOptions) {
     terminalError.value = false
     retrying.value = false
     initialized = true
-    void nextTick(reconcileCachedSource)
+    if (identity !== null) void nextTick(reconcileCachedSource)
   }, { immediate: true })
 
   onBeforeUnmount(() => { disposed = true; clearWatchdog() })

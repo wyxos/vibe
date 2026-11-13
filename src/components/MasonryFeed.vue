@@ -48,6 +48,7 @@ const emit = defineEmits<{
 const galleryElement = shallowRef<HTMLElement | null>(null)
 const galleryId = `vibe-masonry-${useId()}`
 const masonryElement = shallowRef<HTMLElement | null>(null)
+const scrollbarDragging = shallowRef(false)
 const masonryWidth = shallowRef(0)
 const masonryGap = shallowRef(MIN_GAP)
 const galleryViewportHeight = shallowRef(0)
@@ -447,7 +448,8 @@ defineExpose({ getScrollElement, loadIfNearBottom, prepareItemReplacement: repla
           :card-footer="cardFooter"
           :card-header="cardHeader"
           :media-card="mediaCard"
-          :in-viewport="!preparing && viewportIndices.has(index)"
+          :defer-video="scrollbarDragging || (!preparing && !viewportIndices.has(index))"
+          :in-viewport="!scrollbarDragging && !preparing && viewportIndices.has(index)"
           :index="index"
           :item="item"
           :item-style="preparing ? preparedStyle : itemStyle(index)"
@@ -492,6 +494,7 @@ defineExpose({ getScrollElement, loadIfNearBottom, prepareItemReplacement: repla
       :controls-id="galleryId"
       :scroll-element="galleryElement"
       :suspended="suspended"
+      @drag-change="dragging => { if (!dragging) measureViewport(); scrollbarDragging = dragging }"
     />
   </div>
 </template>
