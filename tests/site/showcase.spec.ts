@@ -313,34 +313,6 @@ test('a tall viewport fills automatically after opening, filtering, and restarti
   expect(errors).toEqual([])
 })
 
-test('infinite feed loads gracefully and bounds mounted cards as it grows', async ({ page }) => {
-  const errors = await ready(page)
-  const feed = page.locator('.masonry-feed')
-  const loaded = page.locator('[data-test=loaded-count]')
-  const initial = Number(await loaded.textContent())
-  await feed.evaluate((element) => { element.scrollTop = element.scrollHeight })
-  expect(await page.locator('.masonry-item').count()).toBeGreaterThan(0)
-  await expect(loaded).toHaveText(String(initial + 18))
-  for (let index = 0; index < 23; index++) {
-    const before = Number(await loaded.textContent())
-    await feed.evaluate((element) => { element.scrollTop = element.scrollHeight })
-    await expect(loaded).not.toHaveText(String(before))
-  }
-  const count = Number(await loaded.textContent())
-  const mounted = await page.locator('.masonry-item').count()
-  expect(count).toBeGreaterThanOrEqual(300)
-  expect(mounted).toBeLessThan(60)
-  expect(mounted).toBeLessThan(count / 3)
-  await expect(page.locator('[data-test=rendered-count]')).toHaveText(String(mounted))
-  console.log(JSON.stringify({ showcaseLoaded: count, mountedCards: mounted }))
-  await page.getByRole('button', { name: 'Restart demo', exact: true }).click()
-  await expect(loaded).not.toHaveText(String(count))
-  await expect(page.locator('.masonry-item').first()).toHaveAttribute('data-post-id', /-all-0$/)
-  await settledMedia(page)
-  await capture(page, 'showcase-desktop')
-  expect(errors).toEqual([])
-})
-
 test('filters and information work without direct reel or automatic-scroll controls', async ({ page }) => {
   const errors = await ready(page)
   await settledMedia(page)

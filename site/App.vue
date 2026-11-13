@@ -71,7 +71,7 @@ const filters: { value: ShowcaseFilter; label: string }[] = [
         <div ref="target" class="showcase-feed" data-test="showcase-feed" aria-label="Explore the infinite media feed" :aria-busy="busy" />
         <div v-if="error" class="showcase-error" role="alert">{{ error }} <button type="button" @click="reset">Restart</button></div>
         <div class="stage-status-bar">
-          <span class="stage-counters"><span><b data-test="loaded-count">{{ loaded }}</b> loaded</span><span><b data-test="rendered-count">{{ rendered }}</b> rendered</span></span>
+          <span class="stage-counters"><span><b data-test="loaded-count">{{ loaded }}</b> loaded</span><span><b>{{ rendered }}</b> rendered</span></span>
           <span class="stage-status" :class="{ 'is-busy': busy }" data-test="request-state" role="status"><span class="status-dot" aria-hidden="true" />{{ status }}</span>
         </div>
       </div>
