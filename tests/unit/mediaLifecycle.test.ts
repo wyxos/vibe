@@ -97,7 +97,7 @@ describe('media lifecycle callbacks', () => {
     expect(onMediaReady).not.toHaveBeenCalled()
   })
 
-  it('reports loaded masonry media only after it enters the real viewport', async () => {
+  it('loads new masonry media only after it enters the real viewport', async () => {
     const onMediaReady = vi.fn<(context: VibeMediaLifecycleContext) => void>()
     const onMediaVisible = vi.fn<(context: VibeMediaLifecycleContext) => void>()
     const instance = track(createVibe({
@@ -112,11 +112,9 @@ describe('media lifecycle callbacks', () => {
     await instance.mount()
     await flushPromises()
 
-    const offscreenImage = target.querySelector<HTMLElement>('[data-post-id="5"] img')!
-    offscreenImage.dispatchEvent(new Event('load'))
-    await flushPromises()
-
-    expect(onMediaReady).toHaveBeenCalledOnce()
+    expect(target.querySelector('[data-post-id="5"]')).not.toBeNull()
+    expect(target.querySelector('[data-post-id="5"] img')).toBeNull()
+    expect(onMediaReady).not.toHaveBeenCalled()
     expect(onMediaVisible).not.toHaveBeenCalled()
 
     const gallery = target.querySelector<HTMLElement>('.masonry-feed')!
@@ -124,6 +122,11 @@ describe('media lifecycle callbacks', () => {
     gallery.dispatchEvent(new Event('scroll'))
     await flushPromises()
 
+    expect(onMediaVisible).not.toHaveBeenCalled()
+    target.querySelector<HTMLElement>('[data-post-id="5"] img')!.dispatchEvent(new Event('load'))
+    await flushPromises()
+
+    expect(onMediaReady).toHaveBeenCalledOnce()
     expect(onMediaVisible).toHaveBeenCalledOnce()
     expect(onMediaVisible.mock.calls[0]?.[0]).toMatchObject({
       layout: 'masonry',

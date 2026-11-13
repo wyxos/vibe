@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { MediaFailure } from '../core/mediaFailure'
 import { ChevronLeft, ChevronRight, Disc3 } from 'lucide-vue-next'
 import { computed, nextTick, shallowRef, watch, type CSSProperties } from 'vue'
 import SelectionCardControls from './SelectionCardControls.vue'
@@ -12,6 +11,7 @@ import {
   mediaPlaybackVariantForSource,
   mediaVariantForSource,
 } from '../core/mediaAsset'
+import type { MediaFailure } from '../core/mediaFailure'
 import { resolveMediaType } from '../core/mediaType'
 import {
   mediaErrorLabel,
@@ -44,7 +44,7 @@ const props = defineProps<{
   advanceOnMediaEnd?: boolean
   cardFooter?: VibeCardRegion
   cardHeader?: VibeCardRegion
-  deferVideo?: boolean
+  deferMedia?: boolean
   entering: boolean
   fetchPriority: 'high' | 'low'
   inViewport?: boolean
@@ -110,15 +110,18 @@ const mediaType = computed(() => resolveMediaType(
 ))
 const mediaWidth = computed(() => mediaVariant.value.width)
 const mediaHeight = computed(() => mediaVariant.value.height)
-const videoDeferred = computed(() => props.deferVideo === true && mediaType.value === 'video')
 const audioCover = computed(() => audioCoverVariant(mediaItem.value))
 const audioCoverIdentity = computed(() => `${props.item.postId}:${normalizedMediaIndex.value}:${audioCover.value?.src ?? ''}`)
+const sourceIdentity = computed<string | null>((previous) => {
+  const identity = JSON.stringify([audioCoverIdentity.value, props.mediaSource ?? 'preview', mediaSrc.value, mediaType.value])
+  return !props.deferMedia || previous === identity ? identity : null
+})
 const audioCoverFailed = shallowRef(false)
 const visibleAudioCover = computed(() => audioCoverFailed.value ? null : audioCover.value)
 const { effectivePreviewState, failSourceAttempt, imageElement, markSourceReady,
   noteSourceActivity, retrySource, retrying, sourceGeneration, mediaElement }
   = useMediaReadiness({
-  identity: () => videoDeferred.value ? null : `${props.item.postId}:${normalizedMediaIndex.value}:${props.mediaSource ?? 'preview'}:${mediaSrc.value}:${mediaType.value ?? ''}`,
+  identity: () => sourceIdentity.value,
   mediaIndex: () => normalizedMediaIndex.value,
   onError: (mediaIndex, confirmedFailure) => {
     emit('error', mediaIndex)
@@ -166,7 +169,7 @@ const {
   setPlaybackRate,
 } = useTimedMediaCard({
   active: () => props.active,
-  inViewport: () => props.inViewport === true && !videoDeferred.value && !videoMotionBlocked.value,
+  inViewport: () => props.inViewport === true && !videoMotionBlocked.value,
   layout: () => props.layout,
   mediaCard: () => props.mediaCard,
   mediaElement,
@@ -238,7 +241,6 @@ function onAudioCoverError(event: Event): void {
   audioCoverFailed.value = true
   if (props.layout === 'masonry') markSourceReady()
 }
-
 watch(audioCoverIdentity, () => {
   audioCoverFailed.value = false
 })
@@ -249,7 +251,6 @@ watch(
   },
   { immediate: true },
 )
-
 </script>
 <template>
   <article ref="cardElement"
@@ -310,7 +311,7 @@ watch(
             :data-media-index="normalizedMediaIndex"
           >
             <div
-              v-if="!videoDeferred && effectivePreviewState === 'loading'"
+              v-if="sourceIdentity && effectivePreviewState === 'loading'"
               data-test="media-loading"
               class="media-loading"
               aria-hidden="true"
@@ -319,7 +320,7 @@ watch(
             </div>
 
             <MediaError
-              v-else-if="!videoDeferred && effectivePreviewState === 'error'"
+              v-else-if="sourceIdentity && effectivePreviewState === 'error'"
               :component="mediaCard?.error?.component"
               :label="mediaErrorLabel(mediaSrc)"
               :retrying="retrying"
@@ -361,7 +362,7 @@ watch(
               @click="onReelMediaClick"
             >
               <img
-                v-if="visibleAudioCover"
+                v-if="visibleAudioCover && sourceIdentity"
                 :key="audioCoverIdentity"
                 :data-cover-identity="audioCoverIdentity"
                 :data-source-generation="sourceGeneration"
@@ -382,7 +383,7 @@ watch(
             </button>
 
             <video
-              v-else-if="mediaIsTimed && !videoDeferred"
+              v-else-if="mediaIsTimed && sourceIdentity"
               ref="mediaElement"
               :data-source-generation="sourceGeneration"
               class="media-preview"
@@ -412,7 +413,7 @@ watch(
             />
 
             <img
-              v-else-if="!isAudio && !videoDeferred"
+              v-else-if="!isAudio && sourceIdentity"
               ref="imageElement"
               :data-source-generation="sourceGeneration"
               class="media-preview"
@@ -430,7 +431,6 @@ watch(
             >
           </div>
         </Transition>
-
         <MediaContextOverlay :item="item" :media-card="mediaCard" :media-index="normalizedMediaIndex" :media-item="mediaItem" :media-source="mediaSource ?? 'preview'" />
         <button v-if="zoom.zoomed.value" type="button" class="vibe-media-fit" aria-label="Fit media" @click.stop="zoom.fit">Fit</button>
 

@@ -448,7 +448,7 @@ defineExpose({ getScrollElement, loadIfNearBottom, prepareItemReplacement: repla
           :card-footer="cardFooter"
           :card-header="cardHeader"
           :media-card="mediaCard"
-          :defer-video="scrollbarDragging || (!preparing && !viewportIndices.has(index))"
+          :defer-media="scrollbarDragging || (!preparing && !viewportIndices.has(index))"
           :in-viewport="!scrollbarDragging && !preparing && viewportIndices.has(index)"
           :index="index"
           :item="item"
