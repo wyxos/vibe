@@ -13,6 +13,11 @@ declare global {
     __state: VibeState
     __requests: number
     __resolvePage?: () => void
+    __masonryObservations: {
+      changes: boolean[]
+      fullyVisible: Array<{ postId: string | number, scrolling: boolean }>
+      pages: boolean[]
+    }
   }
 }
 
@@ -32,6 +37,8 @@ if (scenario === 'error') {
   })
 }
 window.__requests = 0
+window.__masonryObservations = { changes: [], fullyVisible: [], pages: [] }
+let scrolling = false
 window.__vibe = createVibe({
   target: '#target',
   layout: params.get('layout') === 'reel' ? 'reel'
@@ -67,8 +74,16 @@ window.__vibe = createVibe({
     minColumnWidth: 240,
   },
   onStateChange: (state: VibeState) => { window.__state = state },
+  onMasonryScrollChange: (active) => {
+    scrolling = active
+    window.__masonryObservations.changes.push(active)
+  },
+  onMediaFullyVisible: ({ postId }) => {
+    window.__masonryObservations.fullyVisible.push({ postId, scrolling })
+  },
   loadPage: async () => {
     window.__requests++
+    window.__masonryObservations.pages.push(scrolling)
     if (params.has('defer')) await new Promise<void>((resolve) => { window.__resolvePage = resolve })
     return { items: items(100, 10), next: null, total: initial.length + 10 }
   },

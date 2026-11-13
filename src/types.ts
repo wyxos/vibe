@@ -426,6 +426,8 @@ export interface CreateVibeOptions {
   loadPage?: VibePageLoader
   mediaCard?: VibeMediaCardOptions
   masonry?: import('./core/masonryOptions').VibeMasonryOptions
+  /** Defer background work during user scrolling, then resume at the settled viewport. */
+  onMasonryScrollChange?: (scrolling: boolean) => void
   onMediaFullyVisible?: (context: VibeMediaLifecycleContext) => void
   onMediaError?: (context: VibeMediaErrorContext) => void
   onMediaReady?: (context: VibeMediaLifecycleContext) => void

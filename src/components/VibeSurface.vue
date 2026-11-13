@@ -61,6 +61,7 @@ const emit = defineEmits<{
   activeReelChange: [postId: VibeItemId]
   closeReel: []
   loadMore: []
+  masonryScrollChange: [scrolling: boolean]
   mediaFullyVisible: [context: VibeMediaLifecycleContext]
   mediaError: [context: VibeMediaErrorContext]
   mediaReady: [context: VibeMediaLifecycleContext]
@@ -420,6 +421,7 @@ defineExpose({
         @media-change="setMediaIndex"
         @ready="markPreviewReady"
         @retry-end="emit('retryEnd')"
+        @scroll-change="emit('masonryScrollChange', $event)"
         @visible="markMasonryVisible"
       />
 

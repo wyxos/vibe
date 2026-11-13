@@ -95,6 +95,7 @@ describe('MasonryFeed', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
   })
@@ -343,6 +344,79 @@ describe('MasonryFeed', () => {
     expect(wrapper.find('[data-test="load-more"]').exists()).toBe(false)
     await gallery.trigger('scroll')
     expect(wrapper.emitted('loadMore')).toEqual([[]])
+  })
+
+  it('reports ready media and automatic pagination only at the settled viewport', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    galleryClientHeight = 450
+    const items = Array.from({ length: 12 }, (_, index) => feedItem(index + 1))
+    const wrapper = mount(MasonryFeed, { props: {
+      ...props(items), hasNext: true,
+      previewStates: new Map([['7:0', 'ready'], ['9:0', 'ready']]),
+    } })
+    const gallery = wrapper.get<HTMLElement>('.gallery-shell')
+    const masonry = wrapper.get<HTMLElement>('.masonry')
+    vi.spyOn(masonry.element, 'getBoundingClientRect')
+      .mockImplementation(() => new DOMRect(0, -gallery.element.scrollTop))
+    await wrapper.vm.$nextTick()
+
+    async function wheelTo(scrollTop: number) {
+      await gallery.trigger('wheel', { deltaY: scrollTop - gallery.element.scrollTop })
+      gallery.element.scrollTop = scrollTop
+      await gallery.trigger('scroll')
+      flushAnimationFrames()
+      await wrapper.vm.$nextTick()
+    }
+
+    await wheelTo(1400)
+    await wheelTo(890)
+    expect(wrapper.emitted('visible')).toBeUndefined()
+    expect(wrapper.emitted('fullyVisible')).toBeUndefined()
+    expect(wrapper.emitted('loadMore')).toBeUndefined()
+
+    await vi.advanceTimersByTimeAsync(160)
+    expect(wrapper.emitted('visible')).toEqual([[7, 0]])
+    expect(wrapper.emitted('fullyVisible')).toEqual([[7, 0]])
+    expect(wrapper.emitted('loadMore')).toBeUndefined()
+
+    await wheelTo(1400)
+    expect(wrapper.emitted('loadMore')).toBeUndefined()
+    await vi.advanceTimersByTimeAsync(160)
+    expect(wrapper.emitted('loadMore')).toEqual([[]])
+    wrapper.unmount()
+  })
+
+  it('does not preload a retained video as it returns to view during a wheel gesture', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const load = vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {})
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+    const videoItem = { ...feedItem(1), preview: { ...feedItem(1).preview,
+      src: 'https://example.com/preview.mp4', type: 'video' as const } }
+    const wrapper = mount(MasonryFeed, { props: props([videoItem, feedItem(2), feedItem(3), feedItem(4)]) })
+    const gallery = wrapper.get<HTMLElement>('.gallery-shell')
+    await wrapper.vm.$nextTick()
+    const video = wrapper.get('video').element
+    gallery.element.scrollTop = 800
+    await gallery.trigger('scroll')
+    flushAnimationFrames()
+    await wrapper.vm.$nextTick()
+    expect(video.preload).toBe('none')
+
+    await gallery.trigger('wheel', { deltaY: -800 })
+    gallery.element.scrollTop = 0
+    await gallery.trigger('scroll')
+    flushAnimationFrames()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('video').element).toBe(video)
+    expect(video.preload).toBe('none')
+    expect(load).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(160)
+    expect(wrapper.get('video').element).toBe(video)
+    expect(video.preload).toBe('auto')
+    expect(load).not.toHaveBeenCalled()
+    wrapper.unmount()
   })
 
   it('suppresses removal reflow loading but allows a later deliberate scroll', async () => {

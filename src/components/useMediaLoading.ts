@@ -13,6 +13,7 @@ interface MediaLoadingOptions {
   mediaElement: ShallowRef<HTMLMediaElement | null>
   playbackAllowed: () => boolean
   preparing?: () => boolean
+  scrolling?: () => boolean
 }
 
 export function useMediaLoading(options: MediaLoadingOptions) {
@@ -23,6 +24,7 @@ export function useMediaLoading(options: MediaLoadingOptions) {
       : 'eager' as const
   ))
   const timedMediaPreload = computed(() => {
+    if (options.scrolling?.()) return 'none' as const
     if (options.preparing?.()) return 'auto' as const
     if (options.layout() === 'reel' && !options.active()) return 'none' as const
     if (options.fetchPriority() === 'high') return 'auto' as const

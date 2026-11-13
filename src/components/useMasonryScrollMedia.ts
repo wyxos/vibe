@@ -1,6 +1,7 @@
 import { shallowRef, watch, type Ref } from 'vue'
 
 const SCROLL_IDLE_MS = 160
+const navigationKeys = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '])
 
 export function useMasonryScrollMedia(
   gallery: Ref<HTMLElement | null>,
@@ -8,7 +9,7 @@ export function useMasonryScrollMedia(
 ) {
   const scrolling = shallowRef(false)
   let scrollbarHeld = false
-  let input: 'wheel' | 'touch' | null = null
+  let input: 'wheel' | 'touch' | 'navigation' | null = null
   let touchHeld = false
   let touchScrolled = false
   let touchListeners: AbortController | undefined
@@ -20,8 +21,8 @@ export function useMasonryScrollMedia(
     touchHeld = false
     input = null
     if (!scrolling.value) return
-    onSettled()
     scrolling.value = false
+    onSettled()
   }
 
   function waitForIdle(): void {
@@ -41,17 +42,35 @@ export function useMasonryScrollMedia(
     }
   }
 
+  function onScrollIntent(): void {
+    input = 'navigation'
+    waitForIdle()
+  }
+
+  function recordScroll(): void {
+    if (!input && !scrollbarHeld) return
+    scrolling.value = true
+    if (input === 'touch') touchScrolled = true
+    if (!touchHeld || !gallery.value || !('onscrollend' in gallery.value)) waitForIdle()
+  }
+
   watch(gallery, (element, _, onCleanup) => {
     if (!element) return
     const controller = new AbortController()
     const options = { passive: true, signal: controller.signal }
-    const nativeScrollEnd = 'onscrollend' in element
 
     element.addEventListener('wheel', (event) => {
       if (event.ctrlKey || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return
       input = 'wheel'
       scrolling.value = true
       waitForIdle()
+    }, options)
+    element.addEventListener('keydown', (event) => {
+      if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey
+        || !navigationKeys.has(event.key)) return
+      const target = event.target
+      if (target instanceof Element && target.closest('input, select, textarea, [contenteditable], [role="slider"]')) return
+      onScrollIntent()
     }, options)
     element.addEventListener('touchstart', (event) => {
       if (touchHeld) return
@@ -75,12 +94,6 @@ export function useMasonryScrollMedia(
       target.addEventListener('touchend', end, touchOptions)
       target.addEventListener('touchcancel', end, touchOptions)
     }, options)
-    element.addEventListener('scroll', () => {
-      if (!input && !scrollbarHeld) return
-      scrolling.value = true
-      if (input === 'touch') touchScrolled = true
-      if (!touchHeld || !nativeScrollEnd) waitForIdle()
-    }, options)
     element.addEventListener('scrollend', () => {
       if (input !== 'touch') return
       // The browser can end the scroll after virtualization removes the touch target.
@@ -96,5 +109,5 @@ export function useMasonryScrollMedia(
       scrolling.value = false
     })
   })
-  return { scrolling, onScrollbarDragChange }
+  return { scrolling, onScrollbarDragChange, onScrollIntent, recordScroll }
 }

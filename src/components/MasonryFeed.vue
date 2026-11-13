@@ -2,8 +2,7 @@
 import type { MediaFailure } from '../core/mediaFailure'
 import { computed, onBeforeUnmount, shallowRef, useId, watch, type CSSProperties } from 'vue'
 
-import type { MasonryFeedProps } from '../core/feed'
-import { isNearFeedBottom } from '../core/feed'
+import { isNearFeedBottom, type MasonryFeedProps } from '../core/feed'
 import {
   calculateFullyVisibleMasonryIndices,
   calculateMasonryEntryOffset,
@@ -11,10 +10,7 @@ import {
   type MasonryLayout,
 } from '../core/masonry'
 import { projectMasonryViewportIndex, queryMasonryViewportIndex } from '../core/masonryViewportIndex'
-import {
-  resolveMasonryMinColumnWidth,
-  resolveMasonryOverscan,
-} from '../core/masonryOptions'
+import { resolveMasonryMinColumnWidth, resolveMasonryOverscan } from '../core/masonryOptions'
 import type { VibeItemId } from '../types'
 import GalleryScrollbar from './GalleryScrollbar.vue'
 import FeedFooter from './FeedFooter.vue'
@@ -41,13 +37,14 @@ const emit = defineEmits<{
   mediaChange: [postId: VibeItemId, mediaIndex: number]
   ready: [postId: VibeItemId, mediaIndex: number]
   retryEnd: []
+  scrollChange: [scrolling: boolean]
   visible: [postId: VibeItemId, mediaIndex: number]
 }>()
-
 const galleryElement = shallowRef<HTMLElement | null>(null)
 const galleryId = `vibe-masonry-${useId()}`
 const masonryElement = shallowRef<HTMLElement | null>(null)
-const { scrolling, onScrollbarDragChange } = useMasonryScrollMedia(galleryElement, measureViewport)
+const { scrolling, onScrollbarDragChange, onScrollIntent, recordScroll } = useMasonryScrollMedia(galleryElement, settleViewport)
+watch(scrolling, (active) => emit('scrollChange', active), { flush: 'sync' })
 const masonryWidth = shallowRef(0)
 const masonryGap = shallowRef(MIN_GAP)
 const galleryViewportHeight = shallowRef(0)
@@ -61,14 +58,13 @@ let masonryResizeObserver: ResizeObserver | null = null
 let galleryResizeObserver: ResizeObserver | null = null
 let resizeFrame: number | null = null
 let viewportFrame: number | null = null
-
+let checkPaginationOnSettle = false
 const masonryLayoutOptions = computed(() => ({
   additionalHeight:
     (props.cardHeader?.height ?? 0) + (props.cardFooter?.height ?? 0),
   gap: masonryGap.value,
   minColumnWidth: resolveMasonryMinColumnWidth(props.masonry),
 }))
-
 let lastLayoutItems: MasonryLayout['items'] = []
 
 function packUntilBottom(): number {
@@ -101,7 +97,6 @@ const settledMasonry = useSettledMasonryFeedLayout({
 })
 const settledMasonryLayout = settledMasonry.layout
 const settledViewportIndex = settledMasonry.viewportIndex
-
 const projectedMasonry = computed(() => (
   props.leavingPostIds.size === 0
     ? null
@@ -225,7 +220,6 @@ function calculateIndexSnapshot(overscan: number): number[] {
 
   return mergeOrderedIndices(target, settled)
 }
-
 function updateIndexSnapshots(): void {
   const viewport = calculateIndexSnapshot(0)
   const overscan = calculateIndexSnapshot(resolveMasonryOverscan(
@@ -254,7 +248,6 @@ function updateIndexSnapshots(): void {
     overscanIndexSnapshot.value = overscan
   }
 }
-
 function scheduleIndexSnapshotUpdate(): void {
   if (viewportFrame !== null) return
 
@@ -273,6 +266,7 @@ useMasonryMediaVisibility({
   onFullyVisible: (postId, mediaIndex) => emit('fullyVisible', postId, mediaIndex),
   onVisible: (postId, mediaIndex) => emit('visible', postId, mediaIndex),
   previewStates: () => props.previewStates,
+  scrolling: () => scrolling.value,
   visibleIndices: () => viewportIndexSnapshot.value,
 })
 function itemStyle(index: number): CSSProperties {
@@ -337,22 +331,24 @@ function measureMasonry(element: HTMLElement): void {
 function onScroll(event: Event): void {
   const element = event.currentTarget as HTMLElement | null
   if (!element) return
-
+  recordScroll()
   galleryScrollTop = element.scrollTop
   settledMasonry.ensurePackedThrough(packUntilBottom())
   scheduleIndexSnapshotUpdate()
-  if (Date.now() >= suppressAutomaticLoadUntil
-    && !props.loadMoreLocked && props.infiniteScroll && isNearFeedBottom(element, props.masonry?.loadMoreThresholdPx)) {
-    emit('loadMore')
-  }
+  loadIfNearBottom()
 }
-
 function loadIfNearBottom(): void {
+  if (!props.infiniteScroll || props.loadMoreLocked || Date.now() < suppressAutomaticLoadUntil) return
+  if (scrolling.value) { checkPaginationOnSettle = true; return }
   const element = galleryElement.value
-  if (Date.now() >= suppressAutomaticLoadUntil
-    && !props.loadMoreLocked && element && isNearFeedBottom(element, props.masonry?.loadMoreThresholdPx)) emit('loadMore')
+  if (element && isNearFeedBottom(element, props.masonry?.loadMoreThresholdPx)) emit('loadMore')
 }
-
+function settleViewport(): void {
+  measureViewport()
+  if (!checkPaginationOnSettle) return
+  checkPaginationOnSettle = false
+  loadIfNearBottom()
+}
 watch(() => props.items.length, (count, previous) => {
   if (count > 0 && count < previous) {
     suppressAutomaticLoadUntil = Date.now() + REMOVAL_REFLOW_SUPPRESSION_MS
@@ -407,6 +403,7 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  if (scrolling.value) emit('scrollChange', false)
   masonryResizeObserver?.disconnect()
   galleryResizeObserver?.disconnect()
   if (resizeFrame !== null) cancelAnimationFrame(resizeFrame)
@@ -448,6 +445,7 @@ defineExpose({ getScrollElement, loadIfNearBottom, prepareItemReplacement: repla
           :card-header="cardHeader"
           :media-card="mediaCard"
           :defer-media="scrolling || (!preparing && !viewportIndices.has(index))"
+          :scrolling="scrolling"
           :in-viewport="!scrolling && !preparing && viewportIndices.has(index)"
           :index="index"
           :item="item"
@@ -494,6 +492,7 @@ defineExpose({ getScrollElement, loadIfNearBottom, prepareItemReplacement: repla
       :scroll-element="galleryElement"
       :suspended="suspended"
       @drag-change="onScrollbarDragChange"
+      @scroll-intent="onScrollIntent"
     />
   </div>
 </template>

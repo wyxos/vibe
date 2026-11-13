@@ -23,7 +23,7 @@ const props = defineProps<{
   scrollElement: HTMLElement | null
   suspended?: boolean
 }>()
-const emit = defineEmits<{ dragChange: [dragging: boolean] }>()
+const emit = defineEmits<{ dragChange: [dragging: boolean]; scrollIntent: [] }>()
 
 const emptyGeometry: ScrollbarGeometry = {
   maximumScrollPosition: 0,
@@ -136,6 +136,7 @@ function onTrackPointerDown(event: PointerEvent): void {
     - track.getBoundingClientRect().top
     - geometry.value.thumbSize / 2
   const progress = Math.min(1, Math.max(0, targetOffset / geometry.value.thumbTravel))
+  emit('scrollIntent')
   setScrollPosition(progress * geometry.value.maximumScrollPosition)
 }
 
@@ -197,6 +198,7 @@ function onKeydown(event: KeyboardEvent): void {
 
   event.preventDefault()
   markInteraction()
+  emit('scrollIntent')
   setScrollPosition(next)
 }
 

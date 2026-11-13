@@ -11,6 +11,7 @@ interface MasonryMediaVisibilityOptions {
   onFullyVisible: (postId: VibeItemId, mediaIndex: number) => void
   onVisible: (postId: VibeItemId, mediaIndex: number) => void
   previewStates: () => ReadonlyMap<string, MediaPreviewState>
+  scrolling: () => boolean
   visibleIndices: () => readonly number[]
 }
 
@@ -41,8 +42,9 @@ export function useMasonryMediaVisibility(
   ): void {
     let previous = new Set<string>()
     watch(
-      () => readyMedia(indices()),
+      () => options.scrolling() ? null : readyMedia(indices()),
       (entries) => {
+        if (!entries) return
         const next = new Set(entries.map(({ key }) => key))
         entries.forEach(({ key, mediaIndex, postId }) => {
           if (!previous.has(key)) onEnter(postId, mediaIndex)

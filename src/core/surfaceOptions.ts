@@ -9,6 +9,7 @@ export function surfaceOptions(options: CreateVibeOptions) {
     feedFooter: options.feedFooter,
     mediaCard: options.mediaCard,
     masonry: options.masonry,
+    onMasonryScrollChange: options.onMasonryScrollChange,
     onMediaFullyVisible: options.onMediaFullyVisible,
     onMediaError: options.onMediaError,
     onMediaReady: options.onMediaReady,

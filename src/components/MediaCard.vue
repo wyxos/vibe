@@ -62,6 +62,7 @@ const props = defineProps<{
   previewState: MediaPreviewState
   reelControlsTarget?: HTMLElement | null
   reelAudioState?: VibeReelAudioState
+  scrolling?: boolean
   stationaryReelControls?: boolean
   total: number | null
 }>()
@@ -196,7 +197,7 @@ const {
   mediaIndex: () => normalizedMediaIndex.value,
   onChange: (mediaIndex) => emit('mediaChange', mediaIndex),
 })
-const { imageLoading, mediaIsTimed, timedMediaPreload } = useMediaLoading({ active: () => props.active, fetchPriority: () => props.fetchPriority, layout: () => props.layout, mediaSource: () => mediaSrc.value, mediaType: () => mediaType.value, mediaElement, playbackAllowed: () => timedMediaPlaybackAllowed.value, preparing: () => props.preparing === true })
+const { imageLoading, mediaIsTimed, timedMediaPreload } = useMediaLoading({ active: () => props.active, fetchPriority: () => props.fetchPriority, layout: () => props.layout, mediaSource: () => mediaSrc.value, mediaType: () => mediaType.value, mediaElement, playbackAllowed: () => timedMediaPlaybackAllowed.value, preparing: () => props.preparing === true, scrolling: () => props.scrolling === true })
 const usesStationaryReelControls = computed(() => props.layout === 'reel'
   && props.stationaryReelControls === true)
 const mediaControlsVisible = computed(() => (
@@ -293,7 +294,6 @@ watch(
         :style="mediaCard?.header"
         :total="total"
       />
-
       <div
         class="media-card-media"
         :class="{ 'media-card-media--carousel': layout === 'reel' && mediaItems.length > 1 }"
