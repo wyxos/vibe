@@ -7,6 +7,7 @@ export function useMasonryScrollMedia(
   onSettled: () => void,
 ) {
   const scrolling = shallowRef(false)
+  let scrollbarHeld = false
   let input: 'wheel' | 'touch' | null = null
   let touchHeld = false
   let touchScrolled = false
@@ -24,10 +25,20 @@ export function useMasonryScrollMedia(
   }
 
   function waitForIdle(): void {
-    // A wheel burst can generate scrollend between notches. Older browsers
-    // also lack scrollend for touch momentum. Use a resettable deadline.
+    // Wheel notches and custom thumb updates can emit scrollend mid-gesture.
+    // Older browsers also lack scrollend for touch momentum.
     clearTimeout(timer)
     timer = setTimeout(settle, SCROLL_IDLE_MS)
+  }
+
+  function onScrollbarDragChange(held: boolean): void {
+    scrollbarHeld = held
+    if (held) {
+      scrolling.value = true
+      waitForIdle()
+    } else if (!input) {
+      settle()
+    }
   }
 
   watch(gallery, (element, _, onCleanup) => {
@@ -65,7 +76,7 @@ export function useMasonryScrollMedia(
       target.addEventListener('touchcancel', end, touchOptions)
     }, options)
     element.addEventListener('scroll', () => {
-      if (!input) return
+      if (!input && !scrollbarHeld) return
       scrolling.value = true
       if (input === 'touch') touchScrolled = true
       if (!touchHeld || !nativeScrollEnd) waitForIdle()
@@ -80,9 +91,10 @@ export function useMasonryScrollMedia(
       touchListeners?.abort()
       clearTimeout(timer)
       input = null
+      scrollbarHeld = false
       touchHeld = false
       scrolling.value = false
     })
   })
-  return scrolling
+  return { scrolling, onScrollbarDragChange }
 }

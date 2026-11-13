@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { capture, ready } from './showcaseSupport'
 
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {
-  test(`pauses video and defers new masonry media during a held scrollbar drag with motion ${reducedMotion}`, async ({ page }) => {
+  test(`defers media while moving and reveals it during a held pause with motion ${reducedMotion}`, async ({ page }) => {
     test.setTimeout(90_000)
     await page.emulateMedia({ reducedMotion })
     const network = await page.context().newCDPSession(page)
@@ -38,18 +38,21 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
         visible: video.isConnected && video.classList.contains('media-preview--ready'),
         hasFrame: video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA,
       }))).toEqual({ paused: true, visible: true, hasFrame: true })
-      const pausedAt = await initialVideo.evaluate(video => video.currentTime)
-      await capture(page, `scrollbar-media-paused-${reducedMotion}`)
-      expect(await initialVideo.evaluate(video => video.currentTime)).toBe(pausedAt)
       for (const position of [0.2, 0.75, 0.35, 0.6]) {
         await page.mouse.move(x, y + travel * position, { steps: 6 })
-        await page.evaluate(async () => {
-          for (let frame = 0; frame < 4; frame++) await new Promise(requestAnimationFrame)
-        })
       }
+      expect(requests).toEqual([])
       await expect(page.locator('.gallery-scrollbar')).toHaveClass(/gallery-scrollbar--dragging/)
       expect(Number(await thumb.getAttribute('aria-valuenow'))).toBeGreaterThan(0)
-      await capture(page, `scrollbar-media-held-${reducedMotion}`)
+      await expect.poll(() => requests.some(url => url.endsWith('.mp4'))).toBe(true)
+      await expect.poll(() => feed.locator('video[src]').evaluateAll(videos =>
+        videos.some(video => (video as HTMLVideoElement).readyState >= HTMLMediaElement.HAVE_CURRENT_DATA),
+      )).toBe(true)
+      await expect(page.locator('.gallery-scrollbar')).toHaveClass(/gallery-scrollbar--dragging/)
+      await capture(page, `scrollbar-media-held-settled-${reducedMotion}`)
+      requests.length = 0
+      await page.mouse.move(x, y + travel * 0.35, { steps: 4 })
+      await page.mouse.move(x, y + travel * 0.65, { steps: 4 })
       expect(requests).toEqual([])
     } finally {
       await page.mouse.up()

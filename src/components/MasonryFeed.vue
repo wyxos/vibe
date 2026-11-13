@@ -47,8 +47,7 @@ const emit = defineEmits<{
 const galleryElement = shallowRef<HTMLElement | null>(null)
 const galleryId = `vibe-masonry-${useId()}`
 const masonryElement = shallowRef<HTMLElement | null>(null)
-const scrollbarDragging = shallowRef(false)
-const scrolling = useMasonryScrollMedia(galleryElement, measureViewport)
+const { scrolling, onScrollbarDragChange } = useMasonryScrollMedia(galleryElement, measureViewport)
 const masonryWidth = shallowRef(0)
 const masonryGap = shallowRef(MIN_GAP)
 const galleryViewportHeight = shallowRef(0)
@@ -448,8 +447,8 @@ defineExpose({ getScrollElement, loadIfNearBottom, prepareItemReplacement: repla
           :card-footer="cardFooter"
           :card-header="cardHeader"
           :media-card="mediaCard"
-          :defer-media="scrollbarDragging || scrolling || (!preparing && !viewportIndices.has(index))"
-          :in-viewport="!scrollbarDragging && !scrolling && !preparing && viewportIndices.has(index)"
+          :defer-media="scrolling || (!preparing && !viewportIndices.has(index))"
+          :in-viewport="!scrolling && !preparing && viewportIndices.has(index)"
           :index="index"
           :item="item"
           :item-style="preparing ? preparedStyle : itemStyle(index)"
@@ -494,7 +493,7 @@ defineExpose({ getScrollElement, loadIfNearBottom, prepareItemReplacement: repla
       :controls-id="galleryId"
       :scroll-element="galleryElement"
       :suspended="suspended"
-      @drag-change="dragging => { if (!dragging) measureViewport(); scrollbarDragging = dragging }"
+      @drag-change="onScrollbarDragChange"
     />
   </div>
 </template>
