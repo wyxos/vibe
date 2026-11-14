@@ -137,6 +137,8 @@ export type VibeMediaRemoval = Readonly<VibeMediaPlacement> & {
 
 export interface VibeCardRegion {
   background?: 'default' | 'transparent'
+  /** Mount newly entering masonry controls after scrolling settles. */
+  deferMountDuringScroll?: boolean
   component: Component
   height: number
 }

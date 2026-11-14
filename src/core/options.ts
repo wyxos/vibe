@@ -20,6 +20,9 @@ function validateCardRegion(
   region?: VibeCardRegion,
 ): void {
   if (!region) return
+  if (region.deferMountDuringScroll !== undefined && typeof region.deferMountDuringScroll !== 'boolean') {
+    throw new TypeError(`Vibe ${name} deferMountDuringScroll must be a boolean.`)
+  }
   if (!Number.isFinite(region.height) || region.height <= 0) {
     throw new TypeError(`Vibe ${name} height must be a positive number.`)
   }

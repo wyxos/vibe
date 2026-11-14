@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, shallowRef, watch } from 'vue'
 import { useCardChromeSelection } from './cardChromeSelection'
 
 import {
@@ -24,10 +24,32 @@ const props = defineProps<{
   mediaSource?: VibeMediaSource
   placement: 'footer' | 'header'
   region: VibeCardRegion
+  scrolling?: boolean
   style?: VibeCardChromeStyle
   total: number | null
 }>()
 const selectChrome = useCardChromeSelection(() => props.item.postId, () => props.layout)
+const deferMount = computed(() => props.layout === 'masonry' && props.region.deferMountDuringScroll === true)
+const mounted = shallowRef(!deferMount.value || !props.scrolling)
+let cancelMount: (() => void) | undefined
+watch([deferMount, () => props.scrolling], ([deferred, scrolling]) => {
+  cancelMount?.()
+  cancelMount = undefined
+  if (mounted.value) return
+  if (!deferred) { mounted.value = true; return }
+  if (scrolling) return
+  // Idle work avoids mounting every newly visible control in one settling frame.
+  // Animation frames provide a cancellable fallback where idle callbacks are absent.
+  const mount = () => { cancelMount = undefined; mounted.value = true }
+  if (typeof requestIdleCallback === 'function') {
+    const handle = requestIdleCallback(mount)
+    cancelMount = () => cancelIdleCallback(handle)
+  } else {
+    const handle = requestAnimationFrame(mount)
+    cancelMount = () => cancelAnimationFrame(handle)
+  }
+}, { flush: 'sync' })
+onBeforeUnmount(() => cancelMount?.())
 
 const normalizedMediaIndex = computed(() => (
   clampMediaIndex(props.item, props.mediaIndex)
@@ -65,6 +87,7 @@ const background = computed(() => (
     @keydown.stop
   >
     <component
+      v-if="mounted"
       :is="region.component"
       :index="index"
       :item="item"
