@@ -20,6 +20,7 @@ import { useMasonryMediaVisibility } from './useMasonryMediaVisibility'
 import { useSettledMasonryFeedLayout } from './useSettledMasonryFeedLayout'
 import { useMasonrySelection } from './useMasonrySelection'
 import { useMasonryScrollMedia } from './useMasonryScrollMedia'
+import { provideCardRegionReveal } from './useCardRegionReveal'
 const MIN_GAP = 6
 const MAX_GAP = 12
 const REMOVAL_REFLOW_SUPPRESSION_MS = 250
@@ -42,6 +43,7 @@ const emit = defineEmits<{
 }>()
 const galleryElement = shallowRef<HTMLElement | null>(null)
 const galleryId = `vibe-masonry-${useId()}`
+provideCardRegionReveal()
 const masonryElement = shallowRef<HTMLElement | null>(null)
 const { scrolling, onScrollbarDragChange, onScrollIntent, recordScroll } = useMasonryScrollMedia(galleryElement, settleViewport)
 watch(scrolling, (active) => emit('scrollChange', active), { flush: 'sync' })
@@ -444,8 +446,7 @@ defineExpose({ getScrollElement, loadIfNearBottom, prepareItemReplacement: repla
           :card-footer="cardFooter"
           :card-header="cardHeader"
           :media-card="mediaCard"
-          :defer-media="scrolling || (!preparing && !viewportIndices.has(index))"
-          :scrolling="scrolling"
+          :defer-media="scrolling || (!preparing && !viewportIndices.has(index))" :scrolling="scrolling"
           :auto-scrolling="state?.autoScroll.enabled && !state.autoScroll.paused"
           :in-viewport="!scrolling && !preparing && viewportIndices.has(index)"
           :index="index"

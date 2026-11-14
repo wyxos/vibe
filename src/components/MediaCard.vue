@@ -39,6 +39,7 @@ import { useCardVideoMotion } from './useCardVideoMotion'
 import { useReelControlsVisibility } from './useReelControlsVisibility'
 import { useReelFullscreenGesture } from './useReelPlaybackOptions'
 import { useReelZoom } from './useReelZoom'
+import { useCardRegionReveal } from './useCardRegionReveal'
 const props = defineProps<{
   active?: boolean
   advanceOnMediaEnd?: boolean
@@ -76,7 +77,7 @@ const emit = defineEmits<{
   ready: [mediaIndex: number]
   reelAudioChange: [state: VibeReelAudioState]
 }>()
-const selection = useSelectionContext()
+const selection = useSelectionContext(), { regionsReady, canRevealMedia } = useCardRegionReveal(props)
 function activate(
   interactive = false,
   input: 'keyboard' | 'pointer' = 'pointer',
@@ -289,7 +290,7 @@ watch(
         :loaded-count="loadedCount"
         :media-index="normalizedMediaIndex"
         :media-source="mediaSource"
-        placement="header" :scrolling="scrolling" :auto-scrolling="autoScrolling"
+        placement="header" :defer-mount="!regionsReady"
         :region="cardHeader"
         :style="mediaCard?.header"
         :total="total"
@@ -354,7 +355,7 @@ watch(
               v-if="isAudio"
               type="button"
               class="media-audio-artwork media-preview"
-              :class="{ 'media-preview--ready': effectivePreviewState === 'ready' }"
+              :class="{ 'media-preview--ready': canRevealMedia && effectivePreviewState === 'ready' }"
               :aria-label="layout === 'reel'
                 ? (timedMediaIsPlaying ? 'Pause audio' : 'Play audio')
                 : 'Audio'"
@@ -388,7 +389,7 @@ watch(
               :data-source-generation="sourceGeneration"
               class="media-preview"
               :class="{
-                'media-preview--ready': !preparing && effectivePreviewState === 'ready',
+                'media-preview--ready': canRevealMedia && !preparing && effectivePreviewState === 'ready',
                 'media-preview--reel-video': layout === 'reel',
               }"
               :src="mediaSrc"
@@ -417,7 +418,7 @@ watch(
               :key="`image:${sourceGeneration}`" ref="imageElement"
               :data-source-generation="sourceGeneration"
               class="media-preview"
-              :class="{ 'media-preview--ready': effectivePreviewState === 'ready' }"
+              :class="{ 'media-preview--ready': canRevealMedia && effectivePreviewState === 'ready' }"
               :src="mediaSrc"
               :width="mediaWidth ?? undefined"
               :height="mediaHeight ?? undefined"
@@ -489,8 +490,7 @@ watch(
         :layout="layout"
         :loaded-count="loadedCount"
         :media-index="normalizedMediaIndex"
-        :media-source="mediaSource"
-        placement="footer" :scrolling="scrolling" :auto-scrolling="autoScrolling"
+        :media-source="mediaSource" placement="footer" :defer-mount="!regionsReady"
         :region="cardFooter"
         :style="mediaCard?.footer"
         :total="total"
