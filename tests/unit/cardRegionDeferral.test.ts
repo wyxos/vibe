@@ -60,3 +60,20 @@ it('renders pending controls immediately when switching to a reel', async () => 
   expect(wrapper.find('button').exists()).toBe(true)
   wrapper.unmount()
 })
+
+it.each(['header', 'footer'] as const)('mounts a new %s during idle while automatic scrolling continues', async placement => {
+  const callbacks = new Map<number, () => void>()
+  vi.stubGlobal('requestIdleCallback', (callback: () => void) => { callbacks.set(1, callback); return 1 })
+  vi.stubGlobal('cancelIdleCallback', (id: number) => callbacks.delete(id))
+  const wrapper = mount(CardRegion, { props: { index: 0, item, layout: 'masonry', loadedCount: 1,
+    mediaIndex: 0, total: 1, scrolling: false, autoScrolling: true, placement,
+    region: { component: Child, height: 40, deferMountDuringScroll: true } } })
+  expect(wrapper.find('button').exists()).toBe(false)
+  expect(callbacks.size).toBe(1)
+  callbacks.get(1)!()
+  await nextTick()
+  expect(wrapper.get('button').text()).toBe('/image.jpg')
+  await wrapper.setProps({ scrolling: true })
+  expect(wrapper.find('button').exists()).toBe(true)
+  wrapper.unmount()
+})

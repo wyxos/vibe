@@ -25,12 +25,13 @@ const props = defineProps<{
   placement: 'footer' | 'header'
   region: VibeCardRegion
   scrolling?: boolean
+  autoScrolling?: boolean
   style?: VibeCardChromeStyle
   total: number | null
 }>()
 const selectChrome = useCardChromeSelection(() => props.item.postId, () => props.layout)
 const deferMount = computed(() => props.layout === 'masonry' && props.region.deferMountDuringScroll === true)
-const mounted = shallowRef(!deferMount.value || !props.scrolling)
+const mounted = shallowRef(!deferMount.value || (!props.scrolling && !props.autoScrolling))
 let cancelMount: (() => void) | undefined
 watch([deferMount, () => props.scrolling], ([deferred, scrolling]) => {
   cancelMount?.()
@@ -48,7 +49,7 @@ watch([deferMount, () => props.scrolling], ([deferred, scrolling]) => {
     const handle = requestAnimationFrame(mount)
     cancelMount = () => cancelAnimationFrame(handle)
   }
-}, { flush: 'sync' })
+}, { flush: 'sync', immediate: true })
 onBeforeUnmount(() => cancelMount?.())
 
 const normalizedMediaIndex = computed(() => (

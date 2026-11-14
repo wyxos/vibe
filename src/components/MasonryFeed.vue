@@ -446,6 +446,7 @@ defineExpose({ getScrollElement, loadIfNearBottom, prepareItemReplacement: repla
           :media-card="mediaCard"
           :defer-media="scrolling || (!preparing && !viewportIndices.has(index))"
           :scrolling="scrolling"
+          :auto-scrolling="state?.autoScroll.enabled && !state.autoScroll.paused"
           :in-viewport="!scrolling && !preparing && viewportIndices.has(index)"
           :index="index"
           :item="item"

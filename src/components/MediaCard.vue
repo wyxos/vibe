@@ -63,6 +63,7 @@ const props = defineProps<{
   reelControlsTarget?: HTMLElement | null
   reelAudioState?: VibeReelAudioState
   scrolling?: boolean
+  autoScrolling?: boolean
   stationaryReelControls?: boolean
   total: number | null
 }>()
@@ -283,13 +284,12 @@ watch(
     <div class="media-card-content">
       <CardRegion
         v-if="cardHeader"
-        :index="index"
-        :item="item"
+        :index="index" :item="item"
         :layout="layout"
         :loaded-count="loadedCount"
         :media-index="normalizedMediaIndex"
         :media-source="mediaSource"
-        placement="header" :scrolling="scrolling"
+        placement="header" :scrolling="scrolling" :auto-scrolling="autoScrolling"
         :region="cardHeader"
         :style="mediaCard?.header"
         :total="total"
@@ -490,7 +490,7 @@ watch(
         :loaded-count="loadedCount"
         :media-index="normalizedMediaIndex"
         :media-source="mediaSource"
-        placement="footer" :scrolling="scrolling"
+        placement="footer" :scrolling="scrolling" :auto-scrolling="autoScrolling"
         :region="cardFooter"
         :style="mediaCard?.footer"
         :total="total"
