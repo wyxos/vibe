@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { MediaFailure } from '../core/mediaFailure'
 import { computed, onBeforeUnmount, shallowRef, useId, watch, type CSSProperties } from 'vue'
-
 import { isNearFeedBottom, type MasonryFeedProps } from '../core/feed'
 import {
   calculateFullyVisibleMasonryIndices,
@@ -15,6 +14,7 @@ import type { VibeItemId } from '../types'
 import GalleryScrollbar from './GalleryScrollbar.vue'
 import FeedFooter from './FeedFooter.vue'
 import MediaCard from './MediaCard.vue'
+import { useFeedLayoutResize } from './useFeedLayoutResize'
 import { usePreparedMasonryReplacement } from './usePreparedMasonryReplacement'
 import { useMasonryMediaVisibility } from './useMasonryMediaVisibility'
 import { useSettledMasonryFeedLayout } from './useSettledMasonryFeedLayout'
@@ -62,6 +62,7 @@ let resizeFrame: number | null = null
 let viewportFrame: number | null = null
 let checkPaginationOnSettle = false
 const feedLayout = computed(() => props.state?.layout === 'list' ? 'list' : 'masonry')
+useFeedLayoutResize(feedLayout, masonryElement)
 const masonryLayoutOptions = computed(() => {
   const additionalHeight = (props.cardHeader?.height ?? 0) + (props.cardFooter?.height ?? 0)
   return {
@@ -356,7 +357,6 @@ watch(() => props.items.length, (count, previous) => {
     suppressAutomaticLoadUntil = Date.now() + REMOVAL_REFLOW_SUPPRESSION_MS
   }
 })
-
 function getScrollElement(): HTMLElement | null {
   return galleryElement.value
 }
@@ -381,7 +381,6 @@ watch(masonryElement, (element) => {
   })
   masonryResizeObserver.observe(element)
 })
-
 watch(galleryElement, (element) => {
   galleryResizeObserver?.disconnect()
   galleryResizeObserver = null
@@ -439,6 +438,7 @@ defineExpose({ getScrollElement, loadIfNearBottom, prepareItemReplacement: repla
           v-for="({ fetchPriority, item, index, preparing, preparedStyle }) in visibleItems"
           :key="item.postId"
           class="masonry-item"
+          :data-feed-first="index === 0 || undefined"
           :preparing="preparing"
           :entering="!preparing && enteringPostIds.has(item.postId)"
           :leaving="leavingPostIds.has(item.postId)"

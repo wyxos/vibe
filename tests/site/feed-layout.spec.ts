@@ -1,5 +1,40 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import { capture, ready } from './showcaseSupport'
+
+async function sampleFirstCardResize(first: Locator, view: string) {
+  return first.evaluate(async (card, label) => {
+    const width = () => card.getBoundingClientRect().width
+    const before = width()
+    document.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!.click()
+    const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    await frame()
+    const animations = card.getAnimations()
+    const finished = Promise.all(animations.map(animation => animation.finished.catch(() => {})))
+    const widths = [width()]
+    while (animations.some(animation => animation.playState === 'running')) {
+      await frame()
+      widths.push(width())
+    }
+    await finished
+    const after = width()
+    const low = Math.min(before, after)
+    const high = Math.max(before, after)
+    return { resized: high - low > 2, intermediate: widths.some(value => value > low + 1 && value < high - 1) }
+  }, view)
+}
+
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+  test(`first card resizes in both directions with motion ${reducedMotion}`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 844 })
+    await page.emulateMedia({ reducedMotion })
+    await ready(page)
+    const first = page.locator('.masonry-item').first()
+    await expect(first).not.toHaveClass(/media-card--entering/)
+    const expected = { resized: true, intermediate: reducedMotion === 'no-preference' }
+    expect(await sampleFirstCardResize(first, 'List view')).toEqual(expected)
+    expect(await sampleFirstCardResize(first, 'Masonry view')).toEqual(expected)
+  })
+}
 
 for (const [width, reducedMotion] of [[1440, 'no-preference'], [390, 'reduce']] as const) {
   test(`switches feed layouts at ${width}px and returns from the reel to the list`, async ({ page }) => {
