@@ -46,10 +46,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-
 .filter-tabs button:hover { color: var(--text); background: var(--supporting); }
 .filter-tabs button[aria-pressed='true'] { color: var(--text); background: #1b3d63; }
 .playground-actions { gap: 8px; margin-left: auto; }
-.layout-options { display: flex; }
-.layout-options button, .reset-button, .project-link { display: grid; place-items: center; width: 44px; min-height: 44px; padding: 0; border: 0; background: transparent; border-radius: 3px; color: var(--muted); transition: background 140ms, color 140ms; }
-.layout-options button:hover, .reset-button:hover, .project-link:hover { color: var(--text); background: var(--supporting); }
-.layout-options button[aria-pressed='true'] { color: var(--text); background: #1b3d63; }
+.layout-toggle, .reset-button, .project-link { display: grid; place-items: center; width: 44px; min-height: 44px; padding: 0; border: 0; background: transparent; border-radius: 3px; color: var(--muted); transition: background 140ms, color 140ms; }
+.layout-toggle:hover, .reset-button:hover, .project-link:hover { color: var(--text); background: var(--supporting); }
+.layout-toggle[aria-pressed='true'] { color: var(--text); background: #1b3d63; }
 .playground { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .showcase-preview-settings {
   display: flex;

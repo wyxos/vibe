@@ -438,7 +438,6 @@ defineExpose({ getScrollElement, loadIfNearBottom, prepareItemReplacement: repla
           v-for="({ fetchPriority, item, index, preparing, preparedStyle }) in visibleItems"
           :key="item.postId"
           class="masonry-item"
-          :data-feed-first="index === 0 || undefined"
           :preparing="preparing"
           :entering="!preparing && enteringPostIds.has(item.postId)"
           :leaving="leavingPostIds.has(item.postId)"

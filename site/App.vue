@@ -31,14 +31,12 @@ const filters: { value: ShowcaseFilter; label: string }[] = [
         >{{ option.label }}</button>
       </div>
       <div class="playground-actions">
-        <div class="layout-options" role="group" aria-label="Feed layout">
-          <button type="button" aria-label="Masonry view" title="Masonry view"
-            :aria-pressed="feedLayout === 'masonry'" @click="chooseLayout('masonry')"
-          ><LayoutGrid :size="18" aria-hidden="true" /></button>
-          <button type="button" aria-label="List view" title="List view"
-            :aria-pressed="feedLayout === 'list'" @click="chooseLayout('list')"
-          ><List :size="18" aria-hidden="true" /></button>
-        </div>
+        <button class="layout-toggle" type="button" aria-label="List view"
+          :title="feedLayout === 'list' ? 'Switch to masonry' : 'Switch to list'"
+          :aria-pressed="feedLayout === 'list'" @click="chooseLayout(feedLayout === 'list' ? 'masonry' : 'list')"
+        ><List v-if="feedLayout === 'list'" :size="18" aria-hidden="true" />
+          <LayoutGrid v-else :size="18" aria-hidden="true" />
+        </button>
         <button class="reset-button" type="button" aria-label="Restart demo" title="Restart demo" data-test="reset-demo" @click="reset"><RotateCcw :size="16" aria-hidden="true" /></button>
         <a class="project-link" href="https://github.com/wyxos/vibe" target="_blank" rel="noopener noreferrer" aria-label="Vibe on GitHub" title="Vibe on GitHub"><Github :size="18" aria-hidden="true" /></a>
       </div>
