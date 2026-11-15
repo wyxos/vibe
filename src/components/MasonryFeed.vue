@@ -8,7 +8,7 @@ import {
   projectMasonryLayout,
   type MasonryLayout,
 } from '../core/masonry'
-import { projectMasonryViewportIndex, queryMasonryViewportIndex } from '../core/masonryViewportIndex'
+import { indexSnapshotsMatch, mergeOrderedIndices, projectMasonryViewportIndex, queryMasonryViewportIndex } from '../core/masonryViewportIndex'
 import { resolveMasonryMinColumnWidth, resolveMasonryOverscan } from '../core/masonryOptions'
 import type { VibeItemId } from '../types'
 import GalleryScrollbar from './GalleryScrollbar.vue'
@@ -62,7 +62,6 @@ let resizeFrame: number | null = null
 let viewportFrame: number | null = null
 let checkPaginationOnSettle = false
 const feedLayout = computed(() => props.state?.layout === 'list' ? 'list' : 'masonry')
-useFeedLayoutResize(feedLayout, masonryElement)
 const masonryLayoutOptions = computed(() => {
   const additionalHeight = (props.cardHeader?.height ?? 0) + (props.cardFooter?.height ?? 0)
   return {
@@ -150,6 +149,11 @@ const effectiveMasonryHeight = computed(() => {
   )
 })
 
+const layoutMotionIndices = useFeedLayoutResize(feedLayout, masonryElement, galleryElement, {
+  position: index => masonryLayout.value.items[index],
+  contentHeight: () => effectiveMasonryHeight.value,
+  updateScrollTop: top => { galleryScrollTop = top; updateIndexSnapshots() },
+})
 const masonryStyle = computed<CSSProperties>(() => ({
   height: `${effectiveMasonryHeight.value}px`,
   '--vibe-list-thumbnail': `${masonryLayoutOptions.value.listRowHeight ?? 0}px`,
@@ -177,7 +181,10 @@ const replacement = usePreparedMasonryReplacement(props, {
   failure: (id, failure) => emit('mediaError', id, failure),
 })
 const visibleItems = computed(() => {
-  const active = overscanIndexSnapshot.value.flatMap((index) => {
+  const indices = layoutMotionIndices.value.length
+    ? mergeOrderedIndices(overscanIndexSnapshot.value, layoutMotionIndices.value)
+    : overscanIndexSnapshot.value
+  const active = indices.flatMap((index) => {
     const item = props.items[index]
     const position = masonryLayout.value.items[index]
     if (!item || !position || position.width <= 0 || position.height <= 0) return []
@@ -190,19 +197,6 @@ const visibleItems = computed(() => {
   const activeIds = new Set(active.map(row => row.item.postId))
   return [...active, ...replacement.rows.value.filter(row => !activeIds.has(row.item.postId))]
 })
-
-function mergeOrderedIndices(first: readonly number[], second: readonly number[]): number[] {
-  return [...new Set([...first, ...second])]
-    .sort((left, right) => left - right)
-}
-
-function indexSnapshotsMatch(
-  first: readonly number[],
-  second: readonly number[],
-): boolean {
-  return first.length === second.length
-    && first.every((index, position) => index === second[position])
-}
 
 function calculateIndexSnapshot(overscan: number): number[] {
   const viewport = {
@@ -438,6 +432,7 @@ defineExpose({ getScrollElement, loadIfNearBottom, prepareItemReplacement: repla
           v-for="({ fetchPriority, item, index, preparing, preparedStyle }) in visibleItems"
           :key="item.postId"
           class="masonry-item"
+          :data-feed-index="index"
           :preparing="preparing"
           :entering="!preparing && enteringPostIds.has(item.postId)"
           :leaving="leavingPostIds.has(item.postId)"

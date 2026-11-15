@@ -158,3 +158,16 @@ export function queryMasonryViewportIndex(
     inspected,
   }
 }
+
+export function mergeOrderedIndices(first: readonly number[], second: readonly number[]): number[] {
+  return [...new Set([...first, ...second])]
+    .sort((left, right) => left - right)
+}
+
+export function indexSnapshotsMatch(
+  first: readonly number[],
+  second: readonly number[],
+): boolean {
+  return first.length === second.length
+    && first.every((index, position) => index === second[position])
+}

@@ -1,5 +1,5 @@
 
-import { nextTick, onBeforeUnmount, watch, type Ref } from 'vue'
+import { nextTick, onBeforeUnmount, shallowRef, watch, type Ref } from 'vue'
 
 const duration = 480
 const ease = 'cubic-bezier(0.22, 1, 0.36, 1)'
@@ -24,6 +24,7 @@ function readCard(card: HTMLElement) {
   return {
     card,
     content,
+    index: Number(card.dataset.feedIndex),
     box: content.getBoundingClientRect(),
     transform: getComputedStyle(card).transform,
     style: getComputedStyle(card),
@@ -37,7 +38,7 @@ function readCard(card: HTMLElement) {
 
 type CardGeometry = NonNullable<ReturnType<typeof readCard>>
 
-function animateCard(before: CardGeometry, after: CardGeometry, toList: boolean): Animation[] {
+function animateCard(before: CardGeometry, after: CardGeometry, toList: boolean, origin: DOMRect): Animation[] {
   const list = toList ? after : before
   const preview = list.regions.find(region => region.media)?.box
   const compact = size({
@@ -55,7 +56,10 @@ function animateCard(before: CardGeometry, after: CardGeometry, toList: boolean)
   }
 
   const packed = { backgroundColor: 'transparent', overflow: 'visible', zIndex: 1 }
-  const packedStart = { ...packed, transform: before.transform }
+  const packedStart = {
+    ...packed,
+    transform: `translate3d(${before.box.left - origin.left}px, ${before.box.top - origin.top}px, 0)`,
+  }
   const packedEnd = { ...packed, transform: after.transform }
   const surface = {
     backgroundColor: after.style.backgroundColor,
@@ -85,8 +89,15 @@ function animateCard(before: CardGeometry, after: CardGeometry, toList: boolean)
 
 export function useFeedLayoutResize(
   layout: Readonly<Ref<'masonry' | 'list'>>,
-  gallery: Readonly<Ref<HTMLElement | null>>,
+  sectionRef: Readonly<Ref<HTMLElement | null>>,
+  galleryRef: Readonly<Ref<HTMLElement | null>>,
+  viewport: {
+    position: (index: number) => { y: number, height: number } | undefined
+    contentHeight: () => number
+    updateScrollTop: (top: number) => void
+  },
 ) {
+  const retainedIndices = shallowRef<readonly number[]>([])
   let animations: Animation[] = []
   function cancelResize() {
     animations.forEach(animation => animation.cancel())
@@ -94,20 +105,42 @@ export function useFeedLayoutResize(
   }
 
   watch(layout, async (mode, _, onCleanup) => {
-    const section = gallery.value
-    if (!section?.animate || section.ownerDocument.defaultView?.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      cancelResize()
-      return
-    }
-
+    const section = sectionRef.value
+    const gallery = galleryRef.value
+    if (!section || !gallery) return
+    const animate = typeof section.animate === 'function'
+      && !section.ownerDocument.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const galleryTop = gallery.getBoundingClientRect().top
+    const bounds = section.getBoundingClientRect()
     const before = Array.from(section.querySelectorAll<HTMLElement>(cardSelector), readCard)
-      .filter((entry): entry is CardGeometry => !!entry?.box.width && entry.box.height > 0)
+      .filter((entry): entry is CardGeometry => !!entry?.box.width
+        && entry.box.bottom > galleryTop && entry.box.top < galleryTop + gallery.clientHeight)
+    const anchor = before.filter(entry => entry.box.top >= galleryTop)
+      .reduce<CardGeometry | undefined>((nearest, entry) => !nearest || entry.box.top < nearest.box.top ? entry : nearest, undefined)
+      ?? before[0]
+    const destination = gallery.scrollTop > 0 && anchor ? viewport.position(anchor.index) : undefined
+    const originTop = gallery.scrollTop + bounds.top - galleryTop
+    const maxScroll = Math.max(0, viewport.contentHeight() + gallery.scrollHeight - bounds.height - gallery.clientHeight)
+    const top = destination && anchor
+      ? Math.min(maxScroll, Math.max(0, originTop + destination.y
+        - Math.max(anchor.box.top - galleryTop, 1 - destination.height)))
+      : gallery.scrollTop
+    retainedIndices.value = animate ? before.map(entry => entry.index) : []
+    // Update the virtual window before Vue patches, then write the scroll position
+    // once the new content height is in the DOM.
+    viewport.updateScrollTop(top)
+
     let superseded = false
     onCleanup(() => { superseded = true })
     await nextTick()
     if (superseded) return
 
     cancelResize()
+    gallery.scrollTop = top
+    viewport.updateScrollTop(gallery.scrollTop)
+    if (!animate) return
+
+    const origin = section.getBoundingClientRect()
     const retained = before.filter(entry => entry.card.parentElement === section)
     // Replace the normal transform transition for this switch only.
     for (const { card } of retained) {
@@ -119,12 +152,27 @@ export function useFeedLayoutResize(
       const after = readCard(entry.card)
       return after?.box.width && after.box.height ? [{ before: entry, after }] : []
     })
-    const running = pairs.flatMap(pair => animateCard(pair.before, pair.after, mode === 'list'))
+    const running = pairs.flatMap(pair => animateCard(pair.before, pair.after, mode === 'list', origin))
+    const previousCards = new Set(retained.map(entry => entry.card))
+    // Freshly mounted cards have no source box. Reveal them as the moving cards
+    // clear the old layout so they don't appear behind rows that are retracting.
+    for (const card of section.querySelectorAll<HTMLElement>(cardSelector)) {
+      if (previousCards.has(card)) continue
+      running.push(card.animate([
+        { opacity: 0 },
+        { opacity: 0, offset: mode === 'list' ? 0.6 : 0.4 },
+        { opacity: 1 },
+      ], duration))
+    }
     animations = running
     void Promise.allSettled(running.map(animation => animation.finished)).then(() => {
-      if (animations === running) animations = []
+      if (animations === running) {
+        animations = []
+        retainedIndices.value = []
+      }
     })
   })
 
   onBeforeUnmount(cancelResize)
+  return retainedIndices
 }
