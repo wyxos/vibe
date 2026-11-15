@@ -24,14 +24,17 @@ function position(box: DOMRect, parent: DOMRect): Keyframe {
 function readCard(card: HTMLElement) {
   const content = card.querySelector<HTMLElement>('.media-card-content')
   if (!content) return
+  const cardStyle = getComputedStyle(card)
+  const contentStyle = getComputedStyle(content)
   return {
     card,
     content,
     index: Number(card.dataset.feedIndex),
     box: content.getBoundingClientRect(),
-    clipPath: getComputedStyle(content).clipPath,
-    transform: getComputedStyle(card).transform,
-    style: getComputedStyle(card),
+    clipPath: contentStyle.clipPath,
+    transform: cardStyle.transform,
+    backgroundColor: contentStyle.clipPath === 'none' ? cardStyle.backgroundColor : contentStyle.backgroundColor,
+    borderRadius: cardStyle.borderRadius,
     regions: Array.from(content.children, element => ({
       element,
       box: element.getBoundingClientRect(),
@@ -62,21 +65,22 @@ function animateCard(before: CardGeometry, after: CardGeometry, toList: boolean,
   }
   const packedEnd = { ...packed, transform: after.transform }
   const surface = {
-    backgroundColor: after.style.backgroundColor,
-    borderRadius: after.style.borderRadius,
+    borderRadius: after.borderRadius,
     overflow: 'hidden',
   }
+  const listSurface = { ...surface, backgroundColor: list.backgroundColor }
   const edge = (right: number) => `inset(0px ${right}px 0px 0px round ${surface.borderRadius})`
-  const tile = { ...surface, ...compact, clipPath: edge(0) }
-  const clippedRow = { ...surface, ...size(list.box), clipPath: edge(Math.max(0, list.box.width - compactWidth)) }
+  const tile = { ...listSurface, ...compact, clipPath: edge(0) }
+  const clippedRow = { ...listSurface, ...size(list.box), clipPath: edge(Math.max(0, list.box.width - compactWidth)) }
   const running = [
     animate(after.card, packedStart, [toList ? packedEnd : packedStart], packedEnd),
     // Both middle frames show the same tile. The row itself stays full size
     // while only its right clip edge moves, so retracting never changes height.
     animate(after.content,
-      { ...surface, ...size(before.box), clipPath: before.clipPath === 'none' ? edge(0) : before.clipPath, easing: toList ? ease : edgeEase },
+      { ...surface, ...size(before.box), backgroundColor: before.backgroundColor,
+        clipPath: before.clipPath === 'none' ? edge(0) : before.clipPath, easing: toList ? ease : edgeEase },
       toList ? [tile, { ...clippedRow, easing: edgeEase }] : [clippedRow, tile],
-      { ...surface, ...size(after.box), clipPath: edge(0) },
+      { ...surface, ...size(after.box), backgroundColor: after.backgroundColor, clipPath: edge(0) },
     ),
   ]
   const overlay = { position: 'absolute', gridArea: 'auto', right: 'auto', bottom: 'auto', boxSizing: 'border-box' }

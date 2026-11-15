@@ -57,7 +57,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 }
 
 test('cards dock before list rows expand and collapse before returning', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 844 })
+  await page.setViewportSize({ width: 1741, height: 1183 })
   await ready(page)
   const second = page.locator('.masonry-item').nth(1)
   await expect(second).not.toHaveClass(/media-card--entering/)
@@ -68,7 +68,11 @@ test('cards dock before list rows expand and collapse before returning', async (
       const { x, y, width, height } = content.getBoundingClientRect()
       const clip = getComputedStyle(content).clipPath.match(/^inset\(0px ([\d.]+)px/)
       const rightInset = Number(clip?.[1] ?? 0)
-      return { x, y, width: width - rightInset, height, rightInset }
+      return {
+        x, y, width: width - rightInset, height, rightInset,
+        surface: getComputedStyle(content).backgroundColor,
+        card: getComputedStyle(card).backgroundColor,
+      }
     }
     async function switchAt(expanding: boolean) {
       toggle.click()
@@ -111,6 +115,7 @@ test('cards dock before list rows expand and collapse before returning', async (
     expect(frame.height).toBeCloseTo(result.list.end.height, 0)
     expect(frame.rightInset).toBeGreaterThan(0)
     expect(frame.width + frame.rightInset).toBeCloseTo(result.list.end.width, 0)
+    expect(frame.surface).toBe(result.list.end.card)
     expect(frame.width).toBeGreaterThan(result.list.middle.width + 10)
     expect(frame.width).toBeLessThan(result.list.end.width - 10)
   }
