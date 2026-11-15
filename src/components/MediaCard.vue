@@ -82,7 +82,7 @@ function activate(
   interactive = false,
   input: 'keyboard' | 'pointer' = 'pointer',
 ): void {
-  if (interactive && props.layout === 'masonry' && selection?.controller.enabled && selection.controller.state.mode !== 'browse') {
+  if (interactive && props.layout !== 'reel' && selection?.controller.enabled && selection.controller.state.mode !== 'browse') {
     if (!selection.controller.state.busy) selection.controller.toggle(props.item.postId)
     return
   }
@@ -148,7 +148,7 @@ useVisiblePostPreload({
   mediaSource: () => props.mediaSource ?? 'preview',
 })
 const { blocked: videoMotionBlocked, element: cardElement } = useCardVideoMotion({
-  enabled: () => props.mediaCard?.pauseVideoDuringTransitions === true && props.layout === 'masonry' && mediaType.value === 'video',
+  enabled: () => props.mediaCard?.pauseVideoDuringTransitions === true && props.layout !== 'reel' && mediaType.value === 'video',
   entering: () => props.entering, preparing: () => props.preparing === true, leaving: () => props.leaving === true,
   identity: () => `${props.item.postId}:${normalizedMediaIndex.value}:${mediaSrc.value}`,
 })
@@ -242,7 +242,7 @@ function onAudioCoverError(event: Event): void {
   if (target.dataset.coverIdentity !== audioCoverIdentity.value || audioCoverFailed.value) return
   emit('mediaError', { mediaIndex: normalizedMediaIndex.value, source: 'preview', src: audioCover.value?.src ?? '' })
   audioCoverFailed.value = true
-  if (props.layout === 'masonry') markSourceReady()
+  if (props.layout !== 'reel') markSourceReady()
 }
 watch(audioCoverIdentity, () => {
   audioCoverFailed.value = false
@@ -250,7 +250,7 @@ watch(audioCoverIdentity, () => {
 watch(
   [isAudio, () => props.layout, visibleAudioCover],
   ([audio, layout, cover]) => {
-    if (audio && layout === 'masonry' && !cover) void nextTick(() => markSourceReady())
+    if (audio && layout !== 'reel' && !cover) void nextTick(() => markSourceReady())
   },
   { immediate: true },
 )
@@ -281,7 +281,7 @@ watch(
     @keydown.enter="activate(interactive && !usesSeparateActivator, 'keyboard')"
     @keydown.space.prevent="activate(interactive && !usesSeparateActivator, 'keyboard')"
   >
-    <SelectionCardControls v-if="selection && layout === 'masonry' && !preparing" :post-id="item.postId" :header-height="cardHeader?.height" />
+    <SelectionCardControls v-if="selection && layout !== 'reel' && !preparing" :post-id="item.postId" :header-height="layout === 'list' ? undefined : cardHeader?.height" />
     <div class="media-card-content">
       <CardRegion
         v-if="cardHeader"
@@ -375,7 +375,7 @@ watch(
                 alt=""
                 decoding="async"
                 :loading="imageLoading"
-                @load="layout === 'masonry' && markSourceReady($event)"
+                @load="layout !== 'reel' && markSourceReady($event)"
                 @error="onAudioCoverError"
               >
               <span v-else class="media-audio-fallback" aria-hidden="true">

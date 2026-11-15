@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Github, Minus, PanelsTopLeft, Plus, RotateCcw } from 'lucide-vue-next'
+import { Github, LayoutGrid, List, Minus, PanelsTopLeft, Plus, RotateCcw } from 'lucide-vue-next'
 import { ref } from 'vue'
 import { useShowcase } from './useShowcase'
 import ShowcaseReelBackButton from './components/ShowcaseReelBackButton.vue'
@@ -7,7 +7,7 @@ import type { ShowcaseFilter } from './useShowcase'
 
 const target = ref<HTMLElement | null>(null)
 const logoUrl = `${import.meta.env.BASE_URL}logo.svg`
-const { filter, layout, loaded, rendered, busy, status, error, reelTarget, reelPreviews, previewPlacement, previewCount, previewTransition,
+const { filter, layout, feedLayout, chooseLayout, loaded, rendered, busy, status, error, reelTarget, reelPreviews, previewPlacement, previewCount, previewTransition,
   chooseFilter, closeReel, reset, toggleReelPreviews } = useShowcase(target)
 const placements = ['left', 'right', 'top', 'bottom'] as const
 const filters: { value: ShowcaseFilter; label: string }[] = [
@@ -31,6 +31,14 @@ const filters: { value: ShowcaseFilter; label: string }[] = [
         >{{ option.label }}</button>
       </div>
       <div class="playground-actions">
+        <div class="layout-options" role="group" aria-label="Feed layout">
+          <button type="button" aria-label="Masonry view" title="Masonry view"
+            :aria-pressed="feedLayout === 'masonry'" @click="chooseLayout('masonry')"
+          ><LayoutGrid :size="18" aria-hidden="true" /></button>
+          <button type="button" aria-label="List view" title="List view"
+            :aria-pressed="feedLayout === 'list'" @click="chooseLayout('list')"
+          ><List :size="18" aria-hidden="true" /></button>
+        </div>
         <button class="reset-button" type="button" aria-label="Restart demo" title="Restart demo" data-test="reset-demo" @click="reset"><RotateCcw :size="16" aria-hidden="true" /></button>
         <a class="project-link" href="https://github.com/wyxos/vibe" target="_blank" rel="noopener noreferrer" aria-label="Vibe on GitHub" title="Vibe on GitHub"><Github :size="18" aria-hidden="true" /></a>
       </div>

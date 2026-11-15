@@ -8,7 +8,7 @@ export function useCardChromeSelection(itemId: () => VibeItemId, layout: () => V
   const selection = useSelectionContext()?.controller
   return (event: MouseEvent): void => {
     if (!selection?.enabled || selection.selectionOptions.activation !== 'card-chrome'
-      || selection.state.busy || layout() !== 'masonry' || event.defaultPrevented
+      || selection.state.busy || layout() === 'reel' || event.defaultPrevented
       || event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
     const target = event.target instanceof Element ? event.target : null
     if (!target) return

@@ -4,7 +4,7 @@ import type { VibeMediaCardOptions, VibeReelAudioState } from './core/mediaCardO
 export type { VibeCardChromeStyle, VibeMediaCardOptions, VibeMediaControlAction, VibeMediaControlsDrawerProps, VibeMediaControlsOptions, VibeReelAudioState } from './core/mediaCardOptions'
 export type VibeCursor = string | number | null
 export type VibeItemId = string | number
-export type VibeLayout = 'masonry' | 'reel'
+export type VibeLayout = 'masonry' | 'list' | 'reel'
 export type VibeLayoutMode = VibeLayout | 'responsive'
 export type VibeLifecycle = 'error' | 'loaded' | 'loading'
 export type VibeMediaSource = 'preview' | 'original' | 'mobile'

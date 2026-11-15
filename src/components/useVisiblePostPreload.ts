@@ -25,7 +25,7 @@ export function useVisiblePostPreload(
   options: VisiblePostPreloadOptions,
 ): void {
   const enabled = computed(() => (
-    options.layout() === 'masonry'
+    options.layout() !== 'reel'
     && options.inViewport()
     && options.mediaReady()
     && options.mediaCard()?.feedPreload === 'visible-post'

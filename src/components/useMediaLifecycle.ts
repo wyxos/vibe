@@ -83,7 +83,7 @@ export function useMediaLifecycle(state: VibeRuntimeState, events: MediaLifecycl
 
   function markPreviewReady(postId: VibeItemId, mediaIndex: number): void {
     setState(previewStates, postId, mediaIndex, 'ready')
-    emitReady(postId, mediaIndex, 'masonry', null)
+    emitReady(postId, mediaIndex, state.layout, null)
   }
 
   function markReelError(postId: VibeItemId, mediaIndex: number): void {
@@ -98,7 +98,7 @@ export function useMediaLifecycle(state: VibeRuntimeState, events: MediaLifecycl
   function markMasonryVisible(postId: VibeItemId, mediaIndex: number): void {
     const key = mediaStateKey(postId, mediaIndex)
     if (visibleMedia.has(key)) return
-    const value = context(postId, mediaIndex, 'masonry', null)
+    const value = context(postId, mediaIndex, state.layout, null)
     if (!value) return
     visibleMedia.add(key)
     events.visible(value)
@@ -119,7 +119,7 @@ export function useMediaLifecycle(state: VibeRuntimeState, events: MediaLifecycl
   }
 
   function markMasonryFullyVisible(postId: VibeItemId, mediaIndex: number): void {
-    emitFullyVisible(postId, mediaIndex, 'masonry', null)
+    emitFullyVisible(postId, mediaIndex, state.layout, null)
   }
 
   useReelMediaChangeLifecycle(state, events.reelChange)

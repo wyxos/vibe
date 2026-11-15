@@ -11,6 +11,7 @@ import {
   calculateMasonryLayout,
   continueMasonryLayout,
   type MasonryLayout,
+  type MasonryOptions,
 } from '../core/masonry'
 import {
   continueMasonryViewportIndex,
@@ -21,19 +22,15 @@ import {
 const TAIL_PACK_CHUNK = 1_500
 
 export function useSettledMasonryFeedLayout(options: {
-  additionalHeight: ComputedRef<number>
-  gap: Ref<number>
+  geometry: ComputedRef<MasonryOptions>
   items: () => MasonryFeedProps['items']
-  minColumnWidth: ComputedRef<number>
   packThroughIndex: () => number
   packUntilBottom: () => number
   width: Ref<number>
 }) {
   const epoch = shallowRef(0)
-  let additionalHeight = 0
   let cache: MasonryLayout | null = null
-  let gap = 0
-  let minColumnWidth = 0
+  let previousOptions: MasonryOptions | null = null
   let packFrame: number | null = null
   let reservedHeight = 0
   let source: MasonryFeedProps['items'] | null = null
@@ -80,11 +77,7 @@ export function useSettledMasonryFeedLayout(options: {
         continueMasonryLayout(
           media,
           options.width.value,
-          {
-            additionalHeight: options.additionalHeight.value,
-            gap: options.gap.value,
-            minColumnWidth: options.minColumnWidth.value,
-          },
+          options.geometry.value,
           previous,
           fromIndex,
           {
@@ -104,19 +97,13 @@ export function useSettledMasonryFeedLayout(options: {
     void epoch.value
     const media = options.items()
     const nextWidth = options.width.value
-    const nextOptions = {
-      additionalHeight: options.additionalHeight.value,
-      gap: options.gap.value,
-      minColumnWidth: options.minColumnWidth.value,
-    }
+    const nextOptions = options.geometry.value
     const cached = cache
     if (
       cached
       && source
       && width === nextWidth
-      && gap === nextOptions.gap
-      && additionalHeight === nextOptions.additionalHeight
-      && minColumnWidth === nextOptions.minColumnWidth
+      && previousOptions === nextOptions
     ) {
       let fromIndex = 0
       const previousItems = source
@@ -154,9 +141,7 @@ export function useSettledMasonryFeedLayout(options: {
     cache = next
     source = media.slice()
     width = nextWidth
-    gap = nextOptions.gap
-    additionalHeight = nextOptions.additionalHeight
-    minColumnWidth = nextOptions.minColumnWidth
+    previousOptions = nextOptions
     viewportIndex = createMasonryViewportIndex(next.items)
     reservedHeight = 0
     return next
@@ -181,11 +166,7 @@ export function useSettledMasonryFeedLayout(options: {
         continueMasonryLayout(
           media,
           options.width.value,
-          {
-            additionalHeight: options.additionalHeight.value,
-            gap: options.gap.value,
-            minColumnWidth: options.minColumnWidth.value,
-          },
+          options.geometry.value,
           previous,
           fromIndex,
           {

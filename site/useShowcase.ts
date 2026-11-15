@@ -62,7 +62,15 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
   const previewPlacement = ref<VibeReelPreviewPlacement>('right')
   const previewCount = ref(4)
   const previewTransition = ref<VibeReelPreviewTransition>('slide')
-  const layout = computed(() => state.value?.reelOrigin === 'masonry' ? 'reel' : 'masonry')
+  const feedLayout = ref<'masonry' | 'list'>('masonry')
+  const layout = computed(() => state.value?.reelOrigin === 'masonry' ? 'reel' : feedLayout.value)
+
+  function chooseLayout(next: typeof feedLayout.value) {
+    if (next === feedLayout.value) return
+    feedLayout.value = next
+    vibe?.setLayout(next)
+    if (vibe) void fillViewport(vibe)
+  }
   const busy = computed(() => filtering.value || !state.value || state.value.isLoading || state.value.isLoadingMore)
   const status = computed(() => filtering.value ? 'Changing collection'
     : state.value?.isLoading ? 'Loading the first page'
@@ -120,7 +128,7 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
     const selectedIds = vibe?.getSelection().selectedIds ?? []
     vibe?.destroy()
     const api = createVibe({
-      target: element, layout: 'masonry', infiniteScroll: true, initialPage,
+      target: element, layout: feedLayout.value, infiniteScroll: true, initialPage,
       selection: {
         initialIds: selectedIds,
         getLabel: (item) => (item as ShowcaseItem).title,
@@ -236,6 +244,6 @@ export function useShowcase(target: Ref<HTMLElement | null>) {
     vibe = null
   })
 
-  return { filter, layout, loaded, rendered, busy, status, error, reelTarget, reelPreviews, previewPlacement, previewCount, previewTransition,
+  return { filter, layout, feedLayout, chooseLayout, loaded, rendered, busy, status, error, reelTarget, reelPreviews, previewPlacement, previewCount, previewTransition,
     chooseFilter, closeReel, reset, toggleReelPreviews }
 }

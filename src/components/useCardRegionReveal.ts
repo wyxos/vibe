@@ -44,7 +44,7 @@ export function useCardRegionReveal(props: {
   inViewport?: boolean
 }) {
   const schedule = inject(revealScheduler, createRevealScheduler, true)
-  const deferred = computed(() => props.layout === 'masonry'
+  const deferred = computed(() => props.layout !== 'reel'
     && Boolean(props.cardHeader?.deferMountDuringScroll || props.cardFooter?.deferMountDuringScroll))
   const revealed = shallowRef(!deferred.value || (!props.scrolling && !props.autoScrolling))
   const coordinateMedia = props.scrolling === true

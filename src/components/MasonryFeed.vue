@@ -61,12 +61,16 @@ let galleryResizeObserver: ResizeObserver | null = null
 let resizeFrame: number | null = null
 let viewportFrame: number | null = null
 let checkPaginationOnSettle = false
-const masonryLayoutOptions = computed(() => ({
-  additionalHeight:
-    (props.cardHeader?.height ?? 0) + (props.cardFooter?.height ?? 0),
-  gap: masonryGap.value,
-  minColumnWidth: resolveMasonryMinColumnWidth(props.masonry),
-}))
+const feedLayout = computed(() => props.state?.layout === 'list' ? 'list' : 'masonry')
+const masonryLayoutOptions = computed(() => {
+  const additionalHeight = (props.cardHeader?.height ?? 0) + (props.cardFooter?.height ?? 0)
+  return {
+    additionalHeight,
+    gap: masonryGap.value,
+    listRowHeight: feedLayout.value === 'list' ? Math.max(96, additionalHeight) : undefined,
+    minColumnWidth: resolveMasonryMinColumnWidth(props.masonry),
+  }
+})
 let lastLayoutItems: MasonryLayout['items'] = []
 
 function packUntilBottom(): number {
@@ -89,10 +93,8 @@ function packThroughIndex(): number {
 }
 
 const settledMasonry = useSettledMasonryFeedLayout({
-  additionalHeight: computed(() => masonryLayoutOptions.value.additionalHeight),
-  gap: masonryGap,
+  geometry: masonryLayoutOptions,
   items: () => props.items,
-  minColumnWidth: computed(() => masonryLayoutOptions.value.minColumnWidth),
   packThroughIndex,
   packUntilBottom,
   width: masonryWidth,
@@ -149,6 +151,7 @@ const effectiveMasonryHeight = computed(() => {
 
 const masonryStyle = computed<CSSProperties>(() => ({
   height: `${effectiveMasonryHeight.value}px`,
+  '--vibe-list-thumbnail': `${masonryLayoutOptions.value.listRowHeight ?? 0}px`,
 }))
 
 const showLoadMore = computed(() => (
@@ -280,10 +283,7 @@ function itemStyle(index: number): CSSProperties {
   const leaving = postId !== undefined && props.leavingPostIds.has(postId)
   const entryOffset = entering || leaving
     ? calculateMasonryEntryOffset({
-        containerHeight: Math.max(
-          galleryContentHeight.value,
-          settledMasonryLayout.value.height,
-        ),
+        containerHeight: Math.max(galleryContentHeight.value, settledMasonryLayout.value.height),
         gap: masonryGap.value,
       })
     : 0
@@ -422,7 +422,7 @@ defineExpose({ getScrollElement, loadIfNearBottom, prepareItemReplacement: repla
       ref="galleryElement"
       class="gallery-shell masonry-feed"
       :class="{ 'masonry-feed--suspended': suspended }"
-      data-layout-mode="masonry"
+      :data-layout-mode="feedLayout"
       :aria-hidden="suspended || undefined"
       :inert="suspended || undefined"
       @scroll.passive="onScroll"
@@ -453,7 +453,7 @@ defineExpose({ getScrollElement, loadIfNearBottom, prepareItemReplacement: repla
           :item="item"
           :item-style="preparing ? preparedStyle : itemStyle(index)"
           :interactive="!preparing"
-          layout="masonry"
+          :layout="feedLayout"
           :loaded-count="items.length"
           :media-index="mediaIndices.get(item.postId) ?? 0"
           :preview-state="replacement.previewState(item.postId, mediaIndices.get(item.postId) ?? 0)"

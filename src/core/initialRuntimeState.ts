@@ -24,7 +24,7 @@ export function createInitialRuntimeState(
     isLoading: !initialPage,
     isLoadingMore: false,
     items: initialPage ? appendUniqueItems([], initialPage.items) : [],
-    layout: layoutMode === 'reel' ? 'reel' : 'masonry',
+    layout: layoutMode === 'responsive' ? 'masonry' : layoutMode,
     loadMoreLocked: false,
     mediaIndices: new Map(),
     next: initialPage?.next ?? null,

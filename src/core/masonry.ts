@@ -42,7 +42,8 @@ export interface MasonryPackLimit {
   untilIndex?: number
 }
 
-interface MasonryOptions {
+export interface MasonryOptions {
+  listRowHeight?: number
   additionalHeight?: number
   gap: number
   minColumnWidth: number
@@ -123,6 +124,7 @@ export function calculateFullyVisibleMasonryIndices(
 }
 
 interface MasonryGrid {
+  listRowHeight?: number
   additionalHeight: number
   columns: number
   gap: number
@@ -140,12 +142,13 @@ function resolveMasonryGrid(
     ? Math.max(0, options.additionalHeight ?? 0)
     : 0
   const minColumnWidth = Math.max(1, options.minColumnWidth)
-  const columns = Math.max(
+  const columns = options.listRowHeight ? 1 : Math.max(
     1,
     Math.floor((containerWidth + gap) / (minColumnWidth + gap)),
   )
   return {
     additionalHeight,
+    listRowHeight: options.listRowHeight,
     columns,
     gap,
     itemWidth: (containerWidth - gap * (columns - 1)) / columns,
@@ -158,7 +161,7 @@ function packMasonryItem(
   grid: MasonryGrid,
 ): MasonryPosition {
   const column = shortestColumn(columnHeights)
-  const height = grid.itemWidth * itemAspectRatio(item) + grid.additionalHeight
+  const height = grid.listRowHeight ?? (grid.itemWidth * itemAspectRatio(item) + grid.additionalHeight)
   const position = {
     x: column * (grid.itemWidth + grid.gap),
     y: columnHeights[column]!,

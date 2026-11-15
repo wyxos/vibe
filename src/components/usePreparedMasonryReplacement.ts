@@ -2,7 +2,7 @@ import { computed, onBeforeUnmount, shallowRef, watch, type CSSProperties } from
 import type { MasonryFeedProps } from '../core/feed'
 import type { MediaFailure } from '../core/mediaFailure'
 import { mediaAssetAt, mediaStateKey, mediaVariantForSource } from '../core/mediaAsset'
-import { calculateMasonryLayout, calculateVisibleMasonryIndices, continueMasonryLayout } from '../core/masonry'
+import { calculateMasonryLayout, calculateVisibleMasonryIndices, continueMasonryLayout, type MasonryOptions } from '../core/masonry'
 import type { MediaPreviewState } from '../core/mediaPreview'
 import { resolveMediaType } from '../core/mediaType'
 import type { VibeItem, VibeItemId } from '../types'
@@ -13,7 +13,7 @@ interface PreparationGeometry {
   scrollTop: () => number
   contentTop: () => number
   overscan: () => number
-  layoutOptions: () => { additionalHeight: number, gap: number, minColumnWidth: number }
+  layoutOptions: () => MasonryOptions
 }
 interface PreparationEvents {
   ready: (postId: VibeItemId, index: number) => void

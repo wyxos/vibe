@@ -405,7 +405,7 @@ class VibeController implements Omit<VibeInstance, keyof VibeSelectionApi> {
     this.responsiveLayout.setLayout(layout)
   }
   openReel(postId: VibeItemId): void {
-    if (this.state.layout !== 'masonry' || !this.state.items.some((item) => item.postId === postId)) return
+    if (this.state.layout === 'reel' || !this.state.items.some((item) => item.postId === postId)) return
     this.surface?.openReel(postId)
   }
   closeReel(): void { this.surface?.closeReel() }

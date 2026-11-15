@@ -54,7 +54,7 @@ export class ResponsiveLayoutController {
   private applyLayout(layout: VibeLayout): void {
     if (layout === this.state.layout) return
 
-    if (layout === 'masonry') {
+    if (layout !== 'reel') {
       this.state.activeReelPostId = null
       this.onFeedLayout()
     }

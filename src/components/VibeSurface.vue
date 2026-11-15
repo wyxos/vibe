@@ -176,7 +176,7 @@ function navigateToReelItem(target: VibeReelItemTarget): VibeReelNavigationResul
 }
 
 function getAutoScrollElement(): HTMLElement | null {
-  if (props.state.layout !== 'masonry' || props.state.reelOrigin === 'masonry') return null
+  if (props.state.layout === 'reel' || props.state.reelOrigin === 'masonry') return null
   return masonryRenderer.value?.getScrollElement?.() ?? null
 }
 
@@ -195,7 +195,7 @@ function startItemRemoval(
   options?: VibeItemRemovalOptions,
 ): number {
   if (
-    props.state.layout !== 'masonry'
+    props.state.layout === 'reel'
     || props.state.reelOrigin !== null
     || prefersReducedMotion()
   ) return 0
@@ -334,7 +334,7 @@ defineExpose({
     ref="surfaceElement" tabindex="-1"
     class="vibe-surface" :class="{ 'vibe-surface--selection': hasSelection }" :data-reel-fullscreen="fullscreen || undefined"
   >
-    <SelectionToolbar v-if="hasSelection && state.layout === 'masonry'"
+    <SelectionToolbar v-if="hasSelection && state.layout !== 'reel'"
       :inert="state.reelOrigin === 'masonry' || isReelLeaving || undefined" :aria-hidden="state.reelOrigin === 'masonry' || isReelLeaving || undefined" />
     <ReelLayout
       v-if="state.layout === 'reel' && (state.items.length > 0 || state.reelForward.status !== 'idle')"
@@ -415,7 +415,7 @@ defineExpose({
         :total="state.total"
         @activate="activateMasonryItem"
         @error="markPreviewError"
-        @media-error="(postId, failure) => markMediaError(postId, failure, 'masonry')"
+        @media-error="(postId, failure) => markMediaError(postId, failure, state.layout)"
         @fully-visible="markMasonryFullyVisible"
         @load-more="emit('loadMore')"
         @media-change="setMediaIndex"
