@@ -104,7 +104,7 @@ Keep controls and media corners small: 2px for detail controls and 3px for ordin
 
 - Original logo: use site/public/logo.svg, restored from project history; do not replace it with an invented mark.
 - Filters: transparent at rest, supporting-blue hover, selected-blue pressed state, aria-pressed semantics.
-- The first demo starts in masonry and offers a compact list with thumbnail rows. A 44px toolbar toggle switches layouts. Cards move into the list before rows expand. Switching to masonry reverses the sequence. Reduced motion switches directly. Native user scrolling drives pagination.
+- The first demo starts in masonry and offers a compact list with thumbnail rows. A 44px toolbar toggle switches layouts and keeps a visible post anchored when the feed is scrolled. Cards move into place before rows reveal from left to right at a fixed height. Switching to masonry retracts each row from right to left before the cards move. Reduced motion switches directly. Native user scrolling drives pagination.
 - Reel return: the showcase supplies a persistent “Back to feed” action in the top-left of a feed-opened viewer. It uses the existing close transition and restores source position and focus without resizing media. This control belongs to the demo; library consumers supply their own controls through `closeReel()`.
 - Reset and project controls: compact icons with accessible names and 44px targets.
 - Card footer: title and information action; omit repeated collection text from the visible frame.

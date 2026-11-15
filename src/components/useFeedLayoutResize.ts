@@ -1,8 +1,11 @@
 
 import { nextTick, onBeforeUnmount, shallowRef, watch, type Ref } from 'vue'
 
-const duration = 480
+const duration = 540
+const midpoint = 0.5
+const motionId = 'vibe-layout-switch'
 const ease = 'cubic-bezier(0.22, 1, 0.36, 1)'
+const edgeEase = 'cubic-bezier(0.4, 0, 0.6, 1)'
 const cardSelector = '.masonry-item:not(.media-card--leaving, .media-card--preparing)'
 const mediaClass = 'media-card-media'
 
@@ -26,6 +29,7 @@ function readCard(card: HTMLElement) {
     content,
     index: Number(card.dataset.feedIndex),
     box: content.getBoundingClientRect(),
+    clipPath: getComputedStyle(content).clipPath,
     transform: getComputedStyle(card).transform,
     style: getComputedStyle(card),
     regions: Array.from(content.children, element => ({
@@ -41,18 +45,14 @@ type CardGeometry = NonNullable<ReturnType<typeof readCard>>
 function animateCard(before: CardGeometry, after: CardGeometry, toList: boolean, origin: DOMRect): Animation[] {
   const list = toList ? after : before
   const preview = list.regions.find(region => region.media)?.box
-  const compact = size({
-    width: Math.min(preview?.width ?? list.box.width, list.box.height),
-    height: list.box.height,
-  })
-  const middle = toList ? 0.6 : 0.4
-
-  function animate(element: Element, start: Keyframe, docked: Keyframe, end: Keyframe) {
+  const compactWidth = Math.min(preview?.width ?? list.box.width, list.box.height)
+  const compact = size({ width: compactWidth, height: list.box.height })
+  function animate(element: Element, start: Keyframe, docked: Keyframe[], end: Keyframe) {
     return element.animate([
-      { ...start, easing: ease },
-      { ...docked, offset: middle, easing: ease },
+      { easing: ease, ...start },
+      ...docked.map(frame => ({ easing: ease, ...frame, offset: midpoint })),
       end,
-    ], duration)
+    ], { duration, id: motionId })
   }
 
   const packed = { backgroundColor: 'transparent', overflow: 'visible', zIndex: 1 }
@@ -66,21 +66,30 @@ function animateCard(before: CardGeometry, after: CardGeometry, toList: boolean,
     borderRadius: after.style.borderRadius,
     overflow: 'hidden',
   }
+  const edge = (right: number) => `inset(0px ${right}px 0px 0px round ${surface.borderRadius})`
+  const tile = { ...surface, ...compact, clipPath: edge(0) }
+  const clippedRow = { ...surface, ...size(list.box), clipPath: edge(Math.max(0, list.box.width - compactWidth)) }
   const running = [
-    animate(after.card, packedStart, toList ? packedEnd : packedStart, packedEnd),
-    animate(after.content, { ...surface, ...size(before.box) }, { ...surface, ...compact }, { ...surface, ...size(after.box) }),
+    animate(after.card, packedStart, [toList ? packedEnd : packedStart], packedEnd),
+    // Both middle frames show the same tile. The row itself stays full size
+    // while only its right clip edge moves, so retracting never changes height.
+    animate(after.content,
+      { ...surface, ...size(before.box), clipPath: before.clipPath === 'none' ? edge(0) : before.clipPath, easing: toList ? ease : edgeEase },
+      toList ? [tile, { ...clippedRow, easing: edgeEase }] : [clippedRow, tile],
+      { ...surface, ...size(after.box), clipPath: edge(0) },
+    ),
   ]
   const overlay = { position: 'absolute', gridArea: 'auto', right: 'auto', bottom: 'auto', boxSizing: 'border-box' }
   for (const region of after.regions) {
     const original = before.regions.find(candidate => candidate.element === region.element)
     if (!original) continue
-    const listBox = toList ? region.box : original.box
-    const docked = region.media ? { left: '0px', top: '0px', ...compact }
-      : { ...position(listBox, list.box), opacity: 0 }
+    const listPosition = { ...overlay, ...position(toList ? region.box : original.box, list.box), opacity: 1 }
+    const docked = region.media ? { ...overlay, left: '0px', top: '0px', ...compact, opacity: 1 }
+      : { ...listPosition, opacity: 0 }
     running.push(animate(
       region.element,
       { ...overlay, ...position(original.box, before.box), opacity: 1 },
-      { ...overlay, ...docked },
+      toList ? [docked, listPosition] : [listPosition, docked],
       { ...overlay, ...position(region.box, after.box), opacity: 1 },
     ))
   }
@@ -160,9 +169,9 @@ export function useFeedLayoutResize(
       if (previousCards.has(card)) continue
       running.push(card.animate([
         { opacity: 0 },
-        { opacity: 0, offset: mode === 'list' ? 0.6 : 0.4 },
+        { opacity: 0, offset: midpoint },
         { opacity: 1 },
-      ], duration))
+      ], { duration, id: motionId }))
     }
     animations = running
     void Promise.allSettled(running.map(animation => animation.finished)).then(() => {

@@ -5,7 +5,10 @@ async function sampleFirstCardResize(first: Locator) {
   return first.evaluate(async card => {
     const content = card.querySelector('.media-card-content')!
     const media = card.querySelector('.media-card-media')!
-    const width = () => content.getBoundingClientRect().width
+    const width = () => {
+      const clip = getComputedStyle(content).clipPath.match(/^inset\(0px ([\d.]+)px/)
+      return content.getBoundingClientRect().width - Number(clip?.[1] ?? 0)
+    }
     const previewSize = () => {
       const { width, height } = media.getBoundingClientRect()
       return [width, height]
@@ -62,28 +65,36 @@ test('cards dock before list rows expand and collapse before returning', async (
     const toggle = document.querySelector<HTMLButtonElement>('button[aria-label="List view"]')!
     const content = card.querySelector('.media-card-content')!
     const measure = () => {
-      const { x, y, width } = content.getBoundingClientRect()
-      return { x, y, width }
+      const { x, y, width, height } = content.getBoundingClientRect()
+      const clip = getComputedStyle(content).clipPath.match(/^inset\(0px ([\d.]+)px/)
+      const rightInset = Number(clip?.[1] ?? 0)
+      return { x, y, width: width - rightInset, height, rightInset }
     }
-    async function switchAt(fraction: number) {
+    async function switchAt(expanding: boolean) {
       toggle.click()
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
       const animations = card.getAnimations({ subtree: true })
-        .filter(animation => animation.effect instanceof KeyframeEffect && animation.effect.getKeyframes().length === 3)
+        .filter(animation => animation.id === 'vibe-layout-switch')
       if (animations.length < 3) throw Error('Card layout animation missing')
       for (const animation of animations) {
         animation.pause()
-        animation.currentTime = Number(animation.effect!.getTiming().duration) * fraction
       }
       await Promise.all(animations.map(animation => animation.ready))
-      const middle = measure()
+      const seek = (fraction: number) => {
+        animations.forEach(animation => {
+          animation.currentTime = Number(animation.effect!.getTiming().duration) * fraction
+        })
+        return measure()
+      }
+      const row = seek(expanding ? 0.75 : 0.25)
+      const middle = seek(0.5)
       animations.forEach(animation => animation.finish())
       await Promise.all(animations.map(animation => animation.finished))
-      return { middle, end: measure() }
+      return { row, middle, end: measure() }
     }
     const masonry = measure()
-    const list = await switchAt(0.6)
-    const back = await switchAt(0.4)
+    const list = await switchAt(true)
+    const back = await switchAt(false)
     return { masonry, list, back }
   })
   expect(result.masonry.x).toBeGreaterThan(result.list.end.x + 10)
@@ -94,6 +105,15 @@ test('cards dock before list rows expand and collapse before returning', async (
   expect(result.back.middle.y).toBeCloseTo(result.list.end.y, 0)
   expect(result.back.middle.width).toBeCloseTo(result.list.middle.width, 0)
   expect(result.back.end.x).toBeCloseTo(result.masonry.x, 0)
+  for (const frame of [result.list.row, result.back.row]) {
+    expect(frame.x).toBeCloseTo(result.list.end.x, 0)
+    expect(frame.y).toBeCloseTo(result.list.end.y, 0)
+    expect(frame.height).toBeCloseTo(result.list.end.height, 0)
+    expect(frame.rightInset).toBeGreaterThan(0)
+    expect(frame.width + frame.rightInset).toBeCloseTo(result.list.end.width, 0)
+    expect(frame.width).toBeGreaterThan(result.list.middle.width + 10)
+    expect(frame.width).toBeLessThan(result.list.end.width - 10)
+  }
 })
 
 for (const [width, reducedMotion] of [[1440, 'no-preference'], [390, 'reduce']] as const) {

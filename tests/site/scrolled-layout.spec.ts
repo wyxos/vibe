@@ -28,26 +28,39 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
         toggle.click()
         await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
         const animations = card.getAnimations({ subtree: true })
-          .filter(animation => animation.effect instanceof KeyframeEffect && animation.effect.getKeyframes().length === 3)
+          .filter(animation => animation.id === 'vibe-layout-switch')
         const retainedDuringMotion = visible.every(({ card }) => card.isConnected)
         let middle: { width: number, top: number } | null = null
         const bounds = () => {
-          const { width, top } = surface.getBoundingClientRect()
-          return { width, top }
+          const { width, top, height, left } = surface.getBoundingClientRect()
+          const clip = getComputedStyle(surface).clipPath.match(/^inset\(0px ([\d.]+)px/)
+          return { width: width - Number(clip?.[1] ?? 0), top, height, left }
         }
+        let retracting: ReturnType<typeof bounds> | null = null
         if (animations.length) {
           for (const animation of animations) {
             animation.pause()
-            animation.currentTime = Number(animation.effect!.getTiming().duration) * (destination === 'list' ? 0.6 : 0.4)
           }
           await Promise.all(animations.map(animation => animation.ready))
+          const seek = (fraction: number) => animations.forEach(animation => {
+            animation.currentTime = Number(animation.effect!.getTiming().duration) * fraction
+          })
+          if (destination === 'masonry') {
+            seek(0.25)
+            retracting = bounds()
+          }
+          seek(0.5)
           middle = bounds()
           const layoutAnimations = element.getAnimations({ subtree: true })
-            .filter(animation => animation.effect instanceof KeyframeEffect && animation.effect.getKeyframes().length === 3)
+            .filter(animation => animation.id === 'vibe-layout-switch')
           layoutAnimations.forEach(animation => animation.finish())
           await Promise.all(layoutAnimations.map(animation => animation.finished))
         }
-        return { connected: card.isConnected, retainedDuringMotion, before: { top: box.top, width: box.width }, middle, after: bounds() }
+        return {
+          connected: card.isConnected, retainedDuringMotion,
+          before: { top: box.top, width: box.width, height: box.height, left: box.left },
+          middle, retracting, after: bounds(),
+        }
       }, mode)
       expect(result.connected).toBe(true)
       expect(result.after.top).toBeCloseTo(result.before.top, 0)
@@ -58,6 +71,13 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
         expect(result.middle).not.toBeNull()
         expect(result.middle!.width).toBeLessThan((mode === 'list' ? result.after.width : result.before.width) / 2)
         expect(result.middle!.top).toBeCloseTo(result.before.top, 0)
+        if (mode === 'masonry') {
+          expect(result.retracting!.left).toBeCloseTo(result.before.left, 0)
+          expect(result.retracting!.height).toBeCloseTo(result.before.height, 0)
+          expect(result.retracting!.top).toBeCloseTo(result.before.top, 0)
+          expect(result.retracting!.width).toBeLessThan(result.before.width - 10)
+          expect(result.retracting!.width).toBeGreaterThan(result.middle!.width + 10)
+        }
       }
     }
   })
